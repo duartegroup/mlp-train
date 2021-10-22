@@ -1,0 +1,7 @@
+numpy
+cython
+scipy
+autode==1.1
+ase==3.22
+coloredlogs
+dscribe

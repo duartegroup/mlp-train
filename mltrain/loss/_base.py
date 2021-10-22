@@ -4,16 +4,21 @@ from typing import Optional
 
 class LossValue(ABC, float):
 
-    def __init__(self, x):
+    def __init__(self,
+                 x,
+                 error: Optional[float] = None):
         """
         Loss value with a possible associated error
 
         Arguments:
             x (float | int): Value
+
+        Keyword Arguments:
+            error (float | None):
         """
 
         float.__init__(float(x))
-        self.error: Optional[float] = None
+        self.error: Optional[float] = error
 
     @abstractmethod
     def __repr__(self) -> str:

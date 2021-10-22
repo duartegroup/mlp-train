@@ -14,3 +14,5 @@ wget https://raw.githubusercontent.com/t-young31/ml-train/main/scripts/install_a
 ### Notes
 
 - Units are: distance (Å), energy (eV), force (eV Å-1)
+- Training using molecular mechanics (MM) is not supported as we've not found it to be efficient
+
