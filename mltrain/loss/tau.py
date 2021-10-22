@@ -1,5 +1,6 @@
 import numpy as np
-from mltrain.logging import logger
+from mltrain.md import run_mlp_md
+from mltrain.log import logger
 from mltrain.loss._base import LossFunction, LossValue
 
 
@@ -31,26 +32,17 @@ class TauCalculator(LossFunction):
             raise ValueError(f'Cannot calculate τ_acc over only '
                              f'{len(configurations)} configurations. Must be > 1')
 
-        taus = []
-
-        for config in configurations:
-            tau = self._calculate_single(init_config=config,
-                                         mlp=mlp,
-                                         method_name=mlp.reference_method_str)
-            taus.append(tau)
+        taus = [self._calculate_single(config=c,
+                                       mlp=mlp,
+                                       method_name=mlp.reference_method_str)
+                for c in configurations]
 
         # Calculate τ_acc as the average ± the standard error in the mean
         return Tau(np.average(taus),
                    error=np.std(taus) / np.sqrt(len(taus) - 1))
 
-    def _calculate_single(self, init_config, mlp, method_name):
-        """
-        Calculate a single τ_acc from one configuration
-
-        :param init_config: (gt.Configuration)
-        :param gap: (gt.GAP)
-        :param method_name: (str) Ground truth method e.g. dftb, orca, gpaw
-        """
+    def _calculate_single(self, config, mlp, method_name):
+        """Calculate a single τ_acc from one configuration"""
 
         cuml_error, curr_time = 0, 0
 
@@ -59,13 +51,13 @@ class TauCalculator(LossFunction):
 
         while curr_time < self.max_time:
 
-            traj = gt.md.run_gapmd(init_config,
-                                   gap=gap,
-                                   temp=self.temp,
-                                   dt=self.dt,
-                                   interval=step_interval,
-                                   fs=block_time,
-                                   n_cores=min(gt.GTConfig.n_cores, 4))
+            traj = run_mlp_md(config,
+                              gap=gap,
+                              temp=self.temp,
+                              dt=self.dt,
+                              interval=step_interval,
+                              fs=block_time,
+                              n_cores=min(gt.GTConfig.n_cores, 4))
             true = traj.copy()
 
             # Only evaluate the energy
@@ -98,7 +90,7 @@ class TauCalculator(LossFunction):
                 if cuml_error > self.e_t:
                     return curr_time
 
-            init_config = traj[-1]
+            config = traj[-1]
 
         logger.info(f'Reached max(τ_acc) = {self.max_time} fs')
         return self.max_time

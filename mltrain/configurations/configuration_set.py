@@ -28,4 +28,3 @@ class ConfigurationSet(list):
             return
 
         return super().append(value)
-

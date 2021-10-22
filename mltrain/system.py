@@ -1,4 +1,134 @@
+import numpy as np
+from typing import Union, Sequence
+from scipy.spatial.distance import cdist
+from mltrain.configurations import Configuration
+from mltrain.log import logger
+from mltrain.box import Box
+from mltrain.molecule import Molecule
 
 
 class System:
     """System with molecules but without any coordinates"""
+
+    def __init__(self,
+                 *args: Molecule,
+                 box:   Union[Box, Sequence[float], None]):
+        """
+        System containing a set of molecules.
+
+        e.g. pd_1water = (Pd, water, box_size=[10, 10, 10], charge=2)
+        for a system containing a Pd(II) ion and one water in a 1 nm^3 box
+
+        -----------------------------------------------------------------------
+        Arguments:
+            args: Molecules that comprise the system
+
+            box: Box that the molecules occupy. e.g. [10, 10, 10] for a
+                 10 Å cubic box.
+        """
+        self.molecules = list(args)
+
+        if box is None:
+            logger.info('System is in the gas phase')
+            self.box = None
+
+        else:
+            self.box = box if isinstance(box, Box) else Box(box)
+
+    def random_configuration(self,
+                             min_dist:     float = 2.0,
+                             with_intra:   bool = False,
+                             intra_sigma:  float = 0.05
+                             ) -> 'mltrain.Configuration':
+        """
+        Generate a random configuration of this system, where all the molecules
+        in the system have been randomised
+
+        -----------------------------------------------------------------------
+        Arguments:
+            min_dist: Minimum distance between the molecules
+
+            with_intra: Add intramolecular displacements to the atoms
+
+            intra_sigma: Variance of the normal distribution used to displace
+                         each coordinate of the molecules in the system
+
+        Returns:
+            (mltrain.Configuration):
+
+        Raises:
+            (RuntimeError): If all the molecules cannot be randomised while
+                            maintaining the required min. distance between them
+        """
+        configuration = Configuration(charge=self.charge,
+                                      mult=self.mult)
+
+        for molecule in self.molecules:
+
+            if with_intra:
+                molecule.random_normal_jiggle(sigma=intra_sigma)
+
+            self._shift_to_midpoint(molecule)
+            if configuration.n_atoms > 0:
+                self._shift_randomly(molecule,
+                                     coords=configuration.coordinates,
+                                     min_dist=min_dist)
+
+            configuration.atoms += molecule.atoms
+
+        return configuration
+
+    @property
+    def charge(self) -> int:
+        """Get the total charge on the system"""
+        return sum(molecule.charge for molecule in self.molecules)
+
+    @property
+    def mult(self) -> int:
+        """Get the total spin multiplicity on the system"""
+        n_unpaired = sum((mol.mult - 1) / 2 for mol in self.molecules)
+        return 2 * n_unpaired + 1
+
+    def _shift_to_midpoint(self, molecule):
+        """Shift a molecule to the midpoint in the box, if defined"""
+        midpoint = np.zeros(3) if self.box is None else self.box.midpoint
+        molecule.translate(midpoint - molecule.centroid)
+        return None
+
+    def _shift_randomly(self, molecule, coords, min_dist, max_iters=1000):
+        """
+        Shift a molecule such that that there more than min_dist between
+        each of a molecule's coordinates and a current set
+        """
+        molecule_coords = molecule.coordinates
+        a, b, c = [1.0, 1.0, 1.0] if self.box is None else self.box.size
+
+        def too_close(_coords) -> bool:
+            return np.min(cdist(_coords, coords)) < min_dist
+
+        def in_box(_coords) -> bool:
+            max_delta = np.max(np.max(coords, axis=0) - np.array([a, b, c]))
+            return np.min(_coords) > 0.0 and max_delta < 0
+
+        for i in range(1, max_iters+1):
+
+            m_coords = np.copy(molecule_coords)
+            vec = [np.random.uniform(-a/2, a/2),    # Random translation vector
+                   np.random.uniform(-b/2, b/2),
+                   np.random.uniform(-c/2, c/2)]
+
+            # Shift by 0.1 increments in the random direction
+            vec = 0.1 * np.array(vec) / np.linalg.norm(vec)
+
+            while too_close(m_coords) and in_box(m_coords):
+                m_coords += vec
+
+            if not too_close(m_coords) and in_box(m_coords):
+                break
+
+            if i == max_iters:
+                raise RuntimeError(f'Failed to shift {molecule.formula} to a '
+                                   'random location in the box')
+
+        molecule.coordinates = m_coords
+        return
