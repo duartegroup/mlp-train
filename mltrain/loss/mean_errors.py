@@ -21,7 +21,7 @@ class _DeltaLossFunction(LossFunction, ABC):
         delta_Es = self._delta_energies(configurations, mlp)
         std_error = bootstrap(delta_Es, self.statistic).standard_error
 
-        return self.loss_type(self.statistic(delta_Es),error=std_error)
+        return self.loss_type(self.statistic(delta_Es), error=std_error)
 
     @staticmethod
     def _delta_energies(cfgs, mlp):

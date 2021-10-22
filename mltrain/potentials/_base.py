@@ -6,7 +6,8 @@ class MLPotential(ABC):
 
     @abstractmethod
     def train(self,
-              configurations: 'mltrain.ConfigurationSet'):
+              configurations: 'mltrain.ConfigurationSet',
+              **kwargs):
         """Train this potential on a set of configurations"""
 
     @property
