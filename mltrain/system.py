@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Union, Sequence
 from scipy.spatial.distance import cdist
+from scipy.stats import special_ortho_group
 from mltrain.configurations import Configuration
 from mltrain.log import logger
 from mltrain.box import Box
@@ -70,6 +71,7 @@ class System:
 
             self._shift_to_midpoint(molecule)
             if configuration.n_atoms > 0:
+                self._rotate_randomly(molecule)
                 self._shift_randomly(molecule,
                                      coords=configuration.coordinates,
                                      min_dist=min_dist)
@@ -77,6 +79,39 @@ class System:
             configuration.atoms += molecule.atoms
 
         return configuration
+
+    def add_molecule(self,
+                     molecule: 'mltrain.Molecule') -> None:
+        """
+        Add a molecule to this system
+
+        -----------------------------------------------------------------------
+        Arguments:
+            molecule:
+        """
+
+        self.molecules.append(molecule)
+        return None
+
+    def add_molecules(self,
+                      molecule: 'mltrain.Molecule',
+                      num:      int = 1):
+
+        """
+        Add multiple versions of a molecule to this sytem
+
+        -----------------------------------------------------------------------
+        Arguments:
+            molecule:
+
+        Keyword Arguments:
+            num: Number of molecules of this type to add
+        """
+
+        for _ in range(num):
+            self.add_molecule(molecule.copy())
+
+        return None
 
     @property
     def charge(self) -> int:
@@ -89,25 +124,45 @@ class System:
         n_unpaired = sum((mol.mult - 1) / 2 for mol in self.molecules)
         return 2 * n_unpaired + 1
 
-    def _shift_to_midpoint(self, molecule):
+    def _shift_to_midpoint(self, molecule) -> None:
         """Shift a molecule to the midpoint in the box, if defined"""
         midpoint = np.zeros(3) if self.box is None else self.box.midpoint
         molecule.translate(midpoint - molecule.centroid)
         return None
 
-    def _shift_randomly(self, molecule, coords, min_dist, max_iters=1000):
+    @staticmethod
+    def _rotate_randomly(molecule) -> None:
+        """Rotate a molecule randomly around it's centroid"""
+        logger.info(f'Rotating {molecule.name} about its centroid')
+
+        coords, centroid = molecule.coordinates, molecule.centroid
+
+        #                Shift to origin     Random rotation matrix
+        coords = np.dot(coords - centroid, special_ortho_group.rvs(3).T)
+        molecule.coordinates = coords + centroid
+
+        return None
+
+    def _shift_randomly(self, molecule, coords, min_dist, max_iters=500) -> None:
         """
         Shift a molecule such that that there more than min_dist between
         each of a molecule's coordinates and a current set
         """
+        logger.info(f'Shifting {molecule.name} to a random position in a box')
+
         molecule_coords = molecule.coordinates
         a, b, c = [1.0, 1.0, 1.0] if self.box is None else self.box.size
 
         def too_close(_coords) -> bool:
+            """Are a set of coordinates too close to some others?"""
             return np.min(cdist(_coords, coords)) < min_dist
 
         def in_box(_coords) -> bool:
-            max_delta = np.max(np.max(coords, axis=0) - np.array([a, b, c]))
+            """Are a set of coordinates all inside a box?"""
+            if self.box is None:
+                return True
+
+            max_delta = np.max(np.max(_coords, axis=0) - np.array([a, b, c]))
             return np.min(_coords) > 0.0 and max_delta < 0
 
         for i in range(1, max_iters+1):
@@ -124,11 +179,13 @@ class System:
                 m_coords += vec
 
             if not too_close(m_coords) and in_box(m_coords):
+                logger.info(f'Randomised in {i} iterations')
                 break
 
             if i == max_iters:
                 raise RuntimeError(f'Failed to shift {molecule.formula} to a '
-                                   'random location in the box')
+                                   f'random location in the box. '
+                                   f'Tried {max_iters} times')
 
         molecule.coordinates = m_coords
         return

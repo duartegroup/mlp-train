@@ -2,7 +2,10 @@ import mltrain as mlt
 
 if __name__ == '__main__':
 
-    system = mlt.System(mlt.Molecule('methane.xyz'),
-                        box=[50, 50, 50])   # Å
+    methane = mlt.Molecule('methane.xyz')
+    # water = mlt.Molecule('water.xyz')
+
+    system = mlt.System(box=[10, 10, 10])
+    system.add_molecules(methane, num=12)
 
     system.random_configuration().save('tmp.xyz')
