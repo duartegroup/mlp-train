@@ -21,7 +21,7 @@ class MLPotential(ABC):
         self.name = str(name)
         self.system = system
 
-        self._training_data: Optional['mltrain.ConfigurationSet'] = None
+        self._training_data = mlt.ConfigurationSet()
 
     def train(self,
               configurations: Optional['mltrain.ConfigurationSet'] = None):
@@ -89,10 +89,21 @@ class MLPotential(ABC):
         Returns:
             (mltrain.ConfigurationSet):
         """
-        if self._training_data is None:
-            return mlt.ConfigurationSet()
-
         return self._training_data
+
+    @training_data.setter
+    def training_data(self, value: Optional['mltrain.ConfigurationSet']):
+        """Set the training date for this MLP"""
+
+        if value is None:
+            self._training_data.clear()
+
+        elif isinstance(value, mlt.ConfigurationSet):
+            self._training_data = value
+
+        else:
+            raise ValueError(f'Cannot set the training data for {self.name} '
+                             f'with {value}')
 
     def al_train(self,
                  method_name: str,

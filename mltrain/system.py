@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Union, Sequence
+from typing import Union, Sequence, List
 from scipy.spatial.distance import cdist
 from scipy.stats import special_ortho_group
 from mltrain.configurations import Configuration
@@ -123,6 +123,15 @@ class System:
         """Get the total spin multiplicity on the system"""
         n_unpaired = sum((mol.mult - 1) / 2 for mol in self.molecules)
         return 2 * n_unpaired + 1
+
+    @property
+    def atoms(self) -> List['autode.atoms.Atom']:
+        """Constituent atoms of this system
+
+        Returns:
+            (list(autode.atoms.Atom)):
+        """
+        return sum(mol.atoms for mol in self.molecules)
 
     def _shift_to_midpoint(self, molecule) -> None:
         """Shift a molecule to the midpoint in the box, if defined"""

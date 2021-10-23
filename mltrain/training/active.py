@@ -1,7 +1,6 @@
 from typing import Optional
 from mltrain.log import logger
 
-
 """
 if active_e_thresh is None:
     if active_method.lower() == 'diff':
@@ -107,10 +106,14 @@ def train(mlp:               'mltrain.potentials.MLPotential',
         min_active_iters: (int) Minimum number of active iterations to
                              perform
     """
-    _gen_init_training_configs(init_configs=init_configs,
-                               num=n_init_configs,
-                               method_name=method_name,
-                               system=mlp.system)
+    if init_configs is None:
+        _gen_init_training_configs(mlp,
+                                   method_name=method_name,
+                                   num=n_init_configs)
+    else:
+        _set_init_training_configs(mlp, init_configs,
+                                   method_name=method_name)
+
     mlp.train()
 
     # Run the active learning loop, running iterative GAP-MD
@@ -143,4 +146,68 @@ def train(mlp:               'mltrain.potentials.MLPotential',
 
         mlp.train()
 
+    return None
+
+
+def _set_init_training_configs(mlp, init_configs, method_name) -> None:
+    """Set some initial training configurations"""
+
+    if not all(cfg.energy.true is not None for cfg in init_configs):
+        logger.info(f'Initialised with {len(init_configs)} configurations '
+                    f'all with defined energy')
+        init_configs.single_point(method_name=method_name)
+
+    mlp.training_data = init_configs
+
+    return None
+
+
+def _gen_init_training_configs(mlp, method_name, num) -> None:
+    """
+    Generate a set of initial configurations for a system, if init_configs
+    is undefined. Otherwise ensure all the true energies and forces are defined
+
+    Arguments:
+        mlp:
+        method_name:
+        num:
+    """
+    # Initial configurations are not defined, so make some - will use random
+    # with the largest maximum distance between molecules possible
+    max_vdw = max(atom.vdw_radius for atom in mlp.system.atoms)
+    ideal_dist = 2 * max_vdw - 0.5  # Desired minimum distance in Å
+
+    # Reduce the distance until there is a probability at least 0.1 that a
+    # random configuration can be generated with that distance threshold
+    p_acc, dist = 0, ideal_dist + 0.2
+
+    while p_acc < 0.1:
+        n_generated_configs = 0
+        dist -= 0.2                # Reduce the minimum distance requirement
+
+        for _ in range(10):
+            try:
+                _ = mlp.system.random_configuration(min_dist=dist)
+                n_generated_configs += 1
+
+            except RuntimeError:
+                continue
+
+        p_acc = n_generated_configs / 10
+        logger.info(f'Generated configurations with p={p_acc:.2f} with a '
+                    f'minimum distance of {dist:.2f}')
+
+    # Generate the initial configurations
+    while len(mlp.training_data) < num:
+        try:
+            config = mlp.system.random_configuration(min_dist=dist,
+                                                     with_intra=True)
+            mlp.training_data += config
+
+        except RuntimeError:
+            continue
+
+    logger.info(f'Added {num} configurations with min dist = {dist:.3f} Å')
+
+    mlp.training_data.single_point(method_name)
     return None
