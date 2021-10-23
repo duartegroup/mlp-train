@@ -1,4 +1,9 @@
 from typing import Optional
+from subprocess import Popen, PIPE
+from multiprocessing import Pool
+from mltrain.config import Config
+from mltrain.training.selection import SelectionMethod, AbsDiffE
+from mltrain.configurations import ConfigurationSet
 from mltrain.log import logger
 
 """
@@ -15,11 +20,10 @@ if active_e_thresh is None:
 
 def train(mlp:               'mltrain.potentials.MLPotential',
           method_name:       str,
+          selection_method:  SelectionMethod = AbsDiffE,
           max_active_time:   float = 1000,
           n_configs_iter:    int = 10,
           temp:              float = 300.0,
-          active_e_thresh:   Optional[float] = None,
-          active_method:     str = 'diff',
           max_e_threshold:   Optional[float] = None,
           max_active_iters:  int = 50,
           n_init_configs:    int = 10,
@@ -50,6 +54,8 @@ def train(mlp:               'mltrain.potentials.MLPotential',
         method_name: Name of a reference method to use as the ground truth e.g.
                      dftb, orca, gpaw
 
+        selection_method: Method used to select active learnt configurations
+
     Keyword Arguments:
         max_active_time: (float) Maximum propagation time in the active
                             learning loop. Default = 1 ps
@@ -59,18 +65,6 @@ def train(mlp:               'mltrain.potentials.MLPotential',
 
         temp: (float) Temperature in K to propagate active learning at -
               higher is better for stability but requires more training
-
-
-        active_method: (str) Method used to generate active learnt
-                       configurations. One of ['diff', 'gp_var']
-
-        active_e_thresh: (float) Threshold in eV (E_t) above which a
-                            configuration is added to the potential. If None
-                            then will use 1 kcal mol-1 molecule-1
-
-                            1. active_method='diff': |E_0 - E_MLP| > E_t
-
-                            3. active_method='gp_var': σ^2_GAP(predicted) > E_t
 
         max_e_threshold: (float) Maximum relative energy threshold for
                            configurations to be added to the training data
@@ -124,12 +118,11 @@ def train(mlp:               'mltrain.potentials.MLPotential',
         _add_active_configs(mlp,
                             init_config=(mlp.training_data[0] if fix_init_config
                                          else mlp.training_data.lowest_energy),
-                            ref_method_name=method_name,
-                            method=str(active_method),
+                            selection_method=selection_method,
                             n_configs=n_configs_iter,
+                            method_name=method_name,
                             temp=temp,
-                            e_thresh=active_e_thresh,
-                            max_time_fs=max_active_time,
+                            max_time=max_active_time,
                             bbond_energy=bbond_energy,
                             fbond_energy=fbond_energy,
                             init_temp=init_active_temp)
@@ -146,6 +139,44 @@ def train(mlp:               'mltrain.potentials.MLPotential',
 
         mlp.train()
 
+    return None
+
+
+def _add_active_configs(mlp,
+                        init_config,
+                        selection_method,
+                        n_configs=10,
+                        **kwargs) -> None:
+    """
+    Add a number (n_configs) of configurations to the current training data
+    based on active learning selection of MLP-MD generated configurations
+    """
+    if int(n_configs) < int(Config.n_cores):
+        raise NotImplementedError('Active learning is only implemented using '
+                                  'one core for each process. Please use '
+                                  'n_configs >= mlt.Config.n_cores')
+
+    configs = ConfigurationSet()
+    logger.info('Searching for "active" configurations with '
+                f'{Config.n_cores} processes')
+
+    with Pool(processes=Config.n_cores) as pool:
+
+        results = [pool.apply_async(selection_method, args=(init_config,), kwds=kwargs)
+                   for _ in range(n_configs)]
+
+        for result in results:
+
+            try:
+                configs += result.get(timeout=None)
+
+            # Lots of different exceptions can be raised when trying to
+            # generate an active config, continue regardless..
+            except Exception as err:
+                logger.error(f'Raised an exception in selection: \n{err}')
+                continue
+
+    mlp.training_data += configs
     return None
 
 

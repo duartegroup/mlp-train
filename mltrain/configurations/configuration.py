@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 from copy import  deepcopy
 from autode.atoms import AtomCollection, Atoms
 from ase.atoms import Atoms
@@ -32,6 +32,9 @@ class Configuration(AtomCollection):
 
         self.energy = Energy()
         self.forces = Forces()
+
+        self.time = 0         # Time in a trajectory of this configuration
+        self.n_ref_evals = 0  # Number of reference evaluations on this config.
 
     @property
     def ase_atoms(self) -> 'ase.atoms.Atoms':
@@ -69,7 +72,7 @@ class Configuration(AtomCollection):
              filename:  str,
              append:    bool = False,
              true:      bool = False,
-             predicted: bool = False):
+             predicted: bool = False) -> None:
         """
         Print this configuration as an extended xyz file where the first 4
         columns are the atom symbol, x, y, z and, if this configuration
@@ -124,5 +127,29 @@ class Configuration(AtomCollection):
                     line += f'{fx:.5f} {fy:.5f} {fz:.5f}'
 
                 print(line, file=exyz_file)
+
+        return None
+
+    def single_point(self,
+                     method: Union[str, 'mltrain.potentials.MLPotential']) -> None:
+        """
+        Run a single point energy and gradient (force) evaluation using
+        either a reference method defined by a string (e.g. 'orca') or a
+        machine learned potential (with a .predict) method.
+
+        Arguments:
+            method:
+        """
+
+        if isinstance(method, str):
+            # TODO: call autodE
+            raise NotImplementedError
+
+        elif hasattr(method, 'predict'):
+            method.predict(self)
+
+        else:
+            raise ValueError(f'Cannot use {method} to predict energies and '
+                             f'forces')
 
         return None

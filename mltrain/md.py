@@ -23,7 +23,8 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
                init_temp:     Optional[float] = None,
                fbond_energy:  Optional[dict] = None,
                bbond_energy:  Optional[dict] = None,
-               **kwargs) -> 'mltrain.ConfigurationSet':
+               **kwargs
+               ) -> 'mltrain.ConfigurationSet':
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics
@@ -100,9 +101,10 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
 
     traj = _convert_ase_traj('tmp.traj')
 
-    for frame, energy in zip(traj, energies):
+    for i, frame, energy in enumerate(zip(traj, energies)):
         frame.update_attr_from(configuration)
         frame.energy.predicted = energy
+        frame.time = dt * interval * i
 
     return traj
 

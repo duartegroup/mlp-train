@@ -5,6 +5,7 @@ from mltrain.system import System
 from mltrain import md
 from mltrain import potentials
 
+__version__ = '1.0.0a0'
 
 __all__ = ['Configuration',
            'ConfigurationSet',
