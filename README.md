@@ -1,7 +1,8 @@
-## ml-train
+# ml-train
 General machine learnt potential (MLP) training for molecular systems
 
-#### Install
+***
+### Install
 
 - ACE:
 

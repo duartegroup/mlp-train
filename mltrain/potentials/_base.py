@@ -1,14 +1,51 @@
 import mltrain as mlt
+from mltrain.training.active import train as al_train
 from abc import ABC, abstractmethod
+from typing import Optional
 
 
 class MLPotential(ABC):
 
-    @abstractmethod
+    def __init__(self,
+                 name:   str,
+                 system: 'mltrain.System'):
+        """
+        Machine learnt potential. Name defines the name of the potential
+        which will be saved. Training data is populated
+
+        -----------------------------------------------------------------------
+        Arguments:
+            name: Name of the potential
+            system: System for which this potential is defined
+        """
+        self.name = str(name)
+        self.system = system
+
+        self._training_data: Optional['mltrain.ConfigurationSet'] = None
+
     def train(self,
-              configurations: 'mltrain.ConfigurationSet',
-              **kwargs):
-        """Train this potential on a set of configurations"""
+              configurations: Optional['mltrain.ConfigurationSet'] = None):
+        """
+        Train this potential on a set of configurations
+
+        -----------------------------------------------------------------------
+        Arguments:
+            configurations: Set of configurations to train on, if None then
+                            will use self._training_data
+        """
+        if configurations is not None:
+            self._training_data = configurations
+
+        if len(self.training_data) == 0:
+            raise RuntimeError(f'Failed to train {self.__name__}({self.name}) '
+                               f'had no training configurations')
+
+        self._train()
+        return None
+
+    @abstractmethod
+    def _train(self) -> None:
+        """Train this potential on self._training_data"""
 
     @property
     @abstractmethod
@@ -44,3 +81,28 @@ class MLPotential(ABC):
             configuration.forces.predicted = atoms.get_forces()
 
         return None
+
+    @property
+    def training_data(self) -> 'mltrain.ConfigurationSet':
+        """Training data which this potential was trained on
+
+        Returns:
+            (mltrain.ConfigurationSet):
+        """
+        if self._training_data is None:
+            return mlt.ConfigurationSet()
+
+        return self._training_data
+
+    def al_train(self,
+                 method_name: str,
+                 **kwargs) -> None:
+        """
+        Train this MLP using active learning (AL) using a defined reference
+        method
+
+        Arguments:
+            method_name:
+            **kwargs:  Keyword arguments passed to mlt.training.active.train()
+        """
+        return al_train(self, method_name=method_name, **kwargs)
