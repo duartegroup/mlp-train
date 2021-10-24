@@ -2,6 +2,7 @@ from typing import Optional
 from subprocess import Popen, PIPE
 from multiprocessing import Pool
 from mltrain.config import Config
+from mltrain.md import run_mlp_md
 from mltrain.training.selection import SelectionMethod, AbsDiffE
 from mltrain.configurations import ConfigurationSet
 from mltrain.log import logger
@@ -101,9 +102,9 @@ def train(mlp:               'mltrain.potentials.MLPotential',
                              perform
     """
     if init_configs is None:
-        _gen_init_training_configs(mlp,
-                                   method_name=method_name,
-                                   num=n_init_configs)
+        _gen_and_set_init_training_configs(mlp,
+                                           method_name=method_name,
+                                           num=n_init_configs)
     else:
         _set_init_training_configs(mlp, init_configs,
                                    method_name=method_name)
@@ -162,7 +163,9 @@ def _add_active_configs(mlp,
 
     with Pool(processes=Config.n_cores) as pool:
 
-        results = [pool.apply_async(selection_method, args=(init_config,), kwds=kwargs)
+        results = [pool.apply_async(selection_method,
+                                    args=(init_config, mlp, selection_method),
+                                    kwds=kwargs)
                    for _ in range(n_configs)]
 
         for result in results:
@@ -180,6 +183,119 @@ def _add_active_configs(mlp,
     return None
 
 
+def _gen_active_config(config,
+                       mlp,
+                       selector,
+                       temp,
+                       max_time,
+                       method_name,
+                       **kwargs
+                       ) -> 'mltrain.Configuration':
+    """
+    Generate a configuration based on 'active learning', by running MLP-MD
+    until a configuration that satisfies the selection_method is found.
+    This function is recursively called until a configuration is generated or
+    max_time is exceeded
+
+    --------------------------------------------------------------------------
+    Arguments
+        config:
+
+        mlp:
+
+        selector:
+
+        temp: (float) Temperature to propagate MD
+
+        max_time: (float)
+
+        method_name: (str)
+
+
+    Keyword Arguments:
+        n_calls: (int) Number of times this function has been called
+
+        curr_time: (float)
+
+
+        extra_time: (float) Some extra time to run initially e.g. as the
+                    MLP is already likely to get to e.g. 100 fs, so run
+                    that initially
+
+    Returns:
+        (mltrain.Configuration):
+    """
+    curr_time = kwargs.get('curr_time', 0.)
+    extra_time = kwargs.get('extra_time', 0.)
+
+    if extra_time > 0:
+        logger.info(f'Running an extra {extra_time:.1f} fs of MD')
+
+    n_calls = kwargs.get('n_calls', 0)
+    md_time = 2 + n_calls**3 + float(extra_time)
+
+    traj = run_mlp_md(config,
+                      mlp=mlp,
+                      temp=float(kwargs.get('temp', 300)),
+                      dt=0.5,
+                      interval=4,
+                      fs=md_time,
+                      n_cores=1,
+                      **kwargs)
+
+    traj.t0 = extra_time  # Increment the initial time (t0)
+
+    # Evaluate the selector on the final frame
+    selector(traj.final_frame, mlp, method_name=method_name)
+
+    if selector.select:
+        if traj.final_frame.energy.true is None:
+            traj.final_frame.single_point(method_name)
+
+        return traj.final_frame
+
+
+    if selector.should_backtrack:
+        # TODO: backtrack
+
+
+    if error > 100 * e_thresh:
+        logger.error('Huge error: 100x threshold, returning the first frame')
+        gap_traj[0].single_point(method_name=ref_method_name, n_cores=1)
+        gap_traj[0].n_evals = n_evals + 1
+        return gap_traj[0]
+
+    if error > 10 * e_thresh:
+        logger.warning('Error 10 x threshold! Taking the last frame less than '
+                       '10x the threshold')
+        # Stride through only 10 frames to prevent very slow backtracking
+        for frame in reversed(gap_traj[::max(1, len(gap_traj)//10)]):
+            error = calc_error(frame, gap=gap, method_name=ref_method_name)
+            n_evals += 1
+
+            if e_thresh < error < 10 * e_thresh:
+                frame.n_evals = n_evals
+                return frame
+
+    if error > e_thresh:
+        gap_traj[-1].n_evals = n_evals
+        return gap_traj[-1]
+
+    if curr_time + md_time > max_time:
+        logger.info(f'Reached the maximum time {max_time_fs} fs, returning '
+                    f'None')
+        return None
+
+    # Increment t_0 to the new time
+    curr_time += md_time
+
+    # If the prediction is within the threshold then call this function again
+    return _gen_active_config(config, mlp, selection_method, temp, max_time, method_name,
+                              curr_time=curr_time,
+                              n_calls=n_calls+1,
+                              **kwargs)
+
+
 def _set_init_training_configs(mlp, init_configs, method_name) -> None:
     """Set some initial training configurations"""
 
@@ -193,7 +309,7 @@ def _set_init_training_configs(mlp, init_configs, method_name) -> None:
     return None
 
 
-def _gen_init_training_configs(mlp, method_name, num) -> None:
+def _gen_and_set_init_training_configs(mlp, method_name, num) -> None:
     """
     Generate a set of initial configurations for a system, if init_configs
     is undefined. Otherwise ensure all the true energies and forces are defined

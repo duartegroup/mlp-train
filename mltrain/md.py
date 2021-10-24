@@ -2,7 +2,7 @@ import os
 import numpy as np
 import autode as ade
 from typing import Optional
-from mltrain.configurations import Configuration, ConfigurationSet
+from mltrain.configurations import Configuration, Trajectory
 from mltrain.config import Config
 from mltrain.log import logger
 from mltrain.utils import work_in_tmp_dir
@@ -24,7 +24,7 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
                fbond_energy:  Optional[dict] = None,
                bbond_energy:  Optional[dict] = None,
                **kwargs
-               ) -> 'mltrain.ConfigurationSet':
+               ) -> 'mltrain.Trajectory':
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics
@@ -109,11 +109,11 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
     return traj
 
 
-def _convert_ase_traj(filename: str) -> 'mltrain.ConfigurationSet':
+def _convert_ase_traj(filename: str) -> 'mltrain.Trajectory':
     """Convert an ASE trajectory into a mltrain ConfigurationSet"""
 
     ase_traj = ASETrajectory(filename)
-    mlt_traj = ConfigurationSet()
+    mlt_traj = Trajectory()
 
     # Iterate through each frame (set of atoms) in the trajectory
     for atoms in ase_traj:

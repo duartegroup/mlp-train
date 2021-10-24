@@ -1,4 +1,4 @@
-from mltrain.configurations import Configuration, ConfigurationSet
+from mltrain.configurations import Configuration, ConfigurationSet, Trajectory
 from mltrain.config import Config
 from mltrain.molecule import Molecule
 from mltrain.system import System
@@ -9,6 +9,7 @@ __version__ = '1.0.0a0'
 
 __all__ = ['Configuration',
            'ConfigurationSet',
+           'Trajectory',
            'Config',
            'Molecule',
            'System',

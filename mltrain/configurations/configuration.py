@@ -143,6 +143,7 @@ class Configuration(AtomCollection):
 
         if isinstance(method, str):
             # TODO: call autodE
+            self.n_ref_evals += 1
             raise NotImplementedError
 
         elif hasattr(method, 'predict'):
