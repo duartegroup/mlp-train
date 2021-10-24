@@ -169,9 +169,6 @@ def _add_active_configs(mlp,
 
         for result in results:
 
-            configs.append(result.get(timeout=None))
-
-            """
             try:
                 configs.append(result.get(timeout=None))
 
@@ -180,7 +177,6 @@ def _add_active_configs(mlp,
             except Exception as err:
                 logger.error(f'Raised an exception in selection: \n{err}')
                 continue
-            """
 
     mlp.training_data += configs
     return None
