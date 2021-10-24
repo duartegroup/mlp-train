@@ -32,6 +32,9 @@ class MLPotential(ABC):
         Arguments:
             configurations: Set of configurations to train on, if None then
                             will use self._training_data
+
+        Raises:
+            (RuntimeError):
         """
         if configurations is not None:
             self._training_data = configurations
@@ -39,6 +42,10 @@ class MLPotential(ABC):
         if len(self.training_data) == 0:
             raise RuntimeError(f'Failed to train {self.__name__}({self.name}) '
                                f'had no training configurations')
+
+        if any(c.energy.true is None for c in self.training_data):
+            raise RuntimeError('Cannot train on configurations, an '
+                               'energy was undefined')
 
         self._train()
         return None
@@ -92,7 +99,8 @@ class MLPotential(ABC):
         return self._training_data
 
     @training_data.setter
-    def training_data(self, value: Optional['mltrain.ConfigurationSet']):
+    def training_data(self,
+                      value: Optional['mltrain.ConfigurationSet']):
         """Set the training date for this MLP"""
 
         if value is None:

@@ -16,7 +16,7 @@ from numpy.random import RandomState
 
 @work_in_tmp_dir(copied_exts=['.xml', '.json'])
 def run_mlp_md(configuration: 'mltrain.Configuration',
-               mlp:           'mltrain.potentials.MLPotential',
+               mlp:           'mltrain.potentials._base.MLPotential',
                temp:          float,
                dt:            float,
                interval:      int,
@@ -101,7 +101,7 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
 
     traj = _convert_ase_traj('tmp.traj')
 
-    for i, frame, energy in enumerate(zip(traj, energies)):
+    for i, (frame, energy) in enumerate(zip(traj, energies)):
         frame.update_attr_from(configuration)
         frame.energy.predicted = energy
         frame.time = dt * interval * i

@@ -1,3 +1,3 @@
-from mltrain.potentials._base import MLPotential
+from mltrain.potentials.gap.gap import GAP
 
-__all__ = ['MLPotential']
+__all__ = ['GAP']

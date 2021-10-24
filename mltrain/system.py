@@ -131,7 +131,7 @@ class System:
         Returns:
             (list(autode.atoms.Atom)):
         """
-        return sum(mol.atoms for mol in self.molecules)
+        return sum((mol.atoms for mol in self.molecules), None)
 
     def _shift_to_midpoint(self, molecule) -> None:
         """Shift a molecule to the midpoint in the box, if defined"""

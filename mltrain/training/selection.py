@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Optional
+from mltrain.log import logger
 
 
 class SelectionMethod(ABC):
@@ -62,15 +63,16 @@ class AbsDiffE(SelectionMethod):
             method_name: Name of the reference method to use
         """
         method_name = kwargs.get('method_name', None)
+        self._configuration = configuration
 
         if method_name is None:
             raise ValueError('Evaluating the absolute difference requires a '
                              'method name but None was present')
 
         if configuration.energy.predicted is None:
-            configuration.single_point(mlp)
+            self._configuration.single_point(mlp)
 
-        configuration.single_point(method_name)
+        self._configuration.single_point(method_name)
         return None
 
     @property
@@ -80,6 +82,8 @@ class AbsDiffE(SelectionMethod):
         """
 
         abs_dE = abs(self._configuration.energy.delta)
+        logger.info(f'|E_MLP - E_true| = {abs_dE:.4} eV')
+
         return 10 * self.e_thresh > abs_dE > self.e_thresh
 
     @property

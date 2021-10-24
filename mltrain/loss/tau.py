@@ -14,7 +14,7 @@ class TauCalculator(LossFunction):
 
     def __call__(self,
                  configurations: 'mltrain.ConfigurationSet',
-                 mlp:            'mltrain.potentials.MLPotential') -> Tau:
+                 mlp:            'mltrain.potentials._base.MLPotential') -> Tau:
 
         """
         Calculate τ_acc from a set of initial configurations

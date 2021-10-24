@@ -57,8 +57,10 @@ def run_autode(configuration: 'mltrain.Configuration',
     if kwds is None:                   # Default to a gradient calculation
         kwds = method.keywords.grad
 
+    logger.info(f'Running a {method_name} calculation at: {kwds}')
+
     calc = Calculation(name='tmp',
-                       molecule=Species(name=configuration.name,
+                       molecule=Species(name='tmp',
                                         atoms=configuration.atoms,
                                         charge=configuration.charge,
                                         mult=configuration.mult),
@@ -68,7 +70,7 @@ def run_autode(configuration: 'mltrain.Configuration',
     calc.run()
 
     try:
-        configuration.forces.true = -calc.get_gradients().to('eV Å-1')
+        configuration.forces.true = -calc.get_gradients().to('eV Å^-1')
 
     except CouldNotGetProperty:
         logger.error('Failed to set forces')
@@ -78,7 +80,7 @@ def run_autode(configuration: 'mltrain.Configuration',
         logger.error('Failed to calculate the energy')
         return None
 
-    configuration.energy.predicted = energy.to('eV')
+    configuration.energy.true = energy.to('eV')
     configuration.partial_charges = calc.get_atomic_charges()
 
     return None

@@ -1,5 +1,9 @@
+import os
 import numpy as np
+from time import time
+from multiprocessing import Pool
 from typing import Optional, List, Union
+from mltrain.config import Config
 from mltrain.log import logger
 
 
@@ -82,9 +86,82 @@ class ConfigurationSet(list):
                            'forces to print. Had true energies to using those')
             true = True
 
+        # Empty the file
+        open(filename, 'w').close()
+
         for configuration in self:
             configuration.save(filename,
                                true=true,
                                predicted=predicted,
                                append=True)
         return None
+
+    def single_point(self,
+                     method_name: str) -> None:
+        """
+        Evaluate energies and forces on all configuration in this set
+
+        Arguments:
+            method_name:
+        """
+        return self._run_parallel_method(function=_single_point_eval,
+                                         method_name=method_name)
+
+    def __add__(self,
+                other: Union['mltrain.Configuration',
+                             'mltrain.ConfigurationSet']
+                ):
+        """Add another configuration or set of configurations onto this one"""
+
+        if other.__class__.__name__ == 'Configuration':
+            self.append(other)
+
+        elif isinstance(other, ConfigurationSet):
+            self.extend(other)
+
+        else:
+            raise TypeError('Can only add a Configuration or'
+                            f' ConfigurationSet, not {type(other)}')
+
+        logger.info(f'Current number of configurations is {len(self)}')
+        return self
+
+    def _run_parallel_method(self, function, **kwargs):
+        """Run a set of electronic structure calculations on this set
+        in parallel
+
+        :param method: (function) A method to calculate energy and forces
+                       on a configuration
+
+        :param max_force: (float) Maximum force on an atom within a
+                          configuration. If None then only a single point
+                          energy evaluation is performed
+        """
+        logger.info(f'Running calculations over {len(self)} configurations\n'
+                    f'Using {Config.n_cores} total cores')
+
+        os.environ['OMP_NUM_THREADS'] = '1'
+        os.environ['MLK_NUM_THREADS'] = '1'
+
+        start_time = time()
+        results = []
+
+        with Pool(processes=Config.n_cores) as pool:
+
+            for _, config in enumerate(self):
+                result = pool.apply_async(func=function,
+                                          args=(config,),
+                                          kwds=kwargs)
+                results.append(result)
+
+            for i, result in enumerate(results):
+                self[i] = result.get(timeout=None)
+
+        logger.info(f'Calculations done in {(time() - start_time) / 60:.1f} m')
+        return None
+
+
+def _single_point_eval(config, method_name, **kwargs):
+    """Top-level hashable function"""
+    config.single_point(method_name, **kwargs)
+    return config

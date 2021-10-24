@@ -35,5 +35,6 @@ class LossFunction(ABC):
     @abstractmethod
     def __call__(self,
                  configurations: 'mltrain.ConfigurationSet',
-                 mlp:            'mltrain.potentials.MLPotential') -> LossValue:
+                 mlp:            'mltrain.potentials._base.MLPotential'
+                 ) -> LossValue:
         """Compute a loss value"""

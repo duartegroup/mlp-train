@@ -102,7 +102,7 @@ class Configuration(AtomCollection):
 
         else:
             energy = self.energy.predicted if predicted else self.energy.true
-            prop_str = f'energy={energy if energy is not None else 0.:.8f}'
+            prop_str = f'energy={energy if energy is not None else 0.:.8f} '
 
             prop_str += 'Properties=species:S:1:pos:R:3'
             forces = self.forces.predicted if predicted else self.forces.true
@@ -134,7 +134,7 @@ class Configuration(AtomCollection):
         return None
 
     def single_point(self,
-                     method:  Union[str, 'mltrain.potentials.MLPotential'],
+                     method:  Union[str, 'mltrain.potentials._base.MLPotential'],
                      n_cores: int = 1
                      ) -> None:
         """

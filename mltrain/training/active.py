@@ -1,5 +1,4 @@
 from typing import Optional
-from subprocess import Popen, PIPE
 from multiprocessing import Pool
 from mltrain.config import Config
 from mltrain.md import run_mlp_md
@@ -19,9 +18,9 @@ if active_e_thresh is None:
 """
 
 
-def train(mlp:               'mltrain.potentials.MLPotential',
+def train(mlp:               'mltrain.potentials._base.MLPotential',
           method_name:       str,
-          selection_method:  SelectionMethod = AbsDiffE,
+          selection_method:  SelectionMethod = AbsDiffE(),
           max_active_time:   float = 1000,
           n_configs_iter:    int = 10,
           temp:              float = 300.0,
@@ -163,28 +162,32 @@ def _add_active_configs(mlp,
 
     with Pool(processes=Config.n_cores) as pool:
 
-        results = [pool.apply_async(selection_method,
+        results = [pool.apply_async(_gen_active_config,
                                     args=(init_config, mlp, selection_method),
                                     kwds=kwargs)
                    for _ in range(n_configs)]
 
         for result in results:
 
+            configs.append(result.get(timeout=None))
+
+            """
             try:
-                configs += result.get(timeout=None)
+                configs.append(result.get(timeout=None))
 
             # Lots of different exceptions can be raised when trying to
             # generate an active config, continue regardless..
             except Exception as err:
                 logger.error(f'Raised an exception in selection: \n{err}')
                 continue
+            """
 
     mlp.training_data += configs
     return None
 
 
 def _gen_active_config(config:      'mltrain.Configuration',
-                       mlp:         'mltrain.potentials.MLPotential',
+                       mlp:         'mltrain.potentials._base.MLPotential',
                        selector:    'mltrain.training.selection.SelectionMethod',
                        temp:        float,
                        max_time:    float,
@@ -225,13 +228,13 @@ def _gen_active_config(config:      'mltrain.Configuration',
     Returns:
         (mltrain.Configuration):
     """
-    curr_time = kwargs.get('curr_time', 0.)
-    extra_time = kwargs.get('extra_time', 0.)
+    curr_time = 0. if 'curr_time' not in kwargs else kwargs.pop('curr_time')
+    extra_time = 0. if 'extra_time' not in kwargs else kwargs.pop('extra_time')
+    n_calls = 0 if 'n_calls' not in kwargs else kwargs.pop('n_calls')
 
     if extra_time > 0:
         logger.info(f'Running an extra {extra_time:.1f} fs of MD')
 
-    n_calls = kwargs.get('n_calls', 0)
     md_time = 2 + n_calls**3 + float(extra_time)
 
     traj = run_mlp_md(config,
@@ -334,7 +337,7 @@ def _gen_and_set_init_training_configs(mlp, method_name, num) -> None:
         try:
             config = mlp.system.random_configuration(min_dist=dist,
                                                      with_intra=True)
-            mlp.training_data += config
+            mlp.training_data.append(config)
 
         except RuntimeError:
             continue
