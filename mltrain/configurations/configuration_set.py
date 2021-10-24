@@ -5,6 +5,7 @@ from multiprocessing import Pool
 from typing import Optional, List, Union
 from mltrain.config import Config
 from mltrain.log import logger
+from mltrain.configurations.plotting import parity_plot
 
 
 class ConfigurationSet(list):
@@ -16,9 +17,29 @@ class ConfigurationSet(list):
         return [c.energy.true for c in self]
 
     @property
+    def true_forces(self) -> Optional[np.ndarray]:
+        """
+        True force tensor. shape = (N, n_atoms, 3)
+
+        Returns:
+            (np.ndarray | None)
+        """
+        return self._forces('true')
+
+    @property
     def predicted_energies(self) -> List[Optional[float]]:
         """Predicted energies using a MLP"""
         return [c.energy.predicted for c in self]
+
+    @property
+    def predicted_forces(self) -> Optional[np.ndarray]:
+        """
+        Predicted force tensor. shape = (N, n_atoms, 3)
+
+        Returns:
+            (np.ndarray | None)
+        """
+        return self._forces('predicted')
 
     @property
     def lowest_energy(self) -> 'mltrain.Configuration':
@@ -54,12 +75,37 @@ class ConfigurationSet(list):
                 *args: Union['mltrain.potentials.MLPotential', str]) -> None:
         """
         Compare methods e.g. a MLP to a ground truth reference method over
-        these set of configurations
+        these set of configurations. Will generate plots of total energies
+        over these configurations and save a text file with ∆s
 
-        Args:
+        -----------------------------------------------------------------------
+        Arguments:
             *args: Strings defining the method or MLPs
         """
-        raise NotImplementedError
+        if len([arg for arg in args if isinstance(arg, str)]) > 1:
+            raise NotImplementedError('Compare currently only supports a '
+                                      'single reference method (string).')
+
+        name = self._comparison_name(*args)
+
+        if os.path.exists(f'{name}.npz'):
+            self.load_npz(f'{name}.npz')
+
+        else:
+            for arg in args:
+                if hasattr(arg, 'predict'):
+                    arg.predict(self)
+
+                elif isinstance(arg, str):
+                    self.single_point(method_name=arg)
+
+                else:
+                    raise ValueError(f'Cannot compare using {arg}')
+
+            self.save_npz(filename=f'{name}.npz')
+
+        parity_plot(self, name=name)
+        return None
 
     def save(self,
              filename:  str,
@@ -96,6 +142,31 @@ class ConfigurationSet(list):
                                append=True)
         return None
 
+    def save_npz(self, filename: str) -> None:
+        """Save a set of parameters for this configuration"""
+
+        np.savez(filename,
+                 E_true=self.true_energies,
+                 E_predicted=self.predicted_energies,
+                 F_true=self.true_forces,
+                 F_predicted=self.predicted_forces)
+
+        return None
+
+    def load_npz(self, filename: str) -> None:
+        """Load energies and forces from a saved numpy file"""
+
+        data = np.load(filename)
+
+        for i, config in enumerate(self):
+            config.energy.true = data['E_true'][i]
+            config.energy.predicted = data['E_predicted'][i]
+
+            config.forces.true = data['F_true'][i]
+            config.forces.predicted = data['F_predicted'][i]
+
+        return None
+
     def single_point(self,
                      method_name: str) -> None:
         """
@@ -106,6 +177,19 @@ class ConfigurationSet(list):
         """
         return self._run_parallel_method(function=_single_point_eval,
                                          method_name=method_name)
+
+    def _forces(self, kind: str) -> Optional[np.ndarray]:
+        """True or predicted forces. Returns a 3D tensor"""
+
+        all_forces = []
+        for config in self:
+            if getattr(config.forces, kind) is None:
+                logger.error(f'{kind} forces not defined - returning None')
+                return None
+
+            all_forces.append(getattr(config.forces, kind))
+
+        return np.array(all_forces)
 
     def __add__(self,
                 other: Union['mltrain.Configuration',
@@ -159,6 +243,20 @@ class ConfigurationSet(list):
 
         logger.info(f'Calculations done in {(time() - start_time) / 60:.1f} m')
         return None
+
+    @staticmethod
+    def _comparison_name(*args):
+        """Name of a comparison between different methods"""
+
+        name = ''
+        for arg in args:
+            if hasattr(arg, 'predict'):
+                name += arg.name
+
+            if isinstance(arg, str):
+                name += f'_{arg}'
+
+        return name
 
 
 def _single_point_eval(config, method_name, **kwargs):

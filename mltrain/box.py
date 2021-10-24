@@ -8,6 +8,7 @@ class Box:
         """
         Periodic cuboidal box
 
+        -----------------------------------------------------------------------
         Arguments:
             size: Lattice vectors a, b, c defining the box size
         """

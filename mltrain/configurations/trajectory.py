@@ -1,3 +1,4 @@
+from mltrain.log import logger
 from mltrain.configurations.configuration_set import ConfigurationSet
 
 
@@ -16,8 +17,17 @@ class Trajectory(ConfigurationSet):
     @t0.setter
     def t0(self, value: float):
         """Set the initial time for a trajectory"""
+
         for frame in self:
-            frame.time += value
+            if frame.time is None:
+                logger.warning('Attempted to set the initial time but a '
+                               f'time was note defined. Setting to {value}')
+                frame.time = value
+
+            else:
+                frame.time += value
+
+        return
 
     @property
     def final_frame(self) -> 'mltrain.Configuration':

@@ -18,7 +18,10 @@ class Configuration(AtomCollection):
                  mult:   int = 0,
                  box:    Optional[Box] = None):
         """
+        Set of atoms perhaps in a periodic box with an overall charge and
+        spin multiplicity
 
+        -----------------------------------------------------------------------
         Arguments:
             atoms:
             charge:
@@ -34,8 +37,8 @@ class Configuration(AtomCollection):
         self.energy = Energy()
         self.forces = Forces()
 
-        self.time = 0         # Time in a trajectory of this configuration
-        self.n_ref_evals = 0  # Number of reference evaluations on this config.
+        self.time: Optional[float] = None   # Time in a trajectory
+        self.n_ref_evals = 0                # Number of reference evaluations
 
     @property
     def ase_atoms(self) -> 'ase.atoms.Atoms':
