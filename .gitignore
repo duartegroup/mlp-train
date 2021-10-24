@@ -2,7 +2,6 @@ build/
 dist/
 mltrain.egg-info/
 .idea/
-
-mltrain/configurations/__pycache__/
-
-mltrain/__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+*/*/*/__pycache__/

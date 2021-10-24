@@ -83,4 +83,5 @@ def run_autode(configuration: 'mltrain.Configuration',
     configuration.energy.true = energy.to('eV')
     configuration.partial_charges = calc.get_atomic_charges()
 
+    print(configuration.energy.true, configuration.energy.predicted)
     return None

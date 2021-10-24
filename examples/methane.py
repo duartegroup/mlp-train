@@ -26,4 +26,4 @@ if __name__ == '__main__':
                                    interval=10)
 
     # and compare, plotting a parity diagram and E_true, ∆E and ∆F
-    trajectory.compare('orca')
+    trajectory.compare(gap, 'orca')
