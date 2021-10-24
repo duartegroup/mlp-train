@@ -183,14 +183,14 @@ def _add_active_configs(mlp,
     return None
 
 
-def _gen_active_config(config,
-                       mlp,
-                       selector,
-                       temp,
-                       max_time,
-                       method_name,
+def _gen_active_config(config:      'mltrain.Configuration',
+                       mlp:         'mltrain.potentials.MLPotential',
+                       selector:    'mltrain.training.selection.SelectionMethod',
+                       temp:        float,
+                       max_time:    float,
+                       method_name: str,
                        **kwargs
-                       ) -> 'mltrain.Configuration':
+                       ) -> Optional['mltrain.Configuration']:
     """
     Generate a configuration based on 'active learning', by running MLP-MD
     until a configuration that satisfies the selection_method is found.
@@ -254,43 +254,28 @@ def _gen_active_config(config,
 
         return traj.final_frame
 
-
-    if selector.should_backtrack:
-        # TODO: backtrack
-
-
-    if error > 100 * e_thresh:
-        logger.error('Huge error: 100x threshold, returning the first frame')
-        gap_traj[0].single_point(method_name=ref_method_name, n_cores=1)
-        gap_traj[0].n_evals = n_evals + 1
-        return gap_traj[0]
-
-    if error > 10 * e_thresh:
-        logger.warning('Error 10 x threshold! Taking the last frame less than '
-                       '10x the threshold')
+    if selector.too_large:
+        logger.warning('Backtracking in the trajectory to find a suitable '
+                       'configuration')
         # Stride through only 10 frames to prevent very slow backtracking
-        for frame in reversed(gap_traj[::max(1, len(gap_traj)//10)]):
-            error = calc_error(frame, gap=gap, method_name=ref_method_name)
-            n_evals += 1
+        for frame in reversed(traj[::max(1, len(traj)//10)]):
+            selector(frame, mlp, method_name=method_name)
 
-            if e_thresh < error < 10 * e_thresh:
-                frame.n_evals = n_evals
+            if selector.select:
                 return frame
 
-    if error > e_thresh:
-        gap_traj[-1].n_evals = n_evals
-        return gap_traj[-1]
+        logger.error('Failed to find a suitable configuration when backtracking')
+        return None
 
     if curr_time + md_time > max_time:
-        logger.info(f'Reached the maximum time {max_time_fs} fs, returning '
-                    f'None')
+        logger.info(f'Reached the maximum time {max_time} fs, returning None')
         return None
 
     # Increment t_0 to the new time
     curr_time += md_time
 
     # If the prediction is within the threshold then call this function again
-    return _gen_active_config(config, mlp, selection_method, temp, max_time, method_name,
+    return _gen_active_config(config, mlp, selector, temp, max_time, method_name,
                               curr_time=curr_time,
                               n_calls=n_calls+1,
                               **kwargs)

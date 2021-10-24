@@ -6,6 +6,7 @@ from mltrain.log import logger
 from mltrain.energy import Energy
 from mltrain.forces import Forces
 from mltrain.box import Box
+from mltrain.configurations.calculate import run_autode
 
 
 class Configuration(AtomCollection):
@@ -54,7 +55,8 @@ class Configuration(AtomCollection):
 
         return _atoms
 
-    def update_attr_from(self, configuration: 'Configuration') -> None:
+    def update_attr_from(self,
+                         configuration: 'Configuration') -> None:
         """
         Update system attributes from a configuration
 
@@ -72,7 +74,8 @@ class Configuration(AtomCollection):
              filename:  str,
              append:    bool = False,
              true:      bool = False,
-             predicted: bool = False) -> None:
+             predicted: bool = False
+             ) -> None:
         """
         Print this configuration as an extended xyz file where the first 4
         columns are the atom symbol, x, y, z and, if this configuration
@@ -131,7 +134,9 @@ class Configuration(AtomCollection):
         return None
 
     def single_point(self,
-                     method: Union[str, 'mltrain.potentials.MLPotential']) -> None:
+                     method:  Union[str, 'mltrain.potentials.MLPotential'],
+                     n_cores: int = 1
+                     ) -> None:
         """
         Run a single point energy and gradient (force) evaluation using
         either a reference method defined by a string (e.g. 'orca') or a
@@ -140,11 +145,12 @@ class Configuration(AtomCollection):
         Arguments:
             method:
         """
+        implemented_methods = ['xtb', 'orca', 'g09', 'g16']
 
-        if isinstance(method, str):
-            # TODO: call autodE
+        if isinstance(method, str) and method.lower() in implemented_methods:
+            run_autode(self, method, n_cores=n_cores)
             self.n_ref_evals += 1
-            raise NotImplementedError
+            return None
 
         elif hasattr(method, 'predict'):
             method.predict(self)

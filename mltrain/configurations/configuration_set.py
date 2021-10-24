@@ -1,5 +1,6 @@
 import numpy as np
 from typing import Optional, List, Union
+from mltrain.log import logger
 
 
 class ConfigurationSet(list):
@@ -56,6 +57,34 @@ class ConfigurationSet(list):
         """
         raise NotImplementedError
 
-    def save(self) -> None:
+    def save(self,
+             filename:  str,
+             true:      bool = False,
+             predicted: bool = False
+             ) -> None:
+        """Save these configurations to a file
 
-        raise NotImplementedError
+        Arguments:
+            filename:
+
+            true: Save 'true' energies and forces, if they exist
+
+            predicted: Save the MLP predicted energies and forces, if they
+                       exist.
+        """
+
+        if len(self) == 0:
+            logger.error(f'Failed to save {filename}. Had no configurations')
+            return
+
+        if self[0].energy.true is not None and not (predicted or true):
+            logger.warning('Save called without defining what energy and '
+                           'forces to print. Had true energies to using those')
+            true = True
+
+        for configuration in self:
+            configuration.save(filename,
+                               true=true,
+                               predicted=predicted,
+                               append=True)
+        return None
