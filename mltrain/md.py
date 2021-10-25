@@ -5,6 +5,7 @@ from typing import Optional
 from mltrain.configurations import Configuration, Trajectory
 from mltrain.config import Config
 from mltrain.log import logger
+from mltrain.box import Box
 from mltrain.utils import work_in_tmp_dir
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.io.trajectory import Trajectory as ASETrajectory
@@ -70,7 +71,11 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
     n_steps = _n_simulation_steps(dt, kwargs)
 
     os.environ['OMP_NUM_THREADS'] = str(n_cores)
-    logger.info(f'Using {n_cores} cores for GAP MD')
+    logger.info(f'Using {n_cores} cores for MLP MD')
+
+    if mlp.requires_non_zero_box_size and configuration.box is None:
+        logger.warning('Assuming vaccum simulation. Box size = 1000 nm^3')
+        configuration.box = Box([100, 100, 100])
 
     ase_atoms = configuration.ase_atoms
     ase_atoms.set_calculator(mlp.ase_calculator)

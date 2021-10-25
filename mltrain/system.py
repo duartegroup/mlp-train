@@ -133,6 +133,16 @@ class System:
         """
         return sum((mol.atoms for mol in self.molecules), None)
 
+    @property
+    def unique_atomic_symbols(self) -> List[str]:
+        """
+        Unique atomic symbols in this system
+
+        Returns:
+            (list(str)):
+        """
+        return list(sorted(set([a.label for a in self.atoms])))
+
     def _shift_to_midpoint(self, molecule) -> None:
         """Shift a molecule to the midpoint in the box, if defined"""
         midpoint = np.zeros(3) if self.box is None else self.box.midpoint

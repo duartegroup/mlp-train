@@ -1,6 +1,6 @@
-from typing import Optional, Union
-from copy import  deepcopy
-from autode.atoms import AtomCollection, Atoms
+from typing import Optional, Union, List
+from copy import deepcopy
+from autode.atoms import AtomCollection, Atoms, Atom
 from ase.atoms import Atoms
 from mltrain.log import logger
 from mltrain.energy import Energy
@@ -13,7 +13,7 @@ class Configuration(AtomCollection):
     """Configuration of atoms"""
 
     def __init__(self,
-                 atoms:  Optional[Atoms] = None,
+                 atoms:  Union[Atoms, List[Atom], None] = None,
                  charge: int = 0,
                  mult:   int = 0,
                  box:    Optional[Box] = None):
@@ -92,7 +92,7 @@ class Configuration(AtomCollection):
         Keyword Arguments:
             append: (bool) Append to the end of this exyz file?
         """
-        logger.info(f'Saving configuration as {filename}')
+        logger.info(f'Saving configuration to {filename}')
 
         a, b, c = [0., 0., 0.] if self.box is None else self.box.size
 

@@ -28,6 +28,15 @@ class GAP(MLPotential):
             self.params = _GAPParameters(atoms=system.atoms)
 
     @property
+    def requires_atomic_energies(self) -> bool:
+        return False
+
+    @property
+    def requires_non_zero_box_size(self) -> bool:
+        """GAP can use a zero size box"""
+        return False
+
+    @property
     def xml_filename(self):
         return f'{self.name}.xml'
 

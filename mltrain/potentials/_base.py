@@ -1,4 +1,6 @@
 import mltrain as mlt
+from autode.atoms import Atom
+from mltrain.configurations.configuration import Configuration
 from mltrain.training.active import train as al_train
 from abc import ABC, abstractmethod
 from typing import Optional
@@ -22,6 +24,7 @@ class MLPotential(ABC):
         self.system = system
 
         self._training_data = mlt.ConfigurationSet()
+        self.atomic_energies = {}
 
     def train(self,
               configurations: Optional['mltrain.ConfigurationSet'] = None):
@@ -47,6 +50,11 @@ class MLPotential(ABC):
             raise RuntimeError('Cannot train on configurations, an '
                                'energy was undefined')
 
+        if self.requires_atomic_energies and len(self.atomic_energies) == 0:
+            raise RuntimeError(f'Cannot train {self.__name__}({self.name}) '
+                               f'required atomic energies that are not set. '
+                               'Set e.g. mlp.atomic_energies = {"H": -13.}')
+
         self._train()
         return None
 
@@ -58,6 +66,16 @@ class MLPotential(ABC):
     @abstractmethod
     def ase_calculator(self) -> 'ase.calculators.calculator.Calculator':
         """Generate an ASE calculator for this potential"""
+
+    @property
+    @abstractmethod
+    def requires_atomic_energies(self) -> bool:
+        """Does this potential need E_0s for each atom to be specified"""
+
+    @property
+    @abstractmethod
+    def requires_non_zero_box_size(self) -> bool:
+        """Can this potential be run in a box with side lengths = 0"""
 
     def predict(self, *args) -> None:
         """
@@ -120,8 +138,33 @@ class MLPotential(ABC):
         Train this MLP using active learning (AL) using a defined reference
         method
 
+        -----------------------------------------------------------------------
         Arguments:
             method_name:
+
             **kwargs:  Keyword arguments passed to mlt.training.active.train()
         """
         return al_train(self, method_name=method_name, **kwargs)
+
+    def set_atomic_energies(self,
+                            method_name: str) -> None:
+        """
+        Set the atomic energies of all atoms in this system
+
+        -----------------------------------------------------------------------
+        Arguments:
+            method_name: Name of the reference method to use
+        """
+        _spin_multiplicites = {'H': 2, 'C': 3, 'B': 2, 'N': 4, 'O': 3, 'F': 2,
+                               'Si': 3, 'P': 4, 'S': 3, 'Cl': 2, 'I': 2}
+
+        for symbol in self.system.unique_atomic_symbols:
+            config = Configuration(atoms=[Atom(symbol)],
+                                   charge=0,
+                                   mult=_spin_multiplicites[symbol])
+
+            config.single_point(method=method_name)
+
+            self.atomic_energies[symbol] = config.energy.true
+
+        return None

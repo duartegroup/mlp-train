@@ -1,9 +1,10 @@
 from typing import Optional
 from multiprocessing import Pool
+from autode.atoms import Atom
 from mltrain.config import Config
 from mltrain.md import run_mlp_md
 from mltrain.training.selection import SelectionMethod, AbsDiffE
-from mltrain.configurations import ConfigurationSet
+from mltrain.configurations import ConfigurationSet, Configuration
 from mltrain.log import logger
 
 """
@@ -107,6 +108,9 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
     else:
         _set_init_training_configs(mlp, init_configs,
                                    method_name=method_name)
+
+    if mlp.requires_atomic_energies:
+        mlp.set_atomic_energies(method_name=method_name)
 
     mlp.train()
 
