@@ -52,7 +52,7 @@ class Molecule(ade.Molecule):
         return np.min(cdist(coords, self.coordinates))
 
     def random_normal_jiggle(self,
-                             sigma: float = 0.05) -> None:
+                             sigma: float = 0.01) -> None:
         """
         Add a random displacement to each atoms position.
 

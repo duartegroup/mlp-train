@@ -39,7 +39,7 @@ class System:
     def random_configuration(self,
                              min_dist:     float = 2.0,
                              with_intra:   bool = False,
-                             intra_sigma:  float = 0.05
+                             intra_sigma:  float = 0.01
                              ) -> 'mltrain.Configuration':
         """
         Generate a random configuration of this system, where all the molecules
@@ -67,6 +67,8 @@ class System:
         for molecule in self.molecules:
 
             if with_intra:
+                logger.info(f'Adding random normal displacement with '
+                            f'σ={intra_sigma} Å')
                 molecule.random_normal_jiggle(sigma=intra_sigma)
 
             self._shift_to_midpoint(molecule)
@@ -76,7 +78,7 @@ class System:
                                      coords=configuration.coordinates,
                                      min_dist=min_dist)
 
-            configuration.atoms += molecule.atoms
+            configuration.atoms += molecule.atoms.copy()
 
         return configuration
 
