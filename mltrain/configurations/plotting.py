@@ -30,7 +30,7 @@ def parity_plot(config_set: 'mltrain.ConfigurationSet',
         name:
     """
     fig, ax = plt.subplots(nrows=2, ncols=2,
-                           figsize=(8, 8))
+                           figsize=(8, 7.5))
 
     if _all_energies_are_defined(config_set):
         _add_energy_time_plot(config_set, axis=ax[0, 0])
@@ -87,6 +87,7 @@ def _add_energy_time_plot(config_set, axis) -> None:
                       alpha=0.2,
                       color='orange')
 
+    axis.legend()
     axis.set_xlabel(xlabel)
     axis.set_ylabel('$E$ / eV')
 
