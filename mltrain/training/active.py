@@ -241,7 +241,7 @@ def _gen_active_config(config:      'mltrain.Configuration',
                       mlp=mlp,
                       temp=float(kwargs.get('temp', 300)),
                       dt=0.5,
-                      interval=4,
+                      interval=max(1, md_time//5),   # Generate ~10 frames
                       fs=md_time,
                       n_cores=1,
                       **kwargs)
@@ -268,7 +268,7 @@ def _gen_active_config(config:      'mltrain.Configuration',
                 return frame
 
         logger.error('Failed to find a suitable configuration when backtracking')
-        return None
+        return frame
 
     if curr_time + md_time > max_time:
         logger.info(f'Reached the maximum time {max_time} fs, returning None')
