@@ -1,22 +1,10 @@
 from typing import Optional
 from multiprocessing import Pool
-from autode.atoms import Atom
 from mltrain.config import Config
 from mltrain.md import run_mlp_md
 from mltrain.training.selection import SelectionMethod, AbsDiffE
-from mltrain.configurations import ConfigurationSet, Configuration
+from mltrain.configurations import ConfigurationSet
 from mltrain.log import logger
-
-"""
-if active_e_thresh is None:
-    if active_method.lower() == 'diff':
-        #                 1 kcal mol-1 molecule-1
-        active_e_thresh = 0.043363 * len(mlp.system.molecules)
-
-    if active_method.lower() == 'gp_var':
-        # Threshold for maximum per-atom GP variance (eV atom^-1)
-        active_e_thresh = 1E-5
-"""
 
 
 def train(mlp:               'mltrain.potentials._base.MLPotential',
