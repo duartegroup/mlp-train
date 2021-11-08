@@ -9,8 +9,8 @@ class _ConfigClass:
     _gaussian_keywords = ['PBEPBE', 'Def2SVP', 'Force(NoStep)', 'integral=ultrafinegrid']
 
     # Default parameters for a GAP potential
-    gap_default_params = {'sigma_E': 10**(-3.5),        # eV
-                          'sigma_F': 10**(-1.5)}        # eV Å-1
+    gap_default_params = {'sigma_E': 10**(-4.0),        # eV
+                          'sigma_F': 10**(-2.0)}        # eV Å-1
 
     # Default SOAP parameters
     gap_default_soap_params = {'cutoff':   4.0,         # Å

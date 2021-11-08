@@ -96,7 +96,7 @@ class GAP(MLPotential):
                        f'{str(other_atomic_ns)[1:-1]}'
                        '}} '
                        f'Z={Atom(symbol).atomic_number} '
-                       f'n_max={int(2*soap["l_max"])} '
+                       f'n_max={int(2 * soap["l_max"])} '
                        f'l_max={int(soap["l_max"])}: ')
 
         # Remove the final unnecessary colon
