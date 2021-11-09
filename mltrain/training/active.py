@@ -21,7 +21,8 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
           bbond_energy:      Optional[dict] = None,
           fbond_energy:      Optional[dict] = None,
           init_active_temp:  Optional[float] = None,
-          min_active_iters:  int = 1) -> None:
+          min_active_iters:  int = 1
+          ) -> None:
     """
     Train a system using active learning, by propagating dynamics using ML
     driven molecular dynamics (MD) and adding configurations based on some

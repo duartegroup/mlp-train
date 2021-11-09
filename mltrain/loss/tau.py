@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Optional
 from mltrain.md import run_mlp_md
 from mltrain.log import logger
 from mltrain.loss._base import LossFunction, LossValue
@@ -13,12 +14,12 @@ class Tau(LossValue):
 class TauCalculator(LossFunction):
 
     def __init__(self,
-                 e_lower=0.1,
-                 e_thresh=None,
-                 max_time=1000,
-                 time_interval=20,
-                 temp=300,
-                 dt=0.5):
+                 e_lower:       float = 0.1,
+                 e_thresh:      Optional[float] = None,
+                 max_time:      float = 1000.0,
+                 time_interval: float = 20.0,
+                 temp:          float = 300.0,
+                 dt:            float = 0.5):
         """
         τ_acc prospective error metric in fs
 
@@ -93,7 +94,9 @@ class TauCalculator(LossFunction):
 
     def _calculate_single(self, config, mlp, method_name):
         """Calculate a single τ_acc from one configuration"""
+        raise NotImplementedError
 
+        """
         cuml_error, curr_time = 0, 0
 
         block_time = self.time_interval * gt.GTConfig.n_cores
@@ -144,3 +147,4 @@ class TauCalculator(LossFunction):
 
         logger.info(f'Reached max(τ_acc) = {self.max_time} fs')
         return self.max_time
+        """
