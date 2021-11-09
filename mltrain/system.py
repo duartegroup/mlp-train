@@ -13,8 +13,7 @@ class System:
 
     def __init__(self,
                  *args: Molecule,
-                 box:   Union[Box, Sequence[float], None]
-                 ):
+                 box:   Union[Box, Sequence[float], None]):
         """
         System containing a set of molecules.
 
