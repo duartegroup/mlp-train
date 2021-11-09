@@ -10,16 +10,19 @@ class Molecule(ade.Molecule):
         """
         Centroid of this molecule
 
+        -----------------------------------------------------------------------
         Returns:
             (np.ndarray): shape = (3,)
         """
         return np.average(self.coordinates, axis=0)
 
     def is_in_box(self,
-                  box: 'mltrain.box.Box') -> bool:
+                  box: 'mltrain.box.Box'
+                  ) -> bool:
         """Is this molecule totally inside a box with an origin at
         (0,0,0) and top right corner (a, b, c) = box.size
 
+        -----------------------------------------------------------------------
         Arguments:
             box:
 
@@ -38,12 +41,17 @@ class Molecule(ade.Molecule):
         return True
 
     def min_distance_to(self,
-                        coords: np.ndarray) -> float:
+                        coords: np.ndarray
+                        ) -> float:
         """Calculate the minimum distance from this molecule to a set
         of coordinates
 
+        -----------------------------------------------------------------------
         Arguments:
             coords: shape = (n, 3)
+
+        Returns:
+            (float): Minimum distance (Å)
         """
         # Infinite distance to the other set if there are no coordinates
         if len(coords) == 0:
@@ -52,12 +60,14 @@ class Molecule(ade.Molecule):
         return np.min(cdist(coords, self.coordinates))
 
     def random_normal_jiggle(self,
-                             sigma: float = 0.01) -> None:
+                             sigma: float = 0.01
+                             ) -> None:
         """
         Add a random displacement to each atoms position.
 
+        -----------------------------------------------------------------------
         Arguments:
-            sigma:
+            sigma: Standard deviation of the standard deviation
         """
         dx = np.random.normal(scale=sigma,  # Å
                               loc=0.0,

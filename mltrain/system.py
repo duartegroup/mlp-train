@@ -13,7 +13,8 @@ class System:
 
     def __init__(self,
                  *args: Molecule,
-                 box:   Union[Box, Sequence[float], None]):
+                 box:   Union[Box, Sequence[float], None]
+                 ):
         """
         System containing a set of molecules.
 
@@ -83,7 +84,8 @@ class System:
         return configuration
 
     def add_molecule(self,
-                     molecule: 'mltrain.Molecule') -> None:
+                     molecule: 'mltrain.Molecule'
+                     ) -> None:
         """
         Add a molecule to this system
 
@@ -97,8 +99,8 @@ class System:
 
     def add_molecules(self,
                       molecule: 'mltrain.Molecule',
-                      num:      int = 1):
-
+                      num:      int = 1
+                      ):
         """
         Add multiple versions of a molecule to this sytem
 
@@ -130,6 +132,7 @@ class System:
     def atoms(self) -> List['autode.atoms.Atom']:
         """Constituent atoms of this system
 
+        -----------------------------------------------------------------------
         Returns:
             (list(autode.atoms.Atom)):
         """
@@ -140,6 +143,7 @@ class System:
         """
         Unique atomic symbols in this system
 
+        -----------------------------------------------------------------------
         Returns:
             (list(str)):
         """

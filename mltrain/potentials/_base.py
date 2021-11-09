@@ -81,6 +81,7 @@ class MLPotential(ABC):
         """
         Predict energies and forces using a MLP in serial
 
+        -----------------------------------------------------------------------
         Arguments:
             args (mltrain.ConfigurationSet | mltrain.Configuration):
         """
