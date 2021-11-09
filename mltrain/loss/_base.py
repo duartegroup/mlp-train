@@ -10,6 +10,7 @@ class LossValue(ABC, float):
         """
         Loss value with a possible associated error
 
+        -----------------------------------------------------------------------
         Arguments:
             x (float | int): Value
 

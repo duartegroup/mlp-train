@@ -9,6 +9,7 @@ class Trajectory(ConfigurationSet):
     def t0(self) -> float:
         """Initial time of this trajectory
 
+        -----------------------------------------------------------------------
         Returns:
             (float): t_0 in fs
         """
@@ -34,6 +35,7 @@ class Trajectory(ConfigurationSet):
         """
         Return the final frame from this trajectory
 
+        -----------------------------------------------------------------------
         Returns:
             (mltrain.Configuration): Frame
         """

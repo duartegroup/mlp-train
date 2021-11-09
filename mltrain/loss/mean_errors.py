@@ -10,11 +10,14 @@ class _DeltaLossFunction(LossFunction, ABC):
 
     def __call__(self,
                  configurations: 'mltrain.ConfigurationSet',
-                 mlp:            'mltrain.potentials.MLPotential') -> LossValue:
+                 mlp:            'mltrain.potentials.MLPotential'
+                 ) -> LossValue:
         """Calculate the value of the loss
 
+        -----------------------------------------------------------------------
         Arguments:
             configurations: Set of configurations to evaluate over
+
             mlp: Potential to use
         """
 

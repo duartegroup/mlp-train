@@ -18,6 +18,7 @@ class MLPotential(ABC):
         -----------------------------------------------------------------------
         Arguments:
             name: Name of the potential
+
             system: System for which this potential is defined
         """
         self.name = str(name)
@@ -81,6 +82,7 @@ class MLPotential(ABC):
         """
         Predict energies and forces using a MLP in serial
 
+        -----------------------------------------------------------------------
         Arguments:
             args (mltrain.ConfigurationSet | mltrain.Configuration):
         """

@@ -1,22 +1,10 @@
 from typing import Optional
 from multiprocessing import Pool
-from autode.atoms import Atom
 from mltrain.config import Config
 from mltrain.md import run_mlp_md
 from mltrain.training.selection import SelectionMethod, AbsDiffE
-from mltrain.configurations import ConfigurationSet, Configuration
+from mltrain.configurations import ConfigurationSet
 from mltrain.log import logger
-
-"""
-if active_e_thresh is None:
-    if active_method.lower() == 'diff':
-        #                 1 kcal mol-1 molecule-1
-        active_e_thresh = 0.043363 * len(mlp.system.molecules)
-
-    if active_method.lower() == 'gp_var':
-        # Threshold for maximum per-atom GP variance (eV atom^-1)
-        active_e_thresh = 1E-5
-"""
 
 
 def train(mlp:               'mltrain.potentials._base.MLPotential',
@@ -33,7 +21,8 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
           bbond_energy:      Optional[dict] = None,
           fbond_energy:      Optional[dict] = None,
           init_active_temp:  Optional[float] = None,
-          min_active_iters:  int = 1) -> None:
+          min_active_iters:  int = 1
+          ) -> None:
     """
     Train a system using active learning, by propagating dynamics using ML
     driven molecular dynamics (MD) and adding configurations based on some
@@ -301,6 +290,8 @@ def _gen_and_set_init_training_configs(mlp, method_name, num) -> None:
     """
     Generate a set of initial configurations for a system, if init_configs
     is undefined. Otherwise ensure all the true energies and forces are defined
+
+        -----------------------------------------------------------------------
 
     Arguments:
         mlp:

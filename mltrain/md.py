@@ -46,7 +46,7 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
 
         interval: (int) Interval between saving the geometry
 
-    -------------------------------------------------
+    -------------------
     Keyword Arguments:
 
         {fs, ps, ns}: Simulation time in some units

@@ -59,6 +59,7 @@ def unique_filename(filename: str) -> str:
     Return a unique filename based on not clashing with other files with the
     same. Append 0, 1... iteratively until something unique is found
 
+    ---------------------------------------------------------------------------
     Arguments:
         filename:
 

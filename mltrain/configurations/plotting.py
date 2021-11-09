@@ -17,7 +17,8 @@ mpl.rcParams['axes.linewidth'] = 1.2
 
 
 def parity_plot(config_set: 'mltrain.ConfigurationSet',
-                name:       str = 'paritiy') -> None:
+                name:       str = 'paritiy'
+                ) -> None:
     """
     Plot parity plots of energies, forces and temporal differences (if present)
     otherwise the residuals over the configuration index
@@ -141,8 +142,11 @@ def _add_force_component_plot(config_set, axis) -> None:
              plt.get_cmap('Reds'),
              plt.get_cmap('Purples')]
 
-    min_f = min([np.min(config_set.true_forces), np.min(config_set.predicted_forces)])
-    max_f = min([np.max(config_set.true_forces), np.max(config_set.predicted_forces)])
+    min_f = min([np.min(config_set.true_forces),
+                 np.min(config_set.predicted_forces)])
+
+    max_f = min([np.max(config_set.true_forces),
+                 np.max(config_set.predicted_forces)])
 
     for idx, k in enumerate(['x', 'y', 'z']):
 

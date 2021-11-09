@@ -21,6 +21,7 @@ class ConfigurationSet(list):
         """
         True force tensor. shape = (N, n_atoms, 3)
 
+        -----------------------------------------------------------------------
         Returns:
             (np.ndarray | None)
         """
@@ -36,6 +37,7 @@ class ConfigurationSet(list):
         """
         Predicted force tensor. shape = (N, n_atoms, 3)
 
+        -----------------------------------------------------------------------
         Returns:
             (np.ndarray | None)
         """
@@ -47,6 +49,7 @@ class ConfigurationSet(list):
         Determine the lowest energy configuration in this set based on the
         true energies. If not evaluated then returns the first configuration
 
+        -----------------------------------------------------------------------
         Returns:
             (mltrain.Configuration):
         """
@@ -62,6 +65,7 @@ class ConfigurationSet(list):
         Append an item onto these set of configurations. None will not be
         appended
 
+        -----------------------------------------------------------------------
         Arguments:
             value:
         """
@@ -114,6 +118,7 @@ class ConfigurationSet(list):
              ) -> None:
         """Save these configurations to a file
 
+        -----------------------------------------------------------------------
         Arguments:
             filename:
 
@@ -172,6 +177,7 @@ class ConfigurationSet(list):
         """
         Evaluate energies and forces on all configuration in this set
 
+        -----------------------------------------------------------------------
         Arguments:
             method_name:
         """
@@ -214,12 +220,9 @@ class ConfigurationSet(list):
         """Run a set of electronic structure calculations on this set
         in parallel
 
-        :param method: (function) A method to calculate energy and forces
-                       on a configuration
-
-        :param max_force: (float) Maximum force on an atom within a
-                          configuration. If None then only a single point
-                          energy evaluation is performed
+        -----------------------------------------------------------------------
+        Arguments
+            function: A method to calculate energy and forces on a configuration
         """
         logger.info(f'Running calculations over {len(self)} configurations\n'
                     f'Using {Config.n_cores} total cores')
@@ -260,6 +263,6 @@ class ConfigurationSet(list):
 
 
 def _single_point_eval(config, method_name, **kwargs):
-    """Top-level hashable function"""
+    """Top-level hashable function useful for multiprocessing"""
     config.single_point(method_name, **kwargs)
     return config

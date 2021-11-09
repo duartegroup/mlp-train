@@ -5,11 +5,27 @@ from typing import Optional
 class Forces:
     """Forces in units of eV / Å"""
 
+    def __init__(self,
+                 predicted: Optional[np.ndarray] = None,
+                 true:      Optional[np.ndarray] = None):
+        """
+        Forces
+
+        -----------------------------------------------------------------------
+        Arguments:
+            predicted:
+            true:
+        """
+
+        self.predicted = predicted
+        self.true = true
+
     @property
     def delta(self) -> np.ndarray:
         """
         Difference between true and predicted forces
 
+        -----------------------------------------------------------------------
         Returns:
             (np.ndarray):  F_true - F_predicted. Shape = (n_atoms, 3)
 
@@ -28,15 +44,4 @@ class Forces:
 
         return self.true - self.predicted
 
-    def __init__(self,
-                 predicted: Optional[np.ndarray] = None,
-                 true:      Optional[np.ndarray] = None):
-        """
 
-        Arguments:
-            predicted:
-            true:
-        """
-
-        self.predicted = predicted
-        self.true = true

@@ -42,6 +42,7 @@ class AbsDiffE(SelectionMethod):
         Selection method based on the absolute difference between the
         true and predicted total energies.
 
+        -----------------------------------------------------------------------
         Arguments:
             e_thresh: E_T
         """
