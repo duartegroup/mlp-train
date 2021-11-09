@@ -19,6 +19,9 @@ class _ConfigClass:
                                'sigma_at': 0.5          # Å
                                }
 
+    # NeQUIP params
+    nequip_params = {'cutoff': 4.0}
+
     # --------------------- Internal properties ---------------------------
 
     @property

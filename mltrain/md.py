@@ -15,7 +15,7 @@ from ase import units as ase_units
 from numpy.random import RandomState
 
 
-@work_in_tmp_dir(copied_exts=['.xml', '.json'])
+@work_in_tmp_dir(copied_exts=['.xml', '.json', '.pth'])
 def run_mlp_md(configuration: 'mltrain.Configuration',
                mlp:           'mltrain.potentials._base.MLPotential',
                temp:          float,

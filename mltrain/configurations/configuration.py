@@ -16,7 +16,8 @@ class Configuration(AtomCollection):
                  atoms:  Union[Atoms, List[Atom], None] = None,
                  charge: int = 0,
                  mult:   int = 0,
-                 box:    Optional[Box] = None):
+                 box:    Optional[Box] = None
+                 ):
         """
         Set of atoms perhaps in a periodic box with an overall charge and
         spin multiplicity
