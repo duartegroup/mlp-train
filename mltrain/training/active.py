@@ -178,7 +178,6 @@ def _add_active_configs(mlp,
 def _gen_active_config(config:      'mltrain.Configuration',
                        mlp:         'mltrain.potentials._base.MLPotential',
                        selector:    'mltrain.training.selection.SelectionMethod',
-                       temp:        float,
                        max_time:    float,
                        method_name: str,
                        **kwargs
@@ -267,7 +266,7 @@ def _gen_active_config(config:      'mltrain.Configuration',
     curr_time += md_time
 
     # If the prediction is within the threshold then call this function again
-    return _gen_active_config(config, mlp, selector, temp, max_time, method_name,
+    return _gen_active_config(config, mlp, selector, max_time, method_name,
                               curr_time=curr_time,
                               n_calls=n_calls+1,
                               **kwargs)
