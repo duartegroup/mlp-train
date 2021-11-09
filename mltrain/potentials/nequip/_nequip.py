@@ -196,6 +196,9 @@ class NeQUIP(MLPotential):
         shutil.make_archive(unique_filename(f'{self.name}.zip')[:-4],
                             'zip',
                             self.name)
-        shutil.rmtree(self.name)
+        try:
+            shutil.rmtree(self.name)
+        except OSError:
+            logger.warning(f'Failed to remove {self.name}/')
 
         return None
