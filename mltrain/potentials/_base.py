@@ -18,6 +18,7 @@ class MLPotential(ABC):
         -----------------------------------------------------------------------
         Arguments:
             name: Name of the potential
+
             system: System for which this potential is defined
         """
         self.name = str(name)

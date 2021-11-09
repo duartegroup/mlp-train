@@ -17,7 +17,17 @@ class GAP(MLPotential):
                  system:         Optional['mltrain.System'] = None,
                  default_params: bool = True):
         """
-        A Gaussian Approximation Potential
+        Gaussian Approximation Potential. Parameters default to using all
+        unique pairs of SOAPs
+
+        -----------------------------------------------------------------------
+        Arguments:
+            name:
+
+            system: System defining the atoms, so elements to include in the
+                    parameters (SOAPs)
+
+            default_params: Whether to use default parameters
         """
         super().__init__(name=name if not name.endswith('.xml') else name[:-4],
                          system=system)
