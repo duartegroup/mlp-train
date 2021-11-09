@@ -13,10 +13,9 @@ class NeQUIP(MLPotential):
 
     def _train(self) -> None:
         """
-        Train a NeQUIP potential on a set of data
-
-        Returns:
-
+        Train a NeQUIP potential on a set of data. Requires a .npz file
+        containing the coordinates, energies, forces and atomic numbers of
+        each atom
         """
         start_time = time()
 
