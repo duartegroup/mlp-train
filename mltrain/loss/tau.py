@@ -12,13 +12,63 @@ class Tau(LossValue):
 
 class TauCalculator(LossFunction):
 
+    def __init__(self,
+                 e_lower=0.1,
+                 e_thresh=None,
+                 max_time=1000,
+                 time_interval=20,
+                 temp=300,
+                 dt=0.5):
+        """
+        τ_acc prospective error metric in fs
+
+        ----------------------------------------------------------------------
+        Arguments:
+
+            e_lower: (float) E_l energy threshold in eV below which
+                     the error is zero-ed, i.e. the acceptable level of
+                     error possible in the system
+
+            e_thresh: (float | None) E_t total cumulative error in eV. τ_acc
+                      is defined at the time in the simulation where this
+                      threshold is exceeded. If None then:
+                      e_thresh = 10 * e_lower
+
+            max_time: (float) Maximum time in femto-seconds for τ_acc
+
+            time_interval: (float) Interval between which |E_true - E_GAP| is
+                         calculated. Must be at least one timestep
+
+            temp: (float) Temperature of the simulation to perform
+
+            dt: (float) Timestep of the simulation in femto-seconds
+        """
+
+        if time_interval < dt:
+            raise ValueError('The calculated interval must be more than a '
+                             'single timestep')
+
+        self.dt = float(dt)
+        self.temp = float(temp)
+        self.max_time = float(max_time)
+        self.time_interval = float(time_interval)
+
+        self.e_l = float(e_lower)
+        self.e_t = 10 * self.e_l if e_thresh is None else float(e_thresh)
+
+        logger.info('Successfully initialised τ_acc, will do a maximum of '
+                    f'{int(self.max_time // self.time_interval)} reference '
+                    f'calculations')
+
     def __call__(self,
                  configurations: 'mltrain.ConfigurationSet',
-                 mlp:            'mltrain.potentials._base.MLPotential') -> Tau:
+                 mlp:            'mltrain.potentials._base.MLPotential'
+                 ) -> Tau:
 
         """
         Calculate τ_acc from a set of initial configurations
 
+        -----------------------------------------------------------------------
         Arguments:
             configurations: A set of initial configurations from which dynamics
                            will be propagated from
@@ -94,57 +144,3 @@ class TauCalculator(LossFunction):
 
         logger.info(f'Reached max(τ_acc) = {self.max_time} fs')
         return self.max_time
-
-    def calculate(self, gap, method_name):
-        """Calculate the time to accumulate self.e_t eV of error above
-        self.e_l eV"""
-
-        return None
-
-    def __init__(self,
-                 e_lower=0.1,
-                 e_thresh=None,
-                 max_time=1000,
-                 time_interval=20,
-                 temp=300,
-                 dt=0.5):
-        """
-        τ_acc prospective error metric in fs
-
-        ----------------------------------------------------------------------
-        Arguments:
-
-            e_lower: (float) E_l energy threshold in eV below which
-                     the error is zero-ed, i.e. the acceptable level of
-                     error possible in the system
-
-            e_thresh: (float | None) E_t total cumulative error in eV. τ_acc
-                      is defined at the time in the simulation where this
-                      threshold is exceeded. If None then:
-                      e_thresh = 10 * e_lower
-
-            max_time: (float) Maximum time in femto-seconds for τ_acc
-
-            time_interval: (float) Interval between which |E_true - E_GAP| is
-                         calculated. Must be at least one timestep
-
-            temp: (float) Temperature of the simulation to perform
-
-            dt: (float) Timestep of the simulation in femto-seconds
-        """
-
-        if time_interval < dt:
-            raise ValueError('The calculated interval must be more than a '
-                             'single timestep')
-
-        self.dt = float(dt)
-        self.temp = float(temp)
-        self.max_time = float(max_time)
-        self.time_interval = float(time_interval)
-
-        self.e_l = float(e_lower)
-        self.e_t = 10 * self.e_l if e_thresh is None else float(e_thresh)
-
-        logger.info('Successfully initialised τ_acc, will do a maximum of '
-                    f'{int(self.max_time // self.time_interval)} reference '
-                    f'calculations')

@@ -46,6 +46,7 @@ class Configuration(AtomCollection):
         ASE atoms for this configuration, absent of energy  and force
         properties.
 
+        -----------------------------------------------------------------------
         Returns:
             (ase.atoms.Atoms): ASE atoms
         """
@@ -59,10 +60,12 @@ class Configuration(AtomCollection):
         return _atoms
 
     def update_attr_from(self,
-                         configuration: 'Configuration') -> None:
+                         configuration: 'Configuration'
+                         ) -> None:
         """
         Update system attributes from a configuration
 
+        -----------------------------------------------------------------------
         Arguments:
             configuration:
         """
@@ -145,6 +148,7 @@ class Configuration(AtomCollection):
         either a reference method defined by a string (e.g. 'orca') or a
         machine learned potential (with a .predict) method.
 
+        -----------------------------------------------------------------------
         Arguments:
             method:
         """
