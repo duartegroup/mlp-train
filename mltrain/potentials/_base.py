@@ -45,18 +45,18 @@ class MLPotential(ABC):
             self._training_data = configurations
 
         if len(self.training_data) == 0:
-            raise RuntimeError(f'Failed to train {self.__name__}({self.name}) '
-                               f'had no training configurations')
+            raise RuntimeError(f'Failed to train {self.__class__.__name__}'
+                               f'({self.name}) had no training configurations')
 
         if any(c.energy.true is None for c in self.training_data):
             raise RuntimeError('Cannot train on configurations, an '
                                'energy was undefined')
 
         if self.requires_atomic_energies and len(self.atomic_energies) == 0:
-            raise RuntimeError(f'Cannot train {self.__name__}({self.name}) '
-                               f'required atomic energies that are not set. '
-                               'Set e.g. mlp.atomic_energies = {"H": -13.}')
-
+            raise RuntimeError(f'Cannot train {self.__class__.__name__}'
+                               f'({self.name}) required atomic energies that '
+                               f'are not set. Set e.g. mlp.atomic_energies '
+                               f'= {"H": -13.}')
         self._train()
         return None
 
