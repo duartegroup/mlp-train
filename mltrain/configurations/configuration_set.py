@@ -85,7 +85,8 @@ class ConfigurationSet(list):
         return self[np.argmin(energies)]
 
     def append(self,
-               value: Optional['mltrain.Configuration']) -> None:
+               value: Optional['mltrain.Configuration']
+               ) -> None:
         """
         Append an item onto these set of configurations. None will not be
         appended
@@ -106,7 +107,8 @@ class ConfigurationSet(list):
         return super().append(value)
 
     def compare(self,
-                *args: Union['mltrain.potentials.MLPotential', str]) -> None:
+                *args: Union['mltrain.potentials.MLPotential', str]
+                ) -> None:
         """
         Compare methods e.g. a MLP to a ground truth reference method over
         these set of configurations. Will generate plots of total energies
@@ -388,8 +390,7 @@ class ConfigurationSet(list):
 
     def __add__(self,
                 other: Union['mltrain.Configuration',
-                             'mltrain.ConfigurationSet']
-                ):
+                             'mltrain.ConfigurationSet']):
         """Add another configuration or set of configurations onto this one"""
 
         if isinstance(other, Configuration):
