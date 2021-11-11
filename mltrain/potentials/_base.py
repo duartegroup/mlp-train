@@ -56,7 +56,7 @@ class MLPotential(ABC):
             raise RuntimeError(f'Cannot train {self.__class__.__name__}'
                                f'({self.name}) required atomic energies that '
                                f'are not set. Set e.g. mlp.atomic_energies '
-                               f'= {"H": -13.}')
+                               '= {"H": -13.}')
         self._train()
         return None
 
