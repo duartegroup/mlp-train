@@ -204,17 +204,17 @@ class ConfigurationSet(list):
         atoms = []
 
         def on_xyz(_line):
-            return len(_line.split()) == 4 and _line.split()[0] in elements
+            return len(_line.split()) in (4, 7) and _line.split()[0] in elements
 
         def append_configuration(_atoms):
-            config = Configuration(_atoms, charge=charge, mult=mult, box=box)
+            config = Configuration(atoms=_atoms, charge=charge, mult=mult, box=box)
             self.append(config)
             return None
 
         for idx, line in enumerate(file_lines):
 
             if on_xyz(line):
-                atoms.append(Atom(*line.split()))
+                atoms.append(Atom(*line.split()[:4]))
 
             elif len(atoms) > 0:
                 append_configuration(atoms)
@@ -341,8 +341,6 @@ class ConfigurationSet(list):
             all_forces.append(getattr(config.forces, kind))
 
         return np.array(all_forces)
-
-
 
     def _save_npz(self, filename: str) -> None:
         """Save a compressed numpy array of all the data in this set"""

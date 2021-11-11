@@ -180,6 +180,6 @@ class Configuration(AtomCollection):
 
         if self.n_atoms > 0:
             rmsd = np.linalg.norm(self.coordinates - other.coordinates)
-            eq = eq and rmsd < 1E-6
+            return eq and rmsd < 1E-10
 
         return eq
