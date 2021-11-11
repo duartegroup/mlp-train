@@ -3,13 +3,39 @@ import numpy as np
 from time import time
 from multiprocessing import Pool
 from typing import Optional, List, Union
+from autode.atoms import elements, Atom
 from mltrain.config import Config
 from mltrain.log import logger
+from mltrain.configurations.configuration import Configuration
 from mltrain.configurations.plotting import parity_plot
+from mltrain.box import Box
 
 
 class ConfigurationSet(list):
     """A set of configurations"""
+
+    def __init__(self,
+                 *args: Union[Configuration, str]):
+        """
+        Construct a configuration set from
+
+
+        """
+        super().__init__()
+
+        for arg in args:
+
+            if isinstance(arg, Configuration):
+                self.append(arg)
+
+            elif isinstance(arg, str) and arg.endswith('.xyz'):
+                self.load_xyz(arg)
+
+            elif isinstance(arg, str) and arg.endswith('.npz'):
+                self.load(arg)
+
+            else:
+                raise ValueError(f'Cannot create configurations from {arg}')
 
     @property
     def true_energies(self) -> List[Optional[float]]:
@@ -73,6 +99,11 @@ class ConfigurationSet(list):
         if value is None:
             return
 
+        if value in self:
+            logger.warning('Not appending configuration to set - already '
+                           'present')
+            return
+
         return super().append(value)
 
     def compare(self,
@@ -93,7 +124,7 @@ class ConfigurationSet(list):
         name = self._comparison_name(*args)
 
         if os.path.exists(f'{name}.npz'):
-            self.load_npz(f'{name}.npz')
+            self.load(f'{name}.npz')
 
         else:
             for arg in args:
@@ -106,16 +137,16 @@ class ConfigurationSet(list):
                 else:
                     raise ValueError(f'Cannot compare using {arg}')
 
-            self.save_npz(filename=f'{name}.npz')
+            self.save(filename=f'{name}.npz')
 
         parity_plot(self, name=name)
         return None
 
-    def save(self,
-             filename:  str,
-             true:      bool = False,
-             predicted: bool = False
-             ) -> None:
+    def save_xyz(self,
+                 filename:  str,
+                 true:      bool = False,
+                 predicted: bool = False
+                 ) -> None:
         """Save these configurations to a file
 
         -----------------------------------------------------------------------
@@ -137,38 +168,71 @@ class ConfigurationSet(list):
                            'forces to print. Had true energies to using those')
             true = True
 
-        # Empty the file
-        open(filename, 'w').close()
+        open(filename, 'w').close()  # Empty the file
 
         for configuration in self:
-            configuration.save(filename,
-                               true=true,
-                               predicted=predicted,
-                               append=True)
+            configuration.save_xyz(filename,
+                                   true=true,
+                                   predicted=predicted,
+                                   append=True)
         return None
 
-    def save_npz(self, filename: str) -> None:
+    def load_xyz(self, filename: str) -> None:
+        """Load """
+
+        raise NotImplementedError
+
+    def save(self, filename: str) -> None:
         """Save a set of parameters for this configuration"""
 
+        if len(self) == 0:
+            logger.error('Configuration set had no components, not saving')
+            return
+
+        if not filename.endswith('.npz'):
+            logger.warning('Filename had no .npz extension - adding')
+            filename += '.npz'
+
         np.savez(filename,
+                 R=self._coordinates,
                  E_true=self.true_energies,
                  E_predicted=self.predicted_energies,
                  F_true=self.true_forces,
-                 F_predicted=self.predicted_forces)
+                 F_predicted=self.predicted_forces,
+                 Z=self._atomic_numbers,
+                 L=self._box_sizes,
+                 C=self._charges,
+                 M=self._multiplicities,
+                 allow_pickle=True)
 
         return None
 
-    def load_npz(self, filename: str) -> None:
+    def load(self, filename: str) -> None:
         """Load energies and forces from a saved numpy file"""
+        data = np.load(filename, allow_pickle=True)
 
-        data = np.load(filename)
+        for i, coords in enumerate(data['R']):
 
-        for i, config in enumerate(self):
-            config.energy.true = data['E_true'][i]
-            config.energy.predicted = data['E_predicted'][i]
+            box = Box(size=data['L'][i])
 
-            config.forces.true = data['F_true'][i]
-            config.forces.predicted = data['F_predicted'][i]
+            config = Configuration(atoms=_atoms_from_z_r(data['Z'][i], coords),
+                                   charge=int(data['C'][i]),
+                                   mult=int(data['M'][i]),
+                                   box=None if box.has_zero_volume else box)
+
+            if data['E_true'].ndim > 0:
+                config.energy.true = data['E_true'][i]
+
+            if data['E_predicted'].ndim > 0:
+                config.energy.predicted = data['E_predicted'][i]
+
+            if data['F_true'].ndim > 0:
+                config.forces.true = data['F_true'][i]
+
+            if data['F_predicted'].ndim > 0:
+                config.forces.predicted = data['F_predicted'][i]
+
+            self.append(config)
 
         return None
 
@@ -183,6 +247,51 @@ class ConfigurationSet(list):
         """
         return self._run_parallel_method(function=_single_point_eval,
                                          method_name=method_name)
+
+    @property
+    def _coordinates(self) -> np.ndarray:
+        """
+        Coordinates of all the configurations in this set,
+
+        -----------------------------------------------------------------------
+        Returns:
+            (np.ndarray): Coordinates tensor (n, n_atoms, 3)
+        """
+        return np.array([np.asarray(c.coordinates, dtype=float) for c in self])
+
+    @property
+    def _atomic_numbers(self) -> np.ndarray:
+        """
+        Atomic numbers of atoms in all the configurations in this set
+
+        -----------------------------------------------------------------------
+        Returns:
+            (np.ndarray): Atomic numbers matrix (n, n_atoms)
+        """
+        return np.array([[atom.atomic_number for atom in c.atoms] for c in self])
+
+    @property
+    def _box_sizes(self) -> np.ndarray:
+        """
+        Box sizes of all the configurations in this set, if a configuration
+        does not have a box then use a zero set of lattice lengths.
+
+        -----------------------------------------------------------------------
+        Returns:
+            (np.ndarray): Box sizes matrix (n, 3)
+        """
+        return np.array([c.box.size if c.box is not None else np.zeros(3)
+                         for c in self])
+
+    @property
+    def _charges(self) -> np.ndarray:
+        """Total charges of all configurations in this set"""
+        return np.array([c.charge for c in self])
+
+    @property
+    def _multiplicities(self) -> np.ndarray:
+        """Total spin multiplicities of all configurations in this set"""
+        return np.array([c.mult for c in self])
 
     def _forces(self, kind: str) -> Optional[np.ndarray]:
         """True or predicted forces. Returns a 3D tensor"""
@@ -203,7 +312,7 @@ class ConfigurationSet(list):
                 ):
         """Add another configuration or set of configurations onto this one"""
 
-        if other.__class__.__name__ == 'Configuration':
+        if isinstance(other, Configuration):
             self.append(other)
 
         elif isinstance(other, ConfigurationSet):
@@ -266,3 +375,15 @@ def _single_point_eval(config, method_name, **kwargs):
     """Top-level hashable function useful for multiprocessing"""
     config.single_point(method_name, **kwargs)
     return config
+
+
+def _atoms_from_z_r(atomic_numbers: np.ndarray,
+                    coordinates:    np.ndarray) -> List[Atom]:
+    """From a set of atomic numbers and coordinates create a set of atoms"""
+
+    atoms = []
+
+    for atomic_number, coord in zip(atomic_numbers, coordinates):
+        atoms.append(Atom(elements[atomic_number - 1], *coord))
+
+    return atoms

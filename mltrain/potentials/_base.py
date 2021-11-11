@@ -28,7 +28,8 @@ class MLPotential(ABC):
         self.atomic_energies = {}
 
     def train(self,
-              configurations: Optional['mltrain.ConfigurationSet'] = None):
+              configurations: Optional['mltrain.ConfigurationSet'] = None
+              ) -> None:
         """
         Train this potential on a set of configurations
 
@@ -78,7 +79,8 @@ class MLPotential(ABC):
     def requires_non_zero_box_size(self) -> bool:
         """Can this potential be run in a box with side lengths = 0"""
 
-    def predict(self, *args) -> None:
+    def predict(self,
+                *args) -> None:
         """
         Predict energies and forces using a MLP in serial
 
@@ -135,7 +137,8 @@ class MLPotential(ABC):
 
     def al_train(self,
                  method_name: str,
-                 **kwargs) -> None:
+                 **kwargs
+                 ) -> None:
         """
         Train this MLP using active learning (AL) using a defined reference
         method
@@ -146,10 +149,14 @@ class MLPotential(ABC):
 
             **kwargs:  Keyword arguments passed to mlt.training.active.train()
         """
-        return al_train(self, method_name=method_name, **kwargs)
+        al_train(self, method_name=method_name, **kwargs)
+        self.training_data.save(f'{self.name}_al.npz')
+
+        return None
 
     def set_atomic_energies(self,
-                            method_name: str) -> None:
+                            method_name: str
+                            ) -> None:
         """
         Set the atomic energies of all atoms in this system
 
