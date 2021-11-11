@@ -2,6 +2,7 @@ from mltrain.configurations import Configuration, ConfigurationSet, Trajectory
 from mltrain.config import Config
 from mltrain.molecule import Molecule
 from mltrain.system import System
+from mltrain.box import Box
 from mltrain import md
 from mltrain import potentials
 
@@ -13,5 +14,6 @@ __all__ = ['Configuration',
            'Config',
            'Molecule',
            'System',
+           'Box',
            'md',
            'potentials']

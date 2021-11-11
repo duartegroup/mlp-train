@@ -30,9 +30,6 @@ class ConfigurationSet(list):
             if isinstance(arg, Configuration):
                 self.append(arg)
 
-            elif isinstance(arg, str) and arg.endswith('.xyz'):
-                self._load_xyz(arg)
-
             elif isinstance(arg, str) and arg.endswith('.npz'):
                 self.load(arg)
 
