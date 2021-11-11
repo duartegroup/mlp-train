@@ -17,9 +17,11 @@ class ConfigurationSet(list):
     def __init__(self,
                  *args: Union[Configuration, str]):
         """
-        Construct a configuration set from
+        Construct a configuration set from Configurations, or a saved file
 
-
+        -----------------------------------------------------------------------
+        Arguments:
+            args:
         """
         super().__init__()
 
@@ -29,7 +31,7 @@ class ConfigurationSet(list):
                 self.append(arg)
 
             elif isinstance(arg, str) and arg.endswith('.xyz'):
-                self.load_xyz(arg)
+                self._load_xyz(arg)
 
             elif isinstance(arg, str) and arg.endswith('.npz'):
                 self.load(arg)
@@ -177,62 +179,96 @@ class ConfigurationSet(list):
                                    append=True)
         return None
 
-    def load_xyz(self, filename: str) -> None:
-        """Load """
+    def load_xyz(self,
+                 filename: str,
+                 charge:   int,
+                 mult:     int,
+                 box:      Optional[Box] = None
+                 ) -> None:
+        """
+        Load configurations from a .xyz file. Will not load any energies or
+        forces
 
-        raise NotImplementedError
+        -----------------------------------------------------------------------
+        Arguments:
+            filename:
+
+            charge: Total charge on the configuration
+
+            mult: Total spin multiplicity
+
+        Keyword Arguments:
+            box:
+        """
+        file_lines = open(filename, 'r').readlines()
+        atoms = []
+
+        def on_xyz(_line):
+            return len(_line.split()) == 4 and _line.split()[0] in elements
+
+        def append_configuration(_atoms):
+            config = Configuration(_atoms, charge=charge, mult=mult, box=box)
+            self.append(config)
+            return None
+
+        for idx, line in enumerate(file_lines):
+
+            if on_xyz(line):
+                atoms.append(Atom(*line.split()))
+
+            elif len(atoms) > 0:
+                append_configuration(atoms)
+                atoms.clear()
+
+        if len(atoms) > 0:
+            append_configuration(atoms)
+
+        return None
 
     def save(self, filename: str) -> None:
-        """Save a set of parameters for this configuration"""
+        """
+        Save all the parameters for this configuration
+
+        -----------------------------------------------------------------------
+        Arguments:
+            filename:
+        """
 
         if len(self) == 0:
             logger.error('Configuration set had no components, not saving')
             return
 
-        if not filename.endswith('.npz'):
-            logger.warning('Filename had no .npz extension - adding')
-            filename += '.npz'
+        if filename.endswith('.xyz'):
+            self.save_xyz(filename)
 
-        np.savez(filename,
-                 R=self._coordinates,
-                 E_true=self.true_energies,
-                 E_predicted=self.predicted_energies,
-                 F_true=self.true_forces,
-                 F_predicted=self.predicted_forces,
-                 Z=self._atomic_numbers,
-                 L=self._box_sizes,
-                 C=self._charges,
-                 M=self._multiplicities,
-                 allow_pickle=True)
+        elif filename.endswith('.npz'):
+            self._save_npz(filename)
+
+        else:
+            logger.warning('Filename had no valid extension - adding .npz')
+            self._save_npz(f'{filename}.npz')
 
         return None
 
     def load(self, filename: str) -> None:
-        """Load energies and forces from a saved numpy file"""
-        data = np.load(filename, allow_pickle=True)
+        """
+        Load energies and forces from a saved numpy or .xyz file
 
-        for i, coords in enumerate(data['R']):
+        -----------------------------------------------------------------------
+        Arguments:
+            filename:
+        """
 
-            box = Box(size=data['L'][i])
+        if filename.endswith('.npz'):
+            self._load_npz(filename)
 
-            config = Configuration(atoms=_atoms_from_z_r(data['Z'][i], coords),
-                                   charge=int(data['C'][i]),
-                                   mult=int(data['M'][i]),
-                                   box=None if box.has_zero_volume else box)
+        elif filename.endswith('.xyz'):
+            raise ValueError('Loading .xyz files is not supported. Call '
+                             'load_xyz() with defined charge & multiplicity')
 
-            if data['E_true'].ndim > 0:
-                config.energy.true = data['E_true'][i]
-
-            if data['E_predicted'].ndim > 0:
-                config.energy.predicted = data['E_predicted'][i]
-
-            if data['F_true'].ndim > 0:
-                config.forces.true = data['F_true'][i]
-
-            if data['F_predicted'].ndim > 0:
-                config.forces.predicted = data['F_predicted'][i]
-
-            self.append(config)
+        else:
+            raise ValueError(f'Cannot load {filename}. Must be either a '
+                             f'.xyz or .npz file')
 
         return None
 
@@ -305,6 +341,55 @@ class ConfigurationSet(list):
             all_forces.append(getattr(config.forces, kind))
 
         return np.array(all_forces)
+
+
+
+    def _save_npz(self, filename: str) -> None:
+        """Save a compressed numpy array of all the data in this set"""
+
+        np.savez(filename,
+                 R=self._coordinates,
+                 E_true=self.true_energies,
+                 E_predicted=self.predicted_energies,
+                 F_true=self.true_forces,
+                 F_predicted=self.predicted_forces,
+                 Z=self._atomic_numbers,
+                 L=self._box_sizes,
+                 C=self._charges,
+                 M=self._multiplicities,
+                 allow_pickle=True)
+
+        return None
+
+    def _load_npz(self, filename: str) -> None:
+        """Load a compressed numpy array of all the data in this set"""
+
+        data = np.load(filename, allow_pickle=True)
+
+        for i, coords in enumerate(data['R']):
+
+            box = Box(size=data['L'][i])
+
+            config = Configuration(atoms=_atoms_from_z_r(data['Z'][i], coords),
+                                   charge=int(data['C'][i]),
+                                   mult=int(data['M'][i]),
+                                   box=None if box.has_zero_volume else box)
+
+            if data['E_true'].ndim > 0:
+                config.energy.true = data['E_true'][i]
+
+            if data['E_predicted'].ndim > 0:
+                config.energy.predicted = data['E_predicted'][i]
+
+            if data['F_true'].ndim > 0:
+                config.forces.true = data['F_true'][i]
+
+            if data['F_predicted'].ndim > 0:
+                config.forces.predicted = data['F_predicted'][i]
+
+            self.append(config)
+
+        return None
 
     def __add__(self,
                 other: Union['mltrain.Configuration',

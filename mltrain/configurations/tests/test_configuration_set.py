@@ -1,5 +1,4 @@
 import os
-
 import numpy as np
 from autode.atoms import Atom
 from mltrain.configurations import ConfigurationSet, Configuration
@@ -80,3 +79,25 @@ def test_configurations_load_with_energies_forces():
 
             assert np.allclose(getattr(getattr(loaded_config, attr), kind),
                                getattr(getattr(config, attr), kind))
+
+
+@work_in_tmp_dir()
+def test_configurations_load_xyz():
+
+    configs = ConfigurationSet()
+
+    with open('tmp.xyz', 'w') as xyz_file:
+        print('1',
+              'title line',
+              'H   0.0   0.0   0.0',
+              '1',
+              'title line',
+              'H   1.0   0.0   0.0',
+              sep='\n', file=xyz_file)
+
+    configs.load_xyz('tmp.xyz', charge=0, mult=2)
+
+    assert len(configs) == 2
+    for config in configs:
+        assert config.charge == 0
+        assert config.mult == 2
