@@ -1,5 +1,6 @@
 import mltrain as mlt
 from autode.atoms import Atom
+from mltrain.log import logger
 from mltrain.configurations.configuration import Configuration
 from mltrain.training.active import train as al_train
 from abc import ABC, abstractmethod
@@ -101,9 +102,15 @@ class MLPotential(ABC):
                 raise ValueError('Cannot predict the energy and forces on '
                                  f'{type(arg)}')
 
+        logger.info(f'Evaluating MLP energies over {len(all_configurations)} '
+                    f'configurations')
+
+        calculator = self.ase_calculator
+        logger.info('Loaded calculator successfully')
+
         for configuration in all_configurations:
             atoms = configuration.ase_atoms
-            atoms.set_calculator(self.ase_calculator)
+            atoms.set_calculator(calculator)
 
             # Evaluate predicted energies and forces
             configuration.energy.predicted = atoms.get_potential_energy()
