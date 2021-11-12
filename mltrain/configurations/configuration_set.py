@@ -199,7 +199,7 @@ class ConfigurationSet(list):
         Keyword Arguments:
             box:
         """
-        file_lines = open(filename, 'r').readlines()
+        file_lines = open(filename, 'r', errors='ignore').readlines()
         atoms = []
 
         def on_xyz(_line):
