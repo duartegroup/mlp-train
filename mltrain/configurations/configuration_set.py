@@ -118,7 +118,7 @@ class ConfigurationSet(list):
         Arguments:
             *args: Strings defining the method or MLPs
         """
-        if len([arg for arg in args if isinstance(arg, str)]) > 1:
+        if _num_strings_in(args) > 1:
             raise NotImplementedError('Compare currently only supports a '
                                       'single reference method (string).')
 
@@ -468,3 +468,8 @@ def _atoms_from_z_r(atomic_numbers: np.ndarray,
         atoms.append(Atom(elements[atomic_number - 1], *coord))
 
     return atoms
+
+
+def _num_strings_in(_list):
+    """Number of strings in a list"""
+    return len([item for item in _list if isinstance(item, str)])
