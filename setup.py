@@ -2,7 +2,7 @@ from setuptools import setup
 
 
 setup(name='mltrain',
-      version='1.0.0a0',
+      version='1.0.0a1',
       description='Machine Learning Potential Training',
       packages=['mltrain',
                 'mltrain.configurations',
