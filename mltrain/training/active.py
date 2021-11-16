@@ -139,7 +139,8 @@ def _add_active_configs(mlp,
                         init_config,
                         selection_method,
                         n_configs=10,
-                        **kwargs) -> None:
+                        **kwargs
+                        ) -> None:
     """
     Add a number (n_configs) of configurations to the current training data
     based on active learning selection of MLP-MD generated configurations
@@ -178,7 +179,6 @@ def _add_active_configs(mlp,
 def _gen_active_config(config:      'mltrain.Configuration',
                        mlp:         'mltrain.potentials._base.MLPotential',
                        selector:    'mltrain.training.selection.SelectionMethod',
-                       temp:        float,
                        max_time:    float,
                        method_name: str,
                        **kwargs
@@ -196,8 +196,6 @@ def _gen_active_config(config:      'mltrain.Configuration',
         mlp:
 
         selector:
-
-        temp: (float) Temperature to propagate MD
 
         max_time: (float)
 
@@ -221,6 +219,9 @@ def _gen_active_config(config:      'mltrain.Configuration',
     extra_time = 0. if 'extra_time' not in kwargs else kwargs.pop('extra_time')
     n_calls = 0 if 'n_calls' not in kwargs else kwargs.pop('n_calls')
 
+    temp = 300. if 'temp' not in kwargs else kwargs.pop('temp')
+    i_temp = temp if 'init_active_temp' not in kwargs else kwargs.pop('init_active_temp')
+
     if extra_time > 0:
         logger.info(f'Running an extra {extra_time:.1f} fs of MD')
 
@@ -228,7 +229,7 @@ def _gen_active_config(config:      'mltrain.Configuration',
 
     traj = run_mlp_md(config,
                       mlp=mlp,
-                      temp=float(kwargs.get('temp', 300)),
+                      temp=temp if curr_time > 0 else i_temp,
                       dt=0.5,
                       interval=max(1, md_time//5),   # Generate ~10 frames
                       fs=md_time,
@@ -267,7 +268,8 @@ def _gen_active_config(config:      'mltrain.Configuration',
     curr_time += md_time
 
     # If the prediction is within the threshold then call this function again
-    return _gen_active_config(config, mlp, selector, temp, max_time, method_name,
+    return _gen_active_config(config, mlp, selector, max_time, method_name,
+                              temp=temp,
                               curr_time=curr_time,
                               n_calls=n_calls+1,
                               **kwargs)
