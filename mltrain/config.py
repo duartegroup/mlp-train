@@ -20,7 +20,8 @@ class _ConfigClass:
                                }
 
     # NeQUIP params
-    nequip_params = {'cutoff': 4.0}
+    nequip_params = {'cutoff': 4.0,
+                     'train_fraction': 0.9}
 
     # --------------------- Internal properties ---------------------------
 
