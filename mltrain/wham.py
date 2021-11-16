@@ -93,10 +93,10 @@ def plot(*args, r_min=-0.7, r_max=2.2):
 def verlet_sample(u,
                   w=None,
                   f=LinearTransform(),
-                  n_steps=1000,
+                  n_steps=10000,
                   r0=0.5,
                   dt=0.1
-                  ) -> np.ndarray:
+                  ) -> dict:
     """
     Sample a potential using a Verlet algorithm (NVE sampling)
 
@@ -115,7 +115,7 @@ def verlet_sample(u,
         dt: Time step
 
     Returns:
-        arr:
+        dict(str, list):
     """
     def a(_r, m=1.0):
         """F = m a  --> a = -∇(U + w) / m  where m is the mass"""
@@ -123,16 +123,17 @@ def verlet_sample(u,
 
     r_mt, r_t = r0, r0     # r(t - δt), r(t)
 
-    qs = []
+    data = {'qs': [], 'us': []}
 
     for _ in range(n_steps):
 
         r = 2*r_t - r_mt + a(r_t) * dt**2
-        qs.append(f(r))
+        data['qs'].append(f(r))
+        data['us'].append(u(r))
 
         r_mt, r_t = r_t, r
 
-    return np.array(qs)
+    return data
 
 
 class Window:
@@ -155,7 +156,7 @@ class Window:
         """
         self.u = u
 
-        self.w = W(f=f, s=s, kappa=100)   # Bias potential
+        self.w = W(f=f, s=s, kappa=5)   # Bias potential
         self.A = 0.0                      # Estimate of the free energy
 
         self.bins = np.linspace(np.min(q), np.max(q), num=len(q) + 1)
@@ -167,10 +168,16 @@ class Window:
         """Number of samples in this window"""
         return int(np.sum(self.h))
 
-    def sample(self) -> None:
+    def sample(self, name=None) -> None:
         """Sample this window, populating the histogram of q values"""
-        self.h, _ = np.histogram(verlet_sample(self.u, w=self.w, r0=self.w.s),
-                                 bins=self.bins)
+        data = verlet_sample(self.u, w=self.w, r0=self.w.s)
+        self.h, _ = np.histogram(np.array(data['qs']), bins=self.bins)
+
+        if name is not None:
+
+            with open(f'{name}.txt', 'w') as data_file:
+                for idx, q in enumerate(data['qs']):
+                    print(idx, q, 0.0, file=data_file)
 
         return None
 
@@ -221,15 +228,20 @@ class Umbrella:
     def sample(self) -> None:
         """Sample all the windows in this set"""
 
-        for window in self.windows:
-            window.sample()
+        for i, window in enumerate(self.windows):
+            window.sample(name=f'window_{i}')
+
+        with open('metadata.txt', 'w') as meta_file:
+            for i, window in enumerate(self.windows):
+                print(f'window_{i}.txt', window.w.s, window.w.kappa, 10,
+                      file=meta_file)
 
         return None
 
     def wham(self,
              beta=1.0,
-             tol=1E-8,
-             max_iterations=1000
+             tol=1E-3,
+             max_iterations=10000
              ) -> None:
         """
         Construct an unbiased distribution (on a grid) from a set of windows
@@ -243,7 +255,7 @@ class Umbrella:
             max_iterations: Maximum number of WHAM iterations to perform
         """
         p_prev = np.inf * np.ones_like(self.q)  # Start with P(q)^(-1) = ∞
-        p = np.exp(-(self.q - 1.0)**2)          # and P(q)
+        p = np.ones_like(self.q) / len(self.q)  # and P(q) as a uniform distro.
 
         def converged():
             return np.max(np.abs(p_prev - p)) < tol
@@ -261,10 +273,46 @@ class Umbrella:
             if converged():
                 break
 
+            # print(np.max(np.abs(p_prev - p)))
             p_prev = p
 
         self.p = p
         return None
+
+
+def parse_free_energy_txt():
+
+    read = False
+    es = []
+
+    for line in open('free_energy.txt', 'r'):
+
+        if read and len(line.split()) == 0:
+            break
+
+        if read:
+            es.append(float(line.split()[1]))
+
+        if 'Window' in line:
+            read = True
+
+    return np.array(es)
+
+
+def plot1d_example():
+    umbrella = Umbrella(r_min=-0.1, r_max=0.8, n_windows=4, n_bins=50)
+    umbrella.sample()
+    umbrella.wham()
+    print(umbrella.A - umbrella.A[0])
+
+    import matplotlib.pyplot as plt
+    plt.style.use('paper')
+    plt.plot(parse_free_energy_txt(), label='WHAM')
+    plt.plot(umbrella.A - umbrella.A[0], label='me')
+
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig('tmp.pdf')
 
 
 if __name__ == '__main__':
@@ -274,7 +322,23 @@ if __name__ == '__main__':
     # plt.hist(verlet_sample(u, w), density=True, bins=10)
     # plot(u, w)
 
-    umbrella = Umbrella(r_min=-0.2, r_max=2.0, n_windows=40, n_bins=20)
-    umbrella.sample()
-    umbrella.wham()
-    print(umbrella.A)
+    umbrella = Umbrella(r_min=1.4, r_max=3.7, n_windows=30, n_bins=50)
+    metadata = open('metadata.txt', 'r').readlines()
+    for idx, window in enumerate(umbrella.windows):
+        window.w.s = float(metadata[idx].split()[1])
+        window.w.kappa = float(metadata[idx].split()[2])
+
+        qs = [float(line.split()[1])
+              for line in open(f'window_{idx}.txt').readlines()[1:]]
+
+        window.W = window.w(umbrella.q)
+
+        window.h, _ = np.histogram(np.array(qs), bins=window.bins)
+
+    umbrella.wham(beta=(1/0.1))
+
+    plt.plot(umbrella.A - min(umbrella.A))
+    wham_As = parse_free_energy_txt()
+    plt.plot(wham_As - min(wham_As))
+    plt.tight_layout()
+    plt.savefig('tmp.pdf')
