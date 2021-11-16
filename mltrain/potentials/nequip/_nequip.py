@@ -182,7 +182,7 @@ class NequIP(MLPotential):
         return None
 
     def _run_deploy(self):
-        """Deploy a NeQUIP model"""
+        """Deploy a NeQUIP model, i.e. save a TorchScript version of it"""
         logger.info(f'Deploying a NeQUIP potential')
 
         p = Popen([shutil.which('nequip-deploy'), 'build', f'{self.name}/',
