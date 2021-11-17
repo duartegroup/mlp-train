@@ -17,11 +17,13 @@ class ConfigurationSet(list):
     def __init__(self,
                  *args: Union[Configuration, str]):
         """
-        Construct a configuration set from Configurations, or a saved file
+        Construct a configuration set from Configurations, or a saved file.
+        This is a set, thus no duplicates configurations are present.
 
         -----------------------------------------------------------------------
         Arguments:
-            args:
+            args: Either strings of existing files (e.g. data.npz) or
+                  individual configurations.
         """
         super().__init__()
 
@@ -118,7 +120,7 @@ class ConfigurationSet(list):
         Arguments:
             *args: Strings defining the method or MLPs
         """
-        if len([arg for arg in args if isinstance(arg, str)]) > 1:
+        if _num_strings_in(args) > 1:
             raise NotImplementedError('Compare currently only supports a '
                                       'single reference method (string).')
 
@@ -162,7 +164,7 @@ class ConfigurationSet(list):
 
         if len(self) == 0:
             logger.error(f'Failed to save {filename}. Had no configurations')
-            return
+            return None
 
         if self[0].energy.true is not None and not (predicted or true):
             logger.warning('Save called without defining what energy and '
@@ -197,22 +199,21 @@ class ConfigurationSet(list):
             mult: Total spin multiplicity
 
         Keyword Arguments:
-            box:
+            box: Box or None, if the configurations are in vacuum
         """
         file_lines = open(filename, 'r', errors='ignore').readlines()
         atoms = []
 
-        def on_xyz(_line):
-            return len(_line.split()) in (4, 7) and _line.split()[0] in elements
+        def is_xyz_line(_l):
+            return len(_l.split()) in (4, 7) and _l.split()[0] in elements
 
         def append_configuration(_atoms):
-            config = Configuration(atoms=_atoms, charge=charge, mult=mult, box=box)
-            self.append(config)
+            self.append(Configuration(_atoms, charge, mult, box))
             return None
 
         for idx, line in enumerate(file_lines):
 
-            if on_xyz(line):
+            if is_xyz_line(line):
                 atoms.append(Atom(*line.split()[:4]))
 
             elif len(atoms) > 0:
@@ -230,7 +231,7 @@ class ConfigurationSet(list):
 
         -----------------------------------------------------------------------
         Arguments:
-            filename:
+            filename: Filename, if extension is not .xyz it will be added
         """
 
         if len(self) == 0:
@@ -251,11 +252,14 @@ class ConfigurationSet(list):
 
     def load(self, filename: str) -> None:
         """
-        Load energies and forces from a saved numpy or .xyz file
+        Load energies and forces from a saved numpy compressed array.
 
         -----------------------------------------------------------------------
         Arguments:
             filename:
+
+        Raises:
+            (ValueError): If an unsupported file extension is present
         """
 
         if filename.endswith('.npz'):
@@ -286,7 +290,7 @@ class ConfigurationSet(list):
     @property
     def _coordinates(self) -> np.ndarray:
         """
-        Coordinates of all the configurations in this set,
+        Coordinates of all the configurations in this set
 
         -----------------------------------------------------------------------
         Returns:
@@ -468,3 +472,8 @@ def _atoms_from_z_r(atomic_numbers: np.ndarray,
         atoms.append(Atom(elements[atomic_number - 1], *coord))
 
     return atoms
+
+
+def _num_strings_in(_list):
+    """Number of strings in a list"""
+    return len([item for item in _list if isinstance(item, str)])

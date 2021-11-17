@@ -179,7 +179,17 @@ class MLPotential(ABC):
                                    charge=0,
                                    mult=_spin_multiplicites[symbol])
 
-            config.single_point(method=method_name)
+            config.single_point(method=method_name, n_cores=1)
+
+            if config.energy.true is None:
+
+                if symbol == 'H':
+                    logger.warning('Using estimated H atom ground state E')
+                    config.energy.true = -13.6056995   # -0.5 Ha
+
+                else:
+                    raise RuntimeError('Failed to calculate an energy for '
+                                       f'{symbol}')
 
             self.atomic_energies[symbol] = config.energy.true
 

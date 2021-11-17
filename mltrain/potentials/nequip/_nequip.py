@@ -9,11 +9,11 @@ from mltrain.log import logger
 from mltrain.utils import unique_filename
 
 
-class NeQUIP(MLPotential):
+class NequIP(MLPotential):
 
     def _train(self) -> None:
         """
-        Train a NeQUIP potential on a set of data. Requires a .npz file
+        Train a NeQUIP potential on a set of data. Requires an .npz file
         containing the coordinates, energies, forces and atomic numbers of
         each atom
         """
@@ -33,10 +33,11 @@ class NeQUIP(MLPotential):
     @property
     def ase_calculator(self) -> 'ase.calculators.calculator.Calculator':
         """
-        Instance of
+        Instance of an ASE calculator for a NequIP potential
 
+        ----------------------------------------------------------------------
         Returns:
-
+            (ase.Calculator):
         """
 
         try:
@@ -89,6 +90,10 @@ class NeQUIP(MLPotential):
 
         yml_file = open(filename, 'w')
 
+        train_frac = Config.nequip_params["train_fraction"]
+        if train_frac >= 1 or train_frac <= 0:
+            raise RuntimeError('Cannot train on a training fraction ∉ [0, 1]')
+
         print(
             'root: ./',
             f'run_name: {self.name}',
@@ -119,8 +124,8 @@ class NeQUIP(MLPotential):
             'npz_fixed_field_keys: ',
             '  - atomic_numbers',
             'wandb: false  ',
-            f'n_train: {int(0.9*len(self.training_data))}',
-            f'n_val: {int(0.1*len(self.training_data))}',
+            f'n_train: {int(train_frac * len(self.training_data))}',
+            f'n_val: {int((1. - train_frac) * len(self.training_data))}',
             'learning_rate: 0.01 ',
             'batch_size: 5  ',
             'max_epochs: 1000  ',
@@ -177,7 +182,7 @@ class NeQUIP(MLPotential):
         return None
 
     def _run_deploy(self):
-        """Deploy a NeQUIP model"""
+        """Deploy a NeQUIP model, i.e. save a TorchScript version of it"""
         logger.info(f'Deploying a NeQUIP potential')
 
         p = Popen([shutil.which('nequip-deploy'), 'build', f'{self.name}/',
