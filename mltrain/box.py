@@ -36,7 +36,7 @@ class Box:
         return self.size / 2.0
 
     def __eq__(self, other):
-        """Equality of teo boxes"""
+        """Equality of two boxes"""
 
         return (isinstance(other, Box)
                 and np.linalg.norm(other.size - self.size) < 1E-10)
