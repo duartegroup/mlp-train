@@ -21,6 +21,22 @@ class Box:
         return np.array([np.random.uniform(0.0, k) for k in self.size])
 
     @property
+    def volume(self) -> float:
+        """Volume of this box"""
+        return self.size[0] * self.size[1] * self.size[2]
+
+    @property
+    def has_zero_volume(self) -> bool:
+        """Is this box essentially of zero size"""
+        return self.volume < 1E-10
+
+    @property
     def midpoint(self) -> np.ndarray:
         """Midpoint inside this box"""
         return self.size / 2.0
+
+    def __eq__(self, other):
+        """Equality of teo boxes"""
+
+        return (isinstance(other, Box)
+                and np.linalg.norm(other.size - self.size) < 1E-10)

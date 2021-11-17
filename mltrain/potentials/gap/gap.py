@@ -136,7 +136,7 @@ class GAP(MLPotential):
 
         start_time = time()
 
-        self.training_data.save(filename=f'{self.name}_data.xyz')
+        self.training_data.save_xyz(filename=f'{self.name}_data.xyz')
 
         # Run the training using a specified number of total cores
         os.environ['OMP_NUM_THREADS'] = str(Config.n_cores)

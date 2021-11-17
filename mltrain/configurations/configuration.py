@@ -1,3 +1,4 @@
+import numpy as np
 from typing import Optional, Union, List
 from copy import deepcopy
 from autode.atoms import AtomCollection, Atoms, Atom
@@ -15,7 +16,7 @@ class Configuration(AtomCollection):
     def __init__(self,
                  atoms:  Union[Atoms, List[Atom], None] = None,
                  charge: int = 0,
-                 mult:   int = 0,
+                 mult:   int = 1,
                  box:    Optional[Box] = None
                  ):
         """
@@ -77,12 +78,12 @@ class Configuration(AtomCollection):
 
         return None
 
-    def save(self,
-             filename:  str,
-             append:    bool = False,
-             true:      bool = False,
-             predicted: bool = False
-             ) -> None:
+    def save_xyz(self,
+                 filename:  str,
+                 append:    bool = False,
+                 true:      bool = False,
+                 predicted: bool = False
+                 ) -> None:
         """
         Print this configuration as an extended xyz file where the first 4
         columns are the atom symbol, x, y, z and, if this configuration
@@ -168,3 +169,17 @@ class Configuration(AtomCollection):
                              f'forces')
 
         return None
+
+    def __eq__(self, other):
+        """Another configuration is identical to this one"""
+        eq = (isinstance(other, Configuration)
+              and other.n_atoms == self.n_atoms
+              and other.mult == self.mult
+              and other.charge == self.charge
+              and other.box == self.box)
+
+        if self.n_atoms > 0:
+            rmsd = np.linalg.norm(self.coordinates - other.coordinates)
+            return eq and rmsd < 1E-10
+
+        return eq

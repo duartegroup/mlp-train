@@ -1,5 +1,6 @@
 import mltrain as mlt
 from autode.atoms import Atom
+from mltrain.log import logger
 from mltrain.configurations.configuration import Configuration
 from mltrain.training.active import train as al_train
 from abc import ABC, abstractmethod
@@ -28,7 +29,8 @@ class MLPotential(ABC):
         self.atomic_energies = {}
 
     def train(self,
-              configurations: Optional['mltrain.ConfigurationSet'] = None):
+              configurations: Optional['mltrain.ConfigurationSet'] = None
+              ) -> None:
         """
         Train this potential on a set of configurations
 
@@ -44,18 +46,18 @@ class MLPotential(ABC):
             self._training_data = configurations
 
         if len(self.training_data) == 0:
-            raise RuntimeError(f'Failed to train {self.__name__}({self.name}) '
-                               f'had no training configurations')
+            raise RuntimeError(f'Failed to train {self.__class__.__name__}'
+                               f'({self.name}) had no training configurations')
 
         if any(c.energy.true is None for c in self.training_data):
             raise RuntimeError('Cannot train on configurations, an '
                                'energy was undefined')
 
         if self.requires_atomic_energies and len(self.atomic_energies) == 0:
-            raise RuntimeError(f'Cannot train {self.__name__}({self.name}) '
-                               f'required atomic energies that are not set. '
-                               'Set e.g. mlp.atomic_energies = {"H": -13.}')
-
+            raise RuntimeError(f'Cannot train {self.__class__.__name__}'
+                               f'({self.name}) required atomic energies that '
+                               f'are not set. Set e.g. mlp.atomic_energies '
+                               '= {"H": -13.}')
         self._train()
         return None
 
@@ -78,7 +80,8 @@ class MLPotential(ABC):
     def requires_non_zero_box_size(self) -> bool:
         """Can this potential be run in a box with side lengths = 0"""
 
-    def predict(self, *args) -> None:
+    def predict(self,
+                *args) -> None:
         """
         Predict energies and forces using a MLP in serial
 
@@ -99,9 +102,15 @@ class MLPotential(ABC):
                 raise ValueError('Cannot predict the energy and forces on '
                                  f'{type(arg)}')
 
+        logger.info(f'Evaluating MLP energies over {len(all_configurations)} '
+                    f'configurations')
+
+        calculator = self.ase_calculator
+        logger.info('Loaded calculator successfully')
+
         for configuration in all_configurations:
             atoms = configuration.ase_atoms
-            atoms.set_calculator(self.ase_calculator)
+            atoms.set_calculator(calculator)
 
             # Evaluate predicted energies and forces
             configuration.energy.predicted = atoms.get_potential_energy()
@@ -135,7 +144,8 @@ class MLPotential(ABC):
 
     def al_train(self,
                  method_name: str,
-                 **kwargs) -> None:
+                 **kwargs
+                 ) -> None:
         """
         Train this MLP using active learning (AL) using a defined reference
         method
@@ -146,10 +156,14 @@ class MLPotential(ABC):
 
             **kwargs:  Keyword arguments passed to mlt.training.active.train()
         """
-        return al_train(self, method_name=method_name, **kwargs)
+        al_train(self, method_name=method_name, **kwargs)
+        self.training_data.save(f'{self.name}_al.npz')
+
+        return None
 
     def set_atomic_energies(self,
-                            method_name: str) -> None:
+                            method_name: str
+                            ) -> None:
         """
         Set the atomic energies of all atoms in this system
 

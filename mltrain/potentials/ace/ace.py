@@ -25,7 +25,7 @@ class ACE(MLPotential):
             if self.requires_non_zero_box_size and config.box is None:
                 config.box = Box([100, 100, 100])
 
-        self.training_data.save(filename=f'{self.name}_data.xyz')
+        self.training_data.save_xyz(filename=f'{self.name}_data.xyz')
 
         logger.info(f'Training an ACE potential on *{len(self.training_data)}* '
                     f'training data')

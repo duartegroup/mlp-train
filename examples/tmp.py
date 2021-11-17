@@ -7,4 +7,4 @@ if __name__ == '__main__':
     system = mlt.System(box=[10, 10, 10])
     system.add_molecules(methane, num=12)
 
-    system.random_configuration().save('tmp.xyz')
+    system.random_configuration().save_xyz('tmp.xyz')
