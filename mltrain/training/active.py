@@ -133,6 +133,9 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
         if max_e_threshold is not None:
             mlp.training_data.remove_above_e(max_e_threshold)
 
+        if mlp.training_data.has_a_none_energy:
+            mlp.training_data.remove_none_energy()
+
         mlp.train()
 
     return None

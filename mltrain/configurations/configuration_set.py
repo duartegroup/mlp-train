@@ -87,7 +87,7 @@ class ConfigurationSet(list):
         return self[np.argmin(energies)]
 
     @property
-    def has_a_none_energy(self):
+    def has_a_none_energy(self) -> bool:
         """
         Does this set of configurations have a true energy that is undefined,
         thus is set to None?
@@ -97,6 +97,19 @@ class ConfigurationSet(list):
             (bool):
         """
         return any(c.energy.true is None for c in self)
+
+    def remove_none_energy(self) -> None:
+        """
+        Remove configurations in this set with no true energy
+        """
+        for idx in reversed(range(len(self))):  # Enumerate backwards
+            if self[idx].energy.true is None:
+                del self[idx]
+
+        return None
+
+    def remove_above_e(self, energy: float) -> None:
+        raise NotImplementedError
 
     def append(self,
                value: Optional['mltrain.Configuration']

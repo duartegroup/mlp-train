@@ -156,8 +156,10 @@ class MaxAtomicEnvDistance(SelectionMethod):
         if self._n_training_envs == 0:
             return True
 
-        logger.info(f'max(K*) = {np.max(self._k_vec):.5}')
-        return self.threshold**2 < np.max(self._k_vec) < self.threshold
+        _select = self.threshold**2 < np.max(self._k_vec) < self.threshold
+
+        logger.info(f'max(K*) = {np.max(self._k_vec):.5}. Selecting: {_select}')
+        return _select
 
     @property
     def too_large(self) -> bool:
