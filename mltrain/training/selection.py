@@ -102,7 +102,8 @@ class MaxAtomicEnvDistance(SelectionMethod):
         """
         Selection criteria based on the maximum distance between any of the
         training set and a new configuration. Evaluated based on the minimum
-        SOAP kernel vector (K*)
+        SOAP kernel vector (K*) between a new configuration and prior training
+        data
 
         -----------------------------------------------------------------------
         Arguments:
@@ -145,11 +146,9 @@ class MaxAtomicEnvDistance(SelectionMethod):
         Returns:
             (bool): If this configuration should be selected
         """
-
         if self._n_training_envs == 0:
             return True
 
-        print(self._k_vec)
         return np.min(self._k_vec) < self.threshold
 
     @property
