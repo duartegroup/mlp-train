@@ -56,7 +56,7 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
                          to the 'bond' between atoms 0 and 1 as velocities
                          shared between the atoms in the breaking bond direction
 
-        :fbond_energy (dict | None): As bbond_energy but in the direction to
+        fbond_energy (dict | None): As bbond_energy but in the direction to
                          form a bond
 
         n_cores (int): Number of cores to use
