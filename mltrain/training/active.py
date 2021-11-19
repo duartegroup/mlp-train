@@ -1,7 +1,10 @@
+from copy import deepcopy
+from threading import Thread
 from typing import Optional
 from multiprocessing import Pool
 from mltrain.config import Config
 from mltrain.md import run_mlp_md
+from mltrain.configurations import Trajectory
 from mltrain.training.selection import SelectionMethod, AbsDiffE
 from mltrain.configurations import ConfigurationSet
 from mltrain.log import logger
@@ -157,8 +160,10 @@ def _add_active_configs(mlp,
     with Pool(processes=Config.n_cores) as pool:
 
         results = [pool.apply_async(_gen_active_config,
-                                    args=(init_config, mlp, selection_method),
-                                    kwds=kwargs)
+                                    args=(init_config.copy(),
+                                          mlp.copy(),
+                                          selection_method.copy()),
+                                    kwds=deepcopy(kwargs))
                    for _ in range(n_configs)]
 
         for result in results:
@@ -171,6 +176,9 @@ def _add_active_configs(mlp,
             except Exception as err:
                 logger.error(f'Raised an exception in selection: \n{err}')
                 continue
+
+    if 'method_name' in kwargs and configs.has_a_none_energy:
+        configs.single_point(method_name=kwargs.get('method_name'))
 
     mlp.training_data += configs
     return None

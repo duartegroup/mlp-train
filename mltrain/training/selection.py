@@ -1,4 +1,5 @@
 import numpy as np
+from copy import deepcopy
 from abc import ABC, abstractmethod
 from typing import Optional
 from mltrain.log import logger
@@ -34,6 +35,9 @@ class SelectionMethod(ABC):
     @abstractmethod
     def too_large(self) -> bool:
         """Is the error/discrepancy too large to be selected?"""
+
+    def copy(self) -> 'SelectionMethod':
+        return deepcopy(self)
 
 
 class AbsDiffE(SelectionMethod):
@@ -98,10 +102,10 @@ class AbsDiffE(SelectionMethod):
 class MaxAtomicEnvDistance(SelectionMethod):
 
     def __init__(self,
-                 threshold: float = 0.98):
+                 threshold: float = 0.99):
         """
         Selection criteria based on the maximum distance between any of the
-        training set and a new configuration. Evaluated based on the minimum
+        training set and a new configuration. Evaluated based on the similarity
         SOAP kernel vector (K*) between a new configuration and prior training
         data
 
@@ -110,6 +114,9 @@ class MaxAtomicEnvDistance(SelectionMethod):
             threshold:
         """
         super().__init__()
+
+        if threshold < 0.1 or threshold >= 1.0:
+            raise ValueError('Cannot have a threshold outside [0.1, 1]')
 
         self.threshold = float(threshold)
         self._k_vec = np.array([])
@@ -149,13 +156,15 @@ class MaxAtomicEnvDistance(SelectionMethod):
         if self._n_training_envs == 0:
             return True
 
-        return np.min(self._k_vec) < self.threshold
+        logger.info(f'max(K*) = {np.max(self._k_vec):.5}')
+        return self.threshold**2 < np.max(self._k_vec) < self.threshold
 
     @property
     def too_large(self) -> bool:
-        return False
+        return np.max(self._k_vec) < self.threshold**2
 
     @property
     def _n_training_envs(self) -> int:
         """Number of training environments available"""
         return len(self._k_vec)
+

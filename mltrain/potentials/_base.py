@@ -1,4 +1,5 @@
 import mltrain as mlt
+from copy import deepcopy
 from autode.atoms import Atom
 from mltrain.log import logger
 from mltrain.configurations.configuration import Configuration
@@ -194,3 +195,6 @@ class MLPotential(ABC):
             self.atomic_energies[symbol] = config.energy.true
 
         return None
+
+    def copy(self) -> 'MLPotential':
+        return deepcopy(self)

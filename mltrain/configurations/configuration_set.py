@@ -86,6 +86,18 @@ class ConfigurationSet(list):
         energies = [e if e is not None else np.inf for e in self.true_energies]
         return self[np.argmin(energies)]
 
+    @property
+    def has_a_none_energy(self):
+        """
+        Does this set of configurations have a true energy that is undefined,
+        thus is set to None?
+
+        -----------------------------------------------------------------------
+        Returns:
+            (bool):
+        """
+        return any(c.energy.true is None for c in self)
+
     def append(self,
                value: Optional['mltrain.Configuration']
                ) -> None:
