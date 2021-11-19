@@ -27,7 +27,7 @@ rm add.jl
 # ----------------------------------------------------
 echo "Creating a new conda environment for ASE called \"ace\""
 
-conda create --name ace python=3.7 ase --yes
+conda create --name ace python=3.7 --file requirements.txt --yes
 conda activate ace
 
 # ----------------------------------------------------
@@ -45,8 +45,10 @@ echo "Installing pyjulip"
 wget https://github.com/casv2/pyjulip/archive/refs/heads/master.zip
 unzip master.zip && rm master.zip
 cd pyjulip-master/ && python setup.py install
+cd ..
+rm -r pyjulip-master/
+
+echo "DONE!"
 
 # Useful env variables:
 # JULIA_NUM_THREADS
-
-
