@@ -302,7 +302,7 @@ def _set_init_training_configs(mlp, init_configs, method_name) -> None:
                     f'all with defined energy')
         init_configs.single_point(method_name=method_name)
 
-    mlp.training_data = init_configs
+    mlp.training_data += init_configs
 
     return None
 
@@ -345,16 +345,17 @@ def _gen_and_set_init_training_configs(mlp, method_name, num) -> None:
                     f'minimum distance of {dist:.2f}')
 
     # Generate the initial configurations
-    while len(mlp.training_data) < num:
+    init_configs = ConfigurationSet()
+    while len(init_configs) < num:
         try:
             config = mlp.system.random_configuration(min_dist=dist,
                                                      with_intra=True)
-            mlp.training_data.append(config)
+            init_configs.append(config)
 
         except RuntimeError:
             continue
 
     logger.info(f'Added {num} configurations with min dist = {dist:.3f} Å')
-
-    mlp.training_data.single_point(method_name)
+    init_configs.single_point(method_name)
+    mlp.training_data += init_configs
     return None
