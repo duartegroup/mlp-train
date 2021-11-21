@@ -109,7 +109,7 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
     # Run the active learning loop, running iterative GAP-MD
     for iteration in range(max_active_iters):
 
-        curr_n_configs = len(mlp.training_data)
+        curr_n_train = mlp.n_train
 
         _add_active_configs(mlp,
                             init_config=(mlp.training_data[0] if fix_init_config
@@ -124,9 +124,9 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
                             init_temp=init_active_temp)
 
         # Active learning finds no configurations,,
-        if len(mlp.training_data) == curr_n_configs and iteration > min_active_iters:
+        if mlp.n_train == curr_n_train and iteration >= min_active_iters:
             logger.info('No AL configurations found. Final dataset size '
-                        f'= {curr_n_configs} Active learning = DONE')
+                        f'= {curr_n_train} Active learning = DONE')
             break
 
         # If required, remove high-lying energy configuration from the data

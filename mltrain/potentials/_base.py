@@ -143,6 +143,28 @@ class MLPotential(ABC):
             raise ValueError(f'Cannot set the training data for {self.name} '
                              f'with {value}')
 
+    @property
+    def n_train(self) -> int:
+        """
+        Number of training configurations used to train this potential
+
+        -----------------------------------------------------------------------
+        Returns:
+            (int):
+        """
+        return len(self._training_data)
+
+    @property
+    def n_eval(self) -> int:
+        """
+        Number of reference evaluations used to generate this potential
+
+        -----------------------------------------------------------------------
+        Returns:
+            (int):
+        """
+        return sum(c.n_ref_evals for c in self._training_data)
+
     def al_train(self,
                  method_name: str,
                  **kwargs
