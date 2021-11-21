@@ -5,6 +5,7 @@ from mltrain.system import System
 from mltrain.box import Box
 from mltrain import md
 from mltrain import potentials
+from mltrain.training import selection
 
 __version__ = '1.0.0a0'
 
@@ -16,4 +17,5 @@ __all__ = ['Configuration',
            'System',
            'Box',
            'md',
-           'potentials']
+           'potentials',
+           'selection']

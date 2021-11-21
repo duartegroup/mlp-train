@@ -79,7 +79,8 @@ class AbsDiffE(SelectionMethod):
         if configuration.energy.predicted is None:
             self._configuration.single_point(mlp)
 
-        self._configuration.single_point(method_name)
+        self._configuration.single_point(method_name,
+                                         n_cores=kwargs.get('n_cores', 1))
         return None
 
     @property

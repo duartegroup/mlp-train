@@ -111,6 +111,27 @@ class ConfigurationSet(list):
     def remove_above_e(self, energy: float) -> None:
         raise NotImplementedError
 
+    def t_min(self, from_idx: int) -> float:
+        """
+        Determine the minimum time for a slice of these configurations,
+        if a time is not specified for a frame or there aren't enough frames
+        then return None.
+
+        -----------------------------------------------------------------------
+        Arguments:
+            from_idx: Index from which to consider the minimum time
+
+        Returns:
+            (float): Time in fs
+        """
+        if len(self) < from_idx:
+            logger.warning('Insufficient data to determine minimum time '
+                           f'from index {from_idx} from the end')
+            return 0.0
+
+        return min(c.time if c.time is not None else 0.0
+                   for c in self[from_idx:])
+
     def append(self,
                value: Optional['mltrain.Configuration']
                ) -> None:
@@ -443,8 +464,7 @@ class ConfigurationSet(list):
         Arguments
             function: A method to calculate energy and forces on a configuration
         """
-        logger.info(f'Running calculations over {len(self)} configurations\n'
-                    f'Using {Config.n_cores} total cores')
+        logger.info(f'Running calculations over {len(self)} configurations')
 
         os.environ['OMP_NUM_THREADS'] = '1'
         os.environ['MLK_NUM_THREADS'] = '1'
@@ -452,7 +472,12 @@ class ConfigurationSet(list):
         start_time = time()
         results = []
 
-        with Pool(processes=Config.n_cores) as pool:
+        n_processes = min(len(self), Config.n_cores)
+        n_cores_pp = max(Config.n_cores // len(self), 1)
+        kwargs['n_cores'] = n_cores_pp
+        logger.info(f'Running {n_processes} processes; {n_cores_pp} cores each')
+
+        with Pool(processes=n_processes) as pool:
 
             for _, config in enumerate(self):
                 result = pool.apply_async(func=function,

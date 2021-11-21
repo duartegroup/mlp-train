@@ -121,7 +121,8 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
                             max_time=max_active_time,
                             bbond_energy=bbond_energy,
                             fbond_energy=fbond_energy,
-                            init_temp=init_active_temp)
+                            init_temp=init_active_temp,
+                            extra_time=mlp.training_data.t_min(-n_configs_iter))
 
         # Active learning finds no configurations,,
         if mlp.n_train == curr_n_train and iteration >= min_active_iters:
@@ -129,7 +130,7 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
                         f'= {curr_n_train} Active learning = DONE')
             break
 
-        # If required, remove high-lying energy configuration from the data
+        # If required, remove high-lying energy configurations from the data
         if max_e_threshold is not None:
             mlp.training_data.remove_above_e(max_e_threshold)
 
@@ -151,21 +152,25 @@ def _add_active_configs(mlp,
     Add a number (n_configs) of configurations to the current training data
     based on active learning selection of MLP-MD generated configurations
     """
-    if int(n_configs) < int(Config.n_cores):
+    if Config.n_cores > n_configs and Config.n_cores % n_configs != 0:
         raise NotImplementedError('Active learning is only implemented using '
-                                  'one core for each process. Please use '
-                                  'n_configs >= mlt.Config.n_cores')
+                                  'an multiple of the number n_configs_iter. '
+                                  f'Please use n*{n_configs} cores.')
+
+    n_processes = min(n_configs, Config.n_cores)
+    n_cores_pp = max(Config.n_cores // n_configs, 1)
+    logger.info('Searching for "active" configurations with '
+                f'{n_processes} processes using {n_cores_pp} cores / process')
 
     configs = ConfigurationSet()
-    logger.info('Searching for "active" configurations with '
-                f'{Config.n_cores} processes')
 
-    with Pool(processes=Config.n_cores) as pool:
+    with Pool(processes=n_processes) as pool:
 
         results = [pool.apply_async(_gen_active_config,
                                     args=(init_config.copy(),
                                           mlp.copy(),
-                                          selection_method.copy()),
+                                          selection_method.copy(),
+                                          n_cores_pp),
                                     kwds=deepcopy(kwargs))
                    for _ in range(n_configs)]
 
@@ -190,6 +195,7 @@ def _add_active_configs(mlp,
 def _gen_active_config(config:      'mltrain.Configuration',
                        mlp:         'mltrain.potentials._base.MLPotential',
                        selector:    'mltrain.training.selection.SelectionMethod',
+                       n_cores:     int,
                        max_time:    float,
                        method_name: str,
                        **kwargs
@@ -250,7 +256,7 @@ def _gen_active_config(config:      'mltrain.Configuration',
     traj.t0 = extra_time  # Increment the initial time (t0)
 
     # Evaluate the selector on the final frame
-    selector(traj.final_frame, mlp, method_name=method_name)
+    selector(traj.final_frame, mlp, method_name=method_name, n_cores=n_cores)
 
     if selector.select:
         if traj.final_frame.energy.true is None:
@@ -263,12 +269,12 @@ def _gen_active_config(config:      'mltrain.Configuration',
                        'configuration')
         # Stride through only 10 frames to prevent very slow backtracking
         for frame in reversed(traj[::max(1, len(traj)//10)]):
-            selector(frame, mlp, method_name=method_name)
+            selector(frame, mlp, method_name=method_name, n_cores=n_cores)
 
             if selector.select:
                 return frame
 
-        logger.error('Failed to find a suitable configuration when backtracking')
+        logger.error('Failed to backtrack to a suitable configuration')
         return frame
 
     if curr_time + md_time > max_time:
@@ -279,7 +285,7 @@ def _gen_active_config(config:      'mltrain.Configuration',
     curr_time += md_time
 
     # If the prediction is within the threshold then call this function again
-    return _gen_active_config(config, mlp, selector, max_time, method_name,
+    return _gen_active_config(config, mlp, selector, n_cores, max_time, method_name,
                               temp=temp,
                               curr_time=curr_time,
                               n_calls=n_calls+1,
