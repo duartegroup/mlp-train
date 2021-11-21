@@ -169,4 +169,3 @@ class MaxAtomicEnvDistance(SelectionMethod):
     def _n_training_envs(self) -> int:
         """Number of training environments available"""
         return len(self._k_vec)
-
