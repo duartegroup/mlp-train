@@ -248,7 +248,7 @@ def _gen_active_config(config:      'mltrain.Configuration',
                       mlp=mlp,
                       temp=temp if curr_time > 0 else i_temp,
                       dt=0.5,
-                      interval=max(1, md_time//5),   # Generate ~10 frames
+                      interval=max(1, 2*md_time//selector.n_backtrack),
                       fs=md_time,
                       n_cores=1,
                       **kwargs)
