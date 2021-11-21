@@ -265,10 +265,12 @@ def _gen_active_config(config:      'mltrain.Configuration',
         return traj.final_frame
 
     if selector.too_large:
+
         logger.warning('Backtracking in the trajectory to find a suitable '
-                       'configuration')
-        # Stride through only 10 frames to prevent very slow backtracking
-        for frame in reversed(traj[::max(1, len(traj)//10)]):
+                       f'configuration in {selector.n_backtrack} steps')
+        stride = max(1, len(traj)//selector.n_backtrack)
+
+        for frame in reversed(traj[::stride]):
             selector(frame, mlp, method_name=method_name, n_cores=n_cores)
 
             if selector.select:

@@ -36,6 +36,18 @@ class SelectionMethod(ABC):
     def too_large(self) -> bool:
         """Is the error/discrepancy too large to be selected?"""
 
+    @property
+    @abstractmethod
+    def n_backtrack(self) -> int:
+        """
+        Number of backtracking steps that this selection method should evaluate
+        if the value is 'too_large'
+
+        -----------------------------------------------------------------------
+        Returns:
+            (int):
+        """
+
     def copy(self) -> 'SelectionMethod':
         return deepcopy(self)
 
@@ -98,6 +110,10 @@ class AbsDiffE(SelectionMethod):
     def too_large(self) -> bool:
         """|E_predicted - E_true| > 10*E_T"""
         return abs(self._configuration.energy.delta) > 10 * self.e_thresh
+
+    @property
+    def n_backtrack(self) -> int:
+        return 10
 
 
 class MaxAtomicEnvDistance(SelectionMethod):
@@ -165,6 +181,10 @@ class MaxAtomicEnvDistance(SelectionMethod):
     @property
     def too_large(self) -> bool:
         return np.max(self._k_vec) < self.threshold**2
+
+    @property
+    def n_backtrack(self) -> int:
+        return 100
 
     @property
     def _n_training_envs(self) -> int:
