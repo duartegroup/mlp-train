@@ -62,7 +62,7 @@ def soap_matrix(*args:    Union[mlt.ConfigurationSet, mlt.Configuration],
     logger.info('SOAP calculation done')
 
     if soap_vec.ndim == 1:
-        # soap_desc.create doesn't return a consistent number of dimensions..
+        # soap_desc.create doesn't return a consistent number of dimensions...
         return soap_vec.reshape(1, -1)
 
     return soap_vec

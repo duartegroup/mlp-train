@@ -89,8 +89,8 @@ class ConfigurationSet(list):
     @property
     def has_a_none_energy(self) -> bool:
         """
-        Does this set of configurations have a true energy that is undefined,
-        thus is set to None?
+        Does this set of configurations have a true energy that is undefined
+        (i.e. thus is set to None)?
 
         -----------------------------------------------------------------------
         Returns:
@@ -102,7 +102,9 @@ class ConfigurationSet(list):
         """
         Remove configurations in this set with no true energy
         """
-        for idx in reversed(range(len(self))):  # Enumerate backwards
+
+        # Delete in reverse order to preserve indexing once and item is deleted
+        for idx in reversed(range(len(self))):
             if self[idx].energy.true is None:
                 del self[idx]
 
@@ -113,9 +115,9 @@ class ConfigurationSet(list):
 
     def t_min(self, from_idx: int) -> float:
         """
-        Determine the minimum time for a slice of these configurations,
-        if a time is not specified for a frame or there aren't enough frames
-        then return None.
+        Determine the minimum time for a slice (portion) of these
+        configurations, if a time is not specified for a frame or there aren't
+        enough frames then return 0.
 
         -----------------------------------------------------------------------
         Arguments:

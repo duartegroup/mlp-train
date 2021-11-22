@@ -128,7 +128,7 @@ class MaxAtomicEnvDistance(SelectionMethod):
 
         -----------------------------------------------------------------------
         Arguments:
-            threshold:
+            threshold: Value below which a configuration will be selected
         """
         super().__init__()
 
@@ -154,7 +154,7 @@ class MaxAtomicEnvDistance(SelectionMethod):
         if len(mlp.training_data) == 0:
             logger.warning('Have no training data - unable to determine '
                            'criteria')
-            return
+            return None
 
         self._k_vec = soap_kernel_vector(configuration,
                                          configurations=mlp.training_data)
