@@ -182,6 +182,9 @@ class MLPotential(ABC):
         al_train(self, method_name=method_name, **kwargs)
         self.training_data.save(f'{self.name}_al.npz')
 
+        # Save only the structure of each configuration as a .xyz file
+        self.training_data.save_xyz(f'{self.name}_al.xyz',
+                                    true=False, predicted=False)
         return None
 
     def set_atomic_energies(self,
