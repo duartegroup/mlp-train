@@ -82,6 +82,24 @@ class System:
 
         return configuration
 
+    @property
+    def configuration(self) -> 'mltrain.Configuration':
+        """
+        Single configuration for this system
+
+        -----------------------------------------------------------------------
+        Returns:
+            (mltrain.Configuration):
+        """
+
+        if len(self.molecules) == 1:
+            return self.random_configuration(with_intra=False)
+
+        else:
+            raise NotImplementedError("A single configuration for a system "
+                                      "with > 1 molecule(s) is not implemented"
+                                      " Call random_configuration()")
+
     def add_molecule(self,
                      molecule: 'mltrain.Molecule'
                      ) -> None:

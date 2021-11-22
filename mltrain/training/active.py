@@ -112,7 +112,7 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
         curr_n_train = mlp.n_train
 
         _add_active_configs(mlp,
-                            init_config=(mlp.training_data[0] if fix_init_config
+                            init_config=(mlp.system.configuration if fix_init_config
                                          else mlp.training_data.lowest_energy),
                             selection_method=selection_method,
                             n_configs=n_configs_iter,
