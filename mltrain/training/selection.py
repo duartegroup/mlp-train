@@ -157,7 +157,8 @@ class MaxAtomicEnvDistance(SelectionMethod):
             return None
 
         self._k_vec = soap_kernel_vector(configuration,
-                                         configurations=mlp.training_data)
+                                         configurations=mlp.training_data,
+                                         zeta=8)
         return None
 
     @property
