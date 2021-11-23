@@ -180,11 +180,10 @@ class MLPotential(ABC):
             **kwargs:  Keyword arguments passed to mlt.training.active.train()
         """
         al_train(self, method_name=method_name, **kwargs)
-        self.training_data.save(f'{self.name}_al.npz')
 
-        # Save only the structure of each configuration as a .xyz file
-        self.training_data.save_xyz(f'{self.name}_al.xyz',
-                                    true=False, predicted=False)
+        for file_extension in ('npz', 'xyz'):
+            self.training_data.save(f'{self.name}_al.{file_extension}')
+
         return None
 
     def set_atomic_energies(self,

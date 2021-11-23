@@ -157,6 +157,8 @@ class GAP(MLPotential):
             raise RuntimeError(f'GAP train errored with:\n '
                                f'{err.decode()}\n'
                                f'{" ".join(self._train_command)}')
+
+        os.remove(f'{self.name}_data.xyz')
         return None
 
 
