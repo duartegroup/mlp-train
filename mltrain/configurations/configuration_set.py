@@ -116,8 +116,8 @@ class ConfigurationSet(list):
     def t_min(self, from_idx: int) -> float:
         """
         Determine the minimum time for a slice (portion) of these
-        configurations, if a time is not specified for a frame or there aren't
-        enough frames then return 0.
+        configurations, if a time is not specified for a frame then assume
+        it was generated at 'zero' time
 
         -----------------------------------------------------------------------
         Arguments:
@@ -128,7 +128,7 @@ class ConfigurationSet(list):
         """
         if len(self) < from_idx:
             logger.warning('Insufficient data to determine minimum time '
-                           f'from index {from_idx} from the end')
+                           f'from index {from_idx}')
             return 0.0
 
         return min(c.time if c.time is not None else 0.0
@@ -143,7 +143,7 @@ class ConfigurationSet(list):
 
         -----------------------------------------------------------------------
         Arguments:
-            value:
+            value: Configuration
         """
 
         if value is None:
