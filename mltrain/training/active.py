@@ -1,7 +1,10 @@
+from copy import deepcopy
+from threading import Thread
 from typing import Optional
 from multiprocessing import Pool
 from mltrain.config import Config
 from mltrain.md import run_mlp_md
+from mltrain.configurations import Trajectory
 from mltrain.training.selection import SelectionMethod, AbsDiffE
 from mltrain.configurations import ConfigurationSet
 from mltrain.log import logger
@@ -106,10 +109,10 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
     # Run the active learning loop, running iterative GAP-MD
     for iteration in range(max_active_iters):
 
-        curr_n_configs = len(mlp.training_data)
+        curr_n_train = mlp.n_train
 
         _add_active_configs(mlp,
-                            init_config=(mlp.training_data[0] if fix_init_config
+                            init_config=(mlp.system.configuration if fix_init_config
                                          else mlp.training_data.lowest_energy),
                             selection_method=selection_method,
                             n_configs=n_configs_iter,
@@ -118,17 +121,21 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
                             max_time=max_active_time,
                             bbond_energy=bbond_energy,
                             fbond_energy=fbond_energy,
-                            init_temp=init_active_temp)
+                            init_temp=init_active_temp,
+                            extra_time=mlp.training_data.t_min(-n_configs_iter))
 
         # Active learning finds no configurations,,
-        if len(mlp.training_data) == curr_n_configs and iteration > min_active_iters:
+        if mlp.n_train == curr_n_train and iteration >= min_active_iters:
             logger.info('No AL configurations found. Final dataset size '
-                        f'= {curr_n_configs} Active learning = DONE')
+                        f'= {curr_n_train} Active learning = DONE')
             break
 
-        # If required, remove high-lying energy configuration from the data
+        # If required, remove high-lying energy configurations from the data
         if max_e_threshold is not None:
             mlp.training_data.remove_above_e(max_e_threshold)
+
+        if mlp.training_data.has_a_none_energy:
+            mlp.training_data.remove_none_energy()
 
         mlp.train()
 
@@ -145,20 +152,26 @@ def _add_active_configs(mlp,
     Add a number (n_configs) of configurations to the current training data
     based on active learning selection of MLP-MD generated configurations
     """
-    if int(n_configs) < int(Config.n_cores):
+    if Config.n_cores > n_configs and Config.n_cores % n_configs != 0:
         raise NotImplementedError('Active learning is only implemented using '
-                                  'one core for each process. Please use '
-                                  'n_configs >= mlt.Config.n_cores')
+                                  'an multiple of the number n_configs_iter. '
+                                  f'Please use n*{n_configs} cores.')
+
+    n_processes = min(n_configs, Config.n_cores)
+    n_cores_pp = max(Config.n_cores // n_configs, 1)
+    logger.info('Searching for "active" configurations with '
+                f'{n_processes} processes using {n_cores_pp} cores / process')
 
     configs = ConfigurationSet()
-    logger.info('Searching for "active" configurations with '
-                f'{Config.n_cores} processes')
 
-    with Pool(processes=Config.n_cores) as pool:
+    with Pool(processes=n_processes) as pool:
 
         results = [pool.apply_async(_gen_active_config,
-                                    args=(init_config, mlp, selection_method),
-                                    kwds=kwargs)
+                                    args=(init_config.copy(),
+                                          mlp.copy(),
+                                          selection_method.copy(),
+                                          n_cores_pp),
+                                    kwds=deepcopy(kwargs))
                    for _ in range(n_configs)]
 
         for result in results:
@@ -172,6 +185,9 @@ def _add_active_configs(mlp,
                 logger.error(f'Raised an exception in selection: \n{err}')
                 continue
 
+    if 'method_name' in kwargs and configs.has_a_none_energy:
+        configs.single_point(method_name=kwargs.get('method_name'))
+
     mlp.training_data += configs
     return None
 
@@ -179,6 +195,7 @@ def _add_active_configs(mlp,
 def _gen_active_config(config:      'mltrain.Configuration',
                        mlp:         'mltrain.potentials._base.MLPotential',
                        selector:    'mltrain.training.selection.SelectionMethod',
+                       n_cores:     int,
                        max_time:    float,
                        method_name: str,
                        **kwargs
@@ -231,7 +248,7 @@ def _gen_active_config(config:      'mltrain.Configuration',
                       mlp=mlp,
                       temp=temp if curr_time > 0 else i_temp,
                       dt=0.5,
-                      interval=max(1, md_time//5),   # Generate ~10 frames
+                      interval=max(1, 2*md_time//selector.n_backtrack),
                       fs=md_time,
                       n_cores=1,
                       **kwargs)
@@ -239,7 +256,7 @@ def _gen_active_config(config:      'mltrain.Configuration',
     traj.t0 = extra_time  # Increment the initial time (t0)
 
     # Evaluate the selector on the final frame
-    selector(traj.final_frame, mlp, method_name=method_name)
+    selector(traj.final_frame, mlp, method_name=method_name, n_cores=n_cores)
 
     if selector.select:
         if traj.final_frame.energy.true is None:
@@ -248,16 +265,18 @@ def _gen_active_config(config:      'mltrain.Configuration',
         return traj.final_frame
 
     if selector.too_large:
+
         logger.warning('Backtracking in the trajectory to find a suitable '
-                       'configuration')
-        # Stride through only 10 frames to prevent very slow backtracking
-        for frame in reversed(traj[::max(1, len(traj)//10)]):
-            selector(frame, mlp, method_name=method_name)
+                       f'configuration in {selector.n_backtrack} steps')
+        stride = max(1, len(traj)//selector.n_backtrack)
+
+        for frame in reversed(traj[::stride]):
+            selector(frame, mlp, method_name=method_name, n_cores=n_cores)
 
             if selector.select:
                 return frame
 
-        logger.error('Failed to find a suitable configuration when backtracking')
+        logger.error('Failed to backtrack to a suitable configuration')
         return frame
 
     if curr_time + md_time > max_time:
@@ -268,7 +287,7 @@ def _gen_active_config(config:      'mltrain.Configuration',
     curr_time += md_time
 
     # If the prediction is within the threshold then call this function again
-    return _gen_active_config(config, mlp, selector, max_time, method_name,
+    return _gen_active_config(config, mlp, selector, n_cores, max_time, method_name,
                               temp=temp,
                               curr_time=curr_time,
                               n_calls=n_calls+1,
@@ -283,7 +302,7 @@ def _set_init_training_configs(mlp, init_configs, method_name) -> None:
                     f'all with defined energy')
         init_configs.single_point(method_name=method_name)
 
-    mlp.training_data = init_configs
+    mlp.training_data += init_configs
 
     return None
 
@@ -326,16 +345,17 @@ def _gen_and_set_init_training_configs(mlp, method_name, num) -> None:
                     f'minimum distance of {dist:.2f}')
 
     # Generate the initial configurations
-    while len(mlp.training_data) < num:
+    init_configs = ConfigurationSet()
+    while len(init_configs) < num:
         try:
             config = mlp.system.random_configuration(min_dist=dist,
                                                      with_intra=True)
-            mlp.training_data.append(config)
+            init_configs.append(config)
 
         except RuntimeError:
             continue
 
     logger.info(f'Added {num} configurations with min dist = {dist:.3f} Å')
-
-    mlp.training_data.single_point(method_name)
+    init_configs.single_point(method_name)
+    mlp.training_data += init_configs
     return None

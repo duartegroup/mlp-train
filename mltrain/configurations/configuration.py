@@ -183,3 +183,6 @@ class Configuration(AtomCollection):
             return eq and rmsd < 1E-10
 
         return eq
+
+    def copy(self) -> 'Configuration':
+        return deepcopy(self)

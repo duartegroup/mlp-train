@@ -48,6 +48,8 @@ class ACE(MLPotential):
 
             raise RuntimeError(f'ACE train errored with:\n{err.decode()}\n')
 
+        for filename in (f'{self.name}_data.xyz', f'{self.name}.jl'):
+            os.remove(filename)
         return None
 
     @property

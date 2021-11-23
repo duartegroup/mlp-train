@@ -86,6 +86,54 @@ class ConfigurationSet(list):
         energies = [e if e is not None else np.inf for e in self.true_energies]
         return self[np.argmin(energies)]
 
+    @property
+    def has_a_none_energy(self) -> bool:
+        """
+        Does this set of configurations have a true energy that is undefined
+        (i.e. thus is set to None)?
+
+        -----------------------------------------------------------------------
+        Returns:
+            (bool):
+        """
+        return any(c.energy.true is None for c in self)
+
+    def remove_none_energy(self) -> None:
+        """
+        Remove configurations in this set with no true energy
+        """
+
+        # Delete in reverse order to preserve indexing once and item is deleted
+        for idx in reversed(range(len(self))):
+            if self[idx].energy.true is None:
+                del self[idx]
+
+        return None
+
+    def remove_above_e(self, energy: float) -> None:
+        raise NotImplementedError
+
+    def t_min(self, from_idx: int) -> float:
+        """
+        Determine the minimum time for a slice (portion) of these
+        configurations, if a time is not specified for a frame then assume
+        it was generated at 'zero' time
+
+        -----------------------------------------------------------------------
+        Arguments:
+            from_idx: Index from which to consider the minimum time
+
+        Returns:
+            (float): Time in fs
+        """
+        if len(self) < from_idx:
+            logger.warning('Insufficient data to determine minimum time '
+                           f'from index {from_idx}')
+            return 0.0
+
+        return min(c.time if c.time is not None else 0.0
+                   for c in self[from_idx:])
+
     def append(self,
                value: Optional['mltrain.Configuration']
                ) -> None:
@@ -95,7 +143,7 @@ class ConfigurationSet(list):
 
         -----------------------------------------------------------------------
         Arguments:
-            value:
+            value: Configuration
         """
 
         if value is None:
@@ -418,8 +466,7 @@ class ConfigurationSet(list):
         Arguments
             function: A method to calculate energy and forces on a configuration
         """
-        logger.info(f'Running calculations over {len(self)} configurations\n'
-                    f'Using {Config.n_cores} total cores')
+        logger.info(f'Running calculations over {len(self)} configurations')
 
         os.environ['OMP_NUM_THREADS'] = '1'
         os.environ['MLK_NUM_THREADS'] = '1'
@@ -427,7 +474,12 @@ class ConfigurationSet(list):
         start_time = time()
         results = []
 
-        with Pool(processes=Config.n_cores) as pool:
+        n_processes = min(len(self), Config.n_cores)
+        n_cores_pp = max(Config.n_cores // len(self), 1)
+        kwargs['n_cores'] = n_cores_pp
+        logger.info(f'Running {n_processes} processes; {n_cores_pp} cores each')
+
+        with Pool(processes=n_processes) as pool:
 
             for _, config in enumerate(self):
                 result = pool.apply_async(func=function,

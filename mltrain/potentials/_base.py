@@ -1,4 +1,5 @@
 import mltrain as mlt
+from copy import deepcopy
 from autode.atoms import Atom
 from mltrain.log import logger
 from mltrain.configurations.configuration import Configuration
@@ -142,6 +143,28 @@ class MLPotential(ABC):
             raise ValueError(f'Cannot set the training data for {self.name} '
                              f'with {value}')
 
+    @property
+    def n_train(self) -> int:
+        """
+        Number of training configurations used to train this potential
+
+        -----------------------------------------------------------------------
+        Returns:
+            (int):
+        """
+        return len(self._training_data)
+
+    @property
+    def n_eval(self) -> int:
+        """
+        Number of reference evaluations used to generate this potential
+
+        -----------------------------------------------------------------------
+        Returns:
+            (int):
+        """
+        return sum(c.n_ref_evals for c in self._training_data)
+
     def al_train(self,
                  method_name: str,
                  **kwargs
@@ -157,7 +180,9 @@ class MLPotential(ABC):
             **kwargs:  Keyword arguments passed to mlt.training.active.train()
         """
         al_train(self, method_name=method_name, **kwargs)
-        self.training_data.save(f'{self.name}_al.npz')
+
+        for file_extension in ('npz', 'xyz'):
+            self.training_data.save(f'{self.name}_al.{file_extension}')
 
         return None
 
@@ -194,3 +219,6 @@ class MLPotential(ABC):
             self.atomic_energies[symbol] = config.energy.true
 
         return None
+
+    def copy(self) -> 'MLPotential':
+        return deepcopy(self)
