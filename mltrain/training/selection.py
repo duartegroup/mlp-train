@@ -119,7 +119,7 @@ class AbsDiffE(SelectionMethod):
 class MaxAtomicEnvDistance(SelectionMethod):
 
     def __init__(self,
-                 threshold: float = 0.99):
+                 threshold: float = 0.999):
         """
         Selection criteria based on the maximum distance between any of the
         training set and a new configuration. Evaluated based on the similarity
