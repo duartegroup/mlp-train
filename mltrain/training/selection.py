@@ -197,13 +197,110 @@ class MaxAtomicEnvDistance(SelectionMethod):
 class AccAbsDiffE(AbsDiffE):
     """
     Accelerated absolute energy difference method (|E_MLP - E_true| > E_T)
-    by generating a regression model between SOAP vector similarity (cheap to
-    calculate) and the absolute difference in total energies (slow)
+    by using the mean of the max(K*) between SOAP vector similarity (cheap to
+    calculate) in a window of abs difference energies, provided the
+    variance isn't too large
     """
 
     def __init__(self,
+                 e_thresh:              float = 0.1,
+                 min_var:               float = 1E-5,
+                 max_abs_diff_included: float = 0.5):
+        """
+        Accelerated absdiff method. Selection based on atomic environment
+        similarity is turned on when R^2 reaches a threshold (min_r_sq)
+
+        -----------------------------------------------------------------------
+        Arguments:
+            e_thresh: E_T
+
+            min_r_sq: R^2 of the regression model below which |E_MLP - E_true|
+                      is used as the selection criteria.
+        """
+        super().__init__(e_thresh=e_thresh)
+
+        self._min_var = min_var
+        self._max_abs_diff_included = max_abs_diff_included
+        self._max_ks = []
+        self._soap_selector = MaxAtomicEnvDistance()
+
+    def __call__(self,
+                 configuration: 'mltrain.Configuration',
+                 mlp:           'mltrain.potentials.MLPotential',
+                 **kwargs) -> None:
+        """
+        Evaluate the selection criteria
+
+        -----------------------------------------------------------------------
+        Arguments:
+            configuration: Configuration to evaluate on
+
+            mlp: Machine learning potential with some associated training data
+        """
+        self._update_ks(mlp.training_data)
+
+        if self._variance_not_too_large:
+            self._soap_selector.threshold = np.mean(self._max_ks)
+            self._soap_selector(configuration, mlp, **kwargs)
+
+        else:
+            super().__call__(configuration, mlp, **kwargs)
+
+        return None
+
+    @property
+    def select(self) -> bool:
+        """Should this configuration be selected?"""
+        if self._variance_not_too_large:
+            return self._soap_selector.select
+
+        return super().select
+
+    @property
+    def too_large(self) -> bool:
+        """Is the error too large for this configuration to be selected"""
+        if self._variance_not_too_large:
+            return self._soap_selector.too_large
+
+        return super().too_large
+
+    def _update_ks(self, configurations) -> None:
+        """Update the values of max(k*) considering a configuration and the
+        ones previous upon which it was selected, providing E_MLP - E_true
+        has been evaluated"""
+
+        for idx, cfg in enumerate(configurations):
+
+            if not cfg.energy.has_true_and_predicted:
+                continue
+
+            if np.abs(cfg.energy.delta) < self._max_abs_diff_included:
+
+                # Compute max(k*) over the configuration previous to this one
+                max_k = np.max(soap_kernel_vector(cfg, configurations[:idx]))
+                self._max_ks.append(max_k)
+
+        return None
+
+    @property
+    def _variance_not_too_large(self) -> bool:
+        """Is the variance too large for the SOAP selection method?"""
+        if len(self._max_ks) == 0:
+            return False
+
+        logger.info(f'var = {np.var(self._max_ks):.4}, T = {self._min_var:.4}')
+        return np.var(self._max_ks) < self._min_var
+
+
+class LinAccAbsDiffE(AbsDiffE):
+    """
+    Accelerated absolute energy difference method (|E_MLP - E_true| > E_T)
+    by generating a regression model between SOAP vector similarity (cheap to
+    calculate) and the absolute difference in total energies (slow)
+    """
+    def __init__(self,
                  e_thresh: float = 0.1,
-                 min_r_sq: float = 0.9):
+                 min_r_sq: float = 0.99):
         """
         Accelerated absdiff method. Selection based on atomic environment
         similarity is turned on when R^2 reaches a threshold (min_r_sq)
@@ -259,8 +356,6 @@ class AccAbsDiffE(AbsDiffE):
             y.append(np.abs(cfg.energy.delta))
             x.append(np.max(soap_kernel_vector(cfg, configurations[:idx])))
 
-        print(x)
-        print(y)
         return np.array(x), np.array(y)
 
     @property
