@@ -41,7 +41,7 @@ def test_selection_on_structures():
 
     assert len(configs) == 3
 
-    selector = MaxAtomicEnvDistance(threshold=0.9)
+    selector = MaxAtomicEnvDistance(threshold=0.91)
     mlp = mlt.potentials.GAP('blank')
     mlp.training_data = configs
 
