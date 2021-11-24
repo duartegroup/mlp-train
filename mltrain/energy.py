@@ -39,3 +39,14 @@ class Energy:
             raise ValueError('Cannot calculate ∆E. No predicted energy')
 
         return self.true - self.predicted
+
+    @property
+    def has_true_and_predicted(self) -> bool:
+        """
+        Does this energy have both true and predicted values
+
+        -----------------------------------------------------------------------
+        Returns:
+            (bool):
+        """
+        return self.true is not None and self.predicted is not None

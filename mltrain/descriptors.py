@@ -41,7 +41,8 @@ def soap_matrix(*args:    Union[mlt.ConfigurationSet, mlt.Configuration],
             configurations.extend([c for c in item])
 
         else:
-            raise ValueError(f'Could not calculate a SOAP vector for {item}')
+            raise ValueError(f'Could not calculate a SOAP vector for {item}. '
+                             f'Not the correct type')
 
     logger.info(f'Calculating SOAP descriptor for {len(configurations)}'
                 f' configuration(s)')
@@ -53,9 +54,9 @@ def soap_matrix(*args:    Union[mlt.ConfigurationSet, mlt.Configuration],
     # Compute the average SOAP vector where the expansion coefficients are
     # calculated over averages over each site
     soap_desc = SOAP(species=elements,
-                     rcut=5,             # Distance cutoff (Å)
-                     nmax=6,             # Maximum order of the radial
-                     lmax=6,             # Maximum order of the angular
+                     rcut=4,             # Distance cutoff (Å)
+                     nmax=8,             # Maximum order of the radial
+                     lmax=4,             # Maximum order of the angular
                      average='inner')
 
     soap_vec = soap_desc.create([conf.ase_atoms for conf in configurations])
@@ -70,7 +71,7 @@ def soap_matrix(*args:    Union[mlt.ConfigurationSet, mlt.Configuration],
 
 def soap_kernel_vector(configuration:  mlt.Configuration,
                        configurations: mlt.ConfigurationSet,
-                       zeta:           int = 4):
+                       zeta:           int = 8):
     """
     Calculate the kernel matrix between a set of configurations where the
     kernel is:
