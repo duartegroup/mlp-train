@@ -458,6 +458,16 @@ class ConfigurationSet(list):
         logger.info(f'Current number of configurations is {len(self)}')
         return self
 
+    def __getitem__(self, index):
+        """Get an item or a set of items from this configuration set, defined
+        by an index or a slice. Obeys usual list indexing"""
+
+        if isinstance(index, slice):
+            # Required so slices have the same type
+            return self.__class__(*super().__getitem__(index))
+
+        return super().__getitem__(index)
+
     def _run_parallel_method(self, function, **kwargs):
         """Run a set of electronic structure calculations on this set
         in parallel
