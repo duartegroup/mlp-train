@@ -101,3 +101,25 @@ def test_configurations_load_xyz():
     for config in configs:
         assert config.charge == 0
         assert config.mult == 2
+
+
+def test_remove_energy_above():
+
+    c1 = Configuration(atoms=[Atom('H'), Atom('H', x=0.7)])
+    c1.energy.true = -1.0
+
+    c2 = Configuration(atoms=[Atom('H'), Atom('H', x=0.5)])
+    c2.energy.true = -0.5
+
+    configs = ConfigurationSet(c1, c2)
+
+    # With a threshold of 1 eV both configurations should remain after pruning
+    configs.remove_above_e(1.0)
+    print(configs[0].energy.true)
+    assert len(configs) == 2
+
+    # but with a tighter 0.2 eV threshold it should remove the higher one
+    configs.remove_above_e(0.2)
+    assert len(configs) == 1
+
+    assert np.isclose(configs[0].energy.true, -1.0, atol=1E-10)

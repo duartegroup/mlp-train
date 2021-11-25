@@ -110,8 +110,34 @@ class ConfigurationSet(list):
 
         return None
 
-    def remove_above_e(self, energy: float) -> None:
-        raise NotImplementedError
+    def remove_above_e(self,
+                       energy: float,
+                       kind:   str = 'true') -> None:
+        """
+        Remove configurations in this set if they have an energy above a
+        threshold energy. Will also remove any None energies
+
+        -----------------------------------------------------------------------
+        Arguments:
+            energy: Threshold energy
+
+            kind: Either true or predicted
+        """
+        if kind not in ('true', 'predicted'):
+            raise ValueError('Must remove based on either true or predicted '
+                             f'energies. Had kind={kind}')
+
+        energies = [getattr(c.energy, kind) for c in self]
+        non_none_energies = [e if e is not None else np.inf for e in energies]
+        min_energy = min(non_none_energies)
+
+        for idx, configuration in enumerate(self):
+
+            if non_none_energies[idx] - min_energy + 1E-10 > energy:
+                setattr(configuration.energy, kind, None)
+
+        self.remove_none_energy()
+        return None
 
     def t_min(self, from_idx: int) -> float:
         """
