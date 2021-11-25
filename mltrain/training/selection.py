@@ -280,6 +280,7 @@ class AccAbsDiffE(AbsDiffE):
                 max_k = np.max(soap_kernel_vector(cfg, configurations[:idx]))
                 self._max_ks.append(max_k)
 
+        self._max_ks = list(set(self._max_ks))  # Discard any duplicates
         return None
 
     @property
