@@ -25,9 +25,8 @@ def parity_plot(config_set: 'mltrain.ConfigurationSet',
 
     ---------------------------------------------------------------------------
     Arguments:
-        config_set:
+        config_set: Set of configurations
 
-    Keyword Arguments:
         name:
     """
     fig, ax = plt.subplots(nrows=2, ncols=2,
@@ -116,16 +115,7 @@ def _add_energy_parity_plot(config_set, axis) -> None:
               c='k',
               lw=1.0)
 
-    slope, intercept, r, p, se = linregress(xs, ys)
-    axis.annotate(f'$R^2$ = {r**2:.3f},\n'
-                  f' MAD = {np.mean(np.abs(xs - ys)):.3f} eV',
-                  xy=(1, 0),
-                  xycoords='axes fraction',
-                  fontsize=12,
-                  xytext=(-5, 5),
-                  textcoords='offset points',
-                  ha='right',
-                  va='bottom')
+    _add_r_sq_and_mad(axis, xs=xs, ys=ys)
 
     axis.set_xlim(min_e, max_e)
     axis.set_ylim(min_e, max_e)
@@ -188,10 +178,29 @@ def _add_force_magnitude_plot(config_set, axis) -> None:
                 cmap=plt.get_cmap('Blues'),
                 norm=mpl.colors.LogNorm())
 
+    _add_r_sq_and_mad(axis, xs=np.array(xs), ys=np.array(ys))
+
     axis.set_ylim(min_f, max_f)
     axis.set_xlim(min_f, max_f)
 
     axis.set_xlabel('$|{\\bf{F}}|_{true}$ / eV Å$^{-1}$')
     axis.set_ylabel('$|{\\bf{F}}|_{predicted}$ / eV Å$^{-1}$')
+
+    return None
+
+
+def _add_r_sq_and_mad(axis, xs, ys):
+    """Add an annotation of the correlation and MAD between the data"""
+
+    slope, intercept, r, p, se = linregress(xs, ys)
+    axis.annotate(f'$R^2$ = {r**2:.3f},\n'
+                  f' MAD = {np.mean(np.abs(xs - ys)):.3f} eV',
+                  xy=(1, 0),
+                  xycoords='axes fraction',
+                  fontsize=12,
+                  xytext=(-5, 5),
+                  textcoords='offset points',
+                  ha='right',
+                  va='bottom')
 
     return None
