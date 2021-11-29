@@ -194,35 +194,31 @@ class MaxAtomicEnvDistance(SelectionMethod):
         return len(self._k_vec)
 
 
-class AccAbsDiffE(AbsDiffE):
+class AccAbsDiffE(SelectionMethod):
     """
     Accelerated absolute energy difference method (|E_MLP - E_true| > E_T)
     by using the mean of the max(K*) between SOAP vector similarity (cheap to
-    calculate) in a window of abs difference energies, provided the
-    variance isn't too large
+    calculate) in a window of abs difference energies
     """
 
     def __init__(self,
                  e_thresh:              float = 0.1,
-                 min_var:               float = 1E-5,
-                 max_abs_diff_included: float = 0.5):
+                 k_thresh:              float = 0.999,
+                 min_n_train:           int = 50):
         """
-        Accelerated absdiff method. Selection based on atomic environment
-        similarity is turned on when R^2 reaches a threshold (min_r_sq)
+        Accelerated absdiff method
 
         -----------------------------------------------------------------------
         Arguments:
             e_thresh: E_T
 
-            min_r_sq: R^2 of the regression model below which |E_MLP - E_true|
-                      is used as the selection criteria.
         """
-        super().__init__(e_thresh=e_thresh)
+        super().__init__()
 
-        self._min_var = min_var
-        self._max_abs_diff_included = max_abs_diff_included
-        self._max_ks = []
-        self._soap_selector = MaxAtomicEnvDistance()
+        self._n_train = 0
+        self.min_n_train = min_n_train
+        self._absdiffe_selector = AbsDiffE(e_thresh=e_thresh)
+        self._k_selector = MaxAtomicEnvDistance(threshold=k_thresh)
 
     def __call__(self,
                  configuration: 'mltrain.Configuration',
@@ -237,60 +233,34 @@ class AccAbsDiffE(AbsDiffE):
 
             mlp: Machine learning potential with some associated training data
         """
-        self._update_ks(mlp.training_data)
+        self._n_train = mlp.n_train
 
-        if self._variance_not_too_large:
-            self._soap_selector.threshold = np.mean(self._max_ks)
-            self._soap_selector(configuration, mlp, **kwargs)
+        if self._use_fast:
+            return self._absdiffe_selector(configuration, mlp, **kwargs)
 
         else:
-            super().__call__(configuration, mlp, **kwargs)
+            return self._k_selector(configuration, mlp, **kwargs)
 
-        return None
+    @property
+    def _use_fast(self) -> bool:
+        """Should the fast method be used?"""
+        return self._n_train > self.min_n_train
 
     @property
     def select(self) -> bool:
         """Should this configuration be selected?"""
-        if self._variance_not_too_large:
-            return self._soap_selector.select
-
-        return super().select
+        sel = self._absdiffe_selector if self._use_fast else self._k_selector
+        return sel.select
 
     @property
     def too_large(self) -> bool:
         """Is the error too large for this configuration to be selected"""
-        if self._variance_not_too_large:
-            return self._soap_selector.too_large
-
-        return super().too_large
-
-    def _update_ks(self, configurations) -> None:
-        """Update the values of max(k*) considering a configuration and the
-        ones previous upon which it was selected, providing E_MLP - E_true
-        has been evaluated"""
-
-        for idx, cfg in enumerate(configurations):
-
-            if not cfg.energy.has_true_and_predicted:
-                continue
-
-            if np.abs(cfg.energy.delta) < self._max_abs_diff_included:
-
-                # Compute max(k*) over the configuration previous to this one
-                max_k = np.max(soap_kernel_vector(cfg, configurations[:idx]))
-                self._max_ks.append(max_k)
-
-        self._max_ks = list(set(self._max_ks))  # Discard any duplicates
-        return None
+        sel = self._absdiffe_selector if self._use_fast else self._k_selector
+        return sel.too_large
 
     @property
-    def _variance_not_too_large(self) -> bool:
-        """Is the variance too large for the SOAP selection method?"""
-        if len(self._max_ks) == 0:
-            return False
-
-        logger.info(f'var = {np.var(self._max_ks):.4}, T = {self._min_var:.4}')
-        return np.var(self._max_ks) < self._min_var
+    def n_backtrack(self) -> int:
+        return 100 if self._use_fast else 10
 
 
 class LinAccAbsDiffE(AbsDiffE):
