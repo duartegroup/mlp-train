@@ -115,7 +115,7 @@ def _add_energy_parity_plot(config_set, axis) -> None:
               c='k',
               lw=1.0)
 
-    _add_r_sq_and_mad(axis, xs=xs, ys=ys)
+    _add_r_sq_and_mad(axis, xs=xs, ys=ys, units='eV')
 
     axis.set_xlim(min_e, max_e)
     axis.set_ylim(min_e, max_e)
@@ -178,7 +178,7 @@ def _add_force_magnitude_plot(config_set, axis) -> None:
                 cmap=plt.get_cmap('Blues'),
                 norm=mpl.colors.LogNorm())
 
-    _add_r_sq_and_mad(axis, xs=np.array(xs), ys=np.array(ys))
+    _add_r_sq_and_mad(axis, np.array(xs), np.array(ys), units='eV Å$^{-1}$')
 
     axis.set_ylim(min_f, max_f)
     axis.set_xlim(min_f, max_f)
@@ -189,12 +189,12 @@ def _add_force_magnitude_plot(config_set, axis) -> None:
     return None
 
 
-def _add_r_sq_and_mad(axis, xs, ys):
+def _add_r_sq_and_mad(axis, xs, ys, units):
     """Add an annotation of the correlation and MAD between the data"""
 
     slope, intercept, r, p, se = linregress(xs, ys)
     axis.annotate(f'$R^2$ = {r**2:.3f},\n'
-                  f' MAD = {np.mean(np.abs(xs - ys)):.3f} eV',
+                  f' MAD = {np.mean(np.abs(xs - ys)):.3f} {units}',
                   xy=(1, 0),
                   xycoords='axes fraction',
                   fontsize=12,
