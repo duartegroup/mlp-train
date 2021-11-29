@@ -7,6 +7,7 @@ from mltrain.config import Config
 from mltrain.log import logger
 from mltrain.box import Box
 from mltrain.utils import work_in_tmp_dir
+from mltrain.bias import Bias
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.md.langevin import Langevin
@@ -24,6 +25,7 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
                init_temp:     Optional[float] = None,
                fbond_energy:  Optional[dict] = None,
                bbond_energy:  Optional[dict] = None,
+               bias:          Optional['mltrain.bias.Bias'] = None,
                **kwargs
                ) -> 'mltrain.Trajectory':
     """
@@ -59,6 +61,8 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
         fbond_energy (dict | None): As bbond_energy but in the direction to
                          form a bond
 
+        bias (mltrain.bias.Bias):
+
         n_cores (int): Number of cores to use
 
     Returns:
@@ -79,6 +83,7 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
 
     ase_atoms = configuration.ase_atoms
     ase_atoms.set_calculator(mlp.ase_calculator)
+    ase_atoms.set_constraint(bias)
 
     _set_momenta(ase_atoms,
                  temp=init_temp if init_temp is not None else temp,
