@@ -217,8 +217,8 @@ class AccAbsDiffE(SelectionMethod):
 
         self._n_train = 0
         self.min_n_train = min_n_train
-        self._absdiffe_selector = AbsDiffE(e_thresh=e_thresh)
-        self._k_selector = MaxAtomicEnvDistance(threshold=k_thresh)
+        self._slow_selector = AbsDiffE(e_thresh=e_thresh)
+        self._fast_selector = MaxAtomicEnvDistance(threshold=k_thresh)
 
     def __call__(self,
                  configuration: 'mltrain.Configuration',
@@ -236,10 +236,9 @@ class AccAbsDiffE(SelectionMethod):
         self._n_train = mlp.n_train
 
         if self._use_fast:
-            return self._absdiffe_selector(configuration, mlp, **kwargs)
-
+            return self._fast_selector(configuration, mlp, **kwargs)
         else:
-            return self._k_selector(configuration, mlp, **kwargs)
+            return self._slow_selector(configuration, mlp, **kwargs)
 
     @property
     def _use_fast(self) -> bool:
@@ -249,13 +248,13 @@ class AccAbsDiffE(SelectionMethod):
     @property
     def select(self) -> bool:
         """Should this configuration be selected?"""
-        sel = self._absdiffe_selector if self._use_fast else self._k_selector
+        sel = self._fast_selector if self._use_fast else self._slow_selector
         return sel.select
 
     @property
     def too_large(self) -> bool:
         """Is the error too large for this configuration to be selected"""
-        sel = self._absdiffe_selector if self._use_fast else self._k_selector
+        sel = self._fast_selector if self._use_fast else self._slow_selector
         return sel.too_large
 
     @property
