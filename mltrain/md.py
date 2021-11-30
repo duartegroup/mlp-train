@@ -130,7 +130,7 @@ def _convert_ase_traj(filename: str) -> 'mltrain.Trajectory':
         config = Configuration()
         config.atoms = [ade.Atom(label) for label in atoms.symbols]
 
-        # Set the coordinate of every atom in the configuration
+        # Set the atom_pair_list of every atom in the configuration
         for i, position in enumerate(atoms.get_positions()):
             config.atoms[i].coord = position
 
