@@ -1,6 +1,7 @@
 from mltrain.log import logger
 from abc import ABC, abstractmethod
 import numpy as np
+from typing import Optional
 
 
 class Constraint:
@@ -19,84 +20,6 @@ class Constraint:
         """Method required for ASE but not used in ml-train"""
 
 
-class Bias(Constraint):
-    """Modifies the forces and energy of a set of ASE atoms under a bias"""
-
-    def __init__(self,
-                 reference: float,
-                 kappa: float,
-                 **kwargs):
-        """
-        Bias that modifies the forces and energy of a set of atoms under a
-        specified function.
-
-        e.g. bias = mlt.bias.Bias(to_average=[[0, 1]], reference=2, kappa=10)
-
-        -----------------------------------------------------------------------
-        Arguments:
-
-            reference: Value of the reference value, ξ_i, used in umbrella
-                       sampling
-
-            kappa: Value of the spring_const, κ, used in umbrella sampling
-
-        -------------------
-        Keyword Arguments:
-
-            {to_add, to_subtract, to_average}: (list) Indicies of the atoms
-            which are combined in some way to define the reaction coordinate
-        """
-        self.ref = reference
-        self.kappa = kappa
-
-        try:
-            assert len(kwargs) == 1
-
-        except AssertionError:
-            logger.error("Must specify one coordinate combination method")
-
-        if 'to_add' in kwargs:
-            self.rxn_coord = kwargs['to_add']
-            raise NotImplementedError("Addition reaction coordinate not yet "
-                                      "implemented")
-
-        elif 'to_subtract' in kwargs:
-            self.rxn_coord = kwargs['to_subtract']
-            raise NotImplementedError("Subtract reaction coordinate not yet "
-                                      "implemented")
-
-        elif 'to_average' in kwargs:
-            self.rxn_coord = kwargs['to_average']
-            func = AverageDistance()
-
-        else:
-            raise ValueError("Bias must specify one of to_add, to_subtract "
-                             "or to_average!")
-
-        self.bias_function = HarmonicPotential(func, self.ref, self.kappa)
-
-    def adjust_forces(self, atoms, forces):
-        """Adjust the forces of a set of atoms using a the gradient of the bias
-         function"""
-
-        bias = -self.bias_function.grad(self.rxn_coord, atoms)
-
-        forces[:] = forces[:] + bias
-
-        return None
-
-    def adjust_potential_energy(self, atoms):
-        """Adjust the energy of a set of atoms using the bias function"""
-
-        bias = self.bias_function(self.rxn_coord, atoms)
-
-        return bias
-
-    def adjust_positions(self, atoms, newpositions):
-        """Method required for ASE but not used in ml-train"""
-        return None
-
-
 class Function(ABC):
 
     @abstractmethod
@@ -110,27 +33,61 @@ class Function(ABC):
         """
 
 
-class HarmonicPotential(Function):
-    """Harmonic biasing potential"""
+class Bias(Constraint, Function):
+    """Modifies the forces and energy of a set of ASE atoms under a bias"""
 
     def __init__(self,
-                 func:  Function,
-                 s: float,
-                 kappa: float):
+                 kappa: float,
+                 reference: Optional[float] = None,
+                 **kwargs):
         """
+        Bias that modifies the forces and energy of a set of atoms under a
+        harmonic bias function.
+
         Harmonic biasing potential: ω = κ/2 (f(r) - s)^2
+
+        e.g. bias = mlt.bias.Bias(to_average=[[0, 1]], reference=2, kappa=10)
+
         -----------------------------------------------------------------------
         Arguments:
-            func: Function to transform the atom_pair_list
 
-            s: Reference value for the bias
+            kappa: Value of the spring_const, κ, used in umbrella sampling
 
-            kappa: Strength of the biasing potential
+            reference: Value of the reference value, ξ_i, used in umbrella
+                       sampling
+
+        -------------------
+        Keyword Arguments:
+
+            {to_add, to_subtract, to_average}: (list) Indicies of the atoms
+            which are combined in some way to define the reaction rxn_coord
         """
-
-        self.func = func
-        self.s = s
+        self.s = reference
         self.kappa = kappa
+
+        try:
+            assert len(kwargs) == 1
+
+        except AssertionError:
+            logger.error("Must specify one rxn_coord combination method")
+
+        if 'to_add' in kwargs:
+            self.rxn_coord = kwargs['to_add']
+            raise NotImplementedError("Addition reaction rxn_coord not yet "
+                                      "implemented")
+
+        elif 'to_subtract' in kwargs:
+            self.rxn_coord = kwargs['to_subtract']
+            raise NotImplementedError("Subtract reaction rxn_coord not yet "
+                                      "implemented")
+
+        elif 'to_average' in kwargs:
+            self.rxn_coord = kwargs['to_average']
+            self.func = AverageDistance()
+
+        else:
+            raise ValueError("Bias must specify one of to_add, to_subtract "
+                             "or to_average!")
 
     def __call__(self, atom_pair_list, atoms):
         """Value of the bias for set of atom pairs in atoms"""
@@ -142,6 +99,27 @@ class HarmonicPotential(Function):
 
         return self.kappa * self.func.grad(
             atom_pair_list, atoms) * (self.func(atom_pair_list, atoms) - self.s)
+
+    def adjust_potential_energy(self, atoms):
+        """Adjust the energy of a set of atoms using the bias function"""
+
+        bias = self.__call__(self.rxn_coord, atoms)
+
+        return bias
+
+    def adjust_forces(self, atoms, forces):
+        """Adjust the forces of a set of atoms using a the gradient of the bias
+         function"""
+
+        bias = -self.grad(self.rxn_coord, atoms)
+
+        forces[:] = forces[:] + bias
+
+        return None
+
+    def adjust_positions(self, atoms, newpositions):
+        """Method required for ASE but not used in ml-train"""
+        return None
 
 
 class AverageDistance(Function):

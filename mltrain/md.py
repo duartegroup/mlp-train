@@ -7,7 +7,6 @@ from mltrain.config import Config
 from mltrain.log import logger
 from mltrain.box import Box
 from mltrain.utils import work_in_tmp_dir
-from mltrain.bias import Bias
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.md.langevin import Langevin
