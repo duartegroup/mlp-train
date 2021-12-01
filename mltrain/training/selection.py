@@ -204,7 +204,7 @@ class AccAbsDiffE(SelectionMethod):
     def __init__(self,
                  e_thresh:              float = 0.1,
                  k_thresh:              float = 0.999,
-                 min_n_train:           int = 50):
+                 min_n_train:           int = 100):
         """
         Accelerated absdiff method
 
