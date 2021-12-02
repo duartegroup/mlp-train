@@ -18,6 +18,6 @@ __all__ = ['Configuration',
            'System',
            'Box',
            'md',
-           'selection']
+           'selection',
            'potentials',
            'Bias']
