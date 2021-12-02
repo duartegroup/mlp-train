@@ -4,6 +4,7 @@ from mltrain.molecule import Molecule
 from mltrain.system import System
 from mltrain.box import Box
 from mltrain.bias import Bias
+from mltrain.umbrella import UmbrellaSampling
 from mltrain import md
 from mltrain import potentials
 from mltrain.training import selection
@@ -17,7 +18,9 @@ __all__ = ['Configuration',
            'Molecule',
            'System',
            'Box',
+           'Bias',
+           'UmbrellaSampling',
            'md',
            'selection',
-           'potentials',
-           'Bias']
+           'potentials'
+           ]

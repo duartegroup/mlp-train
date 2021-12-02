@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-
 from mltrain.bias import Bias
 from mltrain.configurations import ConfigurationSet
 from mltrain.md import run_mlp_md
@@ -11,7 +10,7 @@ from scipy.optimize import curve_fit
 
 
 def _get_rxn_coords(atoms, atom_pair_list):
-    """Return the """
+    """Return the average distance between atoms in all m pairs"""
 
     euclidean_dists = [atoms.get_distance(i, j, mic=True)
                        for (i, j) in atom_pair_list]
@@ -104,6 +103,11 @@ class UmbrellaSampling:
             traj_idx = min(window_dists.keys(), key=window_dists.get)
 
             frames = frames + traj[traj_idx]
+
+        if len(frames) < num_windows:
+            logger.warning("Number of configurations extracted to run "
+                           "umbrella sampling < number of windows specified "
+                           "as at least two configurations were identical")
 
         return frames
 

@@ -62,7 +62,7 @@ class Bias(Constraint, Function):
             {to_add, to_subtract, to_average}: (list) Indices of the atoms
             which are combined in some way to define the reaction rxn_coord
         """
-        self.s = reference
+        self.ref = reference
         self.kappa = kappa
 
         if len(kwargs) != 1:
@@ -90,14 +90,14 @@ class Bias(Constraint, Function):
     def __call__(self, atom_pair_list, atoms):
         """Value of the bias for set of atom pairs in atoms"""
 
-        return 0.5 * self.kappa * (self.func(atom_pair_list, atoms) - self.s)**2
+        return 0.5 * self.kappa * (self.func(atom_pair_list, atoms) - self.ref)**2
 
     def grad(self, atom_pair_list, atoms):
         """Gradient of the biasing potential a set of atom pairs in atoms"""
 
         return (self.kappa
                 * self.func.grad(atom_pair_list, atoms)
-                * (self.func(atom_pair_list, atoms) - self.s))
+                * (self.func(atom_pair_list, atoms) - self.ref))
 
     def adjust_potential_energy(self, atoms):
         """Adjust the energy of a set of atoms using the bias function"""
@@ -145,7 +145,7 @@ class AverageDistance(Function):
         r_i,m:   i (= x, y or z) position of atom in pair m, m'
         ||r_m||: Euclidean distance between atoms in pair m, m'
         """
-        
+
         derivative = np.zeros(shape=(len(atoms), 3))
 
         num_pairs = len(atom_pair_list)
