@@ -3,6 +3,7 @@ from mltrain.config import Config
 from mltrain.molecule import Molecule
 from mltrain.system import System
 from mltrain.box import Box
+from mltrain.bias import Bias
 from mltrain import md
 from mltrain import potentials
 from mltrain.training import selection
@@ -17,5 +18,6 @@ __all__ = ['Configuration',
            'System',
            'Box',
            'md',
+           'selection',
            'potentials',
-           'selection']
+           'Bias']

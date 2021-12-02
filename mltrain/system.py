@@ -52,7 +52,7 @@ class System:
             with_intra: Add intramolecular displacements to the atoms
 
             intra_sigma: Variance of the normal distribution used to displace
-                         each coordinate of the molecules in the system
+                         each atom_pair_list of the molecules in the system
 
         Returns:
             (mltrain.Configuration):

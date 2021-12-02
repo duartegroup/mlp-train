@@ -24,6 +24,7 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
                init_temp:     Optional[float] = None,
                fbond_energy:  Optional[dict] = None,
                bbond_energy:  Optional[dict] = None,
+               bias:          Optional['mltrain.bias.Bias'] = None,
                **kwargs
                ) -> 'mltrain.Trajectory':
     """
@@ -59,6 +60,8 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
         fbond_energy (dict | None): As bbond_energy but in the direction to
                          form a bond
 
+        bias (mltrain.bias.Bias):
+
         n_cores (int): Number of cores to use
 
     Returns:
@@ -79,6 +82,7 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
 
     ase_atoms = configuration.ase_atoms
     ase_atoms.set_calculator(mlp.ase_calculator)
+    ase_atoms.set_constraint(bias)
 
     _set_momenta(ase_atoms,
                  temp=init_temp if init_temp is not None else temp,
@@ -125,7 +129,7 @@ def _convert_ase_traj(filename: str) -> 'mltrain.Trajectory':
         config = Configuration()
         config.atoms = [ade.Atom(label) for label in atoms.symbols]
 
-        # Set the coordinate of every atom in the configuration
+        # Set the atom_pair_list of every atom in the configuration
         for i, position in enumerate(atoms.get_positions()):
             config.atoms[i].coord = position
 
