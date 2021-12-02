@@ -4,7 +4,8 @@ import numpy as np
 from typing import Optional
 
 
-class Constraint:
+class Constraint(ABC):
+    """Abstract base class for an ASE constraint"""
 
     @abstractmethod
     def adjust_forces(self, atoms, forces):
@@ -21,23 +22,22 @@ class Constraint:
 
 
 class Function(ABC):
+    """Function defining both a image and a gradient"""
 
     @abstractmethod
-    def __call__(self, atom_pair_list, a):
-        """Value of the potential for atom_pair_list in atoms, a"""
+    def __call__(self, *args, **kwargs):
+        """Value of the function"""
 
     @abstractmethod
-    def grad(self, atom_pair_list, a):
-        """
-        Gradient of the potential dU/dr for atom_pair_list in atoms, a
-        """
+    def grad(self, *args, **kwargs):
+        """Gradient of the function"""
 
 
 class Bias(Constraint, Function):
     """Modifies the forces and energy of a set of ASE atoms under a bias"""
 
     def __init__(self,
-                 kappa: float,
+                 kappa:     float,
                  reference: Optional[float] = None,
                  **kwargs):
         """
@@ -59,17 +59,15 @@ class Bias(Constraint, Function):
         -------------------
         Keyword Arguments:
 
-            {to_add, to_subtract, to_average}: (list) Indicies of the atoms
+            {to_add, to_subtract, to_average}: (list) Indices of the atoms
             which are combined in some way to define the reaction rxn_coord
         """
         self.s = reference
         self.kappa = kappa
 
-        try:
-            assert len(kwargs) == 1
-
-        except AssertionError:
-            logger.error("Must specify one rxn_coord combination method")
+        if len(kwargs) != 1:
+            raise NotImplementedError("Must specify one rxn_coord combination "
+                                      "method")
 
         if 'to_add' in kwargs:
             self.rxn_coord = kwargs['to_add']
@@ -97,23 +95,26 @@ class Bias(Constraint, Function):
     def grad(self, atom_pair_list, atoms):
         """Gradient of the biasing potential a set of atom pairs in atoms"""
 
-        return self.kappa * self.func.grad(
-            atom_pair_list, atoms) * (self.func(atom_pair_list, atoms) - self.s)
+        return (self.kappa
+                * self.func.grad(atom_pair_list, atoms)
+                * (self.func(atom_pair_list, atoms) - self.s))
 
     def adjust_potential_energy(self, atoms):
         """Adjust the energy of a set of atoms using the bias function"""
 
-        bias = self.__call__(self.rxn_coord, atoms)
-
-        return bias
+        return self.__call__(self.rxn_coord, atoms)
 
     def adjust_forces(self, atoms, forces):
         """Adjust the forces of a set of atoms using a the gradient of the bias
-         function"""
+         function
 
-        bias = -self.grad(self.rxn_coord, atoms)
+         F = -∇E -∇B
 
-        forces[:] = forces[:] + bias
+        where ∇E is the gradient of the energy with respect to the coordinates
+        and B is the bias
+        """
+
+        forces -= self.grad(self.rxn_coord, atoms)
 
         return None
 
@@ -134,9 +135,15 @@ class AverageDistance(Function):
         return np.mean(euclidean_dists)
 
     def grad(self, atom_pair_list, atoms):
-        """Gradient of the average distance between atom pairs"""
+        """Gradient of the average distance between atom pairs
 
-        derivitive_vector = np.zeros((len(atoms), 3))
+        .. math::
+
+            LaTeX..
+
+        """
+
+        derivative = np.zeros(shape=(len(atoms), 3))
 
         num_pairs = len(atom_pair_list)
         euclidean_dists = [atoms.get_distance(i, j, mic=True)
@@ -151,7 +158,7 @@ class AverageDistance(Function):
             y_i = y_dist / (num_pairs * euclidean_dists[m])
             z_i = z_dist / (num_pairs * euclidean_dists[m])
 
-            derivitive_vector[i][:] = [x_i, y_i, z_i]
-            derivitive_vector[j][:] = [-x_i, -y_i, -z_i]
+            derivative[i][:] = [x_i, y_i, z_i]
+            derivative[j][:] = [-x_i, -y_i, -z_i]
 
-        return derivitive_vector
+        return derivative
