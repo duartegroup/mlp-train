@@ -135,14 +135,17 @@ class AverageDistance(Function):
         return np.mean(euclidean_dists)
 
     def grad(self, atom_pair_list, atoms):
-        """Gradient of the average distance between atom pairs
+        """Gradient of the average distance between atom pairs. Each component
+        of the gradient is calculated using ∇B_i,m:
 
-        .. math::
+        ∇B_i,m = (1/M) * (r_i,m - r_i,m') / ||r_m||
 
-            LaTeX..
-
+        ∇B_i,m:  Gradient of bias for atom m along component i for pair m, m'
+        M:       Number of atom pairs
+        r_i,m:   i (= x, y or z) position of atom in pair m, m'
+        ||r_m||: Euclidean distance between atoms in pair m, m'
         """
-
+        
         derivative = np.zeros(shape=(len(atoms), 3))
 
         num_pairs = len(atom_pair_list)
