@@ -1,10 +1,18 @@
 import os
+import numpy as np
 import mltrain as mlt
-from abc import ABC, abstractmethod
+from autode.atoms import Atom
 from mltrain.potentials._base import MLPotential
 from ase.calculators.calculator import Calculator
-import numpy as np
+from mltrain.utils import work_in_tmp_dir
 mlt.Config.n_cores = 1
+here = os.path.abspath(os.path.dirname(__file__))
+
+
+def _h2():
+    """Dihydrogen molecule"""
+    atoms = [Atom('H', -0.80952, 2.49855, 0.), Atom('H', -0.34877, 1.961, 0.)]
+    return mlt.Molecule(atoms=atoms, charge=0, mult=1)
 
 
 class HarmonicPotential(Calculator):
@@ -36,6 +44,8 @@ class HarmonicPotential(Calculator):
 
 class TestPotential(MLPotential):
 
+    __test__ = False
+
     def __init__(self,
                  name: str,
                  system=None):
@@ -59,9 +69,10 @@ class TestPotential(MLPotential):
         """Can this potential be run in a box with side lengths = 0"""
 
 
+@work_in_tmp_dir()
 def test_bias():
 
-    system = mlt.System(mlt.Molecule('h2.xyz', charge=0), box=[50, 50, 50])
+    system = mlt.System(_h2(), box=[50, 50, 50])
     pot = TestPotential('1D')
 
     config = system.random_configuration()
@@ -100,11 +111,12 @@ def test_bias():
     assert os.path.exists('tmp.xyz')
 
 
+@work_in_tmp_dir()
 def test_window_umbrella():
 
     charge, mult = -1, 1
 
-    system = mlt.System(mlt.Molecule('h2.xyz', charge=0), box=[50, 50, 50])
+    system = mlt.System(_h2(), box=[50, 50, 50])
     pot = TestPotential('1D')
 
     config = system.random_configuration()
@@ -125,7 +137,9 @@ def test_window_umbrella():
     assert umbrella.refs is None
 
     traj = mlt.ConfigurationSet()
-    traj.load_xyz('h2_traj.xyz', charge=charge, mult=mult)
+    traj.load_xyz(os.path.join(here, 'data', 'h2_traj.xyz'),
+                  charge=charge,
+                  mult=mult)
 
     _ = umbrella._get_window_frames(traj, num_windows=10,
                                     init_ref=0.7, final_ref=2)
