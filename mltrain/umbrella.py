@@ -1,21 +1,36 @@
 import matplotlib.pyplot as plt
+import mltrain
 from mltrain.bias import Bias
 from mltrain.configurations import ConfigurationSet
 from mltrain.md import run_mlp_md
 from mltrain.log import logger
-from copy import deepcopy
 import numpy as np
 from typing import Optional
 from scipy.optimize import curve_fit
 
 
-def _get_rxn_coords(atoms, atom_pair_list):
+def _get_avg_dists(atoms, atom_pair_list):
     """Return the average distance between atoms in all m pairs"""
 
     euclidean_dists = [atoms.get_distance(i, j, mic=True)
                        for (i, j) in atom_pair_list]
 
     return np.mean(euclidean_dists)
+
+
+def _run_individual_window(frame, mlp, temp, interval, dt, bias, **kwargs):
+    """Runs an individual umbrella sampling window. Adaptive sampling to
+    be implemented"""
+
+    traj = run_mlp_md(configuration=frame,
+                      mlp=mlp,
+                      temp=temp,
+                      dt=dt,
+                      interval=interval,
+                      bias=bias,
+                      **kwargs)
+
+    return traj
 
 
 class UmbrellaSampling:
@@ -26,7 +41,6 @@ class UmbrellaSampling:
 
     def __init__(self,
                  kappa: float,
-                 reference: Optional[float] = None,
                  **kwargs):
         """
         Umbrella sampling to predict free energy using an mlp under a harmonic
@@ -40,9 +54,6 @@ class UmbrellaSampling:
 
             kappa: Value of the spring_const, κ, used in umbrella sampling
 
-            reference: Value of the reference value, ξ_i, used in umbrella
-                       sampling
-
         -------------------
         Keyword Arguments:
 
@@ -51,7 +62,9 @@ class UmbrellaSampling:
         """
 
         self.kappa = kappa
-        self.bias = Bias(kappa=self.kappa, reference=reference, **kwargs)
+        self.refs = None
+        self.rxn_coord_type = kwargs
+        self.parm_list = []
 
         if 'to_add' in kwargs:
             self.rxn_coord = kwargs['to_add']
@@ -70,39 +83,46 @@ class UmbrellaSampling:
             raise ValueError("Bias must specify one of to_add, to_subtract "
                              "or to_average!")
 
-        self.num_pairs = len(self.rxn_coord)
-        self.refs = None
+    @property
+    def _n_pairs(self):
+        """Number of atom pairs defined in the reaction coordinate"""
+        return len(self.rxn_coord)
+
+    def _get_closest_frames(self, traj, distances):
+        """Find the frames whose reaction coordinate is closest to the ref"""
+
+        frames = ConfigurationSet()
+        for reference in self.refs:
+
+            window_dists = []
+            for dist in distances:
+                window_dists.append(abs(dist - reference))
+
+            frames = frames + traj[np.argmin(window_dists)]
+
+        return frames
 
     def _get_window_frames(self, traj, num_windows, init_ref, final_ref):
         """Returns the set of frames with reference values to use in the US"""
 
-        # Get a dictonary of reaction atom_pair_list distances for each frame
-        traj_dists = {}
+        traj_dists = []
         for index, frame in enumerate(traj):
 
-            avg_distance = _get_rxn_coords(frame.ase_atoms, self.rxn_coord)
-            traj_dists[index] = avg_distance
+            avg_distance = _get_avg_dists(frame.ase_atoms, self.rxn_coord)
+            traj_dists.append(avg_distance)
 
         if init_ref is None:
-            init_ref = list(traj_dists.values())[0]
+            init_ref = traj_dists[0]
 
         if final_ref is None:
-            final_ref = list(traj_dists.values())[-1]
+            final_ref = traj_dists[-1]
 
         self.refs = np.linspace(init_ref, final_ref, num_windows)
 
-        # Get the frames to be used in the umbrella sampling windows
-        frames = ConfigurationSet()
-        for reference in self.refs:
+        if any(self.refs) < 0:
+            raise ValueError("Reference values must be positive")
 
-            window_dists = deepcopy(traj_dists)
-
-            for frame_key, dist_value in window_dists.items():
-                window_dists[frame_key] = abs(dist_value - reference)
-
-            traj_idx = min(window_dists.keys(), key=window_dists.get)
-
-            frames = frames + traj[traj_idx]
+        frames = self._get_closest_frames(traj, traj_dists)
 
         if len(frames) < num_windows:
             logger.warning("Number of configurations extracted to run "
@@ -110,24 +130,6 @@ class UmbrellaSampling:
                            "as at least two configurations were identical")
 
         return frames
-
-    def _run_individual_window(self, frame, mlp, temp, interval, dt, ref,
-                               **kwargs):
-        """Runs an individual umbrella sampling window. Adaptive sampling to
-        be implemented"""
-
-        self.bias.kappa = self.kappa
-        self.bias.ref = ref
-
-        traj = run_mlp_md(configuration=frame,
-                          mlp=mlp,
-                          temp=temp,
-                          dt=dt,
-                          interval=interval,
-                          bias=self.bias,
-                          **kwargs)
-
-        return traj
 
     def _fit_gaussian(self, data):
         """Fit a Gaussian to a set of data"""
@@ -155,44 +157,81 @@ class UmbrellaSampling:
         plt.xlabel('Reaction coordinate / Å')
         plt.ylabel('Frequency')
 
-        plt.savefig('fitted_data.pdf', dpi=300)
+        plt.savefig('fitted_data.pdf')
 
         return parms
 
-    def run_umbrella_sampling(self, traj, mlp, temp, interval, dt,
-                              num_windows=10, init_ref=None, final_ref=None,
-                              **kwargs):
-        """Run umbrella sampling across n windows."""
+    def run_umbrella_sampling(self,
+                              traj: 'mltrain.ConfigurationSet',
+                              mlp: 'mltrain.potentials._base.MLPotential',
+                              temp: float,
+                              interval: int,
+                              dt: float,
+                              init_ref: Optional[float] = None,
+                              final_ref: Optional[float] = None,
+                              n_windows: int = 10,
+                              **kwargs) -> None:
+        """
+        Run umbrella sampling across n windows, fitting Gaussians to the data
 
-        frames = self._get_window_frames(traj, num_windows,
+        -----------------------------------------------------------------------
+        Arguments:
+            traj:
+
+            mlp: 
+
+            temp: (float) Temperature in K to initialise velocities and to run
+                  NVT MD, if temp=0 then will run NVE
+            
+            interval: (int) Interval between saving the geometry
+            
+            dt: (float) Time-step in fs
+            
+            init_ref: (float | None) Value of reaction coordinate in Å for
+                       first window
+            
+            final_ref: (float | None) Value of reaction coordinate in Å for
+                       first window
+            
+            n_windows: (int) Number of windows to run in the umbrella sampling
+
+        -------------------
+        Keyword Arguments:
+
+            {fs, ps, ns}: Simulation time in some units
+
+        Returns:
+            None:
+        """
+
+        frames = self._get_window_frames(traj, n_windows,
                                          init_ref, final_ref)
 
         combined_traj = ConfigurationSet()
         for win_idx, frame in enumerate(frames):
 
+            bias = Bias(self.kappa, self.refs[win_idx], **self.rxn_coord_type)
+
             logger.info(f'Running US window {win_idx} with reference '
                         f'{self.refs[win_idx]:.2f} Å and '
-                        f'kappa {self.kappa} eV / Å^2')
+                        f'κ {self.kappa} eV / Å^2')
 
-            window_traj = self._run_individual_window(frame,
-                                                      mlp,
-                                                      temp,
-                                                      interval,
-                                                      dt,
-                                                      ref=self.refs[win_idx],
-                                                      **kwargs)
+            window_traj = _run_individual_window(frame,
+                                                 mlp,
+                                                 temp,
+                                                 interval,
+                                                 dt,
+                                                 bias=bias,
+                                                 **kwargs)
 
-            win_rxn_coords = [_get_rxn_coords(config.ase_atoms, self.rxn_coord)
+            win_rxn_coords = [_get_avg_dists(config.ase_atoms, self.rxn_coord)
                               for config in window_traj]
-            self._fit_gaussian(win_rxn_coords)
+
+            parms = self._fit_gaussian(win_rxn_coords)
+            self.parm_list.append(parms)
 
             combined_traj = combined_traj + window_traj
 
         combined_traj.save(filename='combined_windows.xyz')
 
         return None
-
-    def calculate_free_energy(self):
-        """Calculates the free energy using WHAM or umbrella Integration"""
-
-        return NotImplementedError

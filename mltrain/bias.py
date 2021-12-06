@@ -1,4 +1,3 @@
-from mltrain.log import logger
 from abc import ABC, abstractmethod
 import numpy as np
 from typing import Optional
@@ -148,7 +147,7 @@ class AverageDistance(Function):
 
         derivative = np.zeros(shape=(len(atoms), 3))
 
-        num_pairs = len(atom_pair_list)
+        n_pairs = len(atom_pair_list)
         euclidean_dists = [atoms.get_distance(i, j, mic=True)
                            for (i, j) in atom_pair_list]
 
@@ -157,9 +156,9 @@ class AverageDistance(Function):
                                       atoms[j].position[k] for k in
                                       range(3)]
 
-            x_i = x_dist / (num_pairs * euclidean_dists[m])
-            y_i = y_dist / (num_pairs * euclidean_dists[m])
-            z_i = z_dist / (num_pairs * euclidean_dists[m])
+            x_i = x_dist / (n_pairs * euclidean_dists[m])
+            y_i = y_dist / (n_pairs * euclidean_dists[m])
+            z_i = z_dist / (n_pairs * euclidean_dists[m])
 
             derivative[i][:] = [x_i, y_i, z_i]
             derivative[j][:] = [-x_i, -y_i, -z_i]
