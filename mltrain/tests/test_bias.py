@@ -157,8 +157,7 @@ def test_window_umbrella():
                   charge=charge,
                   mult=mult)
 
-    _ = umbrella._get_window_frames(traj, num_windows=10,
-                                    init_ref=0.7, final_ref=2)
+    umbrella._set_reference_values(traj, num=10, init_ref=0.7, final_ref=2)
 
     assert np.alltrue(umbrella.refs == np.linspace(0.7, 2, 10))
 
