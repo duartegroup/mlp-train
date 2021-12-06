@@ -84,11 +84,13 @@ def test_bias():
 
     config = system.random_configuration()
 
-    bias = mlt.Bias(to_average=[[0, 1]], reference=0.7, kappa=100)
+    bias = mlt.Bias(mlt.AverageDistance([0, 1]),
+                    reference=0.7,
+                    kappa=100)
     
     assert bias.ref is not None
     assert bias.kappa is not None
-    assert bias.rxn_coord == [[0, 1]]
+    assert bias.f.atom_pair_list == [(0, 1)]
 
     new_pos = [[0, 0, 0],
                [0, 0, 1]]
@@ -96,11 +98,9 @@ def test_bias():
     ase_atoms = config.ase_atoms
     ase_atoms.set_positions(new_pos, apply_constraint=False)
 
-    bias_energy = bias([[0, 1]], ase_atoms)
+    assert np.isclose(bias(ase_atoms), 4.5)  # (kappa / 2) * (1-0.7)^2
 
-    assert np.isclose(bias_energy, 4.5)  # (kappa / 2) * (1-0.7)^2
-
-    bias_force = bias.grad([[0, 1]], ase_atoms)
+    bias_force = bias.grad(ase_atoms)
 
     assert bias_force[0][2] == - bias_force[1][[2]]
     assert np.isclose(bias_force[0][2], -30)  # kappa * (1-0.7)
@@ -130,53 +130,33 @@ def test_bias():
 @work_in_tmp_dir()
 def test_window_umbrella():
 
-    charge, mult = -1, 1
+    umbrella = mlt.UmbrellaSampling(zeta_func=mlt.AverageDistance([0, 1]),
+                                    kappa=100)
 
-    system = mlt.System(_h2(), box=[50, 50, 50])
-    pot = TestPotential('1D')
-
-    config = system.random_configuration()
-    new_pos = [[0, 0, 0],
-               [0, 0, 1]]
-
-    ase_atoms = config.ase_atoms
-    ase_atoms.set_positions(new_pos, apply_constraint=False)
-
-    mean_distances = mlt.umbrella._get_avg_dists(ase_atoms, [[0, 1]])
-
-    assert np.isclose(mean_distances, 1.0)
-
-    umbrella = mlt.UmbrellaSampling(to_average=[[0, 1]], kappa=100)
-
-    assert umbrella.kappa is not None
-    assert umbrella._n_pairs == 1
+    assert umbrella.kappa is not None and np.isclose(umbrella.kappa, 100.)
     assert umbrella.refs is None
 
     traj = mlt.ConfigurationSet()
-    traj.load_xyz(os.path.join(here, 'data', 'h2_traj.xyz'),
-                  charge=charge,
-                  mult=mult)
+    traj.load_xyz(os.path.join(here, 'data', 'h2_traj.xyz'), charge=0, mult=1)
 
     umbrella._set_reference_values(traj, num=10, init_ref=0.7, final_ref=2)
 
-    assert np.alltrue(umbrella.refs == np.linspace(0.7, 2, 10))
+    # Setting the reference values of the reaction coordinate should un-None
+    assert umbrella.refs is not None
+    assert np.allclose(umbrella.refs, np.linspace(0.7, 2, 10))
 
     umbrella.run_umbrella_sampling(traj,
-                                   pot,
+                                   mlp=TestPotential('1D'),
                                    temp=300,
                                    interval=5,
                                    dt=0.5,
                                    n_windows=3,
                                    fs=1000)
 
-    assert umbrella.kappa == 100
-    assert umbrella.refs is not None
-
-    for gaussian, ref in zip(umbrella.parm_list, umbrella.refs):
-        assert np.isclose(gaussian[1], ref, 0.1)
-
-    if any(umbrella.refs) < 0:
-        raise ValueError("Reference values must be positive")
+    # Sampling with a high force constant should lead to fitted Gaussians
+    # that closely match the reference (target) values
+    for gaussian, ref in zip(umbrella._fitted_gaussians, umbrella.refs):
+        assert np.isclose(gaussian.params[1], ref, atol=0.1)
 
     assert os.path.exists('combined_windows.xyz')
     assert os.path.exists('fitted_data.pdf')
