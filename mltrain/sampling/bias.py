@@ -1,7 +1,7 @@
-from mltrain.sampling._base import Function, Constraint
+from mltrain.sampling._base import Function, ASEConstraint
 
 
-class Bias(Constraint, Function):
+class Bias(ASEConstraint, Function):
     """Modifies the forces and energy of a set of ASE atoms under a bias"""
 
     def __init__(self,
@@ -19,19 +19,12 @@ class Bias(Constraint, Function):
         -----------------------------------------------------------------------
         Arguments:
 
-            zeta_func: Reaction coordinate, taking the positions of the system and
-               returning a scalar e.g. a distance or sum of distances
+            zeta_func: Reaction coordinate, taking the positions of the system
+                     and returning a scalar e.g. a distance or sum of distances
 
-            kappa: Value of the spring_const, κ, used in umbrella sampling
+            kappa: Value of the spring constant, κ
 
-            reference: Value of the reference value, ζ_ref, used in umbrella
-                       sampling
-
-        -------------------
-        Keyword Arguments:
-
-            {to_add, to_subtract, to_average}: (list) Indices of the atoms
-            which are combined in some way to define the reaction rxn_coord
+            reference: Reference value of the reaction coordinate, ζ_ref
         """
         self.ref = reference
         self.kappa = kappa

@@ -13,7 +13,7 @@ class Function(ABC):
         """Gradient of the function"""
 
 
-class Constraint(ABC):
+class ASEConstraint(ABC):
     """Abstract base class for an ASE constraint"""
 
     @abstractmethod
