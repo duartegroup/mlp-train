@@ -25,6 +25,40 @@ def _run_individual_window(frame, mlp, temp, interval, dt, bias, **kwargs):
     return traj
 
 
+class _Window:
+    """Contains the attributes belonging to an US window used for WHAM or UI"""
+
+    def __init__(self,
+                 bias_e: np.ndarray,
+                 rxn_coords: np.ndarray):
+        """
+        Umbrella Window
+
+        -----------------------------------------------------------------------
+        Arguments:
+            bias_e: Value of the bias for each frame in a window
+
+            rxn_coords: Values of the reaction coordinate (q)
+
+        """
+        self.bias_e = bias_e
+        self.rxn_coords = rxn_coords
+
+        self.hist, _ = np.histogram(bias_e, bins=self.bins)
+        self.free_energy = 0.0
+
+    @property
+    def bins(self) -> np.ndarray:
+        """Bin edges to histogram into"""
+        return np.linspace(np.min(self.rxn_coords), np.max(self.rxn_coords),
+                           num=len(self.rxn_coords) + 1)
+
+    @property
+    def n(self) -> int:
+        """Number of samples in this window"""
+        return int(np.sum(self.hist))
+
+
 class UmbrellaSampling:
     """
     Umbrella sampling class for generating pulling simulation, running
@@ -56,6 +90,11 @@ class UmbrellaSampling:
         self.zeta_func:         Callable = zeta_func
         self.refs:              Optional[np.ndarray] = None
         self._fitted_gaussians: List[_FittedGaussian] = []
+
+        self.windows:           List = []
+        self.free_energy:       Optional[np.ndarray] = None
+        self.prob_dist:         Optional[np.ndarray] = None
+        self.n_points:          int = 0
 
     @staticmethod
     def _best_init_frame(bias, traj):
@@ -165,7 +204,8 @@ class UmbrellaSampling:
             logger.info(f'Running US window {idx} with ζ={ref:.2f} Å and '
                         f'κ = {self.kappa:.5f} eV / Å^2')
 
-            bias = Bias(zeta_func=self.zeta_func, kappa=self.kappa, reference=ref)
+            bias = Bias(zeta_func=self.zeta_func, kappa=self.kappa,
+                        reference=ref)
 
             traj = _run_individual_window(self._best_init_frame(bias, traj),
                                           mlp,
@@ -175,12 +215,61 @@ class UmbrellaSampling:
                                           bias=bias,
                                           **kwargs)
 
+            self.windows.append(_Window(bias(traj), self.zeta_func(traj)))
+            self.n_points = len(traj)
+
             gaussian = self._fit_gaussian(self.zeta_func(traj))
             self._fitted_gaussians.append(gaussian)
 
             combined_traj = combined_traj + traj
 
         combined_traj.save(filename='combined_windows.xyz')
+
+        return None
+
+    def wham(self,
+             beta=1.0,
+             tol=1E-3,
+             max_iterations=10000
+             ) -> None:
+        """
+        Construct an unbiased distribution (on a grid) from a set of windows
+
+        -----------------------------------------------------------------------
+        Arguments:
+            beta: 1 / k_B T
+
+            tol: Tolerance on the convergence
+
+            max_iterations: Maximum number of WHAM iterations to perform
+        """
+        self.free_energy = np.zeros(self.n_points)
+
+        # Uniform probability distribution starting point
+        self.prob_dist = np.ones(self.n_points) / self.n_points
+
+        p_prev = np.inf * np.ones(self.n_points)  # Start with P(q)^(-1) = ∞
+        prob_dist = self.prob_dist
+
+        def converged():
+            return np.max(np.abs(p_prev - prob_dist)) < tol
+
+        for _ in range(max_iterations):
+
+            prob_dist = (sum(w_k.hist for w_k in self.windows)
+                 / sum(w_k.n * np.exp(beta * (w_k.free_energy - w_k.bias_e))
+                       for w_k in self.windows))
+
+            for w_k in self.windows:
+                w_k.free_energy = (-(1.0/beta)
+                         * np.log(np.sum(prob_dist * np.exp(-w_k.bias_e * beta))))
+
+            if converged():
+                break
+
+            p_prev = prob_dist
+
+        self.prob_dist = prob_dist
         return None
 
 
