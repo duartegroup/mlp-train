@@ -25,15 +25,15 @@ class ReactionCoordinate(Function, ABC):
             return np.array([self._call(c.ase_atoms) for c in arg])
 
         else:
-            raise ValueError('Reaciton coordinate must be called using ase '
-                             'atoms a configuration or configuration set')
+            raise ValueError('Reaction coordinate must be called using ase '
+                             'atoms, a configuration or configuration set')
 
     @abstractmethod
     def _call(self, atoms: ase.atoms.Atoms):
-        """Call this function on a set of con"""
+        """Evaluate this function for a set of ase atoms"""
 
     def grad(self, atoms: ase.atoms.Atoms):
-        """Gradient of this reaction coordinate"""
+        """Gradient of this reaction coordinate for a set of ase atoms"""
 
         if not isinstance(atoms, ase.atoms.Atoms):
             raise NotImplementedError('Grad must be called with a set of '
@@ -51,7 +51,13 @@ class AverageDistance(ReactionCoordinate):
 
     def __init__(self, *args):
         """
-        Average of a set of distances
+        Average of a set of distances e.g.
+
+        # Average of a single distance between atoms 0 and 1
+        dists = AverageDistance((0, 1))
+
+        # or multiple distances (0-1 and 1-2)
+        dists = AverageDistance((0, 1), (1, 2))
 
         -----------------------------------------------------------------------
         Arguments:

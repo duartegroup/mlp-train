@@ -1,4 +1,3 @@
-import numpy as np
 from mltrain.sampling._base import Function, Constraint
 
 
@@ -6,26 +5,26 @@ class Bias(Constraint, Function):
     """Modifies the forces and energy of a set of ASE atoms under a bias"""
 
     def __init__(self,
-                 f:        'ReactionCoordinate',
+                 zeta_func: 'mltrain.sampling.reaction_coord.ReactionCoordinate',
                  kappa:     float,
                  reference: float):
         """
         Bias that modifies the forces and energy of a set of atoms under a
         harmonic bias function.
 
-        Harmonic biasing potential: ω = κ/2 (f(r) - s)^2
+        Harmonic biasing potential: ω = κ/2 (ζ(r) - ζ_ref)^2
 
         e.g. bias = mlt.bias.Bias(to_average=[[0, 1]], reference=2, kappa=10)
 
         -----------------------------------------------------------------------
         Arguments:
 
-            f: Reaction coordinate, taking the positions of the system and
+            zeta_func: Reaction coordinate, taking the positions of the system and
                returning a scalar e.g. a distance or sum of distances
 
             kappa: Value of the spring_const, κ, used in umbrella sampling
 
-            reference: Value of the reference value, ξ_i, used in umbrella
+            reference: Value of the reference value, ζ_ref, used in umbrella
                        sampling
 
         -------------------
@@ -36,7 +35,7 @@ class Bias(Constraint, Function):
         """
         self.ref = reference
         self.kappa = kappa
-        self.f = f
+        self.f = zeta_func
 
     def __call__(self, atoms):
         """Value of the bias for set of atom pairs in atoms"""
@@ -53,8 +52,8 @@ class Bias(Constraint, Function):
         return self.__call__(atoms)
 
     def adjust_forces(self, atoms, forces):
-        """Adjust the forces of a set of atoms in place using a the gradient
-        of the bias function
+        """Adjust the forces of a set of atoms in place using the gradient
+        of the bias function::
 
          F = -∇E -∇B
 
@@ -67,5 +66,3 @@ class Bias(Constraint, Function):
     def adjust_positions(self, atoms, newpositions):
         """Method required for ASE but not used in ml-train"""
         return None
-
-

@@ -6,7 +6,7 @@ from mltrain.box import Box
 from mltrain.sampling import md, Bias, UmbrellaSampling
 from mltrain import potentials
 from mltrain.training import selection
-from mltrain.sampling.reaction_coordinate import AverageDistance
+from mltrain.sampling.reaction_coord import AverageDistance
 
 __version__ = '1.0.0a0'
 

@@ -2,6 +2,7 @@ import mltrain
 import numpy as np
 import matplotlib.pyplot as plt
 from mltrain.sampling.bias import Bias
+from mltrain.sampling.reaction_coord import ReactionCoordinate
 from mltrain.configurations import ConfigurationSet
 from mltrain.sampling.md import run_mlp_md
 from mltrain.log import logger
@@ -31,7 +32,7 @@ class UmbrellaSampling:
     """
 
     def __init__(self,
-                 zeta_func: 'ReactionCoordinate',
+                 zeta_func: 'mltrain.sampling.reaction_coord.ReactionCoordinate',
                  kappa:      float):
         """
         Umbrella sampling to predict free energy using an mlp under a harmonic
@@ -40,10 +41,8 @@ class UmbrellaSampling:
             ω = κ/2 (ζ(r) - ζ_ref)^2
 
         where ω is the bias in a particular window, ζ a function that takes in
-        nuclear positions (r) and returns a scalar and ζ_ref the refernce
+        nuclear positions (r) and returns a scalar and ζ_ref the reference
         value of the reaction coordinate in that particular window.
-
-        e.g. umbrella = mlt.umbrella.Umbrella(to_average=[[5, 1]], kappa=10.0)
 
         -----------------------------------------------------------------------
         Arguments:
@@ -166,7 +165,7 @@ class UmbrellaSampling:
             logger.info(f'Running US window {idx} with ζ={ref:.2f} Å and '
                         f'κ = {self.kappa:.5f} eV / Å^2')
 
-            bias = Bias(f=self.zeta_func, kappa=self.kappa, reference=ref)
+            bias = Bias(zeta_func=self.zeta_func, kappa=self.kappa, reference=ref)
 
             traj = _run_individual_window(self._best_init_frame(bias, traj),
                                           mlp,
