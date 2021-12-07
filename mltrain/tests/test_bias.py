@@ -150,7 +150,7 @@ def test_window_umbrella():
                                    temp=300,
                                    interval=5,
                                    dt=0.5,
-                                   n_windows=3,
+                                   n_windows=2,
                                    fs=1000)
 
     # Sampling with a high force constant should lead to fitted Gaussians
@@ -160,3 +160,5 @@ def test_window_umbrella():
 
     assert os.path.exists('combined_windows.xyz')
     assert os.path.exists('fitted_data.pdf')
+
+    umbrella.wham()

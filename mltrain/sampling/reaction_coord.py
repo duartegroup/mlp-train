@@ -92,18 +92,17 @@ class AverageDistance(ReactionCoordinate):
 
         derivative = np.zeros(shape=(len(atoms), 3))
 
-        n_pairs = self.n_pairs
-        euclidean_dists = [atoms.get_distance(i, j, mic=True)
-                           for (i, j) in self.atom_pair_list]
+        distances = [atoms.get_distance(i, j, mic=True)
+                     for (i, j) in self.atom_pair_list]
 
         for m, (i, j) in enumerate(self.atom_pair_list):
             x_dist, y_dist, z_dist = [atoms[i].position[k] -
                                       atoms[j].position[k] for k in
                                       range(3)]
 
-            x_i = x_dist / (n_pairs * euclidean_dists[m])
-            y_i = y_dist / (n_pairs * euclidean_dists[m])
-            z_i = z_dist / (n_pairs * euclidean_dists[m])
+            x_i = x_dist / (self.n_pairs * distances[m])
+            y_i = y_dist / (self.n_pairs * distances[m])
+            z_i = z_dist / (self.n_pairs * distances[m])
 
             derivative[i][:] = [x_i, y_i, z_i]
             derivative[j][:] = [-x_i, -y_i, -z_i]
