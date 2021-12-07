@@ -82,7 +82,9 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
 
     ase_atoms = configuration.ase_atoms
     ase_atoms.set_calculator(mlp.ase_calculator)
-    ase_atoms.set_constraint(bias)
+
+    if bias is not None:
+        ase_atoms.set_constraint(bias)
 
     _set_momenta(ase_atoms,
                  temp=init_temp if init_temp is not None else temp,

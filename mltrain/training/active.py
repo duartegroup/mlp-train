@@ -1,10 +1,8 @@
 from copy import deepcopy
-from threading import Thread
 from typing import Optional
 from multiprocessing import Pool
 from mltrain.config import Config
-from mltrain.md import run_mlp_md
-from mltrain.configurations import Trajectory
+from mltrain.sampling.md import run_mlp_md
 from mltrain.training.selection import SelectionMethod, AbsDiffE
 from mltrain.configurations import ConfigurationSet
 from mltrain.log import logger

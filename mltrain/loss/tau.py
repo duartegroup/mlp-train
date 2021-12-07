@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Optional
-from mltrain.md import run_mlp_md
+from mltrain.sampling.md import run_mlp_md
 from mltrain.log import logger
 from mltrain.loss._base import LossFunction, LossValue
 
@@ -81,7 +81,7 @@ class TauCalculator(LossFunction):
         """
         if len(configurations) < 2:
             raise ValueError(f'Cannot calculate τ_acc over only '
-                             f'{len(configurations)} configurations. Must be > 1')
+                             f'{len(configurations)} configurations. Need > 1')
 
         taus = [self._calculate_single(config=c,
                                        mlp=mlp,
