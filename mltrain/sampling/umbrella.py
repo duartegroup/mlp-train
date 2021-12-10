@@ -201,34 +201,57 @@ class UmbrellaSampling:
         combined_traj = ConfigurationSet()
         for idx, ref in enumerate(self.refs):
 
-            logger.info(f'Running US window {idx} with ζ={ref:.2f} Å and '
-                        f'κ = {self.kappa:.5f} eV / Å^2')
+            logger.info(f'Running US window {idx+1} with ζ={ref:.2f} Å and '
+                        f'κ = {self.kappa:.3f} eV / Å^2')
 
             bias = Bias(zeta_func=self.zeta_func, kappa=self.kappa,
                         reference=ref)
 
-            traj = _run_individual_window(self._best_init_frame(bias, traj),
-                                          mlp,
-                                          temp,
-                                          interval,
-                                          dt,
-                                          bias=bias,
-                                          **kwargs)
+            win_traj = _run_individual_window(self._best_init_frame(bias,
+                                                                    traj),
+                                              mlp,
+                                              temp,
+                                              interval,
+                                              dt,
+                                              bias=bias,
+                                              **kwargs)
 
-            self.windows.append(_Window(bias(traj), self.zeta_func(traj)))
-            self.n_points = len(traj)
+            self.windows.append(_Window(bias(win_traj),
+                                        self.zeta_func(win_traj)))
+            self.n_points = len(win_traj)
 
-            gaussian = self._fit_gaussian(self.zeta_func(traj))
+            gaussian = self._fit_gaussian(self.zeta_func(win_traj))
             self._fitted_gaussians.append(gaussian)
 
-            combined_traj = combined_traj + traj
+            combined_traj = combined_traj + win_traj
 
+        plt.close()
         combined_traj.save(filename='combined_windows.xyz')
 
         return None
 
+    def _plot_free_energy(self):
+
+        plt.plot(self.refs, self.rel_free_energies)
+        plt.savefig('tmp.pdf')
+
+        return None
+
+    @property
+    def rel_free_energies(self) -> np.ndarray:
+        """
+        Free energy estimates for each of the windows
+
+        -----------------------------------------------------------------------
+        Returns:
+            (np.ndarray):
+        """
+        free_energies = np.array([w_k.free_energy for w_k in self.windows])
+        print(f'Free energies:{free_energies - free_energies[0]}')
+        return free_energies - free_energies[0]
+
     def wham(self,
-             beta=1.0,
+             beta=None,
              tol=1E-3,
              max_iterations=10000
              ) -> None:
@@ -243,6 +266,7 @@ class UmbrellaSampling:
 
             max_iterations: Maximum number of WHAM iterations to perform
         """
+        assert beta is not None
         self.free_energy = np.zeros(self.n_points)
 
         # Uniform probability distribution starting point
@@ -270,6 +294,8 @@ class UmbrellaSampling:
             p_prev = prob_dist
 
         self.prob_dist = prob_dist
+        self._plot_free_energy()
+
         return None
 
 

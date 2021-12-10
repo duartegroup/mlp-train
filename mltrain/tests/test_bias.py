@@ -30,7 +30,7 @@ class HarmonicPotential(Calculator):
 
         r = atoms.get_distance(0, 1)
 
-        return (r - 0.7)**2
+        return (r - 1)**2
 
     def get_forces(self, atoms):
 
@@ -46,7 +46,7 @@ class HarmonicPotential(Calculator):
         derivative[0][:] = [x_i, y_i, z_i]
         derivative[1][:] = [-x_i, -y_i, -z_i]
 
-        force = -2 * derivative * (r-0.7)
+        force = -2 * derivative * (r - 1)
 
         return force
 
@@ -127,7 +127,7 @@ def test_bias():
     assert os.path.exists('tmp.xyz')
 
 
-@work_in_tmp_dir()
+# @work_in_tmp_dir()
 def test_window_umbrella():
 
     umbrella = mlt.UmbrellaSampling(zeta_func=mlt.AverageDistance([0, 1]),
@@ -150,8 +150,8 @@ def test_window_umbrella():
                                    temp=300,
                                    interval=5,
                                    dt=0.5,
-                                   n_windows=2,
-                                   fs=1000)
+                                   n_windows=3,
+                                   fs=2000)
 
     # Sampling with a high force constant should lead to fitted Gaussians
     # that closely match the reference (target) values
