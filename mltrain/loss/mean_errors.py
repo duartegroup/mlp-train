@@ -11,8 +11,8 @@ class _DeltaLossFunction(LossFunction, ABC):
 
     def __call__(self,
                  configurations: 'mltrain.ConfigurationSet',
-                 mlp:            'mltrain.potentials.MLPotential'
-                 ) -> LossValue:
+                 mlp:            'mltrain.potentials.MLPotential',
+                 **kwargs) -> LossValue:
         """Calculate the value of the loss
 
         -----------------------------------------------------------------------
@@ -25,21 +25,29 @@ class _DeltaLossFunction(LossFunction, ABC):
         if self.loss_type is None:
             raise NotImplementedError(f'{self} did not define loss_type')
 
+        if 'method_name' in kwargs:
+            self.method_name = kwargs.pop('method_name')
+
+        if len(kwargs) > 0:
+            raise ValueError(f'Unknown keyword arguments: {kwargs}')
+
         delta_Es = self._delta_energies(configurations, mlp)
         std_error = bootstrap(delta_Es, self.statistic).standard_error
 
         return self.loss_type(self.statistic(delta_Es), error=std_error)
 
-    @staticmethod
-    def _delta_energies(cfgs, mlp):
+    def _delta_energies(self, cfgs, mlp):
         """Evaluate E_true - E_predicted along a set of configurations"""
 
         for idx, configuration in enumerate(cfgs):
 
-            if configuration.energy.true is None:
-                raise RuntimeError(
-                    f'Cannot compute loss for configuration {idx} '
-                    f'- a true energies was not present')
+            if configuration.energy.true:
+                if self.method_name is not None:
+                    configuration.single_point(method=self.method_name)
+
+                else:
+                    raise RuntimeError(f'Cannot compute loss for configuration '
+                                       f'{idx}- a true energies was not present')
 
             if configuration.energy.predicted is None:
                 mlp.predict(configuration)
@@ -64,7 +72,7 @@ class RMSE(_DeltaLossFunction):
     loss_type = RMSEValue
 
     @staticmethod
-    def statistic(arr: np.ndarray):
+    def statistic(arr: np.ndarray) -> float:
         return np.sqrt(np.mean(np.square(arr)))
 
 
@@ -80,5 +88,5 @@ class MAD(LossFunction):
     loss_type = MADValue
 
     @staticmethod
-    def statistic(arr: np.ndarray):
-        return np.mean(np.abs(arr))
+    def statistic(arr: np.ndarray) -> float:
+        return float(np.mean(np.abs(arr)))
