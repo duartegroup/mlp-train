@@ -1,5 +1,4 @@
 import numpy as np
-from typing import Type
 from abc import ABC, abstractmethod
 from scipy.stats import bootstrap
 from mltrain.loss._base import LossValue, LossFunction
@@ -7,6 +6,8 @@ from mltrain.loss._base import LossValue, LossFunction
 
 class _DeltaLossFunction(LossFunction, ABC):
     """Error measure that depends on E_true - E_predicted"""
+
+    loss_type = None
 
     def __call__(self,
                  configurations: 'mltrain.ConfigurationSet',
@@ -20,6 +21,9 @@ class _DeltaLossFunction(LossFunction, ABC):
 
             mlp: Potential to use
         """
+
+        if self.loss_type is None:
+            raise NotImplementedError(f'{self} did not define loss_type')
 
         delta_Es = self._delta_energies(configurations, mlp)
         std_error = bootstrap(delta_Es, self.statistic).standard_error
@@ -47,11 +51,6 @@ class _DeltaLossFunction(LossFunction, ABC):
     def statistic(arr: np.ndarray) -> float:
         """Error measure over an array of values"""
 
-    @property
-    @abstractmethod
-    def loss_type(self) -> Type[LossValue]:
-        """Type of loss to returned"""
-
 
 class RMSEValue(LossValue):
 
@@ -62,12 +61,11 @@ class RMSEValue(LossValue):
 class RMSE(_DeltaLossFunction):
     """ RMSE = √(1/N Σ_i (y_i^predicted - y_i^true)^2)"""
 
+    loss_type = RMSEValue
+
     @staticmethod
     def statistic(arr: np.ndarray):
-        return np.square(np.mean(np.square(arr)))
-
-    def loss_type(self):
-        return RMSEValue
+        return np.sqrt(np.mean(np.square(arr)))
 
 
 class MADValue(LossValue):
@@ -79,9 +77,8 @@ class MADValue(LossValue):
 class MAD(LossFunction):
     """ MAD = 1/N √(Σ_i |y_i^predicted - y_i^true|)"""
 
+    loss_type = MADValue
+
     @staticmethod
     def statistic(arr: np.ndarray):
         return np.mean(np.abs(arr))
-
-    def loss_type(self):
-        return MADValue
