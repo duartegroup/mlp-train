@@ -5,6 +5,7 @@ from mltrain.system import System
 from mltrain.box import Box
 from mltrain.sampling import md, Bias, UmbrellaSampling
 from mltrain import potentials
+from mltrain import loss
 from mltrain.training import selection
 from mltrain.sampling.reaction_coord import AverageDistance
 
@@ -21,6 +22,7 @@ __all__ = ['Configuration',
            'UmbrellaSampling',
            'AverageDistance',
            'md',
+           'loss',
            'selection',
            'potentials'
            ]

@@ -1,5 +1,4 @@
 import numpy as np
-from typing import Type
 from abc import ABC, abstractmethod
 from scipy.stats import bootstrap
 from mltrain.loss._base import LossValue, LossFunction
@@ -8,10 +7,12 @@ from mltrain.loss._base import LossValue, LossFunction
 class _DeltaLossFunction(LossFunction, ABC):
     """Error measure that depends on E_true - E_predicted"""
 
+    loss_type = None
+
     def __call__(self,
                  configurations: 'mltrain.ConfigurationSet',
-                 mlp:            'mltrain.potentials.MLPotential'
-                 ) -> LossValue:
+                 mlp:            'mltrain.potentials.MLPotential',
+                 **kwargs) -> LossValue:
         """Calculate the value of the loss
 
         -----------------------------------------------------------------------
@@ -21,21 +22,32 @@ class _DeltaLossFunction(LossFunction, ABC):
             mlp: Potential to use
         """
 
+        if self.loss_type is None:
+            raise NotImplementedError(f'{self} did not define loss_type')
+
+        if 'method_name' in kwargs:
+            self.method_name = kwargs.pop('method_name')
+
+        if len(kwargs) > 0:
+            raise ValueError(f'Unknown keyword arguments: {kwargs}')
+
         delta_Es = self._delta_energies(configurations, mlp)
         std_error = bootstrap(delta_Es, self.statistic).standard_error
 
         return self.loss_type(self.statistic(delta_Es), error=std_error)
 
-    @staticmethod
-    def _delta_energies(cfgs, mlp):
+    def _delta_energies(self, cfgs, mlp):
         """Evaluate E_true - E_predicted along a set of configurations"""
 
         for idx, configuration in enumerate(cfgs):
 
             if configuration.energy.true is None:
-                raise RuntimeError(
-                    f'Cannot compute loss for configuration {idx} '
-                    f'- a true energies was not present')
+                if self.method_name is not None:
+                    configuration.single_point(method=self.method_name)
+
+                else:
+                    raise RuntimeError(f'Cannot compute loss for configuration '
+                                       f'{idx}, a true energy was not present')
 
             if configuration.energy.predicted is None:
                 mlp.predict(configuration)
@@ -47,41 +59,34 @@ class _DeltaLossFunction(LossFunction, ABC):
     def statistic(arr: np.ndarray) -> float:
         """Error measure over an array of values"""
 
-    @property
-    @abstractmethod
-    def loss_type(self) -> Type[LossValue]:
-        """Type of loss to returned"""
-
 
 class RMSEValue(LossValue):
 
     def __repr__(self):
-        return f'RMSE({self._value_str})'
+        return f'RMSE({float.__repr__(self)}{self._err_str})'
 
 
 class RMSE(_DeltaLossFunction):
     """ RMSE = √(1/N Σ_i (y_i^predicted - y_i^true)^2)"""
 
-    @staticmethod
-    def statistic(arr: np.ndarray):
-        return np.square(np.mean(np.square(arr)))
+    loss_type = RMSEValue
 
-    def loss_type(self):
-        return RMSEValue
+    @staticmethod
+    def statistic(arr: np.ndarray) -> float:
+        return np.sqrt(np.mean(np.square(arr)))
 
 
 class MADValue(LossValue):
 
     def __repr__(self):
-        return f'MAD({self._value_str})'
+        return f'MAD({float.__repr__(self)}{self._err_str})'
 
 
 class MAD(LossFunction):
     """ MAD = 1/N √(Σ_i |y_i^predicted - y_i^true|)"""
 
-    @staticmethod
-    def statistic(arr: np.ndarray):
-        return np.mean(np.abs(arr))
+    loss_type = MADValue
 
-    def loss_type(self):
-        return MADValue
+    @staticmethod
+    def statistic(arr: np.ndarray) -> float:
+        return float(np.mean(np.abs(arr)))

@@ -183,7 +183,7 @@ class ConfigurationSet(list):
                     arg.predict(self)
 
                 elif isinstance(arg, str):
-                    self.single_point(method_name=arg)
+                    self.single_point(method=arg)
 
                 else:
                     raise ValueError(f'Cannot compare using {arg}')
@@ -324,16 +324,16 @@ class ConfigurationSet(list):
         return None
 
     def single_point(self,
-                     method_name: str) -> None:
+                     method: str) -> None:
         """
         Evaluate energies and forces on all configuration in this set
 
         -----------------------------------------------------------------------
         Arguments:
-            method_name:
+            method:
         """
         return self._run_parallel_method(function=_single_point_eval,
-                                         method_name=method_name)
+                                         method_name=method)
 
     @property
     def _coordinates(self) -> np.ndarray:

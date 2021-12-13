@@ -26,16 +26,29 @@ class LossValue(ABC, float):
         """Representation of this loss"""
 
     @property
-    def _value_str(self) -> str:
+    def _err_str(self) -> str:
         """String containing the value and any associated error"""
-        return f'{self}' if self.error is None else f'{self}±{self.error}'
+        return '' if self.error is None else f'±{self.error}'
 
 
 class LossFunction(ABC):
 
+    def __init__(self,
+                 method_name: Optional[str] = None):
+        """
+        Construct a loss function
+
+        -----------------------------------------------------------------------
+        Arguments:
+            method_name: Name of the reference method to evaluate true
+                         energies and forces
+        """
+
+        self.method_name = method_name
+
     @abstractmethod
     def __call__(self,
                  configurations: 'mltrain.ConfigurationSet',
-                 mlp:            'mltrain.potentials._base.MLPotential'
-                 ) -> LossValue:
+                 mlp:            'mltrain.potentials._base.MLPotential',
+                 **kwargs) -> LossValue:
         """Compute a loss value"""

@@ -184,7 +184,7 @@ def _add_active_configs(mlp,
                 continue
 
     if 'method_name' in kwargs and configs.has_a_none_energy:
-        configs.single_point(method_name=kwargs.get('method_name'))
+        configs.single_point(method=kwargs.get('method_name'))
 
     mlp.training_data += configs
     return None
@@ -298,7 +298,7 @@ def _set_init_training_configs(mlp, init_configs, method_name) -> None:
     if not all(cfg.energy.true is not None for cfg in init_configs):
         logger.info(f'Initialised with {len(init_configs)} configurations '
                     f'all with defined energy')
-        init_configs.single_point(method_name=method_name)
+        init_configs.single_point(method=method_name)
 
     mlp.training_data += init_configs
 

@@ -2,7 +2,7 @@ import numpy as np
 from typing import Union, Sequence, List
 from scipy.spatial.distance import cdist
 from scipy.stats import special_ortho_group
-from mltrain.configurations import Configuration
+from mltrain.configurations import Configuration, ConfigurationSet
 from mltrain.log import logger
 from mltrain.box import Box
 from mltrain.molecule import Molecule
@@ -82,6 +82,33 @@ class System:
 
         return configuration
 
+    def random_configurations(self,
+                              num: int,
+                              **kwargs
+                              ) -> 'mltrain.ConfigurationSet':
+        """
+        Generate a number of random configurations of this system
+
+        -----------------------------------------------------------------------
+        Arguments:
+            num: Number of configurations to generate
+
+        See Also:
+            mltrain.system.System.random_configuration for keyword arguments
+
+        Returns:
+            (mltrain.configurations.configuration_set.ConfigurationSet):
+        """
+        configs = ConfigurationSet()
+
+        for _ in range(num):
+            # Here the configurations may be identical, but this is desired
+            # so call the superclass function directly overriding the 'set'
+            # definition
+            list.append(configs, self.random_configuration(**kwargs))
+
+        return configs
+
     @property
     def configuration(self) -> 'mltrain.Configuration':
         """
@@ -117,7 +144,7 @@ class System:
     def add_molecules(self,
                       molecule: 'mltrain.Molecule',
                       num:      int = 1
-                      ):
+                      ) -> None:
         """
         Add multiple versions of a molecule to this sytem
 
