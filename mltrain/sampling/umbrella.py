@@ -30,9 +30,9 @@ class _Window:
 
     def __init__(self,
                  rxn_coords: np.ndarray,
-                 bias_e: np.ndarray,
-                 refs: np.ndarray,
-                 n_points: int):
+                 bias_e:     np.ndarray,
+                 refs:       np.ndarray,
+                 n_points:   int):
         """
         Umbrella Window
 
@@ -95,7 +95,6 @@ class UmbrellaSampling:
         self._fitted_gaussians: List[_FittedGaussian] = []
 
         self.windows:           List = []
-        self.free_energy:       Optional[np.ndarray] = None
         self.prob_dist:         Optional[np.ndarray] = None
         self.n_points:          Optional[int] = None
 
@@ -241,37 +240,64 @@ class UmbrellaSampling:
 
         return None
 
-    def _plot_free_energy(self):
+    def _plot_free_energy(self, units='kcal mol-1'):
         """Plots the free energy against the reaction coordinate"""
+        free_energies = self.free_energies
 
-        plt.plot(self.refs, self.rel_free_energies, color='k')
+        if units.lower() == 'ev':
+            pass
+
+        elif units.lower() == 'kcal mol-1':
+            free_energies *= 23.060541945329334   # eV -> kcal mol-1
+
+        elif units.lower() == 'kj mol-1':
+            free_energies *= 96.48530749925793   # eV -> kJ mol-1
+
+        else:
+            raise ValueError(f'Unknown energy units: {units}')
+
+        rel_free_energies = free_energies - min(free_energies)
+        zetas = np.linspace(self.refs[0], self.refs[-1], num=self.n_points)
+
+        plt.plot(zetas, rel_free_energies, color='k')
+
         with open(f'free_energy.txt', 'w') as outfile:
-            for ref, free_energy in zip(self.refs, self.rel_free_energies):
+            for ref, free_energy in zip(zetas, rel_free_energies):
                 print(ref, free_energy, file=outfile)
 
         plt.xlabel('Reaction coordinate / Å')
         plt.ylabel('ΔG / kcal mol$^{-1}$')
 
-        plt.savefig(f'free_energy.pdf')
-
+        plt.savefig('free_energy.pdf')
+        plt.close()
         return None
 
     @property
-    def rel_free_energies(self) -> np.ndarray:
+    def free_energies(self) -> np.ndarray:
         """
-        Free energy estimates for each of the windows converted to kcal / mol
+        Free energies at each point along the profile, eqn. 8.6.5 in Tuckermann
 
         -----------------------------------------------------------------------
         Returns:
-            (np.ndarray):
+            (np.ndarray): A(ζ)
         """
-        free_energies = np.array([23*w_k.free_energy for w_k in self.windows])
+        return - (1.0 / self.beta) * np.log(self.prob_dist)
 
-        return free_energies - min(free_energies)
+    @property
+    def beta(self) -> float:
+        """
+        β = 1 / (k_B T)
+
+        -----------------------------------------------------------------------
+        Returns:
+            (float): β in units of eV^-1
+        """
+        k_b = 8.617333262E-5  # Boltzmann constant in eV / K
+        return 1.0 / (k_b * self.temp)
 
     def wham(self,
-             tol=1E-3,
-             max_iterations=10000
+             tol:            float = 1E-3,
+             max_iterations: int = 10000
              ) -> None:
         """
         Construct an unbiased distribution (on a grid) from a set of windows
@@ -282,11 +308,8 @@ class UmbrellaSampling:
             tol: Tolerance on the convergence
 
             max_iterations: Maximum number of WHAM iterations to perform
-
         """
-        beta = 1 / (8.617333262E-5 * self.temp)  # Boltzmann constant in eV / K
-
-        self.free_energy = np.zeros(self.n_points)
+        beta = self.beta
 
         # Uniform probability distribution starting point
         self.prob_dist = np.ones(self.n_points) / self.n_points
@@ -300,12 +323,12 @@ class UmbrellaSampling:
         for _ in range(max_iterations):
 
             prob_dist = (sum(w_k.hist for w_k in self.windows)
-                    / sum(w_k.n * np.exp(beta * (w_k.free_energy - w_k.bias_e))
+                         / sum(w_k.n * np.exp(beta * (w_k.free_energy - w_k.bias_e))
                          for w_k in self.windows))
 
             for w_k in self.windows:
                 w_k.free_energy = (-(1.0/beta)
-                      * np.log(np.sum(prob_dist * np.exp(-w_k.bias_e * beta))))
+                                   * np.log(np.sum(prob_dist * np.exp(-w_k.bias_e * beta))))
 
             if converged():
                 break
