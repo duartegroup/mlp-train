@@ -63,7 +63,7 @@ class _DeltaLossFunction(LossFunction, ABC):
 class RMSEValue(LossValue):
 
     def __repr__(self):
-        return f'RMSE({self._value_str})'
+        return f'RMSE({float.__repr__(self)}{self._err_str})'
 
 
 class RMSE(_DeltaLossFunction):
@@ -79,7 +79,7 @@ class RMSE(_DeltaLossFunction):
 class MADValue(LossValue):
 
     def __repr__(self):
-        return f'MAD({self._value_str})'
+        return f'MAD({float.__repr__(self)}{self._err_str})'
 
 
 class MAD(LossFunction):

@@ -26,9 +26,9 @@ class LossValue(ABC, float):
         """Representation of this loss"""
 
     @property
-    def _value_str(self) -> str:
+    def _err_str(self) -> str:
         """String containing the value and any associated error"""
-        return f'{self}' if self.error is None else f'{self}±{self.error}'
+        return '' if self.error is None else f'±{self.error}'
 
 
 class LossFunction(ABC):

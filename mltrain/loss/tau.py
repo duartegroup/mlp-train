@@ -9,7 +9,7 @@ from mltrain.loss._base import LossFunction, LossValue
 class Tau(LossValue):
 
     def __repr__(self):
-        return f'τ_acc = {self._value_str}'
+        return f'τ_acc = {float.__repr__(self)}{self._err_str}'
 
 
 class TauCalculator(LossFunction):
@@ -18,7 +18,7 @@ class TauCalculator(LossFunction):
                  e_lower:       float = 0.1,
                  e_thresh:      Optional[float] = None,
                  max_time:      float = 1000.0,
-                 time_interval: float = 20.0,
+                 time_interval: float = 50.0,
                  temp:          float = 300.0,
                  dt:            float = 0.5):
         """
@@ -112,7 +112,6 @@ class TauCalculator(LossFunction):
                               fs=block_time,
                               n_cores=min(Config.n_cores, 4))
 
-            # Only evaluate the energy
             try:
                 traj.single_point(method_name)
             except (ValueError, TypeError):
@@ -124,17 +123,17 @@ class TauCalculator(LossFunction):
             logger.info('      ___ |E_true - E_GAP|/eV ___')
             logger.info(f' t/fs      err      cumul(err)')
 
-            for frame in traj:
+            for i, frame in enumerate(traj):
 
                 if frame.energy.true is None:
-                    logger.warning(f'Frame {j} had no energy')
+                    logger.warning(f'Frame {i} had no energy')
                     e_error = np.inf
                 else:
                     e_error = abs(frame.energy.delta)
 
                 # Add any error above the allowed threshold
                 cuml_error += max(e_error - self.e_l, 0)
-                curr_time += block_time
+                curr_time += self.time_interval
                 logger.info(f'{curr_time:5.0f}     '
                             f'{e_error:6.4f}     '
                             f'{cuml_error:6.4f}')
