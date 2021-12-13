@@ -2,7 +2,7 @@ import numpy as np
 from typing import Union, Sequence, List
 from scipy.spatial.distance import cdist
 from scipy.stats import special_ortho_group
-from mltrain.configurations import Configuration
+from mltrain.configurations import Configuration, ConfigurationSet
 from mltrain.log import logger
 from mltrain.box import Box
 from mltrain.molecule import Molecule
@@ -99,8 +99,6 @@ class System:
         Returns:
             (mltrain.configurations.configuration_set.ConfigurationSet):
         """
-        from mltrain.configurations.configuration_set import ConfigurationSet
-
         configs = ConfigurationSet()
 
         for _ in range(num):

@@ -41,13 +41,13 @@ class _DeltaLossFunction(LossFunction, ABC):
 
         for idx, configuration in enumerate(cfgs):
 
-            if configuration.energy.true:
+            if configuration.energy.true is None:
                 if self.method_name is not None:
                     configuration.single_point(method=self.method_name)
 
                 else:
                     raise RuntimeError(f'Cannot compute loss for configuration '
-                                       f'{idx}- a true energies was not present')
+                                       f'{idx}, a true energy was not present')
 
             if configuration.energy.predicted is None:
                 mlp.predict(configuration)
