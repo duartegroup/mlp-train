@@ -35,6 +35,11 @@ class Bias(ASEConstraint, Function):
 
         return 0.5 * self.kappa * (self.f(atoms) - self.ref)**2
 
+    def bias_over_range(self, q_points):
+        """Returns an array of biases over a specificed reaction coordinate"""
+
+        return 0.5 * self.kappa * (q_points - self.ref)**2
+
     def grad(self, atoms):
         """Gradient of the biasing potential a set of atom pairs in atoms"""
 
@@ -42,6 +47,7 @@ class Bias(ASEConstraint, Function):
 
     def adjust_potential_energy(self, atoms):
         """Adjust the energy of a set of atoms using the bias function"""
+
         return self.__call__(atoms)
 
     def adjust_forces(self, atoms, forces):
@@ -54,6 +60,7 @@ class Bias(ASEConstraint, Function):
         and B is the bias.
         """
         forces -= self.grad(atoms)
+
         return None
 
     def adjust_positions(self, atoms, newpositions):

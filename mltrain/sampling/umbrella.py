@@ -29,29 +29,31 @@ class _Window:
     """Contains the attributes belonging to an US window used for WHAM or UI"""
 
     def __init__(self,
+                 rxn_coords: np.ndarray,
                  bias_e: np.ndarray,
-                 rxn_coords: np.ndarray):
+                 refs: np.ndarray,
+                 n_points: int):
         """
         Umbrella Window
 
         -----------------------------------------------------------------------
         Arguments:
-            bias_e: Value of the bias for each frame in a window
 
-            rxn_coords: Values of the reaction coordinate (q)
+            rxn_coords: Values of the sampled reaction coordinate (q)
+
+            bias_e: Values of the bias across the reaction coordinate for a
+                    given window kappa and reference
+
+            refs: Values of the reference for every window
+
+            n_points: Number of points sampled in each window
 
         """
+        bins = np.linspace(refs[0], refs[-1], num=n_points+1)
+        self.hist, _ = np.histogram(rxn_coords, bins=bins)
+
         self.bias_e = bias_e
-        self.rxn_coords = rxn_coords
-
-        self.hist, _ = np.histogram(bias_e, bins=self.bins)
         self.free_energy = 0.0
-
-    @property
-    def bins(self) -> np.ndarray:
-        """Bin edges to histogram into"""
-        return np.linspace(np.min(self.rxn_coords), np.max(self.rxn_coords),
-                           num=len(self.rxn_coords) + 1)
 
     @property
     def n(self) -> int:
@@ -89,12 +91,13 @@ class UmbrellaSampling:
         self.kappa:             float = kappa
         self.zeta_func:         Callable = zeta_func
         self.refs:              Optional[np.ndarray] = None
+        self.temp:              Optional[float] = None
         self._fitted_gaussians: List[_FittedGaussian] = []
 
         self.windows:           List = []
         self.free_energy:       Optional[np.ndarray] = None
         self.prob_dist:         Optional[np.ndarray] = None
-        self.n_points:          int = 0
+        self.n_points:          Optional[int] = None
 
     @staticmethod
     def _best_init_frame(bias, traj):
@@ -196,13 +199,15 @@ class UmbrellaSampling:
             raise ValueError('Temperature must be positive and non-zero for '
                              'umbrella sampling')
 
+        self.temp = temp
+
         self._set_reference_values(traj, n_windows, init_ref, final_ref)
 
         combined_traj = ConfigurationSet()
         for idx, ref in enumerate(self.refs):
 
             logger.info(f'Running US window {idx+1} with ζ={ref:.2f} Å and '
-                        f'κ = {self.kappa:.3f} eV / Å^2')
+                        f'κ = {self.kappa:.3f} eV / Å^1')
 
             bias = Bias(zeta_func=self.zeta_func, kappa=self.kappa,
                         reference=ref)
@@ -216,9 +221,15 @@ class UmbrellaSampling:
                                               bias=bias,
                                               **kwargs)
 
-            self.windows.append(_Window(bias(win_traj),
-                                        self.zeta_func(win_traj)))
             self.n_points = len(win_traj)
+
+            q_points = np.linspace(self.refs[0], self.refs[-1],
+                                   num=self.n_points)
+
+            self.windows.append(_Window(rxn_coords=self.zeta_func(win_traj),
+                                        bias_e=bias.bias_over_range(q_points),
+                                        refs=self.refs,
+                                        n_points=self.n_points))
 
             gaussian = self._fit_gaussian(self.zeta_func(win_traj))
             self._fitted_gaussians.append(gaussian)
@@ -231,27 +242,34 @@ class UmbrellaSampling:
         return None
 
     def _plot_free_energy(self):
+        """Plots the free energy against the reaction coordinate"""
 
-        plt.plot(self.refs, self.rel_free_energies)
-        plt.savefig('tmp.pdf')
+        plt.plot(self.refs, self.rel_free_energies, color='k')
+        with open(f'free_energy.txt', 'w') as outfile:
+            for ref, free_energy in zip(self.refs, self.rel_free_energies):
+                print(ref, free_energy, file=outfile)
+
+        plt.xlabel('Reaction coordinate / Å')
+        plt.ylabel('ΔG / kcal mol$^{-1}$')
+
+        plt.savefig(f'free_energy.pdf')
 
         return None
 
     @property
     def rel_free_energies(self) -> np.ndarray:
         """
-        Free energy estimates for each of the windows
+        Free energy estimates for each of the windows converted to kcal / mol
 
         -----------------------------------------------------------------------
         Returns:
             (np.ndarray):
         """
-        free_energies = np.array([w_k.free_energy for w_k in self.windows])
-        print(f'Free energies:{free_energies - free_energies[0]}')
-        return free_energies - free_energies[0]
+        free_energies = np.array([23*w_k.free_energy for w_k in self.windows])
+
+        return free_energies - min(free_energies)
 
     def wham(self,
-             beta=None,
              tol=1E-3,
              max_iterations=10000
              ) -> None:
@@ -260,13 +278,14 @@ class UmbrellaSampling:
 
         -----------------------------------------------------------------------
         Arguments:
-            beta: 1 / k_B T
 
             tol: Tolerance on the convergence
 
             max_iterations: Maximum number of WHAM iterations to perform
+
         """
-        assert beta is not None
+        beta = 1 / (8.617333262E-5 * self.temp)  # Boltzmann constant in eV / K
+
         self.free_energy = np.zeros(self.n_points)
 
         # Uniform probability distribution starting point
@@ -281,12 +300,12 @@ class UmbrellaSampling:
         for _ in range(max_iterations):
 
             prob_dist = (sum(w_k.hist for w_k in self.windows)
-                 / sum(w_k.n * np.exp(beta * (w_k.free_energy - w_k.bias_e))
-                       for w_k in self.windows))
+                    / sum(w_k.n * np.exp(beta * (w_k.free_energy - w_k.bias_e))
+                         for w_k in self.windows))
 
             for w_k in self.windows:
                 w_k.free_energy = (-(1.0/beta)
-                         * np.log(np.sum(prob_dist * np.exp(-w_k.bias_e * beta))))
+                      * np.log(np.sum(prob_dist * np.exp(-w_k.bias_e * beta))))
 
             if converged():
                 break
