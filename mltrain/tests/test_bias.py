@@ -134,7 +134,7 @@ def test_window_umbrella():
                                     kappa=100)
 
     assert umbrella.kappa is not None and np.isclose(umbrella.kappa, 100.)
-    assert umbrella.refs is None
+    assert umbrella.zeta_refs is None
 
     traj = mlt.ConfigurationSet()
     traj.load_xyz(os.path.join(here, 'data', 'h2_traj.xyz'), charge=0, mult=1)
@@ -142,8 +142,8 @@ def test_window_umbrella():
     umbrella._set_reference_values(traj, num=10, init_ref=0.7, final_ref=2)
 
     # Setting the reference values of the reaction coordinate should un-None
-    assert umbrella.refs is not None
-    assert np.allclose(umbrella.refs, np.linspace(0.7, 2, 10))
+    assert umbrella.zeta_refs is not None
+    assert np.allclose(umbrella.zeta_refs, np.linspace(0.7, 2, 10))
 
     umbrella.run_umbrella_sampling(traj,
                                    mlp=TestPotential('1D'),
@@ -155,7 +155,7 @@ def test_window_umbrella():
 
     # Sampling with a high force constant should lead to fitted Gaussians
     # that closely match the reference (target) values
-    for gaussian, ref in zip(umbrella._fitted_gaussians, umbrella.refs):
+    for gaussian, ref in zip(umbrella._fitted_gaussians, umbrella.zeta_refs):
         assert np.isclose(gaussian.params[1], ref, atol=0.1)
 
     assert os.path.exists('combined_windows.xyz')

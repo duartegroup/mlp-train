@@ -6,7 +6,7 @@ from mltrain.sampling.reaction_coord import ReactionCoordinate
 from mltrain.configurations import ConfigurationSet
 from mltrain.sampling.md import run_mlp_md
 from mltrain.log import logger
-from typing import Optional, List, Callable
+from typing import Optional, List, Callable, Tuple
 from scipy.optimize import curve_fit
 
 
@@ -29,35 +29,52 @@ class _Window:
     """Contains the attributes belonging to an US window used for WHAM or UI"""
 
     def __init__(self,
-                 rxn_coords: np.ndarray,
-                 bias_e:     np.ndarray,
-                 refs:       np.ndarray,
-                 n_points:   int):
+                 obs_zetas: np.ndarray,
+                 bias:      'mltrain.Bias'):
         """
         Umbrella Window
 
         -----------------------------------------------------------------------
         Arguments:
 
-            rxn_coords: Values of the sampled reaction coordinate (q)
+            obs_zetas: Values of the sampled reaction coordinate ζ_i for this
+                       window (i)
 
-            bias_e: Values of the bias across the reaction coordinate for a
-                    given window kappa and reference
-
-            refs: Values of the reference for every window
-
-            n_points: Number of points sampled in each window
-
+            bias: Bias function, containing a reference value of ζ in this
+                  window and its associated spring constant
         """
-        bins = np.linspace(refs[0], refs[-1], num=n_points+1)
-        self.hist, _ = np.histogram(rxn_coords, bins=bins)
+        self._bias = bias
+        self._obs_zetas = obs_zetas
 
-        self.bias_e = bias_e
+        self.bias_energies: Optional[np.ndarray] = None
+        self.hist:          Optional[np.ndarray] = None
+
         self.free_energy = 0.0
+
+    def bin(self,
+            zetas: np.ndarray) -> None:
+        """
+        Bin the observed reaction coordinates in this window into an a set of
+
+        -----------------------------------------------------------------------
+        Arguments:
+            zetas: Discretized reaction coordinate
+        """
+
+        bins = np.linspace(zetas[0], zetas[-1], num=len(zetas)+1)
+        self.hist, _ = np.histogram(self._obs_zetas, bins=bins)
+
+        self.bias_energies = 0.5 * self._bias.kappa * (zetas - self._bias.ref)**2
+
+        return None
 
     @property
     def n(self) -> int:
         """Number of samples in this window"""
+        if self.hist is None:
+            raise ValueError('Cannot determine the number of samples - '
+                             'window has not been binned')
+
         return int(np.sum(self.hist))
 
 
@@ -85,18 +102,17 @@ class UmbrellaSampling:
 
             zeta_func: Reaction coordinate, as the function of atomic positions
 
-            kappa: Value of the spring_const, κ, used in umbrella sampling
+            kappa: Value of the spring constant, κ, used in umbrella sampling
         """
 
-        self.kappa:             float = kappa
+        self.kappa:             float = kappa                        # eV Å^-2
         self.zeta_func:         Callable = zeta_func
-        self.refs:              Optional[np.ndarray] = None
-        self.temp:              Optional[float] = None
-        self._fitted_gaussians: List[_FittedGaussian] = []
+        self.zeta_refs:         Optional[np.ndarray] = None          # Å
 
-        self.windows:           List = []
-        self.prob_dist:         Optional[np.ndarray] = None
-        self.n_points:          Optional[int] = None
+        self.temp:              Optional[float] = None               # K
+
+        self._fitted_gaussians: List[_FittedGaussian] = []
+        self.windows:           List[_Window] = []
 
     @staticmethod
     def _best_init_frame(bias, traj):
@@ -118,15 +134,15 @@ class UmbrellaSampling:
         if final_ref is None:
             final_ref = self.zeta_func(traj[-1])
 
-        self.refs = np.linspace(init_ref, final_ref, num)
+        self.zeta_refs = np.linspace(init_ref, final_ref, num)
         return None
 
     def _fit_gaussian(self, data) -> '_FittedGaussian':
         """Fit a Gaussian to a set of data"""
         gaussian = _FittedGaussian()
 
-        min_x = min(self.refs) * 0.9
-        max_x = max(self.refs) * 1.1
+        min_x = min(self.zeta_refs) * 0.9
+        max_x = max(self.zeta_refs) * 1.1
 
         x_range = np.linspace(min_x, max_x, 500)
 
@@ -199,20 +215,17 @@ class UmbrellaSampling:
                              'umbrella sampling')
 
         self.temp = temp
-
         self._set_reference_values(traj, n_windows, init_ref, final_ref)
 
         combined_traj = ConfigurationSet()
-        for idx, ref in enumerate(self.refs):
+        for idx, ref in enumerate(self.zeta_refs):
 
-            logger.info(f'Running US window {idx+1} with ζ={ref:.2f} Å and '
+            logger.info(f'Running US window {idx+1} with ζ_ref={ref:.2f} Å and '
                         f'κ = {self.kappa:.3f} eV / Å^1')
 
-            bias = Bias(zeta_func=self.zeta_func, kappa=self.kappa,
-                        reference=ref)
+            bias = Bias(self.zeta_func, kappa=self.kappa, reference=ref)
 
-            win_traj = _run_individual_window(self._best_init_frame(bias,
-                                                                    traj),
+            win_traj = _run_individual_window(self._best_init_frame(bias, traj),
                                               mlp,
                                               temp,
                                               interval,
@@ -220,15 +233,8 @@ class UmbrellaSampling:
                                               bias=bias,
                                               **kwargs)
 
-            self.n_points = len(win_traj)
-
-            q_points = np.linspace(self.refs[0], self.refs[-1],
-                                   num=self.n_points)
-
-            self.windows.append(_Window(rxn_coords=self.zeta_func(win_traj),
-                                        bias_e=bias.bias_over_range(q_points),
-                                        refs=self.refs,
-                                        n_points=self.n_points))
+            self.windows.append(_Window(obs_zetas=self.zeta_func(win_traj),
+                                        bias=bias))
 
             gaussian = self._fit_gaussian(self.zeta_func(win_traj))
             self._fitted_gaussians.append(gaussian)
@@ -240,48 +246,15 @@ class UmbrellaSampling:
 
         return None
 
-    def _plot_free_energy(self, units='kcal mol-1'):
-        """Plots the free energy against the reaction coordinate"""
-        free_energies = self.free_energies
-
-        if units.lower() == 'ev':
-            pass
-
-        elif units.lower() == 'kcal mol-1':
-            free_energies *= 23.060541945329334   # eV -> kcal mol-1
-
-        elif units.lower() == 'kj mol-1':
-            free_energies *= 96.48530749925793   # eV -> kJ mol-1
-
-        else:
-            raise ValueError(f'Unknown energy units: {units}')
-
-        rel_free_energies = free_energies - min(free_energies)
-        zetas = np.linspace(self.refs[0], self.refs[-1], num=self.n_points)
-
-        plt.plot(zetas, rel_free_energies, color='k')
-
-        with open(f'free_energy.txt', 'w') as outfile:
-            for ref, free_energy in zip(zetas, rel_free_energies):
-                print(ref, free_energy, file=outfile)
-
-        plt.xlabel('Reaction coordinate / Å')
-        plt.ylabel('ΔG / kcal mol$^{-1}$')
-
-        plt.savefig('free_energy.pdf')
-        plt.close()
-        return None
-
-    @property
-    def free_energies(self) -> np.ndarray:
+    def free_energies(self, prob_dist) -> np.ndarray:
         """
-        Free energies at each point along the profile, eqn. 8.6.5 in Tuckermann
+        Free energies at each point along the profile, eqn. 8.6.5 in Tuckerman
 
         -----------------------------------------------------------------------
         Returns:
             (np.ndarray): A(ζ)
         """
-        return - (1.0 / self.beta) * np.log(self.prob_dist)
+        return - (1.0 / self.beta) * np.log(prob_dist)
 
     @property
     def beta(self) -> float:
@@ -297,8 +270,9 @@ class UmbrellaSampling:
 
     def wham(self,
              tol:            float = 1E-3,
-             max_iterations: int = 10000
-             ) -> None:
+             max_iterations: int = 10000,
+             n_bins:         int = 100
+             ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Construct an unbiased distribution (on a grid) from a set of windows
 
@@ -308,37 +282,46 @@ class UmbrellaSampling:
             tol: Tolerance on the convergence
 
             max_iterations: Maximum number of WHAM iterations to perform
+
+            n_bins: Number of bins to use in the histogram (minus one)
+
+        Returns:
+            (np.ndarray, np.ndarray): Tuple containing the reaction coordinate
+                                      and values of the free energy
         """
-        beta = self.beta
+        beta = self.beta   # 1 / (k_B T)
 
-        # Uniform probability distribution starting point
-        self.prob_dist = np.ones(self.n_points) / self.n_points
+        # Discretized values of the reaction coordinate
+        zetas = np.linspace(self.zeta_refs[0], self.zeta_refs[-1], num=n_bins)
 
-        p_prev = np.inf * np.ones(self.n_points)  # Start with P(q)^(-1) = ∞
-        prob_dist = self.prob_dist
+        for window in self.windows:
+            window.bin(zetas=zetas)
+
+        p = np.ones_like(zetas) / len(zetas)  # P(ζ) uniform distribution
+        p_prev = np.inf * np.ones_like(p)     # Start with P(ζ)_(-1) = ∞
 
         def converged():
-            return np.max(np.abs(p_prev - prob_dist)) < tol
+            return np.max(np.abs(p_prev - p)) < tol
 
-        for _ in range(max_iterations):
+        for iteration in range(max_iterations):
 
-            prob_dist = (sum(w_k.hist for w_k in self.windows)
-                         / sum(w_k.n * np.exp(beta * (w_k.free_energy - w_k.bias_e))
-                         for w_k in self.windows))
+            p = (sum(w_k.hist for w_k in self.windows)
+                 / sum(w_k.n * np.exp(beta * (w_k.free_energy - w_k.bias_energies))
+                       for w_k in self.windows))
 
             for w_k in self.windows:
                 w_k.free_energy = (-(1.0/beta)
-                                   * np.log(np.sum(prob_dist * np.exp(-w_k.bias_e * beta))))
+                                   * np.log(np.sum(p * np.exp(-w_k.bias_energies * beta))))
 
             if converged():
+                logger.info(f'WHAM converged in {iteration} iterations')
                 break
 
-            p_prev = prob_dist
+            p_prev = p
 
-        self.prob_dist = prob_dist
-        self._plot_free_energy()
-
-        return None
+        _plot_and_save_free_energy(free_energies=self.free_energies(p),
+                                   zetas=zetas)
+        return zetas, self.free_energies(p)
 
 
 class _FittedGaussian:
@@ -360,3 +343,43 @@ class _FittedGaussian:
     @staticmethod
     def value(x, a, b, c):
         return a * np.exp(-(x - b)**2 / (2. * c**2))
+
+
+def _plot_and_save_free_energy(free_energies,
+                               zetas,
+                               units='kcal mol-1') -> None:
+    """
+    Plots the free energy against the reaction coordinate and saves
+    the corresponding values as a .txt file
+
+    -----------------------------------------------------------------------
+    Arguments:
+
+        zetas: Values of the reaction coordinate
+    """
+    if units.lower() == 'ev':
+        pass
+
+    elif units.lower() == 'kcal mol-1':
+        free_energies *= 23.060541945329334  # eV -> kcal mol-1
+
+    elif units.lower() == 'kj mol-1':
+        free_energies *= 96.48530749925793  # eV -> kJ mol-1
+
+    else:
+        raise ValueError(f'Unknown energy units: {units}')
+
+    rel_free_energies = free_energies - min(free_energies)
+
+    plt.plot(zetas, rel_free_energies, color='k')
+
+    with open(f'free_energy.txt', 'w') as outfile:
+        for ref, free_energy in zip(zetas, rel_free_energies):
+            print(ref, free_energy, file=outfile)
+
+    plt.xlabel('Reaction coordinate / Å')
+    plt.ylabel('ΔG / kcal mol$^{-1}$')
+
+    plt.savefig('free_energy.pdf')
+    plt.close()
+    return None
