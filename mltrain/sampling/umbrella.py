@@ -37,8 +37,8 @@ class _Window:
         -----------------------------------------------------------------------
         Arguments:
 
-            obs_zetas: Values of the sampled reaction coordinate ζ_i for this
-                       window (i)
+            obs_zetas: Values of the sampled (observed) reaction coordinate
+                       ζ_i for this window (i)
 
             bias: Bias function, containing a reference value of ζ in this
                   window and its associated spring constant
@@ -55,6 +55,7 @@ class _Window:
             zetas: np.ndarray) -> None:
         """
         Bin the observed reaction coordinates in this window into an a set of
+        bins, defined by the array of bin centres (zetas)
 
         -----------------------------------------------------------------------
         Arguments:
@@ -206,9 +207,6 @@ class UmbrellaSampling:
         Keyword Arguments:
 
             {fs, ps, ns}: Simulation time in some units
-
-        Returns:
-            None:
         """
         if temp <= 0:
             raise ValueError('Temperature must be positive and non-zero for '
@@ -221,7 +219,7 @@ class UmbrellaSampling:
         for idx, ref in enumerate(self.zeta_refs):
 
             logger.info(f'Running US window {idx+1} with ζ_ref={ref:.2f} Å and '
-                        f'κ = {self.kappa:.3f} eV / Å^1')
+                        f'κ = {self.kappa:.3f} eV / Å^2')
 
             bias = Bias(self.zeta_func, kappa=self.kappa, reference=ref)
 
@@ -241,8 +239,10 @@ class UmbrellaSampling:
 
             combined_traj = combined_traj + win_traj
 
-        plt.close()
         combined_traj.save(filename='combined_windows.xyz')
+
+        # _fit_gaussian() Plots to a figure, so close it here
+        plt.close()
 
         return None
 
@@ -283,7 +283,9 @@ class UmbrellaSampling:
 
             max_iterations: Maximum number of WHAM iterations to perform
 
-            n_bins: Number of bins to use in the histogram (minus one)
+            n_bins: Number of bins to use in the histogram (minus one) and
+                    the number of reaction coordinate values plotted and
+                    returned
 
         Returns:
             (np.ndarray, np.ndarray): Tuple containing the reaction coordinate
@@ -305,11 +307,13 @@ class UmbrellaSampling:
 
         for iteration in range(max_iterations):
 
+            # Equation 8.8.18 from Tuckerman, p. 343
             p = (sum(w_k.hist for w_k in self.windows)
                  / sum(w_k.n * np.exp(beta * (w_k.free_energy - w_k.bias_energies))
                        for w_k in self.windows))
 
             for w_k in self.windows:
+                # Equation 8.8.19 from Tuckerman, p. 343
                 w_k.free_energy = (-(1.0/beta)
                                    * np.log(np.sum(p * np.exp(-w_k.bias_energies * beta))))
 

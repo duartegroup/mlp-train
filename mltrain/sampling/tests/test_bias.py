@@ -140,11 +140,11 @@ def test_window_umbrella():
     traj = mlt.ConfigurationSet()
     traj.load_xyz(os.path.join(here, 'data', 'h2_traj.xyz'), charge=0, mult=1)
 
-    umbrella._set_reference_values(traj, num=10, init_ref=0.7, final_ref=2)
+    umbrella._set_reference_values(traj, num=3, init_ref=0.8, final_ref=1.2)
 
     # Setting the reference values of the reaction coordinate should un-None
     assert umbrella.zeta_refs is not None
-    assert np.allclose(umbrella.zeta_refs, np.linspace(0.7, 2, 10))
+    assert np.allclose(umbrella.zeta_refs, np.linspace(0.8, 1.2, 3))
 
     umbrella.run_umbrella_sampling(traj,
                                    mlp=TestPotential('1D'),
@@ -152,7 +152,7 @@ def test_window_umbrella():
                                    interval=5,
                                    dt=0.5,
                                    n_windows=3,
-                                   fs=2000)
+                                   fs=1000)
 
     # Sampling with a high force constant should lead to fitted Gaussians
     # that closely match the reference (target) values
@@ -161,5 +161,3 @@ def test_window_umbrella():
 
     assert os.path.exists('combined_windows.xyz')
     assert os.path.exists('fitted_data.pdf')
-
-    umbrella.wham()

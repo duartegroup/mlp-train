@@ -35,11 +35,6 @@ class Bias(ASEConstraint, Function):
 
         return 0.5 * self.kappa * (self.f(atoms) - self.ref)**2
 
-    def bias_over_range(self, q_points):
-        """Returns an array of biases over a specificed reaction coordinate"""
-
-        return 0.5 * self.kappa * (q_points - self.ref)**2
-
     def grad(self, atoms):
         """Gradient of the biasing potential a set of atom pairs in atoms"""
 
