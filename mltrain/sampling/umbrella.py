@@ -79,6 +79,17 @@ class _Window:
 
         return int(np.sum(self.hist))
 
+    @property
+    def zeta_ref(self) -> float:
+        """
+        ζ_ref for this window
+
+        -----------------------------------------------------------------------
+        Returns:
+            (float):
+        """
+        return self._bias.ref
+
     @classmethod
     def from_file(cls, filename: str) -> '_Window':
         """
@@ -382,6 +393,7 @@ class UmbrellaSampling:
             logger.error(f'Cannot save US to {folder_name} - had no windows')
             return None
 
+        os.mkdir(folder_name)
         for idx, window in enumerate(self.windows):
             window.save(filename=os.path.join(folder_name, f'window_{idx}.txt'))
 
@@ -396,6 +408,7 @@ class UmbrellaSampling:
                 window = _Window.from_file(os.path.join(folder_name, filename))
                 self.windows.append(window)
 
+        self.zeta_refs = np.array([w_k.zeta_ref for w_k in self.windows])
         return None
 
     @classmethod

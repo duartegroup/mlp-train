@@ -2,10 +2,8 @@ import os
 import numpy as np
 import mltrain as mlt
 from autode.atoms import Atom
-from mltrain.potentials._base import MLPotential
-from ase.calculators.calculator import Calculator
 from mltrain.utils import work_in_tmp_dir
-from .utils import work_in_zipped_dir
+from .test_potential import TestPotential
 mlt.Config.n_cores = 1
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -23,58 +21,6 @@ def _h2():
     """Dihydrogen molecule"""
     atoms = [Atom('H', -0.80952, 2.49855, 0.), Atom('H', -0.34877, 1.961, 0.)]
     return mlt.Molecule(atoms=atoms, charge=0, mult=1)
-
-
-class HarmonicPotential(Calculator):
-
-    def get_potential_energy(self, atoms):
-
-        r = atoms.get_distance(0, 1)
-
-        return (r - 1)**2
-
-    def get_forces(self, atoms):
-
-        derivative = np.zeros((len(atoms), 3))
-
-        r = atoms.get_distance(0, 1)
-
-        x_dist, y_dist, z_dist = [atoms[0].position[j] - atoms[1].position[j]
-                                  for j in range(3)]
-
-        x_i, y_i, z_i = (x_dist / r), (y_dist / r), (z_dist / r)
-
-        derivative[0][:] = [x_i, y_i, z_i]
-        derivative[1][:] = [-x_i, -y_i, -z_i]
-
-        force = -2 * derivative * (r - 1)
-
-        return force
-
-
-class TestPotential(MLPotential):
-
-    __test__ = False
-
-    def __init__(self,
-                 name: str,
-                 system=None):
-
-        super().__init__(name=name, system=system)
-
-    @property
-    def ase_calculator(self):
-
-        return HarmonicPotential()
-
-    def _train(self) -> None:
-        """ABC for MLPotential required but unused in TestPotential"""
-
-    def requires_atomic_energies(self) -> None:
-        """ABC for MLPotential required but unused in TestPotential"""
-
-    def requires_non_zero_box_size(self) -> None:
-        """ABC for MLPotential required but unused in TestPotential"""
 
 
 @work_in_tmp_dir()
@@ -128,36 +74,4 @@ def test_bias():
     assert os.path.exists('tmp.xyz')
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
-def test_window_umbrella():
 
-    umbrella = mlt.UmbrellaSampling(zeta_func=mlt.AverageDistance([0, 1]),
-                                    kappa=100)
-
-    assert umbrella.kappa is not None and np.isclose(umbrella.kappa, 100.)
-    assert umbrella.zeta_refs is None
-
-    traj = mlt.ConfigurationSet()
-    traj.load_xyz(os.path.join(here, 'data', 'h2_traj.xyz'), charge=0, mult=1)
-
-    umbrella._set_reference_values(traj, num=3, init_ref=0.8, final_ref=1.2)
-
-    # Setting the reference values of the reaction coordinate should un-None
-    assert umbrella.zeta_refs is not None
-    assert np.allclose(umbrella.zeta_refs, np.linspace(0.8, 1.2, 3))
-
-    umbrella.run_umbrella_sampling(traj,
-                                   mlp=TestPotential('1D'),
-                                   temp=300,
-                                   interval=5,
-                                   dt=0.5,
-                                   n_windows=3,
-                                   fs=1000)
-
-    # Sampling with a high force constant should lead to fitted Gaussians
-    # that closely match the reference (target) values
-    for gaussian, ref in zip(umbrella._fitted_gaussians, umbrella.zeta_refs):
-        assert np.isclose(gaussian.params[1], ref, atol=0.1)
-
-    assert os.path.exists('combined_windows.xyz')
-    assert os.path.exists('fitted_data.pdf')

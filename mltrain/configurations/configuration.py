@@ -97,7 +97,7 @@ class Configuration(AtomCollection):
         Keyword Arguments:
             append: (bool) Append to the end of this exyz file?
         """
-        logger.info(f'Saving configuration to {filename}')
+        # logger.info(f'Saving configuration to {filename}')
 
         a, b, c = [0., 0., 0.] if self.box is None else self.box.size
 
