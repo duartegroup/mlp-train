@@ -1,8 +1,9 @@
+import os
 import mltrain
 import numpy as np
 import matplotlib.pyplot as plt
 from mltrain.sampling.bias import Bias
-from mltrain.sampling.reaction_coord import ReactionCoordinate
+from mltrain.sampling.reaction_coord import ReactionCoordinate, DummyCoordinate
 from mltrain.configurations import ConfigurationSet
 from mltrain.sampling.md import run_mlp_md
 from mltrain.log import logger
@@ -77,6 +78,50 @@ class _Window:
                              'window has not been binned')
 
         return int(np.sum(self.hist))
+
+    @classmethod
+    def from_file(cls, filename: str) -> '_Window':
+        """
+        Load a window from a saved file
+
+        -----------------------------------------------------------------------
+        Arguments:
+            filename:
+
+        Returns:
+            (mltrain.sampling.umbrella._Window):
+        """
+        file_lines = open(filename, 'r', errors='ignore').readlines()
+        header_line = file_lines.pop(0)            # Pop the first line
+
+        ref_zeta = float(header_line.split()[0])   # Å
+        kappa = float(header_line.split()[1])      # eV / Å^2
+
+        obs_zeta = [float(line.split()[0]) for line in file_lines
+                    if len(line.split()) > 0]
+
+        window = cls(obs_zetas=np.array(obs_zeta),
+                     bias=Bias(zeta_func=DummyCoordinate(),
+                               kappa=kappa,
+                               reference=ref_zeta))
+
+        return window
+
+    def save(self, filename: str) -> None:
+        """
+        Save this window to a file
+
+        -----------------------------------------------------------------------
+        Arguments:
+            filename:
+        """
+        with open(filename, 'w') as out_file:
+            print(self._bias.ref, self._bias.kappa, file=out_file)
+
+            for zeta in self._obs_zetas:
+                print(zeta, file=out_file)
+
+        return None
 
 
 class UmbrellaSampling:
@@ -326,6 +371,43 @@ class UmbrellaSampling:
         _plot_and_save_free_energy(free_energies=self.free_energies(p),
                                    zetas=zetas)
         return zetas, self.free_energies(p)
+
+    def save(self, folder_name: str) -> None:
+        """
+        Save the windows in this US to a folder containing each window as .txt
+        files within in
+        """
+
+        if len(self.windows) is None:
+            logger.error(f'Cannot save US to {folder_name} - had no windows')
+            return None
+
+        for idx, window in enumerate(self.windows):
+            window.save(filename=os.path.join(folder_name, f'window_{idx}.txt'))
+
+        return None
+
+    def load(self, folder_name: str) -> None:
+        """Load data from a set of saved windows"""
+
+        for filename in os.listdir(folder_name):
+
+            if filename.startswith('window_') and filename.endswith('.txt'):
+                window = _Window.from_file(os.path.join(folder_name, filename))
+                self.windows.append(window)
+
+        return None
+
+    @classmethod
+    def from_folder(cls, folder_name: str) -> 'UmbrellaSampling':
+        """
+        Create an umbrella sampling instance from a folder containing the
+        window data
+        """
+        us = cls(zeta_func=DummyCoordinate(), kappa=0.0)
+        us.load(folder_name=folder_name)
+
+        return us
 
 
 class _FittedGaussian:

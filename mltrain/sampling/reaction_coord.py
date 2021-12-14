@@ -46,6 +46,15 @@ class ReactionCoordinate(Function, ABC):
         """Gradient for a set of ASE atoms"""
 
 
+class DummyCoordinate(ReactionCoordinate):
+
+    def _call(self, atoms: ase.atoms.Atoms):
+        raise ValueError('Cannot call energy on a dummy coordinate')
+
+    def _grad(self, atoms: ase.atoms.Atoms):
+        raise ValueError('Cannot call grad on a dummy coordinate')
+
+
 class AverageDistance(ReactionCoordinate):
     """Average distance between each pair of atoms specified"""
 
