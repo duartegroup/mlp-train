@@ -16,14 +16,14 @@ def test_wham():
                           kappa=0.0)
 
     us.temp = 300
-    us.zeta_refs = np.linspace(1.8245, 3.1100, num=20)  # 20 windows
+    zeta_refs = np.linspace(1.8245, 3.1100, num=20)  # 20 windows
 
     for window_idx in range(20):
         data_lines = open(f'window_{window_idx}.txt', 'r').readlines()
 
         # Ensure the data has the correct reference value for the hard
         # coded array
-        assert np.isclose(us.zeta_refs[window_idx],
+        assert np.isclose(zeta_refs[window_idx],
                           float(data_lines[0].split()[1]))
 
         zeta_obs = [float(line.split()[1]) for line in data_lines[1:-1]]
@@ -31,7 +31,7 @@ def test_wham():
         window = _Window(obs_zetas=np.array(zeta_obs),
                          bias=Bias(zeta_func=None,
                                    kappa=float(data_lines[0].split()[2]),
-                                   reference=us.zeta_refs[window_idx])
+                                   reference=zeta_refs[window_idx])
                          )
 
         us.windows.append(window)

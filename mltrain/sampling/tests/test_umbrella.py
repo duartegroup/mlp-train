@@ -26,12 +26,6 @@ def test_window_umbrella():
     assert umbrella.kappa is not None and np.isclose(umbrella.kappa, 100.)
     assert umbrella.zeta_refs is None
 
-    # Setting the reference values of the reaction coordinate should un-None
-    umbrella._set_reference_values(traj, num=3, init_ref=0.8, final_ref=1.2)
-
-    assert umbrella.zeta_refs is not None
-    assert np.allclose(umbrella.zeta_refs, np.linspace(0.8, 1.2, 3))
-
     # Zeta refs are now reset
     umbrella.run_umbrella_sampling(traj,
                                    mlp=TestPotential('1D'),

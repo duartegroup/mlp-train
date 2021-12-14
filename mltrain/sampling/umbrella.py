@@ -164,8 +164,6 @@ class UmbrellaSampling:
 
         self.kappa:             float = kappa                        # eV Å^-2
         self.zeta_func:         Callable = zeta_func
-        self.zeta_refs:         Optional[np.ndarray] = None          # Å
-
         self.temp:              Optional[float] = None               # K
 
         self._fitted_gaussians: List[_FittedGaussian] = []
@@ -180,7 +178,7 @@ class UmbrellaSampling:
 
         return traj[min_e_idx]
 
-    def _set_reference_values(self, traj, num, init_ref, final_ref) -> None:
+    def _reference_values(self, traj, num, init_ref, final_ref) -> np.ndarray:
         """Set the values of the reference for each window, if the
         initial and final reference values of the reaction coordinate are None
         then use the values in the start or end of the trajectory"""
@@ -191,8 +189,7 @@ class UmbrellaSampling:
         if final_ref is None:
             final_ref = self.zeta_func(traj[-1])
 
-        self.zeta_refs = np.linspace(init_ref, final_ref, num)
-        return None
+        return np.linspace(init_ref, final_ref, num)
 
     def _fit_gaussian(self, data) -> '_FittedGaussian':
         """Fit a Gaussian to a set of data"""
@@ -269,10 +266,10 @@ class UmbrellaSampling:
                              'umbrella sampling')
 
         self.temp = temp
-        self._set_reference_values(traj, n_windows, init_ref, final_ref)
+        zeta_refs = self._reference_values(traj, n_windows, init_ref, final_ref)
 
         combined_traj = ConfigurationSet()
-        for idx, ref in enumerate(self.zeta_refs):
+        for idx, ref in enumerate(zeta_refs):
 
             logger.info(f'Running US window {idx+1} with ζ_ref={ref:.2f} Å and '
                         f'κ = {self.kappa:.3f} eV / Å^2')
@@ -311,6 +308,20 @@ class UmbrellaSampling:
             (np.ndarray): A(ζ)
         """
         return - (1.0 / self.beta) * np.log(prob_dist)
+
+    @property
+    def zeta_refs(self) -> Optional[np.ndarray]:
+        """
+        Array of ζ_ref for each window
+
+        -----------------------------------------------------------------------
+        Returns:
+            (np.ndarray(float) | None):
+        """
+        if len(self.windows) == 0:
+            return None
+
+        return np.array([w_k.zeta_ref for w_k in self.windows])
 
     @property
     def beta(self) -> float:
@@ -408,7 +419,6 @@ class UmbrellaSampling:
                 window = _Window.from_file(os.path.join(folder_name, filename))
                 self.windows.append(window)
 
-        self.zeta_refs = np.array([w_k.zeta_ref for w_k in self.windows])
         return None
 
     @classmethod
