@@ -5,6 +5,7 @@ from autode.atoms import Atom
 from mltrain.potentials._base import MLPotential
 from ase.calculators.calculator import Calculator
 from mltrain.utils import work_in_tmp_dir
+from .utils import work_in_zipped_dir
 mlt.Config.n_cores = 1
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -127,7 +128,7 @@ def test_bias():
     assert os.path.exists('tmp.xyz')
 
 
-# @work_in_tmp_dir()
+@work_in_zipped_dir(os.path.join(here, 'data.zip'))
 def test_window_umbrella():
 
     umbrella = mlt.UmbrellaSampling(zeta_func=mlt.AverageDistance([0, 1]),
