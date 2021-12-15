@@ -237,7 +237,7 @@ class UmbrellaSampling:
 
         plt.xlabel('Reaction coordinate / Å')
         plt.ylabel('Frequency')
-
+        plt.tight_layout()
         plt.savefig('fitted_data.pdf')
 
         return gaussian
@@ -256,6 +256,8 @@ class UmbrellaSampling:
         """
         Run umbrella sampling across n_windows, fitting Gaussians to the
         sampled values of the reaction coordinate.
+
+        *NOTE* will leave a dangling plt.figure open
 
         -----------------------------------------------------------------------
         Arguments:
@@ -318,10 +320,6 @@ class UmbrellaSampling:
             combined_traj = combined_traj + win_traj
 
         combined_traj.save(filename='combined_windows.xyz')
-
-        # _fit_gaussian() Plots to a figure, so close it here
-        plt.close()
-
         return None
 
     def free_energies(self, prob_dist) -> np.ndarray:
@@ -550,15 +548,17 @@ def _plot_and_save_free_energy(free_energies,
 
     rel_free_energies = free_energies - min(free_energies)
 
-    plt.plot(zetas, rel_free_energies, color='k')
+    fig, ax = plt.subplots()
+    ax.plot(zetas, rel_free_energies, color='k')
 
     with open(f'free_energy.txt', 'w') as outfile:
         for zeta, free_energy in zip(zetas, rel_free_energies):
             print(zeta, free_energy, file=outfile)
 
-    plt.xlabel('Reaction coordinate / Å')
-    plt.ylabel('ΔG / kcal mol$^{-1}$')
+    ax.set_xlabel('Reaction coordinate / Å')
+    ax.set_ylabel('ΔG / kcal mol$^{-1}$')
 
-    plt.savefig('free_energy.pdf')
-    plt.close()
+    fig.tight_layout()
+    fig.savefig('free_energy.pdf')
+    plt.close(fig)
     return None

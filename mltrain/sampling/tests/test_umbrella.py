@@ -64,7 +64,7 @@ def test_umbrella_save_load():
     umbrella.save(folder_name='tmp_us')
     assert os.path.exists('tmp_us') and os.path.isdir('tmp_us')
 
-    loaded = mlt.UmbrellaSampling.from_folder(folder_name='tmp_us')
+    loaded = mlt.UmbrellaSampling.from_folder(folder_name='tmp_us', temp=300)
     assert len(loaded.windows) == 3
     assert np.allclose(loaded.zeta_refs, umbrella.zeta_refs)
 
