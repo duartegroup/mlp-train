@@ -66,7 +66,7 @@ class _Window:
         bins = np.linspace(zetas[0], zetas[-1], num=len(zetas)+1)
         self.hist, _ = np.histogram(self._obs_zetas, bins=bins)
 
-        self.bias_energies = 0.5 * self._bias.kappa * (zetas - self._bias.ref)**2
+        self.bias_energies = (self._bias.kappa/2) * (zetas - self._bias.ref)**2
 
         return None
 
@@ -143,7 +143,8 @@ class UmbrellaSampling:
 
     def __init__(self,
                  zeta_func: 'mltrain.sampling.reaction_coord.ReactionCoordinate',
-                 kappa:      float):
+                 kappa:      float,
+                 temp:       Optional[float] = None):
         """
         Umbrella sampling to predict free energy using an mlp under a harmonic
         bias:
@@ -164,7 +165,7 @@ class UmbrellaSampling:
 
         self.kappa:             float = kappa                        # eV Å^-2
         self.zeta_func:         Callable = zeta_func
-        self.temp:              Optional[float] = None               # K
+        self.temp:              Optional[float] = temp               # K
 
         self._fitted_gaussians: List[_FittedGaussian] = []
         self.windows:           List[_Window] = []
@@ -173,6 +174,9 @@ class UmbrellaSampling:
     def _best_init_frame(bias, traj):
         """Find the frames whose bias value is the lowest, i.e. has the
         closest reaction coordinate to the desired"""
+        if len(traj) == 0:
+            raise RuntimeError('Cannot determine the best frame from a '
+                               'trajectory with length zero')
 
         min_e_idx = np.argmin([bias(frame.ase_atoms) for frame in traj])
 
@@ -191,6 +195,22 @@ class UmbrellaSampling:
 
         return np.linspace(init_ref, final_ref, num)
 
+    def _no_ok_frame_in(self, traj, ref) -> bool:
+        """
+        Does there exist a good reference structure in a trajectory?
+        defined by the minimum absolute difference in the reaction coordinate
+        (ζ) observed in the trajectory and the target value
+
+        -----------------------------------------------------------------------
+        Arguments:
+            traj: A trajectory containing structures
+            ref: ζ_ref
+
+        Returns:
+            (bool):
+        """
+        return np.min(np.abs(self.zeta_func(traj) - ref)) > 0.5
+
     def _fit_gaussian(self, data) -> '_FittedGaussian':
         """Fit a Gaussian to a set of data"""
         gaussian = _FittedGaussian()
@@ -204,9 +224,13 @@ class UmbrellaSampling:
         bin_centres = (bin_edges[1:] + bin_edges[:-1]) / 2
 
         initial_guess = [1.0, 1.0, 1.0]
-        gaussian.params, _ = curve_fit(gaussian.value, bin_centres, hist,
-                                       p0=initial_guess,
-                                       maxfev=10000)
+        try:
+            gaussian.params, _ = curve_fit(gaussian.value, bin_centres, hist,
+                                           p0=initial_guess,
+                                           maxfev=10000)
+        except RuntimeError:
+            logger.error('Failed to fit a gaussian to this data')
+            return gaussian
 
         plt.plot(bin_centres, hist, alpha=0.1)
         plt.plot(x_range, gaussian(x_range))
@@ -275,8 +299,9 @@ class UmbrellaSampling:
                         f'κ = {self.kappa:.3f} eV / Å^2')
 
             bias = Bias(self.zeta_func, kappa=self.kappa, reference=ref)
+            _traj = combined_traj if self._no_ok_frame_in(traj, ref) else traj
 
-            win_traj = _run_individual_window(self._best_init_frame(bias, traj),
+            win_traj = _run_individual_window(self._best_init_frame(bias, _traj),
                                               mlp,
                                               temp,
                                               interval,
@@ -332,6 +357,10 @@ class UmbrellaSampling:
         Returns:
             (float): β in units of eV^-1
         """
+        if self.temp is None:
+            raise ValueError('Cannot calculate β without a defined temperature'
+                             ' please set .temp')
+
         k_b = 8.617333262E-5  # Boltzmann constant in eV / K
         return 1.0 / (k_b * self.temp)
 
@@ -394,7 +423,7 @@ class UmbrellaSampling:
                                    zetas=zetas)
         return zetas, self.free_energies(p)
 
-    def save(self, folder_name: str) -> None:
+    def save(self, folder_name: str = 'umbrella') -> None:
         """
         Save the windows in this US to a folder containing each window as .txt
         files within in
@@ -422,14 +451,55 @@ class UmbrellaSampling:
         return None
 
     @classmethod
-    def from_folder(cls, folder_name: str) -> 'UmbrellaSampling':
+    def from_folder(cls,
+                    folder_name: str,
+                    temp: float) -> 'UmbrellaSampling':
         """
         Create an umbrella sampling instance from a folder containing the
         window data
+
+        -----------------------------------------------------------------------
+        Arguments:
+            folder_name:
+
+            temp: Temperature (K)
+
+        Returns:
+            (mltrain.sampling.umbrella.UmbrellaSampling):
         """
-        us = cls(zeta_func=DummyCoordinate(), kappa=0.0)
+        us = cls(zeta_func=DummyCoordinate(), kappa=0.0, temp=temp)
         us.load(folder_name=folder_name)
 
+        return us
+
+    @classmethod
+    def from_folders(cls,
+                     *args: str,
+                     temp: float) -> 'UmbrellaSampling':
+        """
+        Load a set of individual umbrella sampling simulations in to a single
+        one
+
+        -----------------------------------------------------------------------
+        Arguments:
+            *args: Names of folders
+
+            temp: Temperature (K)
+
+        Returns:
+            (mltrain.sampling.umbrella.UmbrellaSampling):
+        """
+        us = cls(zeta_func=DummyCoordinate(), kappa=0.0, temp=temp)
+
+        for folder_name in args:
+
+            if not os.path.isdir(folder_name):
+                raise ValueError(f'All arguments must be folders. Had'
+                                 f'{folder_name} which is not a valid folder')
+
+            us.load(folder_name=folder_name)
+
+        us.windows = sorted(us.windows, key=lambda window: window.zeta_ref)
         return us
 
 
@@ -483,8 +553,8 @@ def _plot_and_save_free_energy(free_energies,
     plt.plot(zetas, rel_free_energies, color='k')
 
     with open(f'free_energy.txt', 'w') as outfile:
-        for ref, free_energy in zip(zetas, rel_free_energies):
-            print(ref, free_energy, file=outfile)
+        for zeta, free_energy in zip(zetas, rel_free_energies):
+            print(zeta, free_energy, file=outfile)
 
     plt.xlabel('Reaction coordinate / Å')
     plt.ylabel('ΔG / kcal mol$^{-1}$')
