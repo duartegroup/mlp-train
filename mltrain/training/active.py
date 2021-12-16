@@ -22,7 +22,8 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
           bbond_energy:      Optional[dict] = None,
           fbond_energy:      Optional[dict] = None,
           init_active_temp:  Optional[float] = None,
-          min_active_iters:  int = 1
+          min_active_iters:  int = 1,
+          bias:              Optional['mltrain.sampling.Bias'] = None
           ) -> None:
     """
     Train a system using active learning, by propagating dynamics using ML
@@ -47,7 +48,6 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
 
         selection_method: Method used to select active learnt configurations
 
-    Keyword Arguments:
         max_active_time: (float) Maximum propagation time in the active
                             learning loop. Default = 1 ps
 
@@ -90,6 +90,9 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
 
         min_active_iters: (int) Minimum number of active iterations to
                              perform
+
+        bias: Bias to add during the MD simulations, useful for exploring
+              under-explored regions in the dynamics
     """
     if init_configs is None:
         _gen_and_set_init_training_configs(mlp,
@@ -120,7 +123,8 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
                             bbond_energy=bbond_energy,
                             fbond_energy=fbond_energy,
                             init_temp=init_active_temp,
-                            extra_time=mlp.training_data.t_min(-n_configs_iter))
+                            extra_time=mlp.training_data.t_min(-n_configs_iter),
+                            bias=bias)
 
         # Active learning finds no configurations,,
         if mlp.n_train == curr_n_train and iteration >= min_active_iters:

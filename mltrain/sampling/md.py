@@ -47,10 +47,6 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
 
         interval: (int) Interval between saving the geometry
 
-    -------------------
-    Keyword Arguments:
-
-        {fs, ps, ns}: Simulation time in some units
 
         bbond_energy (dict | None):  Additional energy to add to a breaking
                          bond. e.g. bbond_energy={(0, 1), 0.1} Adds 0.1 eV
@@ -60,9 +56,12 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
         fbond_energy (dict | None): As bbond_energy but in the direction to
                          form a bond
 
-        bias (mltrain.bias.Bias):
+        bias (mltrain.bias.Bias): ASE constraint to use in the dynamics
 
-        n_cores (int): Number of cores to use
+    ---------------
+    Keyword Arguments:
+
+        {fs, ps, ns}: Simulation time in some units
 
     Returns:
         (mltrain.ConfigurationSet):
@@ -82,9 +81,7 @@ def run_mlp_md(configuration: 'mltrain.Configuration',
 
     ase_atoms = configuration.ase_atoms
     ase_atoms.set_calculator(mlp.ase_calculator)
-
-    if bias is not None:
-        ase_atoms.set_constraint(bias)
+    ase_atoms.set_constraint(bias)
 
     _set_momenta(ase_atoms,
                  temp=init_temp if init_temp is not None else temp,
