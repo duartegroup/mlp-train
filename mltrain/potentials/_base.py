@@ -229,20 +229,22 @@ class MLPotential(ABC):
             if idx == 0 or idx == (len(hist) - 1):
                 continue  # Cannot be a minimum on the first or last point
 
+            if not (freq < hist[idx-1] and freq < hist[idx+1]):
+                continue  # Not a minimum in the frequency
+
             target_coord = bin_centres[idx]
+
             logger.info('Have a minimum in the histogram of coordinates at '
-                        f'x = {target_coord}. Adding a harmonic bias and '
+                        f'x = {target_coord:.2f}. Adding a harmonic bias and '
                         f'running additional AL')
 
             kwargs['init_configs'] = self._best_bias_init_frame(target_coord,
                                                                 coords)
-
-            if freq < hist[idx-1] and freq < hist[idx+1]:  # is a minimum
-                self.al_train(method_name=method_name,
-                              bias=mlt.Bias(coordinate,
-                                            kappa=10,                 # eV Å^-2
-                                            reference=target_coord),
-                              **kwargs)
+            self.al_train(method_name=method_name,
+                          bias=mlt.Bias(coordinate,
+                                        kappa=10,                 # eV Å^-2
+                                        reference=target_coord),
+                          **kwargs)
 
         return None
 
