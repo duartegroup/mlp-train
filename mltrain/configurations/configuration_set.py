@@ -111,7 +111,20 @@ class ConfigurationSet(list):
         return None
 
     def remove_above_e(self, energy: float) -> None:
-        raise NotImplementedError
+        """
+        Remove all configuration above a particular *relative* energy
+
+        -----------------------------------------------------------------------
+        Arguments:
+            energy: Relative energy (eV) above which to discard configurations
+        """
+        min_energy = self.lowest_energy
+
+        for idx in reversed(range(len(self))):
+            if (self[idx].energy.true - min_energy) > energy:
+                del self[idx]
+
+        return None
 
     def t_min(self, from_idx: int) -> float:
         """
@@ -246,7 +259,6 @@ class ConfigurationSet(list):
 
             mult: Total spin multiplicity
 
-        Keyword Arguments:
             box: Box or None, if the configurations are in vacuum
         """
         file_lines = open(filename, 'r', errors='ignore').readlines()

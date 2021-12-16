@@ -42,6 +42,7 @@ class Bias(ASEConstraint, Function):
 
     def adjust_potential_energy(self, atoms):
         """Adjust the energy of a set of atoms using the bias function"""
+
         return self.__call__(atoms)
 
     def adjust_forces(self, atoms, forces):
@@ -54,6 +55,7 @@ class Bias(ASEConstraint, Function):
         and B is the bias.
         """
         forces -= self.grad(atoms)
+
         return None
 
     def adjust_positions(self, atoms, newpositions):

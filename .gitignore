@@ -2,6 +2,7 @@ build/
 dist/
 mltrain.egg-info/
 .idea/
+*DS_store
 */__pycache__/
 */*/__pycache__/
 */*/*/__pycache__/

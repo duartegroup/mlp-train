@@ -94,10 +94,13 @@ class Configuration(AtomCollection):
         Arguments:
             filename:
 
-        Keyword Arguments:
-            append: (bool) Append to the end of this exyz file?
+            append: (bool) Append to the end of this xyz file?
+
+            true: Save the true energy and forces
+
+            predicted: Save the predicted energy and forces
         """
-        logger.info(f'Saving configuration to {filename}')
+        # logger.info(f'Saving configuration to {filename}')
 
         a, b, c = [0., 0., 0.] if self.box is None else self.box.size
 
@@ -153,6 +156,8 @@ class Configuration(AtomCollection):
         -----------------------------------------------------------------------
         Arguments:
             method:
+
+            n_cores: Number of cores to use for the calculation
         """
         implemented_methods = ['xtb', 'orca', 'g09', 'g16']
 
@@ -170,7 +175,7 @@ class Configuration(AtomCollection):
 
         return None
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Another configuration is identical to this one"""
         eq = (isinstance(other, Configuration)
               and other.n_atoms == self.n_atoms
