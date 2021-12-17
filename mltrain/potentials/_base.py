@@ -196,6 +196,8 @@ class MLPotential(ABC):
     def al_train_then_bias(self,
                            method_name: str,
                            coordinate: 'mltrain.sampling.ReactionCoordinate',
+                           min_coordinate: Optional[float] = None,
+                           max_coordinate: Optional[float] = None,
                            **kwargs
                            ) -> None:
         r"""
@@ -218,11 +220,19 @@ class MLPotential(ABC):
             method_name: Name of the reference method to use
 
             coordinate: Coordinate over which to add the bias
+
+            min_coordinate: Minimum value of the coordinate to consider
+                            sampling over
+
+            max_coordinate:
         """
         self.al_train(method_name=method_name, **kwargs)
 
         coords = coordinate(self._training_data)
-        hist, bin_edges = np.histogram(coords, bins=10)
+        _max = np.max(coords) if max_coordinate is None else max_coordinate
+        _min = np.min(coords) if min_coordinate is None else min_coordinate
+
+        hist, bin_edges = np.histogram(coords, bins=np.linspace(_min, _max, 10))
         bin_centres = bin_edges[:-1] + np.diff(bin_edges)/2
 
         for idx, freq in enumerate(hist):
@@ -301,8 +311,3 @@ class MLPotential(ABC):
 
     def copy(self) -> 'MLPotential':
         return deepcopy(self)
-
-
-
-
-
