@@ -3,6 +3,7 @@ from copy import deepcopy
 from abc import ABC, abstractmethod
 from typing import Optional
 from mltrain.descriptors import soap_kernel_vector
+from mltrain.log import logger
 
 
 class SelectionMethod(ABC):
