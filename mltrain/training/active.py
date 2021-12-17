@@ -1,6 +1,6 @@
 from copy import deepcopy
 from typing import Optional
-from multiprocessing import Pool
+from multiprocessing import get_context
 from mltrain.config import Config
 from mltrain.sampling.md import run_mlp_md
 from mltrain.training.selection import SelectionMethod, AbsDiffE
@@ -168,7 +168,7 @@ def _add_active_configs(mlp,
 
     configs = ConfigurationSet()
 
-    with Pool(processes=n_processes) as pool:
+    with get_context("spawn").Pool(processes=n_processes) as pool:
 
         results = [pool.apply_async(_gen_active_config,
                                     args=(init_config.copy(),
