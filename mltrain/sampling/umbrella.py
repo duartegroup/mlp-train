@@ -176,8 +176,8 @@ class _Window:
         """
         hist, bin_edges = np.histogram(self._obs_zetas,
                                        density=False,
-                                       bins=np.linspace(min_zeta - 0.1*min_zeta,
-                                                        max_zeta + 0.1*max_zeta,
+                                       bins=np.linspace(min_zeta - 0.1*abs(min_zeta),
+                                                        max_zeta + 0.1*abs(max_zeta),
                                                         num=400))
 
         bin_centres = (bin_edges[1:] + bin_edges[:-1]) / 2
