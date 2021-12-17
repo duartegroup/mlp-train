@@ -319,13 +319,6 @@ def _gen_and_set_init_training_configs(mlp, method_name, num) -> None:
     """
     Generate a set of initial configurations for a system, if init_configs
     is undefined. Otherwise ensure all the true energies and forces are defined
-
-        -----------------------------------------------------------------------
-
-    Arguments:
-        mlp:
-        method_name:
-        num:
     """
     if len(mlp.training_data) >= num:
         logger.warning('MLP had sufficient training data')

@@ -2,7 +2,6 @@ import numpy as np
 from copy import deepcopy
 from abc import ABC, abstractmethod
 from typing import Optional
-from mltrain.log import logger
 from mltrain.descriptors import soap_kernel_vector
 
 
@@ -152,8 +151,6 @@ class MaxAtomicEnvDistance(SelectionMethod):
             mlp: Machine learning potential with some associated training data
         """
         if len(mlp.training_data) == 0:
-            logger.warning('Have no training data - unable to determine '
-                           'criteria')
             return None
 
         self._k_vec = soap_kernel_vector(configuration,
@@ -174,10 +171,7 @@ class MaxAtomicEnvDistance(SelectionMethod):
         if self._n_training_envs == 0:
             return True
 
-        _select = self.threshold**2 < np.max(self._k_vec) < self.threshold
-
-        logger.info(f'max(K*) = {np.max(self._k_vec):.5}. Selecting: {_select}')
-        return _select
+        return self.threshold**2 < np.max(self._k_vec) < self.threshold
 
     @property
     def too_large(self) -> bool:
