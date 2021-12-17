@@ -1,6 +1,5 @@
 import numpy as np
 import mltrain as mlt
-from mltrain.log import logger
 from typing import Union, Optional, Sequence
 
 
@@ -43,8 +42,8 @@ def soap_matrix(*args:    Union[mlt.ConfigurationSet, mlt.Configuration],
         else:
             raise ValueError(f'Could not calculate a SOAP vector for {item}')
 
-    logger.info(f'Calculating SOAP descriptor for {len(configurations)}'
-                f' configuration(s)')
+    # logger.info(f'Calculating SOAP descriptor for {len(configurations)}'
+    #             f' configuration(s)')
 
     if elements is None:
         elements = list(set(atom.label for c in configurations
@@ -59,7 +58,7 @@ def soap_matrix(*args:    Union[mlt.ConfigurationSet, mlt.Configuration],
                      average='inner')
 
     soap_vec = soap_desc.create([conf.ase_atoms for conf in configurations])
-    logger.info('SOAP calculation done')
+    # logger.info('SOAP calculation done')
 
     if soap_vec.ndim == 1:
         # soap_desc.create doesn't return a consistent number of dimensions...

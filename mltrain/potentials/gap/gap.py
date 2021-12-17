@@ -158,7 +158,6 @@ class GAP(MLPotential):
                                f'{err.decode()}\n'
                                f'{" ".join(self._train_command)}')
 
-        os.remove(f'{self.name}_data.xyz')
         os.remove(f'{self.name}_data.xyz.idx')
 
         return None
