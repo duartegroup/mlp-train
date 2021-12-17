@@ -47,6 +47,8 @@ class _Window:
         self._bias = bias
         self._obs_zetas = obs_zetas
 
+        self.fitted_gaussian: Optional[_FittedGaussian] = None
+
         self.bias_energies: Optional[np.ndarray] = None
         self.hist:          Optional[np.ndarray] = None
 
@@ -134,6 +136,63 @@ class _Window:
 
         return None
 
+    def _fit_gaussian(self, hist, bin_centres):
+        """Fit a Gaussian to a histogram of data"""
+
+        gaussian = _FittedGaussian()
+
+        try:
+            gaussian.params, _ = curve_fit(gaussian.value, bin_centres,
+                                           hist,
+                                           p0=[1.0, 1.0, 1.0],  # init guess
+                                           maxfev=10000)
+        except RuntimeError:
+            logger.error('Failed to fit a gaussian to this data')
+            return None
+
+        # Plot the fitted line in the same color as the histogram
+        color = plt.gca().lines[-1].get_color()
+        zetas = np.linspace(min(bin_centres), max(bin_centres), num=500)
+
+        plt.plot(zetas, gaussian(zetas), c=color)
+
+        self.fitted_gaussian = gaussian
+        return None
+
+    def plot(self,
+             min_zeta:     float,
+             max_zeta:     float,
+             fit_gaussian: bool = True) -> None:
+        """
+        Plot this window along with a fitted Gaussian function if possible
+
+        -----------------------------------------------------------------------
+        Arguments:
+            min_zeta:
+
+            max_zeta:
+
+            fit_gaussian:
+        """
+        hist, bin_edges = np.histogram(self._obs_zetas,
+                                       density=False,
+                                       bins=np.linspace(min_zeta - 0.1*min_zeta,
+                                                        max_zeta + 0.1*max_zeta,
+                                                        num=400))
+
+        bin_centres = (bin_edges[1:] + bin_edges[:-1]) / 2
+        plt.plot(bin_centres, hist, alpha=0.1)
+
+        if fit_gaussian:
+            self._fit_gaussian(hist, bin_centres)
+
+        plt.xlabel('Reaction coordinate / Å')
+        plt.ylabel('Frequency')
+        plt.tight_layout()
+        plt.savefig('fitted_data.pdf')
+
+        return None
+
 
 class UmbrellaSampling:
     """
@@ -164,10 +223,9 @@ class UmbrellaSampling:
         """
 
         self.kappa:             float = kappa                        # eV Å^-2
-        self.zeta_func:         Callable = zeta_func
+        self.zeta_func:         Callable = zeta_func                 # ζ(r)
         self.temp:              Optional[float] = temp               # K
 
-        self._fitted_gaussians: List[_FittedGaussian] = []
         self.windows:           List[_Window] = []
 
     @staticmethod
@@ -210,37 +268,6 @@ class UmbrellaSampling:
             (bool):
         """
         return np.min(np.abs(self.zeta_func(traj) - ref)) > 0.5
-
-    def _fit_gaussian(self, data) -> '_FittedGaussian':
-        """Fit a Gaussian to a set of data"""
-        gaussian = _FittedGaussian()
-
-        min_x = min(self.zeta_refs) * 0.9
-        max_x = max(self.zeta_refs) * 1.1
-
-        x_range = np.linspace(min_x, max_x, 500)
-
-        hist, bin_edges = np.histogram(data, density=False, bins=500)
-        bin_centres = (bin_edges[1:] + bin_edges[:-1]) / 2
-
-        initial_guess = [1.0, 1.0, 1.0]
-        try:
-            gaussian.params, _ = curve_fit(gaussian.value, bin_centres, hist,
-                                           p0=initial_guess,
-                                           maxfev=10000)
-        except RuntimeError:
-            logger.error('Failed to fit a gaussian to this data')
-            return gaussian
-
-        plt.plot(bin_centres, hist, alpha=0.1)
-        plt.plot(x_range, gaussian(x_range))
-
-        plt.xlabel('Reaction coordinate / Å')
-        plt.ylabel('Frequency')
-        plt.tight_layout()
-        plt.savefig('fitted_data.pdf')
-
-        return gaussian
 
     def run_umbrella_sampling(self,
                               traj:      'mltrain.ConfigurationSet',
@@ -311,12 +338,10 @@ class UmbrellaSampling:
                                               bias=bias,
                                               **kwargs)
 
-            self.windows.append(_Window(obs_zetas=self.zeta_func(win_traj),
-                                        bias=bias))
+            window = _Window(obs_zetas=self.zeta_func(win_traj), bias=bias)
+            window.plot(min_zeta=min(zeta_refs), max_zeta=max(zeta_refs))
 
-            gaussian = self._fit_gaussian(self.zeta_func(win_traj))
-            self._fitted_gaussians.append(gaussian)
-
+            self.windows.append(window)
             combined_traj = combined_traj + win_traj
 
         combined_traj.save(filename='combined_windows.xyz')
@@ -364,7 +389,7 @@ class UmbrellaSampling:
 
     def wham(self,
              tol:            float = 1E-3,
-             max_iterations: int = 10000,
+             max_iterations: int = 100000,
              n_bins:         int = 100
              ) -> Tuple[np.ndarray, np.ndarray]:
         """
