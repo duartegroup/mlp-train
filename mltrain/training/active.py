@@ -95,10 +95,12 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
               under-explored regions in the dynamics
     """
     if init_configs is None:
+        init_config = mlp.system.configuration
         _gen_and_set_init_training_configs(mlp,
                                            method_name=method_name,
                                            num=n_init_configs)
     else:
+        init_config = init_configs[0]
         _set_init_training_configs(mlp, init_configs,
                                    method_name=method_name)
 
@@ -113,7 +115,7 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
         curr_n_train = mlp.n_train
 
         _add_active_configs(mlp,
-                            init_config=(mlp.system.configuration if fix_init_config
+                            init_config=(init_config if fix_init_config
                                          else mlp.training_data.lowest_energy),
                             selection_method=selection_method,
                             n_configs=n_configs_iter,
@@ -299,6 +301,10 @@ def _gen_active_config(config:      'mltrain.Configuration',
 def _set_init_training_configs(mlp, init_configs, method_name) -> None:
     """Set some initial training configurations"""
 
+    if len(init_configs) == 0:
+        raise ValueError('Cannot set initial training configurations with a '
+                         'set of size 0')
+
     if not all(cfg.energy.true is not None for cfg in init_configs):
         logger.info(f'Initialised with {len(init_configs)} configurations '
                     f'all with defined energy')
@@ -321,6 +327,10 @@ def _gen_and_set_init_training_configs(mlp, method_name, num) -> None:
         method_name:
         num:
     """
+    if len(mlp.training_data) >= num:
+        logger.warning('MLP had sufficient training data')
+        return None
+
     # Initial configurations are not defined, so make some - will use random
     # with the largest maximum distance between molecules possible
     max_vdw = max(atom.vdw_radius for atom in mlp.system.atoms)
