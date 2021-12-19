@@ -1,6 +1,6 @@
 from copy import deepcopy
 from typing import Optional
-from multiprocessing import get_context
+from multiprocessing import Pool
 from mltrain.config import Config
 from mltrain.sampling.md import run_mlp_md
 from mltrain.training.selection import SelectionMethod, AbsDiffE
@@ -168,7 +168,7 @@ def _add_active_configs(mlp,
 
     configs = ConfigurationSet()
 
-    with get_context("spawn").Pool(processes=n_processes) as pool:
+    with Pool(processes=n_processes) as pool:
 
         results = [pool.apply_async(_gen_active_config,
                                     args=(init_config.copy(),
@@ -257,7 +257,11 @@ def _gen_active_config(config:      'mltrain.Configuration',
                       n_cores=1,
                       **kwargs)
 
-    traj.t0 = extra_time  # Increment the initial time (t0)
+    traj.t0 = curr_time  # Increment the initial time (t0)
+
+    if 'bias' in kwargs and kwargs['bias'] is not None:
+        for frame in traj:
+            frame.energy.predicted -= kwargs['bias'](frame.ase_atoms)
 
     # Evaluate the selector on the final frame
     selector(traj.final_frame, mlp, method_name=method_name, n_cores=n_cores)
