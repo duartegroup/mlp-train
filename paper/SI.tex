@@ -5,6 +5,7 @@
 \usepackage[english]{babel}
 \usepackage[utf8]{inputenc}
 \usepackage{fancyhdr, amsmath,booktabs,mathtools, etoolbox,parskip,setspace,amssymb,amsfonts,tabularx,graphicx,color,enumitem}
+\usepackage[hidelinks]{hyperref}
 
 
 %\usepackage{rsc}
@@ -67,7 +68,7 @@ Using our initial GAP training strategy,\cite{gaptrain2021} found to be effectiv
 \begin{figure}[h!]
 \centering
 \vspace{0.4cm}
-\includegraphics[width=0.9\textwidth]{figSX30/figSX30.pdf}
+\includegraphics[width=0.9\textwidth]{figSX30.pdf}
 \vspace{0.0cm}
 \hrule
 \vspace{0.1cm}
@@ -79,13 +80,6 @@ Using our initial GAP training strategy,\cite{gaptrain2021} found to be effectiv
 
 \clearpage
 \section{System Size Scaling}
-
-\comment{
-	This is a comment – I suggest we generate threads as such
-	
-	TY: ...
-	TJW:  
-}
 
 Extending our initial work on a selection of modestly-sized systems and configurational complexity,\supercite{gaptrain2021} the following section outlines the how the number of evaluations are required to train a chemically accurate GAP (over $>1$ ps simulation time) scales with system size (hyperparameters shown in \tablename{ \ref{table::default_params}}, standard active learning methodology described in ref. \cite{gaptrain2021}).
 \vspace{0.3cm}
@@ -134,7 +128,7 @@ While 3000 evaluations is fast at the GFN2-XTB level, sampling using a more accu
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[height=6.5cm]{figSX3/alkane_scaling.pdf}
+	\includegraphics[height=6.5cm]{figSX3.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -160,7 +154,7 @@ Unlike the alkanes, there is no obvious trend in the number of evaluations requi
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[width=0.9\textwidth]{figSX4/molecules.pdf}
+	\includegraphics[width=0.9\textwidth]{figSX4.pdf}
 	\vspace{0.2cm}
 	\hrule
 	\vspace{0.1cm}
@@ -172,7 +166,7 @@ Unlike the alkanes, there is no obvious trend in the number of evaluations requi
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[width=\textwidth]{figSX5/solvent_scaling.pdf}
+	\includegraphics[width=\textwidth]{figSX5.pdf}
 	\hrule
 	\vspace{0.1cm}
 	\caption{Number of reference evaluations ($n_\text{eval}$) and number of training configurations ($n_\text{train}$) required to generate a GAP with \tacc $>1$ ps (parameters as \figurename{ \ref{fig::SX3}}) for a variety of small molecules. Values (averages) and standard errors of the mean are taken over three training repeats with different initial random displacements.}
@@ -194,7 +188,7 @@ Using ORCA v. 4.2.1 the default SCF and DFT integration grids provide essentiall
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[height=6.4cm]{figSX1/figSX1.pdf}
+	\includegraphics[height=6.4cm]{figSX1.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -217,7 +211,7 @@ Increasing the expansion order of the SOAP provides an improved approximation to
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[height=6.4cm]{figSX2/n_l_max_scalling.pdf}
+	\includegraphics[height=6.4cm]{figSX2.pdf}
 	\vspace{0.0cm}
 	\hrule
 	\vspace{0.1cm}
@@ -229,7 +223,7 @@ Increasing the expansion order of the SOAP provides an improved approximation to
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[height=6.4cm]{figSX6/figSX6.pdf}
+	\includegraphics[height=6.4cm]{figSX6.pdf}
 	\vspace{0.2cm}
 	\hrule
 	\vspace{0.1cm}
@@ -251,7 +245,7 @@ Using $n_\text{max} = l_\text{max} = 8$ and optimising the `expected errors' in 
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[height=6.4cm]{figSX7/figSX7.pdf}
+	\includegraphics[height=6.4cm]{figSX7.pdf}
 	\vspace{0.2cm}
 	\hrule
 	\vspace{0.1cm}
@@ -262,7 +256,7 @@ Using $n_\text{max} = l_\text{max} = 8$ and optimising the `expected errors' in 
 
 \begin{figure}[h!]
 	\centering
-	\includegraphics[height=6.4cm]{figSX9/figSX9.pdf}
+	\includegraphics[height=6.4cm]{figSX9.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -275,7 +269,7 @@ Here, it is important to emphasize that the pentane potential trained using 500 
 
 \begin{figure}[h!]
 	\centering
-	\includegraphics[height=6.4cm]{figSX20/figSX20.pdf}
+	\includegraphics[height=6.4cm]{figSX20.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -292,7 +286,7 @@ Previous studies have shown that GAP accuracy can converge exponentially with th
 
 \begin{figure}[h!]
 	\centering
-	\includegraphics[height=6.4cm]{figSX21/n_sparse_convergence.pdf}
+	\includegraphics[height=6.4cm]{figSX21.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -336,7 +330,7 @@ Prior CCSD(T)-quality GAPs\cite{gaptrain2021} have used computationally demandin
 
 \begin{figure}[h!]
 	\centering
-	\includegraphics[width=0.76\textwidth]{figSX8/figSX8.pdf}
+	\includegraphics[width=0.76\textwidth]{figSX8.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -354,7 +348,7 @@ Training a GAP on CCSD(T) energies and MP2 forces for a gas-phase methane molecu
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[height=6.4cm]{figSX10/energies_vs_time_methane.pdf}
+	\includegraphics[height=6.4cm]{figSX10.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -395,7 +389,7 @@ Employing both mixed energy and forces and CUR selection of the configurations a
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[height=6.4cm]{figSX11/energies_vs_time.pdf}
+	\includegraphics[height=6.4cm]{figSX11.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -417,7 +411,7 @@ We have shown previously that the AL sampling method (e.g. DFT functional) is im
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[width=\textwidth]{figSX12/figSX12.pdf}
+	\includegraphics[width=\textwidth]{figSX12.pdf}
 	\vspace{0.0cm}
 	\hrule
 	\vspace{0.1cm}
@@ -431,7 +425,7 @@ Instead of using the difference between reference and predicted energies as the 
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[height=6.4cm]{figSX15/sampled_energies.pdf}
+	\includegraphics[height=6.4cm]{figSX15.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -453,7 +447,7 @@ Upon cyclisation, the formed cyclohexene molecule undergoes conformational rearr
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[width=14cm]{figSX13/figSX13.pdf}
+	\includegraphics[width=14cm]{figSX13.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -465,7 +459,7 @@ Upon cyclisation, the formed cyclohexene molecule undergoes conformational rearr
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[width=\textwidth]{figSX14/figSX14.pdf}
+	\includegraphics[width=\textwidth]{figSX14.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -493,7 +487,7 @@ Fragmentation over a covalent bond in this manner produces two limitations (1) t
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[width=0.9\textwidth]{figSX17/figSX17.pdf}
+	\includegraphics[width=0.9\textwidth]{figSX17.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -505,7 +499,7 @@ Fragmentation over a covalent bond in this manner produces two limitations (1) t
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[height=6.4cm]{figSX16/learning_curve_eth_butene.pdf}
+	\includegraphics[height=6.4cm]{figSX16.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -522,7 +516,7 @@ Training a GAP for the whole ethene+butadiene reaction with the optimised hyperp
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[height=6.4cm]{figSX22/energies_vs_time.pdf}
+	\includegraphics[height=6.4cm]{figSX22.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -585,7 +579,7 @@ To understand the plateau in \tacc at around 200 fs for training from the TS the
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[height=6.4cm]{figSX18/tau_vs_temp.pdf}
+	\includegraphics[height=6.4cm]{figSX18.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -607,7 +601,7 @@ Generating highly accurate (error $\ll 1$ \kcal) GAPs for the reaction is possib
 \begin{figure}[h!]
 	\centering
 	\vspace{0.5cm}
-	\includegraphics[width=\textwidth]{figSX19a/figSX19a.pdf}
+	\includegraphics[width=\textwidth]{figSX19a.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -618,7 +612,7 @@ Generating highly accurate (error $\ll 1$ \kcal) GAPs for the reaction is possib
 
 \begin{figure}[h!]
 	\centering
-	\includegraphics[width=\textwidth]{figSX19b/figSX19b.pdf}
+	\includegraphics[width=\textwidth]{figSX19b.pdf}
 	\vspace{0.0cm}
 	\hrule
 	\vspace{0.1cm}
@@ -636,7 +630,7 @@ Training different MLP methods on the ethene+butadiene reaction using active lea
 
 \begin{figure}[h!]
 	\centering
-	\includegraphics[width=\textwidth]{figSX23/energies_vs_time.pdf}
+	\includegraphics[width=\textwidth]{figSX23.pdf}
 	\vspace{0.0cm}
 	\hrule
 	\vspace{0.1cm}
@@ -650,7 +644,7 @@ Evaluating the potentials on the intrinsic reaction coordinate again each perfor
 
 \begin{figure}[h!]
 	\centering
-	\includegraphics[height=6.4cm]{figSX24/ircs.pdf}
+	\includegraphics[height=6.4cm]{figSX24.pdf}
 	\vspace{0.0cm}
 	\hrule
 	\vspace{0.1cm}
@@ -661,7 +655,7 @@ Evaluating the potentials on the intrinsic reaction coordinate again each perfor
 
 \begin{figure}[h!]
 	\centering
-	\includegraphics[width=0.8\textwidth]{figSX25/figSX25.pdf}
+	\includegraphics[width=0.8\textwidth]{figSX25.pdf}
 	\vspace{0.2cm}
 	\hrule
 	\vspace{0.1cm}
@@ -672,7 +666,7 @@ Evaluating the potentials on the intrinsic reaction coordinate again each perfor
 
 \begin{figure}[h!]
 	\centering
-	\includegraphics[height=6.4cm]{figSX26/figSX26.pdf}
+	\includegraphics[height=6.4cm]{figSX26.pdf}
 	\vspace{0.2cm}
 	\hrule
 	\vspace{0.1cm}
@@ -697,7 +691,7 @@ where $\boldsymbol{p}_i$ is the normalised SOAP vector for the $i$-th configurat
 
 \begin{figure}[h!]
 	\centering
-	\includegraphics[height=11.2cm]{figSX28/diffs.pdf}
+	\includegraphics[height=11.2cm]{figSX28.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -709,7 +703,7 @@ where $\boldsymbol{p}_i$ is the normalised SOAP vector for the $i$-th configurat
 
 \begin{figure}[h!]
 	\centering
-	\includegraphics[height=6.4cm]{figSX27/absE_kmax_corr.pdf}
+	\includegraphics[height=6.4cm]{figSX27.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
@@ -728,9 +722,6 @@ Direct use of this strategy to train a ACE potential for the DA/cope reactions b
 
 
 
-
-
-
 \newpage
 \section{Method Effects on Product Distributions}
 
@@ -738,7 +729,7 @@ Direct use of this strategy to train a ACE potential for the DA/cope reactions b
 \begin{figure}[h!]
 	\centering
 	\vspace{0.4cm}
-	\includegraphics[height=6.4cm]{figSX31/figSX31.pdf}
+	\includegraphics[height=6.4cm]{figSX31.pdf}
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
