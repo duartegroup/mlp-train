@@ -60,7 +60,15 @@
 \clearpage
 
 
-\section{GAPs for Reactions}
+\section{Methods} \label{section::SI_methods}
+
+All Gaussian Approximation Potentials (GAPs) were trained using the gap\_fit and QUIP codes with a Smooth Overlap of Atomic Positions (SOAP)\cite{Bartk2013} kernel with hyperparameters as defined in Table \ref{table::SX1}. GAP-MD simulations were performed with ASE\cite{HjorthLarsen2017} interfaced to QUIP with the quippy wrapper using the Langevin integrator. Initial configurations, CUR\cite{Mahoney2009} selection and automated training set construction were generated with the mltrain Python package (v. 1.0.0a).\cite{Young2021mlt} Training sets for initial GAPs including those that used GP variance as a selection criteria were constructed using the gap-train code (v. 1.0.0b).\cite{Young2021gt} ACE\cite{Kovacs2021, Drautz2019} potentials were trained using the ACE.jl code\cite{Ortner_ACE} (v 0.8.4, Julia v. 1.6.3) and wrapped by pyjulip (v. 0.1, using PyCall). All dynamics were propagated using the Langevin (0.02 friction coefficient) integrator in ASE v. 3.22.0 with initial velocities sampled from a Maxwell-Boltzmann distribution then propagated using a 0.5 fs timestep. NequIP\cite{Batzner2021} potentials used the nequip\cite{nequip_github} v. 0.3.3 Python package (pytorch v. 1.9.1, pytorch\_geometric v. 1.7.2, e2nn\cite{e3nn} v.0.3.5) with a maximum 1000 epochs and a 90:10 training to validation data split; all other hyperparameters were retained as their defaults (4.0 \AA~cut off radius, see nequip module in ml-train, commit 0ba027c). Gas phase (vacuum) simulations in periodic potentials used a large cubic box ($l = 10$ nm). Combinations of harmonic restraining potentials were added and incorporated into the dynamics using ASE. Ring polymer molecular dynamics simulations were performed using I-PI\cite{Kapil2019} with 16 beads, a 0.5 fs timestep, 300 K either default NVT (Langevin) or NVE dynamics. 
+
+DFTB calculations were performed with DFTB+\cite{Hourahine2020} using 3ob\cite{Gaus2014} parameters in a periodic box with side lengths of 50 \AA~to mimic a vacuum. Molecular DFT used GFN2-XTB\cite{Bannwarth2019} in XTB v. 6.4.0. Molecular DFT (inc. AIMD), MP2 and coupled cluster [CCSD(T)] calculations performed with ORCA\cite{Neese2017, Neese2020} v. 4.2.1 wrapped with autodE\cite{autodE} using PBE\cite{Perdew1996} and PBE0\cite{Adamo1999} functionals, def2-SVP, def2-TZVP, def2-TZVPP basis sets.\cite{Weigend2005} DLPNO coupled cluster calculations employed TightPNO thresholds.\cite{Yang2018} Double-hybrid DFT calculations were performed in ORCA v. 5.0.2. Transition states were located with autodE. Plots were generated with matplotlib and, where quoted, include a standard error of the mean averaged over three independent repeats.
+
+\clearpage
+
+\section{GAPs for Reactions} \label{section::SI_gap_reactions}
 
 Using our initial GAP training strategy,\cite{gaptrain2021} found to be effective for developing an accurate reactive potential for the S${}_N$2 reaction Cl${}^{-}$ + CH${}_3$Cl in the higher-dimensional ethene+butadiene Diels-Alder case did not afford a chemically accurate GAP (\figurename{ \ref{fig::SX30}a}). However, for a similarly complex H-abstraction reaction the obtained error is closer to the target 1 \kcal~(0.04 eV) level of accuracy (\figurename{ \ref{fig::SX30}b}). Note that these results are consistent within repeats of the partially random AL strategy and minor hyperparameter tweaks.
 
@@ -176,7 +184,7 @@ Unlike the alkanes, there is no obvious trend in the number of evaluations requi
 
 
 \clearpage
-\section{Hyperparameter Optimisation}
+\section{Hyperparameter Optimisation} \label{section::SI_hyperparam_opt}
 \label{section::hyperparam_opt}
 
 \subsection{QM Convergence}
@@ -323,7 +331,7 @@ Based on these data, we suggest using the updated hyperparameters shown in \tabl
 
 
 \clearpage
-\section{Mixing Energy and Force Methods}
+\section{Mixing Energy and Force Methods} \label{section::SI_mixed_e_f}
 
 Prior CCSD(T)-quality GAPs\cite{gaptrain2021} have used computationally demanding numerical gradients.\footnote{$3N_\text{atoms}$ single points at the minimum and $6N_\text{atoms}$ by default in ORCA v. 4.2.1, which uses the central difference approximation to the numerical gradient.} It would therefore be beneficial to use a cheaper QM method to evaluate the gradients in combination with CCSD(T) energies. The following examples are chosed to be of modest computational cost, and are assumed to be generalisable.
 
@@ -402,7 +410,7 @@ Employing both mixed energy and forces and CUR selection of the configurations a
 
 
 \clearpage
-\section{Ethene + Butadiene}
+\section{Ethene + Butadiene}  \label{section::SI_ethene_butadiene}
 \subsection{Sampling Methodology}
 
 We have shown previously that the AL sampling method (e.g. DFT functional) is important in obtaining accurate uplifted GAPs,\supercite{gaptrain2021} where the energy/forces of generated configurations are recalculated at a higher level. For the [4+2] Diels-Alder reaction between ethene and butadiene, sampling using a cheaper method than PBE does not seem to be suitable over the intrinsic reaction coordinate (IRC, \figurename{ \ref{fig::SX12}}a). Although the thermodynamics at PBE are closer to the reference MP2 values, kinetics at PBE0 are slightly closer (\figurename{ \ref{fig::SX12}}b). Sampling is therefore performed with the more transferable PBE0 functional.
@@ -591,7 +599,7 @@ To understand the plateau in \tacc at around 200 fs for training from the TS the
 } % end comment
 
 \clearpage
-\section{Atomic Energy Errors}
+\section{Atomic Energy Errors}  \label{section::SI_atomic_energy_errors}
 
 In addition to the complexity increasing with system size, the accuracy \emph{per atom} increases when the goal is to generate a potential that is accurate to 1 \kcal~in total energy. To evaluate if the total (relative) energy is an important quantity for our target properties (free energies or reaction dynamics) we use the set of S${}_N$2 reactions: Cl$^{-}$ + \{MeCl, EtCl, ${}^n$PrCl\}. 
 
@@ -622,8 +630,7 @@ Generating highly accurate (error $\ll 1$ \kcal) GAPs for the reaction is possib
 
 
 \clearpage
-\section{Method Comparison}
-
+\section{Method Comparison}  \label{section:SI_mlp_comparison}
 
 Training different MLP methods on the ethene+butadiene reaction using active learning with a selection criteria of 0.1 eV\footnote{If $|E_\text{MLP} - E_\text{true}| > 0.1$ eV then the configuration is selected in MLP-driven MD, propagated at 500 K with a 0.5 fs time step. AL is halted if 10 trajectories reach the maximum MD time of 500 fs.} affords highly accurate potentials in all cases (\figurename{ \ref{fig::SX23}}, MAD $\sim 0.04$ eV, 1 \kcal). The data requirement of the GAP (406 configurations) was significantly higher than both ACE (114) and NeQUIP (126) potentials and required significant hyper-parameter tuning (\ref{section::hyperparam_opt}). The total training time on 10 CPU cores was 7, 4 and 14 hours for GAP, ACE and NeQUIP potentials respectively, the latter also utilised an Nvidia RTX 2080 GPU.
 
@@ -677,7 +684,7 @@ Evaluating the potentials on the intrinsic reaction coordinate again each perfor
 
 
 \clearpage
-\section{Active Learning Selection Strategies}
+\section{Active Learning Selection Strategies}  \label{section::SI_AL_strategies}
 
 
 Using the predicted GP variance on a new configuration can be a highly effective selection strategy for sampling new configurations (see e.g. \figurename{ \ref{fig::SX16}}). However, when training other kinds of MLP there may be no analogue to accelerate the `diff' selection strategy.\footnote{Using $|E_\text{true} - E_\text{MLP}|$ and evaluating potentially 8 DFT evaluations with no selected configuration, for a 1 ps max time approaching the end of AL cycle.} Using a threshold on the maximum distance (`max\_dist') to any of the training set can afford a 10$\times$ speed-up in training for non-GAP MLPs where the reference evaluations dominate the execution time. Specifically, using a selection criteria defined by,
@@ -723,7 +730,7 @@ Direct use of this strategy to train a ACE potential for the DA/cope reactions b
 
 
 \newpage
-\section{Method Effects on Product Distributions}
+\section{Method Effects on Product Distributions}  \label{section::SI_method_effects_R3}
 
 
 \begin{figure}[h!]
@@ -737,7 +744,6 @@ Direct use of this strategy to train a ACE potential for the DA/cope reactions b
 }
 	\label{fig::SX31}
 \end{figure}
-
 
 
 
