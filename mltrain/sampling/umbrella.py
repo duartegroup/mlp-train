@@ -147,9 +147,9 @@ class _Window:
                                            p0=[1.0, 1.0, 1.0],  # init guess
                                            maxfev=10000)
 
-            if (gaussian.mean > max(bin_centres)
-                    or gaussian.mean < max(bin_centres)):
-                raise RuntimeError('Gaussian mean was not within the ζ range')
+            if np.min(np.abs(bin_centres - gaussian.mean)) > 1.0:
+                raise RuntimeError('Gaussian mean was not within the 1 Å of '
+                                   'the ζ range')
 
         except RuntimeError:
             logger.error('Failed to fit a gaussian to this data')
@@ -344,7 +344,9 @@ class UmbrellaSampling:
                                               **kwargs)
 
             window = _Window(obs_zetas=self.zeta_func(win_traj), bias=bias)
-            window.plot(min_zeta=min(zeta_refs), max_zeta=max(zeta_refs))
+            window.plot(min_zeta=min(zeta_refs),
+                        max_zeta=max(zeta_refs),
+                        fit_gaussian=True)
 
             self.windows.append(window)
             combined_traj = combined_traj + win_traj
