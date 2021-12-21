@@ -472,6 +472,10 @@ class UmbrellaSampling:
     def load(self, folder_name: str) -> None:
         """Load data from a set of saved windows"""
 
+        if not os.path.isdir(folder_name):
+            raise ValueError(f'Loading from a folder was not possible as '
+                             f'{folder_name} is not a valid folder')
+
         for filename in os.listdir(folder_name):
 
             if filename.startswith('window_') and filename.endswith('.txt'):
@@ -499,6 +503,7 @@ class UmbrellaSampling:
         """
         us = cls(zeta_func=DummyCoordinate(), kappa=0.0, temp=temp)
         us.load(folder_name=folder_name)
+        us._order_windows_by_zeta_ref()
 
         return us
 
@@ -522,15 +527,15 @@ class UmbrellaSampling:
         us = cls(zeta_func=DummyCoordinate(), kappa=0.0, temp=temp)
 
         for folder_name in args:
-
-            if not os.path.isdir(folder_name):
-                raise ValueError(f'All arguments must be folders. Had'
-                                 f'{folder_name} which is not a valid folder')
-
             us.load(folder_name=folder_name)
 
-        us.windows = sorted(us.windows, key=lambda window: window.zeta_ref)
+        us._order_windows_by_zeta_ref()
         return us
+
+    def _order_windows_by_zeta_ref(self) -> None:
+        """Sort the windows in this umbrella by ζ_ref"""
+        self.windows = sorted(self.windows, key=lambda window: window.zeta_ref)
+        return None
 
 
 class _FittedGaussian:
