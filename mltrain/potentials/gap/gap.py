@@ -158,13 +158,23 @@ class GAP(MLPotential):
                                f'{err.decode()}\n'
                                f'{" ".join(self._train_command)}')
 
-        os.remove(f'{self.name}_data.xyz')
         os.remove(f'{self.name}_data.xyz.idx')
 
         return None
 
 
 class _GAPParameters:
+
+    def __init__(self, atoms):
+        """
+        Parameters for a GAP potential
+
+        Arguments:
+             atoms: Atoms used to to generate parameters for a GAP potential
+        """
+
+        self.general = deepcopy(Config.gap_default_params)
+        self.soap = self._soap_dict(atom_symbols=[a.label for a in atoms])
 
     @staticmethod
     def _soap_dict(atom_symbols):
@@ -200,14 +210,3 @@ class _GAPParameters:
             soap_dict[symbol] = params
 
         return soap_dict
-
-    def __init__(self, atoms):
-        """
-        Parameters for a GAP potential
-
-        Arguments:
-             atoms: Atoms used to to generate parameters for a GAP potential
-        """
-
-        self.general = deepcopy(Config.gap_default_params)
-        self.soap = self._soap_dict(atom_symbols=[a.label for a in atoms])

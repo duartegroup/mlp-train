@@ -1,3 +1,4 @@
+import numpy as np
 import mltrain as mlt
 from copy import deepcopy
 from autode.atoms import Atom
@@ -165,6 +166,14 @@ class MLPotential(ABC):
         """
         return sum(c.n_ref_evals for c in self._training_data)
 
+    def _save_training_data_as_npz_and_xyz(self) -> None:
+        """Save the training data"""
+
+        for file_extension in ('npz', 'xyz'):
+            self.training_data.save(filename=f'{self.name}_al.{file_extension}')
+
+        return None
+
     def al_train(self,
                  method_name: str,
                  **kwargs
@@ -180,11 +189,93 @@ class MLPotential(ABC):
             **kwargs:  Keyword arguments passed to mlt.training.active.train()
         """
         al_train(self, method_name=method_name, **kwargs)
-
-        for file_extension in ('npz', 'xyz'):
-            self.training_data.save(f'{self.name}_al.{file_extension}')
+        self._save_training_data_as_npz_and_xyz()
 
         return None
+
+    def al_train_then_bias(self,
+                           method_name: str,
+                           coordinate: 'mltrain.sampling.ReactionCoordinate',
+                           min_coordinate: Optional[float] = None,
+                           max_coordinate: Optional[float] = None,
+                           **kwargs
+                           ) -> None:
+        r"""
+        Active learning that ensures sufficient sampling over a coordinate.
+        Adds a single harmonic bias to the least well sampled regions of a
+        histogram of coordinate values obtained in the AL e.g. for a
+        reaction coordinate histogram that looks like:
+
+                        |
+                        |         /\      /---------
+            Frequency   | \      /  |    /
+                        |  \___/     |_/
+                        |________________________
+                                  coordinate
+
+        then two harmonic biases would be added in the two minimums
+
+        -----------------------------------------------------------------------
+        Arguments:
+            method_name: Name of the reference method to use
+
+            coordinate: Coordinate over which to add the bias
+
+            min_coordinate: Minimum value of the coordinate to consider
+                            sampling over
+
+            max_coordinate:
+        """
+        self.al_train(method_name=method_name, **kwargs)
+
+        coords = coordinate(self._training_data)
+        _max = np.max(coords) if max_coordinate is None else max_coordinate
+        _min = np.min(coords) if min_coordinate is None else min_coordinate
+
+        hist, bin_edges = np.histogram(coords, bins=np.linspace(_min, _max, 10))
+        bin_centres = bin_edges[:-1] + np.diff(bin_edges)/2
+
+        for idx, freq in enumerate(hist):
+            if idx == 0 or idx == (len(hist) - 1):
+                continue  # Cannot be a minimum on the first or last point
+
+            if not (freq < hist[idx-1] and freq < hist[idx+1]):
+                continue  # Not a minimum in the frequency
+
+            target_coord = bin_centres[idx]
+
+            logger.info('Have a minimum in the histogram of coordinates at '
+                        f'x = {target_coord:.2f}. Adding a harmonic bias and '
+                        f'running additional AL')
+
+            kwargs['init_configs'] = self._best_bias_init_frame(target_coord,
+                                                                coords)
+            self.al_train(method_name=method_name,
+                          bias=mlt.Bias(coordinate,
+                                        kappa=10,                 # eV Å^-2
+                                        reference=target_coord),
+                          **kwargs)
+
+        return None
+
+    def _best_bias_init_frame(self,
+                              value:  float,
+                              values: np.ndarray
+                              ) -> 'mltrain.configurations.ConfigurationSet':
+        """
+        Get the closest single frame as a configuration set to start a biased
+        AL loop, where the closest distance from the value to any one of the
+        values and the values are in the order defined by the training set
+
+        -----------------------------------------------------------------------
+        Arguments:
+            value: Specific value to get close to
+
+            values: Array of values over the training set
+        """
+        best_idx = np.argmin(np.abs(value - values))
+
+        return mlt.ConfigurationSet(self.training_data[best_idx])
 
     def set_atomic_energies(self,
                             method_name: str

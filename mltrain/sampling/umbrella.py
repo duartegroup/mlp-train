@@ -47,6 +47,8 @@ class _Window:
         self._bias = bias
         self._obs_zetas = obs_zetas
 
+        self.fitted_gaussian: Optional[_FittedGaussian] = None
+
         self.bias_energies: Optional[np.ndarray] = None
         self.hist:          Optional[np.ndarray] = None
 
@@ -134,6 +136,68 @@ class _Window:
 
         return None
 
+    def _fit_gaussian(self, hist, bin_centres):
+        """Fit a Gaussian to a histogram of data"""
+
+        gaussian = _FittedGaussian()
+
+        try:
+            gaussian.params, _ = curve_fit(gaussian.value, bin_centres,
+                                           hist,
+                                           p0=[1.0, 1.0, 1.0],  # init guess
+                                           maxfev=10000)
+
+            if np.min(np.abs(bin_centres - gaussian.mean)) > 1.0:
+                raise RuntimeError('Gaussian mean was not within the 1 Å of '
+                                   'the ζ range')
+
+        except RuntimeError:
+            logger.error('Failed to fit a gaussian to this data')
+            return None
+
+        # Plot the fitted line in the same color as the histogram
+        color = plt.gca().lines[-1].get_color()
+        zetas = np.linspace(min(bin_centres), max(bin_centres), num=500)
+
+        plt.plot(zetas, gaussian(zetas), c=color)
+
+        self.fitted_gaussian = gaussian
+        return None
+
+    def plot(self,
+             min_zeta:     float,
+             max_zeta:     float,
+             fit_gaussian: bool = True) -> None:
+        """
+        Plot this window along with a fitted Gaussian function if possible
+
+        -----------------------------------------------------------------------
+        Arguments:
+            min_zeta:
+
+            max_zeta:
+
+            fit_gaussian:
+        """
+        hist, bin_edges = np.histogram(self._obs_zetas,
+                                       density=False,
+                                       bins=np.linspace(min_zeta - 0.1*abs(min_zeta),
+                                                        max_zeta + 0.1*abs(max_zeta),
+                                                        num=400))
+
+        bin_centres = (bin_edges[1:] + bin_edges[:-1]) / 2
+        plt.plot(bin_centres, hist, alpha=0.1)
+
+        if fit_gaussian:
+            self._fit_gaussian(hist, bin_centres)
+
+        plt.xlabel('Reaction coordinate / Å')
+        plt.ylabel('Frequency')
+        plt.tight_layout()
+        plt.savefig('fitted_data.pdf')
+
+        return None
+
 
 class UmbrellaSampling:
     """
@@ -164,10 +228,9 @@ class UmbrellaSampling:
         """
 
         self.kappa:             float = kappa                        # eV Å^-2
-        self.zeta_func:         Callable = zeta_func
+        self.zeta_func:         Callable = zeta_func                 # ζ(r)
         self.temp:              Optional[float] = temp               # K
 
-        self._fitted_gaussians: List[_FittedGaussian] = []
         self.windows:           List[_Window] = []
 
     @staticmethod
@@ -210,37 +273,6 @@ class UmbrellaSampling:
             (bool):
         """
         return np.min(np.abs(self.zeta_func(traj) - ref)) > 0.5
-
-    def _fit_gaussian(self, data) -> '_FittedGaussian':
-        """Fit a Gaussian to a set of data"""
-        gaussian = _FittedGaussian()
-
-        min_x = min(self.zeta_refs) * 0.9
-        max_x = max(self.zeta_refs) * 1.1
-
-        x_range = np.linspace(min_x, max_x, 500)
-
-        hist, bin_edges = np.histogram(data, density=False, bins=500)
-        bin_centres = (bin_edges[1:] + bin_edges[:-1]) / 2
-
-        initial_guess = [1.0, 1.0, 1.0]
-        try:
-            gaussian.params, _ = curve_fit(gaussian.value, bin_centres, hist,
-                                           p0=initial_guess,
-                                           maxfev=10000)
-        except RuntimeError:
-            logger.error('Failed to fit a gaussian to this data')
-            return gaussian
-
-        plt.plot(bin_centres, hist, alpha=0.1)
-        plt.plot(x_range, gaussian(x_range))
-
-        plt.xlabel('Reaction coordinate / Å')
-        plt.ylabel('Frequency')
-        plt.tight_layout()
-        plt.savefig('fitted_data.pdf')
-
-        return gaussian
 
     def run_umbrella_sampling(self,
                               traj:      'mltrain.ConfigurationSet',
@@ -311,12 +343,12 @@ class UmbrellaSampling:
                                               bias=bias,
                                               **kwargs)
 
-            self.windows.append(_Window(obs_zetas=self.zeta_func(win_traj),
-                                        bias=bias))
+            window = _Window(obs_zetas=self.zeta_func(win_traj), bias=bias)
+            window.plot(min_zeta=min(zeta_refs),
+                        max_zeta=max(zeta_refs),
+                        fit_gaussian=True)
 
-            gaussian = self._fit_gaussian(self.zeta_func(win_traj))
-            self._fitted_gaussians.append(gaussian)
-
+            self.windows.append(window)
             combined_traj = combined_traj + win_traj
 
         combined_traj.save(filename='combined_windows.xyz')
@@ -364,7 +396,7 @@ class UmbrellaSampling:
 
     def wham(self,
              tol:            float = 1E-3,
-             max_iterations: int = 10000,
+             max_iterations: int = 100000,
              n_bins:         int = 100
              ) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -440,6 +472,10 @@ class UmbrellaSampling:
     def load(self, folder_name: str) -> None:
         """Load data from a set of saved windows"""
 
+        if not os.path.isdir(folder_name):
+            raise ValueError(f'Loading from a folder was not possible as '
+                             f'{folder_name} is not a valid folder')
+
         for filename in os.listdir(folder_name):
 
             if filename.startswith('window_') and filename.endswith('.txt'):
@@ -467,6 +503,7 @@ class UmbrellaSampling:
         """
         us = cls(zeta_func=DummyCoordinate(), kappa=0.0, temp=temp)
         us.load(folder_name=folder_name)
+        us._order_windows_by_zeta_ref()
 
         return us
 
@@ -490,15 +527,15 @@ class UmbrellaSampling:
         us = cls(zeta_func=DummyCoordinate(), kappa=0.0, temp=temp)
 
         for folder_name in args:
-
-            if not os.path.isdir(folder_name):
-                raise ValueError(f'All arguments must be folders. Had'
-                                 f'{folder_name} which is not a valid folder')
-
             us.load(folder_name=folder_name)
 
-        us.windows = sorted(us.windows, key=lambda window: window.zeta_ref)
+        us._order_windows_by_zeta_ref()
         return us
+
+    def _order_windows_by_zeta_ref(self) -> None:
+        """Sort the windows in this umbrella by ζ_ref"""
+        self.windows = sorted(self.windows, key=lambda window: window.zeta_ref)
+        return None
 
 
 class _FittedGaussian:
@@ -520,6 +557,11 @@ class _FittedGaussian:
     @staticmethod
     def value(x, a, b, c):
         return a * np.exp(-(x - b)**2 / (2. * c**2))
+
+    @property
+    def mean(self) -> float:
+        """Mean of the Normal distribution, of which this is an approx."""
+        return self.params[1]
 
 
 def _plot_and_save_free_energy(free_energies,

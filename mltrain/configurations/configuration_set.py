@@ -287,7 +287,8 @@ class ConfigurationSet(list):
 
     def save(self, filename: str) -> None:
         """
-        Save all the parameters for this configuration
+        Save all the parameters for this configuration. Overrides any current
+        data in that file
 
         -----------------------------------------------------------------------
         Arguments:

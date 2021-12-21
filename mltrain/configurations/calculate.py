@@ -1,3 +1,4 @@
+from typing import Tuple
 from mltrain.log import logger
 from mltrain.utils import work_in_tmp_dir
 from mltrain.config import Config
@@ -11,52 +12,19 @@ def run_autode(configuration: 'mltrain.Configuration',
     """
     Run an autodE calculation
 
-    --------------------------------------------------------------------------
+    ---------------------------------------------------------------------------
     Arguments:
-        configuration: (mltrain.Configuration)
+        configuration:
 
-        method_name:
+        method_name: Name of the method. Case insensitive
 
-        n_cores: (int) Number of cores to use for the calculation
-
-    kwds: (autode.wrappers.keywords.Keywords)
+        n_cores: Number of cores to use for the calculation
     """
     from autode.species import Species
     from autode.calculation import Calculation
     from autode.exceptions import CouldNotGetProperty
-    from autode.methods import ORCA, XTB, G16, G09
 
-    method_name = method_name.lower()
-    kwds = None
-
-    if method_name == 'orca':
-        method = ORCA()
-
-        if Config.orca_keywords is None:
-            raise ValueError("For ORCA training GTConfig.orca_keywords must be"
-                             " set. e.g.\nmlt.Config.orca_keywords "
-                             "= ['PBE', 'def2-SVP', 'EnGrad'])")
-
-        kwds = Config.orca_keywords
-
-    elif method_name == 'g09' or method_name == 'g16':
-
-        if Config.gaussian_keywords is None:
-            raise ValueError("To train with Gaussian QM calculations "
-                             "mlt.Config.gaussian_keywords must be set.")
-
-        kwds = Config.gaussian_keywords
-        method = G09() if method_name.lower() == 'g09' else G16
-
-    elif method_name == 'xtb':
-        method = XTB()
-
-    else:
-        raise ValueError(f'Unknown method {method_name}')
-
-    if kwds is None:                   # Default to a gradient calculation
-        kwds = method.keywords.grad
-
+    method, kwds = _method_and_keywords(method_name=method_name.lower())
     logger.info(f'Running a {method_name} calculation at: {kwds}')
 
     calc = Calculation(name='tmp',
@@ -86,3 +54,48 @@ def run_autode(configuration: 'mltrain.Configuration',
     configuration.energy.true = energy.to('eV')
     configuration.partial_charges = calc.get_atomic_charges()
     return None
+
+
+def _method_and_keywords(method_name: str) -> Tuple['autode.wrappers.Method',
+                                                    'autode.wrappers.keywords.Keywords']:
+    """Get the method and associated keywords to use in a QM calculation"""
+    from autode.methods import ORCA, XTB, G16, G09
+
+    if method_name == 'orca':
+        method, kwds = ORCA(), _orca_keywords()
+
+    elif method_name == 'g09' or method_name == 'g16':
+        method = G09() if method_name == 'g09' else G16()
+        kwds = _gaussian_keywords()
+
+    elif method_name == 'xtb':
+        method = XTB()
+        kwds = method.keywords.grad
+
+    else:
+        raise ValueError(f'Unknown method {method_name}')
+
+    return method, kwds
+
+
+def _orca_keywords() -> 'autode.wrappers.keywords.Keywords':
+    """Keywords e.g. functional and basis set to use for an ORCA calculation"""
+
+    if Config.orca_keywords is None:
+        raise ValueError("For ORCA training GTConfig.orca_keywords must be"
+                         " set. e.g.\nmlt.Config.orca_keywords "
+                         "= ['PBE', 'def2-SVP', 'EnGrad'])")
+
+    return Config.orca_keywords
+
+
+def _gaussian_keywords() -> 'autode.wrappers.keywords.Keywords':
+    """Keywords e.g. functional and basis set to use for an Gaussian
+     calculation, either Gaussian09 or Gaussian16"""
+
+    if Config.gaussian_keywords is None:
+        raise ValueError("To train with Gaussian QM calculations "
+                         "mlt.Config.gaussian_keywords must be set.")
+
+    return Config.gaussian_keywords
+

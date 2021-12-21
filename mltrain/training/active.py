@@ -22,7 +22,8 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
           bbond_energy:      Optional[dict] = None,
           fbond_energy:      Optional[dict] = None,
           init_active_temp:  Optional[float] = None,
-          min_active_iters:  int = 1
+          min_active_iters:  int = 1,
+          bias:              Optional['mltrain.sampling.Bias'] = None
           ) -> None:
     """
     Train a system using active learning, by propagating dynamics using ML
@@ -47,7 +48,6 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
 
         selection_method: Method used to select active learnt configurations
 
-    Keyword Arguments:
         max_active_time: (float) Maximum propagation time in the active
                             learning loop. Default = 1 ps
 
@@ -90,12 +90,17 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
 
         min_active_iters: (int) Minimum number of active iterations to
                              perform
+
+        bias: Bias to add during the MD simulations, useful for exploring
+              under-explored regions in the dynamics
     """
     if init_configs is None:
+        init_config = mlp.system.configuration
         _gen_and_set_init_training_configs(mlp,
                                            method_name=method_name,
                                            num=n_init_configs)
     else:
+        init_config = init_configs[0]
         _set_init_training_configs(mlp, init_configs,
                                    method_name=method_name)
 
@@ -110,7 +115,7 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
         curr_n_train = mlp.n_train
 
         _add_active_configs(mlp,
-                            init_config=(mlp.system.configuration if fix_init_config
+                            init_config=(init_config if fix_init_config
                                          else mlp.training_data.lowest_energy),
                             selection_method=selection_method,
                             n_configs=n_configs_iter,
@@ -120,7 +125,8 @@ def train(mlp:               'mltrain.potentials._base.MLPotential',
                             bbond_energy=bbond_energy,
                             fbond_energy=fbond_energy,
                             init_temp=init_active_temp,
-                            extra_time=mlp.training_data.t_min(-n_configs_iter))
+                            extra_time=mlp.training_data.t_min(-n_configs_iter),
+                            bias=bias)
 
         # Active learning finds no configurations,,
         if mlp.n_train == curr_n_train and iteration >= min_active_iters:
@@ -251,7 +257,11 @@ def _gen_active_config(config:      'mltrain.Configuration',
                       n_cores=1,
                       **kwargs)
 
-    traj.t0 = extra_time  # Increment the initial time (t0)
+    traj.t0 = curr_time  # Increment the initial time (t0)
+
+    if 'bias' in kwargs and kwargs['bias'] is not None:
+        for frame in traj:
+            frame.energy.predicted -= kwargs['bias'](frame.ase_atoms)
 
     # Evaluate the selector on the final frame
     selector(traj.final_frame, mlp, method_name=method_name, n_cores=n_cores)
@@ -295,6 +305,10 @@ def _gen_active_config(config:      'mltrain.Configuration',
 def _set_init_training_configs(mlp, init_configs, method_name) -> None:
     """Set some initial training configurations"""
 
+    if len(init_configs) == 0:
+        raise ValueError('Cannot set initial training configurations with a '
+                         'set of size 0')
+
     if not all(cfg.energy.true is not None for cfg in init_configs):
         logger.info(f'Initialised with {len(init_configs)} configurations '
                     f'all with defined energy')
@@ -309,14 +323,11 @@ def _gen_and_set_init_training_configs(mlp, method_name, num) -> None:
     """
     Generate a set of initial configurations for a system, if init_configs
     is undefined. Otherwise ensure all the true energies and forces are defined
-
-        -----------------------------------------------------------------------
-
-    Arguments:
-        mlp:
-        method_name:
-        num:
     """
+    if len(mlp.training_data) >= num:
+        logger.warning('MLP had sufficient training data')
+        return None
+
     # Initial configurations are not defined, so make some - will use random
     # with the largest maximum distance between molecules possible
     max_vdw = max(atom.vdw_radius for atom in mlp.system.atoms)

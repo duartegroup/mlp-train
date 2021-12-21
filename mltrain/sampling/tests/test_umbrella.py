@@ -37,8 +37,9 @@ def test_window_umbrella():
 
     # Sampling with a high force constant should lead to fitted Gaussians
     # that closely match the reference (target) values
-    for gaussian, ref in zip(umbrella._fitted_gaussians, umbrella.zeta_refs):
-        assert np.isclose(gaussian.params[1], ref, atol=0.1)
+    for window in umbrella.windows:
+        assert window.fitted_gaussian is not None
+        assert np.isclose(window.fitted_gaussian.mean, window.zeta_ref, atol=0.1)
 
     assert os.path.exists('combined_windows.xyz')
     assert os.path.exists('fitted_data.pdf')
