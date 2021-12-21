@@ -38,6 +38,7 @@
 
 % https://stackoverflow.com/questions/1856189/fullpage-picture-in-two-column-layout
 \usepackage{balance}
+\usepackage{dblfloatfix}
 
 % Custom commands ---------------------------
 \newcommand{\kcal}{kcal mol$^{-1}$}
@@ -178,8 +179,6 @@
 
 %%%MAIN TEXT%%%%
 
-
-
 Simulating chemical reactions is essential to developing fundamental understanding and predicting experimental outcomes.\cite{Orr-Ewing2017} Machine learned potentials (MLPs) offer an enticing approach to chemical simulation, enabling the efficient mapping between nuclear configurations and energies ($\boldsymbol{R} \mapsto E$). Moreover, they offer flexibility and systematic improvability, not possible with classical molecular mechanics (MM).\cite{Behler2016} Propagating quantum dynamics using these forces should afford experimental rate and equilibrium constants in the limit of correct forces and converged sampling. However, despite the development of Gaussian Approximation Potentials (GAPs)\cite{Bartk2010, Deringer2021} and high dimensional neural network potentials (NNPs)\cite{Behler2007} more than 10 years ago, they are still not yet routinely used to simulate chemical reactivity.\cite{Ko2020} Most likely, this is due to the computational and time investment required to train potentials for new systems. 
 
 Training an MLP consists of: (1) developing a training set; (2) hyperparameter optimisation and (3) performing the regression, repeating the process until the desired accuracy is obtained. Automated approaches to training set construction have been developed,\cite{Smith2018, Young2021gap, Miksch2021} but can be limited to small systems or generate huge datasets. These limitations coupled with the time required to perform hyperparameter optimisation (if the MLP is insufficiently accurate) inhibits quickly accessing bespoke MLPs. Furthermore, the required $\gg 10^3$ reference evaluations precludes using accurate wavefunction-based quantum methods to evaluate energy and forces without considerable investment.10 Exceptions are rare and limited to systems with $<10$ atoms.\cite{Young2021gap, Dral2020}
@@ -196,43 +195,63 @@ With a view to extend our initial GAP training methodology\cite{Young2021gap} in
 	%\vspace{0.1cm}
 	%\hrule
 	%\vspace{0.1cm}
-	\caption{MLP methods trained on the [4+2] Diels-Alder cycloaddition between ethene and butadiene in the gas phase. GAP* used optimised hyperparameters (see SI). Training set developed by active learning based on MLP-dynamics with ET = 2.3 \kcal~(0.1 eV), stable potential defined by the ability to propogate 10 trajectories without finding a configuration $|E_\text{MLP} – E_0| > E_T$. (a) Signed errors on total energies over three trajectories from reactants to products (AIMD, 300K, PBE0/def2-SVP). (b) Comparison of the relative performance between MLP methods on total time, data efficiency (number of training configuration selected, $n_\text{train}$) and total accuracy. (c) Parity plot between MP2/def2-TZVP total energies and ACE predictions on MP2 AIMD trajectories from the TS. ACE trained on DFT selected configurations; energies and forces re-evaluated at MP2. (d) Comparison of the predicted (red) and true PBE0/def2-SVP (black) relaxed 2D surface surrounding the TS. Contour plot represents the ‘closeness’ of the training data to a point in the surface. .}
+	\caption{MLP methods trained on the [4+2] Diels-Alder cycloaddition between ethene and butadiene in the gas phase. GAP* used optimised hyperparameters (see SI). Training set developed by active learning based on MLP-dynamics with ET = 2.3 \kcal~(0.1 eV), stable potential defined by the ability to propogate 10 trajectories without finding a configuration $|E_\text{MLP} – E_0| > E_T$. (a) Signed errors on total energies over three trajectories from reactants to products (AIMD, 300K, PBE0/def2-SVP). (b) Comparison of the relative performance between MLP methods on total time, data efficiency (number of training configuration selected, $n_\text{train}$) and total accuracy. (c) Parity plot between MP2/def2-TZVP total energies and ACE predictions on MP2 AIMD trajectories from the TS. ACE trained on DFT selected configurations; energies and forces re-evaluated at MP2. (d) Comparison of the predicted (red) and true PBE0/def2-SVP (black) relaxed 2D surface surrounding the TS. Contour plot represents the ‘closeness’ of the training data to a point in the surface.}
 	\label{fig::X1}
 \end{figure*}
 
+
+
+\begin{figure*}[b]
+	\centering
+	\includegraphics[height=12.5cm]{figX2}
+	%\vspace{0.1cm}
+	%\hrule
+	%\vspace{0.1cm}
+	\caption{Product distributions for the reaction between tropone and cycloheptatriene by ACE molecular dynamics simulations initiated from a single TS (top right). ACE potential trained using a standard active learning loop (diff, $E_T$ = 2.3 \kcal~= 0.1 eV, 500 K dynamics) from two TS, such that the training data included all three products. (a) Convergence of the product ratio (e.g. $N_{\rightarrow R3_{P1}} / N_\text{total}$) with number of trajectories propagated. Error is quoted as $2\sigma$, obtained from bootstrapping with resampling (1000 iterations) on the same dataset. Dynamics propagated classically in the NVE ensemble from the TS using initial Boltzmann-sampled velocities for 300 K. (b) Dependence of the product ratio on the type of propagated dynamics ($N_\text{total}$ = 200), including classical MD [as (a)] and ring polymer molecular dynamics (RPMD). RPMD simulations initiated from the TS, or first equilibrated using constrained NVT dynamics (80 fs, harmonic: 4 distances (top left), $k$ = 1 eV \AA${}^{-1}$) then NVE. All NVE simulations performed for 1 ps using a 0.5 fs timestep. Accuracy of the ACE potential trained on PBE0/def2-SVP energies and forces is shown in Figure SX.}
+	\label{fig::X2}
+\end{figure*}
+
+
+\begin{figure*}[tb]
+	\centering
+	\includegraphics[width=15cm]{figX3}
+	%\vspace{0.1cm}
+	%\hrule
+	%\vspace{0.1cm}
+	\caption{Reaction and transition state free energies for the reaction between methyl vinyl ketone (MVK) and cyclopentadiene (CPD). (a) Comparison of the intrinsic reaction coordinate energy potential, quasi-rigid rotor harmonic oscillator (qRRHO) and umbrella sampling (US) free energies (300 K). Umbrella sampling performed using a ACE potential trained at the PBE0-D3BJ/def2-SVP level of theory at 500 K from the TS, then 30 windows simulated at the required temperature over the reaction coordinate (average of the forming bonds, $\bar{r}$) for 10 ps. See Figure SX for umbrella histograms. End point values from optimised structures at the DFT level. (b) Free energy barrier as a function of temperature using different static endpoint and intermediate path methods. sRRHO corresponds to a shifted RRHO treatment of the vibrational entropy where modes $<100$ cm$^{-1}$ are shifted to 100 cm$^{-1}$. Vibrational frequencies calculated at the DFT level from minima. Free energies from classical US are averaged over 5 repeats and the error the standard error of the mean. (c) Reaction free energy change. Simulations as (b).}
+	\label{fig::X3}
+\end{figure*}
 
 
 While rather different in philosophy, both frameworks provide MLPs that are similarly accurate for {\bfseries{R1}} (Fig. \ref{fig::X1}a, Fig. \ref{fig::SX23}). Here, accuracy is based on deviations between true and predicted energies over independent DFT-MD trajectories propagated from the transition state (TS) to the reactant and product states. Previously, we have shown that a prospective validation strategy in the configuration space accessible to that MLP is essential to characterising `good’ MLPs.\cite{Young2021gap} However, here these potentials are `stable’ by construction, within their own configuration space over the course of the reaction.
 
 This arises from the active learning strategy (Fig. \ref{fig::X1}, top) defining a stable potential where 10, 1 ps, trajectories can be propagated without encountering a configuration that is predicted to be $>2$ \kcal~(0.1 eV) above or below the true energy. Of course, checking this criterion every MD step is too computationally intensive thus stability is not guaranteed but empirically the criterion is sufficient to define stability within that period.
 
-The data requirement to train a quality MLP for {\bfseries{R1}} is reduced upon GAP hyperparameter optimisation – even though the potential is more accurate – but is surpassed by the efficient ACE and NequIP potentials, both of which require only $\sim100$ training configurations ($n_\text{train}$, Figure X1b). The total training time is maximal for the NequIP potential but is only $\sim1/2$ day (10 cores + 1 GPU) meaning it is suitable for rapidly developing bespoke MLPs. Note that the discrepancy between the MLPs in training time reduces with the system size, with the concurrent fraction of time spent on reference energy and force evaluations (for equally data efficient MLPs). The GAPs and ACE potential required just $5\pm2$ h of total training time, on 10 CPU cores. The following sections will focus on ACE potentials for their slight advantage in computational cost.
+The data requirement to train a quality MLP for {\bfseries{R1}} is reduced upon GAP hyperparameter optimisation – even though the potential is more accurate – but is surpassed by the efficient ACE and NequIP potentials, both of which require only $\sim100$ training configurations ($n_\text{train}$, Fig. \ref{fig::X1}b). The total training time is maximal for the NequIP potential but is only $\sim1/2$ day (10 cores + 1 GPU) meaning it is suitable for rapidly developing bespoke MLPs. Note that the discrepancy between the MLPs in training time reduces with the system size, with the concurrent fraction of time spent on reference energy and force evaluations (for equally data efficient MLPs). The GAPs and ACE potential required just $5\pm2$ h of total training time, on 10 CPU cores. The following sections will focus on ACE potentials for their slight advantage in computational cost.
 
 As found for GAPs, re-evaluating energies and forces from AL configurations with a new reference method (aka. `uplifting’) reduces the computational cost associated with training WF-quality MLPs. For example, uplifting PBE0/DZ configurations to MP2/TZ affords an ACE potential within chemical accuracy to MP2-MD configurations (Fig. \ref{fig::X1}c).
 
 Comparing the two-dimensional potential energy surface over the two forming C–C bonds where all other degrees of freedom are free to relax, reveals that the ACE potential is smooth (as are the GAP and NequIP potentials, Fig. \ref{fig::SX25}) and accurate even in the extrapolation regime (Fig. \ref{fig::X1}d). Even where the closest configuration in the training data is 0.3 \AA away in the forming bonds, the error is only a couple of \kcal~when the AL is initiated at the TS at each iteration ($r_1=r_2=2.30$ \AA).
 
-Tangent to our goal of developing accurate MLPs for DA reactions, we found that GAP regularisation could be harnessed to reduce the computational cost of developing CCSD(T)-quality potentials (SI §S4). For simple molecules, MP2 forces are accurate to within ~0.05 eV \AA${}^{-1}$ of their CCSD(T) counterparts (Fig. \ref{fig::SX8}), thus within the `expected error’ (e.g. 0.1 eV \AA${}^{-1}$) of the GAP. This affords a dramatic speedup compared to training on numerical CCSD(T) forces. Further accelerations are possible by CUR\cite{Mahoney2009} selecting around half of the configurations from the dataset based on average SOAP kernel matrices. These effects can combine to afford a 100-fold reduction in the number of required CC calculations.
 
-Extending the reaction complexity, the ambimodal reaction between tropone and cyclohepatriene ({\bfseries{R3}}) is capable of forming three distinct products from a single TS (Figure X2, top).\cite{Jamieson2021} Training an ACE potential from the TS generated $\sim450$ configurations using standard AL with sampling in the reactant and product regions of 2 of the 3 products. However, despite propagating ACE-MD at 500 K the Cope product (10) was not present in the training data, making it unsuitable for running dynamics to elucidate the product ratio. Only when the TS that leads directly to 10 is included is the training data sufficiently complete. This highlights the importance of considering relevant points close in energy (4.4 \kcal, ref. \cite{Jamieson2021}) when training MLPs, that may not be obtained using automated sampling methods. 
-
-Employing this MLP to propagate dynamics enables unique observations compared to the most common DFT-MD approach. Specifically, because each 1 ps trajectory takes only a couple of minutes to calculate, the product distribution can be converged with respect to the number of trajectories (Figure X2a). Using only 100 trajectories affords an error ($2\sigma$, 95\% confidence) of 10\% for product 9, which may or may not be sufficient for experimental comparison.
-
-The inference efficiency also enables quantum dynamics to be propagated, which otherwise be too computationally demanding to perform. Interestingly, we find that initiating ring-polymer molecular dynamics (RPMD)\cite{Habershon2013} without
+Tangent to our goal of developing accurate MLPs for DA reactions, we found that GAP regularisation could be harnessed to reduce the computational cost of developing CCSD(T)-quality potentials (SI §S4). For simple molecules, MP2 forces are accurate to within $\sim0.05$ eV \AA${}^{-1}$ of their CCSD(T) counterparts (Fig. \ref{fig::SX8}), thus within the `expected error’ (e.g. 0.1 eV \AA${}^{-1}$) of the GAP. This affords a dramatic speedup compared to training on numerical CCSD(T) forces. Further accelerations are possible by CUR\cite{Mahoney2009} selecting around half of the configurations from the dataset based on average SOAP kernel matrices. These effects can combine to afford a 100-fold reduction in the number of required CC calculations.
 
 
-%\begin{figure*}
-% \centering
-% \includegraphics[height=3cm]{example2}
-% \caption{An image from the \textit{Physical Chemistry Chemical Physics} cover gallery, set as a double-column figure.}
-% \label{fgr:example2col}
-%\end{figure*}
+Extending the reaction complexity, the ambimodal reaction between tropone and cyclohepatriene ({\bfseries{R3}}) is capable of forming three distinct products from a single TS (Fig. \ref{fig::X2}, top).\cite{Jamieson2021} Training an ACE potential from the TS ({\bfseries{R3$_\text{TS1}$}}) generated $\sim450$ configurations using standard AL with sampling in the reactant and product regions of 2 of the 3 products. However, despite propagating ACE-MD at 500 K the Cope product ({\bfseries{R3$_\text{P3}$}}) was not present in the training data, making it unsuitable for running dynamics to elucidate the product ratio. Only when the TS that leads directly to {\bfseries{R3$_\text{P3}$}} is included is the training data sufficiently complete. This highlights the importance of considering relevant points close in energy (4.4 \kcal, ref. \cite{Jamieson2021}) when training MLPs, that may not be obtained using automated sampling methods. 
+
+Employing this MLP to propagate dynamics enables unique observations compared to the most common DFT-MD approach. Specifically, because each 1 ps trajectory takes only a couple of minutes to calculate, the product distribution can be converged with respect to the number of trajectories (Fig. \ref{fig::X2}a). Using only 100 trajectories affords an error ($2\sigma$, 95\% confidence) of 10\% for product {\bfseries{R3$_\text{P2}$}}, which may or may not be sufficient for experimental comparison.
+
+The inference efficiency also enables quantum dynamics to be propagated, which otherwise be too computationally demanding to perform. Interestingly, we find that initiating ring-polymer molecular dynamics (RPMD)\cite{Habershon2013} without the 100-fold more expensive simulations to be performed and the effect of ZPE  (without leakage\cite{Lee2018}) and tunnelling accounted for. Note that the equilibrated quantum dynamics are required to for correct dynamics26 thus the right most distribution in Fig. \ref{fig::X2}b should be considered the benchmark.
 
 
-%  \ce{H2SO4}. 
+With MLP uplifts to different levels of theory affordable, the effect of methodology on product distributions can be evaluated (100s CPUh vs. $>200,000$ CPUh for the data in Figure S?).  Interestingly, we find that some levels require a few iterations of AL from their TSs where the configuration space overlap with the training method is poor. For example, B3LYP distributions are unchanged on additional AL, while M06-2X affords $\sim10$\% more product (9) upon a further five AL iterations. The product distributions vary considerably between functionals, with the major state varying from the reactant to 9 and the proportion of 8 varying from 1 to 10\% (see Figure S?). Investigations into product distributions obtained from MD should therefore consider the effect of the underlying PES more so than the type of dynamics (classical vs. quantum).
 
-\clearpage
+
+
+
 The conclusions section should come at the end of article. For the reference section, the style file \texttt{rsc.bst} can be used to generate the correct reference style.\footnote[4]{Footnotes should appear here. These might include comments relevant to but not central to the matter under discussion, limited experimental and spectral data, and crystallographic data.}
+
+
 
 \section*{Author Contributions}
 X
