@@ -146,6 +146,11 @@ class _Window:
                                            hist,
                                            p0=[1.0, 1.0, 1.0],  # init guess
                                            maxfev=10000)
+
+            if (gaussian.mean > max(bin_centres)
+                    or gaussian.mean < max(bin_centres)):
+                raise RuntimeError('Gaussian mean was not within the ζ range')
+
         except RuntimeError:
             logger.error('Failed to fit a gaussian to this data')
             return None
@@ -545,6 +550,11 @@ class _FittedGaussian:
     @staticmethod
     def value(x, a, b, c):
         return a * np.exp(-(x - b)**2 / (2. * c**2))
+
+    @property
+    def mean(self) -> float:
+        """Mean of the Normal distribution, of which this is an approx."""
+        return self.params[1]
 
 
 def _plot_and_save_free_energy(free_energies,

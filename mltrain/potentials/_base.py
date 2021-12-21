@@ -265,11 +265,13 @@ class MLPotential(ABC):
         """
         Get the closest single frame as a configuration set to start a biased
         AL loop, where the closest distance from the value to any one of the
-        values and the values are in the order defined by the trainign set
+        values and the values are in the order defined by the training set
 
-        Args:
-            value:
-            values:
+        -----------------------------------------------------------------------
+        Arguments:
+            value: Specific value to get close to
+
+            values: Array of values over the training set
         """
         best_idx = np.argmin(np.abs(value - values))
 
