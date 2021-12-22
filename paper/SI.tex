@@ -727,8 +727,6 @@ Direct use of this strategy to train a ACE potential for the DA/cope reactions b
 
 
 
-
-
 \newpage
 \section{Method Effects on Product Distributions}  \label{section::SI_method_effects_R3}
 
@@ -759,6 +757,23 @@ Accuracy of the ACE potential trained for the reaction between tropone + cyclohe
 	\vspace{0.1cm}
 	\caption{Accuracy of an ACE potential on ACE-MD dynamics from the ambimodal TS between tropone + cycloheptatriene. AL initiated from two TSs at 500 K for a maximum time of 1 ps per AL iteration. Converged training data contains 453 configurations. PBE0/def2-SVP level of theory.}
 	\label{fig::SX33}
+\end{figure}
+
+
+
+\clearpage 
+\section{Methyl vinyl ketone + cyclopentadiene}
+
+
+\begin{figure}[h!]
+	\centering
+	\vspace{0.4cm}
+	\includegraphics[height=6.2cm]{figSX34.pdf}
+	\vspace{0.1cm}
+	\hrule
+	\vspace{0.1cm}
+	\caption{Example of an umbrella sampling simulation. 300 K, 0.5 fs time step, 10 ps per window. 20 windows equally spaced in [1.564, 3.5765] \AA with $k = 10$ eV \AA${}^{-1}$ and 10 equally spaced over [1.7, 2.3] \AA with $k = 20$ eV \AA${}^{-1}$. (a) Histogrammed reaction coordinate, defined by the average of the two forming bonds, for each umbrella containing a harmonic bias. (b) Free energy obtained from weighted histogram analysis (WHAM) unbiasing of the simulation; approximately equal to the potential of mean force (PMF).}
+	\label{fig::SX34}
 \end{figure}
 
 
