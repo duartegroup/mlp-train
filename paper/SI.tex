@@ -23,7 +23,7 @@
 
 \pagestyle{fancy}
 \fancyhf{}
-\rhead{Supporting Information: Title}
+\rhead{SI: Reaction Dynamics of Diels-Alder Reactions from Machine Learned Potentials}
 \cfoot{\thepage}
 
 % Custom commands
@@ -761,7 +761,7 @@ Accuracy of the ACE potential trained for the reaction between tropone + cyclohe
 
 
 \clearpage 
-\section{Methyl vinyl ketone + cyclopentadiene} \label{section::SI_umbrellal_R2}
+\section{Methyl vinyl ketone + cyclopentadiene} \label{section::SI_umbrella_R2}
 
 
 \begin{figure}[h!]
@@ -776,6 +776,88 @@ Accuracy of the ACE potential trained for the reaction between tropone + cyclohe
 \end{figure}
 
 
+
+\clearpage 
+\section{Acetylene + cyclopentadiene} \label{section::SI_R4}
+
+With a view to obtain an accurate ACE potential capable of direct comparison to experimental enthalpy and entropies of activation we selected the reaction between cyclopentadiene and acetylene, for which high-quality experimental data is available. Re-analysis of the data in ref. \cite{Walsh1975} with an Eyring analysis afforded the experimental activation parameters (\figurename{ \ref{fig::SX35}}).
+
+
+\begin{figure}[h!]
+	\centering
+	\vspace{0.4cm}
+	\includegraphics[height=6.4cm]{figSX35.pdf}
+	\vspace{0.1cm}
+	\hrule
+	\vspace{0.1cm}
+	\caption{Eyring analysis of the rate data in ref. \cite{Walsh1975}. Rate coefficients in units of atm$^{-1}$ s$^{-1}$ thus $\ln(k/T)$ includes an implicit factor of (atm K s). Linear fit performed with \emph{scipy.stats.linregress} (v. 1.7.1) with the associated errors in derived quantities quoted as the standard errors.}
+	\label{fig::SX35}
+\end{figure}
+
+
+Training an ACE potential using the default hyperparameters at the PBE0-D3BJ/def2-SVP level from the [4+2] DA TS generated a highly accurate potential (\figurename{ \ref{fig::SX38}}). To enhance the sampling over the reaction coordinate additional AL training was performed using harmonic biases ($k = 10$ eV \AA${}^{-1}$) in minimums of the reaction coordinate (average of forming bond lengths)  histogram (\figurename{ \ref{fig::SX39}}). We found this to be crucial in enabling US at temperatures higher than $\sim 350$ K. Uplifting this potential to CCSD(T)-quality required a benchmark of QM methods with analytic gradients, as to avoid $\sim10^4$ CC calculations. Double hybrid (DH) density functionals potentially offer accuracy above MP2, hence were selected as the target method. Interestingly, for this reaction there is a considerable spread ($\sim5$ \kcal, 0.3 eV) in the barrier and reaction potential energies compared to the DLPNO-CCSD(T)[TightPNO]/def2-TZVP reference (\figurename{ \ref{fig::SX32}}). Only is the spin-component scaled DH DSD-PBEP86 achieves modestly accurate but underestimates the barrier by some 3 \kcal. Uplifting the PBE0-D3BJ potential to  DSD-PBEP86 was performed with and without additional AL and the US free energy barriers plotted against temperature to extract the activation enthalpy and entropy (\figurename{ \ref{fig::SX37}}). Umbrella sampling in each case is well converged with respect to sampling (\figurename{ \ref{fig::SX36}}).
+
+
+\begin{figure}[h!]
+	\centering
+	\vspace{0.4cm}
+	\includegraphics[height=11.2cm]{figSX38.pdf}
+	\vspace{0.1cm}
+	\hrule
+	\vspace{0.1cm}
+	\caption{Accuracy of an ACE potential on ACE-MD dynamics from the [4+2] TS between acetylene + cyclopentadiene. AL performed at 500 K for a maximum time of 1 ps per AL iteration and $E_T = 1$ \kcal. Converged training data contains 159 configurations. PBE0/def2-SVP level of theory.}
+	\label{fig::SX38}
+\end{figure}
+
+
+\begin{figure}[h!]
+	\centering
+	\vspace{0.4cm}
+	\includegraphics[height=6.4cm]{figSX39.pdf}
+	\vspace{0.1cm}
+	\hrule
+	\vspace{0.1cm}
+	\caption{Histogram of $\bar{r} = (r_1 + r_2) / 2$ for the DA reaction between acetylene + cyclopentadiene sampled in unbiased AL. Red harmonic potentials represent where additional biased sampling is performed following the unbiased AL terminating.}
+	\label{fig::SX39}
+\end{figure}
+
+
+
+\begin{figure}[h!]
+	\centering
+	\vspace{0.4cm}
+	\includegraphics[height=6.4cm]{figSX32.pdf}
+	\vspace{0.1cm}
+	\hrule
+	\vspace{0.1cm}
+	\caption{Comparison of QM methods over the B2PLYP/def2-TZVP intrinsic reaction coordinate (IRC) incremented backwards and forwards from the B2PLYP/def2-TZVP [4+2] TS between acetylene + cyclopentadiene. All methods use the def2-TZVP basis set and resolution of the identity for MP2 and HF components.}
+	\label{fig::SX32}
+\end{figure}
+
+
+
+\begin{figure}[h!]
+	\centering
+	\vspace{0.4cm}
+	\includegraphics[height=6.4cm]{figSX37.pdf}
+	\vspace{0.1cm}
+	\hrule
+	\vspace{0.1cm}
+	\caption{Correlation between temperature and activation free energy from US simulations (as \figurename{ \ref{fig::SX36}}). Error bars are plotted as the standard error in the mean from three repeat simulations.}
+	\label{fig::SX37}
+\end{figure}
+
+
+\begin{figure}[h!]
+	\centering
+	\vspace{0.4cm}
+	\includegraphics[height=6.4cm]{figSX36.pdf}
+	\vspace{0.1cm}
+	\hrule
+	\vspace{0.1cm}
+	\caption{Example of an umbrella sampling simulation. 450 K, 0.5 fs time step, 10 ps per window. 25 windows equally spaced in [1.539, 5.0] \AA with $k = 10$ eV \AA${}^{-1}$ and 10 equally spaced over [1.8, 2.4] \AA with $k = 40$ eV \AA${}^{-1}$. (a) Histogrammed reaction coordinate, defined by the average of the two forming bonds, for each umbrella containing a harmonic bias. (b) Free energy obtained from weighted histogram analysis (WHAM) unbiasing of the simulation; approximately equal to the potential of mean force (PMF).}
+	\label{fig::SX36}
+\end{figure}
 
 
 \clearpage
