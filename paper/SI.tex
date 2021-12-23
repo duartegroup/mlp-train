@@ -4,11 +4,10 @@
 \setlength{\parskip}{2em}
 \usepackage[english]{babel}
 \usepackage[utf8]{inputenc}
-\usepackage{fancyhdr, amsmath,booktabs,mathtools, etoolbox,parskip,setspace,amssymb,amsfonts,tabularx,graphicx,color,enumitem}
+\usepackage{fancyhdr, amsmath,booktabs,mathtools, etoolbox,parskip,
+setspace,amssymb,amsfonts,tabularx,graphicx,color,enumitem,tocloft}
 \usepackage[hidelinks]{hyperref}
 
-
-%\usepackage{rsc}
 \usepackage[backend=bibtex,
                        sorting=none,
                        citestyle=numeric-comp,
@@ -42,14 +41,18 @@
 	
 \bibliography{refs}
 
+% Make the Table of Contents numbering not overlap
+\addtolength{\cftsecnumwidth}{5pt}
 
 \begin{document}	
 \begin{titlepage}
 	\vspace*{\fill}
 	\begin{center}
-		{\huge Supporting Information}\\
+		{\huge \bfseries{Supporting Information}}\\
 		\vspace{0.2cm}
-		{\large\bfseries{Authors..}}
+		{\huge Reaction Dynamics of Diels-Alder Reactions from Machine Learned Potentials}\\
+		\vspace{0.2cm}
+		{Tom A. Young,Tristan Johnston-Wood, Hanwen Zhang and Fernanda Duarte}
 	\end{center}
 	\vspace*{\fill}
 
@@ -66,8 +69,13 @@ All Gaussian Approximation Potentials (GAPs) were trained using the gap\_fit and
 
 DFTB calculations were performed with DFTB+\cite{Hourahine2020} using 3ob\cite{Gaus2014} parameters in a periodic box with side lengths of 50 \AA~to mimic a vacuum. Molecular DFT used GFN2-XTB\cite{Bannwarth2019} in XTB v. 6.4.0. Molecular DFT (inc. AIMD), MP2 and coupled cluster [CCSD(T)] calculations performed with ORCA\cite{Neese2017, Neese2020} v. 4.2.1 wrapped with autodE\cite{autodE} using PBE\cite{Perdew1996} and PBE0\cite{Adamo1999} functionals, def2-SVP, def2-TZVP, def2-TZVPP basis sets.\cite{Weigend2005} DLPNO coupled cluster calculations employed TightPNO thresholds.\cite{Yang2018} Double-hybrid DFT calculations were performed in ORCA v. 5.0.2. Transition states were located with autodE. Plots were generated with matplotlib and, where quoted, include a standard error of the mean averaged over three independent repeats.
 
-\clearpage
 
+\section{Author Contributions}
+X
+{\huge{TO WRITE}}
+
+
+\clearpage
 \section{GAPs for Reactions} \label{section::SI_gap_reactions}
 
 Using our initial GAP training strategy,\cite{gaptrain2021} found to be effective for developing an accurate reactive potential for the S${}_N$2 reaction Cl${}^{-}$ + CH${}_3$Cl in the higher-dimensional ethene+butadiene Diels-Alder case did not afford a chemically accurate GAP (\figurename{ \ref{fig::SX30}a}). However, for a similarly complex H-abstraction reaction the obtained error is closer to the target 1 \kcal~(0.04 eV) level of accuracy (\figurename{ \ref{fig::SX30}b}). Note that these results are consistent within repeats of the partially random AL strategy and minor hyperparameter tweaks.
@@ -843,7 +851,7 @@ Training an ACE potential using the default hyperparameters at the PBE0-D3BJ/def
 	\vspace{0.1cm}
 	\hrule
 	\vspace{0.1cm}
-	\caption{Correlation between temperature and activation free energy from US simulations (as \figurename{ \ref{fig::SX36}}). Error bars are plotted as the standard error in the mean from three repeat simulations.}
+	\caption{Correlation between temperature and activation free energy from US simulations (as \figurename{ \ref{fig::SX36}}). Error bars are plotted as the standard error in the mean from three repeat simulations. Free energies include a correction from a simulation box of with side length 10 \AA to the required volume at 1 atm.\cite{General2010}}
 	\label{fig::SX37}
 \end{figure}
 

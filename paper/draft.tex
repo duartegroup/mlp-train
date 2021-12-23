@@ -139,7 +139,7 @@
 "
  & \vspace{0.3cm} \\
 
- & \noindent\large{Tom A. Young,\textit{$^{a}$} Tristan Johnston-Wood,\textit{$^{a}$}, Hanwen Zhang\textit{$^{a}$} and Fernada Duarte$^\ast$\textit{$^{a}$}} \\%Author names go here instead of "Full name", etc.
+ & \noindent\large{Tom A. Young,\textit{$^{a}$} Tristan Johnston-Wood,\textit{$^{a}$}, Hanwen Zhang\textit{$^{a}$} and Fernanda Duarte$^\ast$\textit{$^{a}$}} \\%Author names go here instead of "Full name", etc.
 
 \includegraphics{head_foot/dates} & \\
 
@@ -172,7 +172,7 @@
 
 %%%ABSTRACT%%%%
 
-\sffamily{\textbf{The abstract should be a single paragraph which summarises the content of the article.}}\\%The abstrast goes here instead of the text "The abstract should be..."
+\sffamily{\textbf{The abstract e.}}\\%The abstrast goes here instead of the text "The abstract should be..."
 
 %%%END OF ABSTRACT%%%%
 
@@ -258,19 +258,32 @@ With MLP uplifts to different levels of theory affordable, the effect of methodo
 
 Obtaining free energies from absolute estimates in the rigid-rotor harmonic oscillator (RRHO) method is deficient in the low frequency regime.\cite{Liu2017} To investigate the effect of different static approaches (RRHO, sRRHO,\cite{Ribeiro2011} qRRHO\cite{Grimme2012}) we trained an ACE potential for {\bfseries{R2}} and compared free energy differences to classical umbrella sampling (US, Fig. \ref{fig::X3}). Reactive simulations totalling 1.5 ns would be unobtainable with DFT-MD. Note the sampling in the product state at 250 K is insufficiently complete, thus is excluded from the linear fit. The anharmonic effects at the reactant complex are significant, leading to a spread of 2 \kcal~within the static methods, while the US correctly captures those effects but fails to treat any nuclear quantum effects. Therefore, for DA reactions any calculated free energies should include a few \kcal error bar.
 
-Finally, we 
+Finally, we considered the DA reaction between cyclopentadiene and acetylene for which gas-phase kinetic data are available.\cite{Walsh1975} Classical umbrella sampling from an MLP is sufficient to obtain quantitative accuracy (Table \ref{tbl::X1}). While the potential fitting is completely automated, determining an appropriate QM reference method and US require human intervention. Future work will address these points and approach an automated prediction of activation entropies and enthalpies. Nevertheless, these data show that free energies with associated errors, and treatment of anharmonic effects without \emph{ad-hoc} corrections, are now achievable.
+
+
+\begin{table}[h]
+	\small
+	\caption{\ Activation parameters for {\bfseries{R4}} obtained from ACE umbrella sampling (US). See SI §S\ref{section::SI_R4} for details. Standard error in the last digit is quoted in parenthesis.}
+	\label{tbl::X1}
+	\vspace{-0.2cm}
+	\renewcommand{\arraystretch}{1.4}
+	\begin{tabular*}{0.48\textwidth}{@{\extracolsep{\fill}}lll}
+		\hline
+		 & $\Delta H^\ddagger$ / \kcal & $\Delta S^\ddagger$ / cal K${}^{-1}$ mol$^{-1}$ \\
+		\hline
+		US & $20(3)$ & $-32(8)$ \\
+		expt.\cite{Walsh1975} & $21.9(1)$ & $-37.3(2)$ \\
+		\hline
+	\end{tabular*}
+\end{table}
 
 
 % DSDPBE -B86 error: 0.1371612392 eV = 3.1 kcal mol-1 on the B2PLYP surface
 
 
 \vspace{0.2cm}
-The conclusions 
+The comparison of three machine learned potential (MLP) methods suggests that the atomic cluster expansion (ACE) framework is efficient and accurate for modelling highly-exothermic and modestly complex ($\sim 50$ atoms) Diels-Alder reactions. Using the freely available automated fitting code \emph{ml-train}\cite{Young2021mlt} several ACE potentials were fitted and consistently achieve \emph{chemical accuracy} ($\pm$ \kcal) to the ground-truth surface. Product distributions obtained from DFT-MD trajectories from ambimodal transition states are strongly depending on the reference method, are not strongly dependent on propagating quantum dynamics but do require at least several hundred trajectories to converge. Static quantum mechanical free energy methods vary by several \kcal~in barrier and reaction energies, while umbrella sampling straddles the range. Comparison of MLP-derived and experimental free energy differences suggest that classical methods are sufficient for quantitative comparison for these systems. These insights would not be possible without having trained accurate and efficient MLPs. Advancements in reference methods are needed to obtain accurate potentials within a day without a proceeding benchmark study, however we are confident this will enable routine development of chemically accurate MLPs.
 
-
-
-\section*{Author Contributions}
-X
 
 \section*{Conflicts of interest}
 There are no conflicts to declare.
