@@ -287,8 +287,6 @@ class MLPotential(ABC):
         Arguments:
             method_name: Name of the reference method to use
         """
-        _spin_multiplicites = {'H': 2, 'C': 3, 'B': 2, 'N': 4, 'O': 3, 'F': 2,
-                               'Si': 3, 'P': 4, 'S': 3, 'Cl': 2, 'I': 2}
 
         for symbol in self.system.unique_atomic_symbols:
             config = Configuration(atoms=[Atom(symbol)],
@@ -313,3 +311,34 @@ class MLPotential(ABC):
 
     def copy(self) -> 'MLPotential':
         return deepcopy(self)
+
+
+_spin_multiplicites = {'H': 2,
+                       'He': 1,
+                       'Li': 2,
+                       'Be': 1,
+                       'C': 3,
+                       'N': 4,
+                       'O': 3,
+                       'F': 2,
+                       'Ne': 1,
+                       'Na': 2,
+                       'Mg': 1,
+                       'Cl': 2,
+                       'Ar': 1,
+                       'K': 2,
+                       'Ca': 1,
+                       'Sc': 2,
+                       'Ti': 3,
+                       'V': 4,
+                       'Cr': 7,
+                       'Mn': 6,
+                       'Fe': 5,
+                       'Co': 4,
+                       'Ni': 3,
+                       'Cu': 2,
+                       'Zn': 1,
+                       'Ga': 2,
+                       'Br': 2,
+                       'Kr': 1,
+                       'I': 2}
