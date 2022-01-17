@@ -118,7 +118,7 @@ class ConfigurationSet(list):
         Arguments:
             energy: Relative energy (eV) above which to discard configurations
         """
-        min_energy = self.lowest_energy
+        min_energy = self.lowest_energy.energy.true
 
         for idx in reversed(range(len(self))):
             if (self[idx].energy.true - min_energy) > energy:
