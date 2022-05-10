@@ -1,19 +1,18 @@
 from setuptools import setup
 
 
-setup(name='mltrain',
-      version='1.0.0a1',
+setup(name='mlptrain',
+      version='1.0.0a2',
       description='Machine Learning Potential Training',
-      packages=['mltrain',
-                'mltrain.configurations',
-                'mltrain.loss',
-                'mltrain.training',
-                'mltrain.sampling',
-                'mltrain.potentials',
-                'mltrain.potentials.gap',
-                'mltrain.potentials.ace',
-                'mltrain.potentials.nequip'],
-      url='https://github.com/t-young31/mltrain',
+      packages=['mlptrain',
+                'mlptrain.configurations',
+                'mlptrain.loss',
+                'mlptrain.training',
+                'mlptrain.sampling',
+                'mlptrain.potentials',
+                'mlptrain.potentials.gap',
+                'mlptrain.potentials.ace',
+                'mlptrain.potentials.nequip'],
+      url='https://github.com/t-young31/mlptrain',
       license='MIT',
-      author='Tom Young, Tristan Johnston-Wood',
-      author_email='tom.young@chem.ox.ac.uk')
+      author='Tom Young, Tristan Johnston-Wood')
