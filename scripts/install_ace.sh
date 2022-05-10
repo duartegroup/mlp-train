@@ -18,7 +18,7 @@ Pkg.Registry.add(\"General\")
 Pkg.Registry.add(RegistrySpec(url=\"https://github.com/JuliaMolSim/MolSim.git\"))
 Pkg.add(\"JuLIP\")
 Pkg.add(PackageSpec(name=\"ACE\", version=\"0.8.4\"))
-Pkg.add(\"IPFitting\")
+Pkg.add(PackageSpec(name=\"IPFitting\", version=\"0.5.0\"))
 Pkg.add(\"IJulia\")
 Pkg.add(\"ASE\")" > add.jl
 julia add.jl
