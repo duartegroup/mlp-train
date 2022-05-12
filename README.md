@@ -5,7 +5,7 @@ General machine learnt potential (MLP) training for molecular systems
 ### Install
 
 
-ACE can be installed directly from ```scripts/```
+ACE can be installed directly from ```scripts/```: /
 ```source install_ace.sh```
 
 
