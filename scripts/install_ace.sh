@@ -1,5 +1,5 @@
-# Install Julia v. 1.6
-wget https://julialang-s3.julialang.org/bin/linux/x64/1.6/julia-1.6.3-linux-x86_64.tar.gz --quiet
+echo "Installing Julia v. 1.6"
+wget https://julialang-s3.julialang.org/bin/linux/x64/1.6/julia-1.6.3-linux-x86_64.tar.gz
 tar -xf julia-1.6.3-linux-x86_64.tar.gz
 rm -r julia-1.6.3-linux-x86_64.tar.gz
 
