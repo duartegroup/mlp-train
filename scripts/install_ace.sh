@@ -1,14 +1,7 @@
-echo "Installing Julia v. 1.6"
-wget https://julialang-s3.julialang.org/bin/linux/x64/1.6/julia-1.6.3-linux-x86_64.tar.gz
-tar -xf julia-1.6.3-linux-x86_64.tar.gz
-rm -r julia-1.6.3-linux-x86_64.tar.gz
-
-echo "Moving julia install to ~/.julia/"
-mkdir ~/.julia && mv julia-1.6.3/* ~/.julia/
-
-echo "Adding ~/.julia/bin to \$PATH"
-echo "PATH=$HOME/.julia/bin/:\$PATH" >> ~/.bash_profile
-source "$HOME/.bash_profile"
+echo "Installing everything to an new conda environment called: ace"
+conda create --name ace julia python=3.7 --file ../requirements.txt --yes
+conda activate ace
+pip install -e ../
 
 # ----------------------------------------------------
 echo "Adding required registries and packages"
@@ -23,12 +16,6 @@ Pkg.add(\"IJulia\")
 Pkg.add(\"ASE\")" > add.jl
 julia add.jl
 rm add.jl
-
-# ----------------------------------------------------
-echo "Creating a new conda environment for ASE called \"ace\""
-
-conda create --name ace python=3.7 --file ../requirements.txt --yes
-conda activate ace
 
 # ----------------------------------------------------
 echo "Pointing PyCall to the version of Python in the new env"
