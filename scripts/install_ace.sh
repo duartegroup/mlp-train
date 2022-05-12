@@ -1,6 +1,7 @@
 echo "Installing everything to an new conda environment called: ace"
-conda create --name ace julia python=3.7 --file ../requirements.txt --yes
+conda create --name ace python=3.7 --file ../requirements.txt --yes
 conda activate ace
+pip install --user julia
 pip install -e ../
 
 # ----------------------------------------------------
@@ -31,7 +32,7 @@ echo "Installing pyjulip"
 
 wget https://github.com/casv2/pyjulip/archive/72280a6ac3.zip
 unzip 72280a6ac3.zip && rm 72280a6ac3.zip
-cd pyjulip-72280a6ac3f0b4107fe73637fb409b0c42e9011d/ && python setup.py install
+cd pyjulip-72280a6ac3f0b4107fe73637fb409b0c42e9011d/ && pip install .
 cd ..
 rm -r pyjulip-72280a6ac3f0b4107fe73637fb409b0c42e9011d/
 
