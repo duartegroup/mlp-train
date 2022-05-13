@@ -27,6 +27,8 @@ class ACE(MLPotential):
 
         self.training_data.save_xyz(filename=f'{self.name}_data.xyz')
 
+        _check_julia_install_exists()
+
         logger.info(f'Training an ACE potential on *{len(self.training_data)}* '
                     f'training data')
 
@@ -233,3 +235,11 @@ class ACE(MLPotential):
         inp_file.close()
 
         return None
+
+
+def _check_julia_install_exists() -> None:
+    """Ensure that a julia install is present"""
+
+    if shutil.which('julia') is None:
+        exit("Failed to find a Julia installation. Make sure it's present "
+             "in your $PATH")

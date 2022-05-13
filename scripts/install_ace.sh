@@ -1,14 +1,8 @@
-# Install Julia v. 1.6
-wget https://julialang-s3.julialang.org/bin/linux/x64/1.6/julia-1.6.3-linux-x86_64.tar.gz --quiet
-tar -xf julia-1.6.3-linux-x86_64.tar.gz
-rm -r julia-1.6.3-linux-x86_64.tar.gz
-
-echo "Moving julia install to ~/.julia/"
-mkdir ~/.julia && mv julia-1.6.3/* ~/.julia/
-
-echo "Adding ~/.julia/bin to \$PATH"
-echo "PATH=$HOME/.julia/bin/:\$PATH" >> ~/.bash_profile
-source "$HOME/.bash_profile"
+echo "Installing everything to an new conda environment called: ace"
+conda create --name ace python=3.7 --file ../requirements.txt --yes
+conda activate ace
+pip install --user julia
+pip install -e ../
 
 # ----------------------------------------------------
 echo "Adding required registries and packages"
@@ -25,12 +19,6 @@ julia add.jl
 rm add.jl
 
 # ----------------------------------------------------
-echo "Creating a new conda environment for ASE called \"ace\""
-
-conda create --name ace python=3.7 --file ../requirements.txt --yes
-conda activate ace
-
-# ----------------------------------------------------
 echo "Pointing PyCall to the version of Python in the new env"
 
 echo "ENV[\"PYTHON\"] = \"$(eval "which python")\"
@@ -44,7 +32,7 @@ echo "Installing pyjulip"
 
 wget https://github.com/casv2/pyjulip/archive/72280a6ac3.zip
 unzip 72280a6ac3.zip && rm 72280a6ac3.zip
-cd pyjulip-72280a6ac3f0b4107fe73637fb409b0c42e9011d/ && python setup.py install
+cd pyjulip-72280a6ac3f0b4107fe73637fb409b0c42e9011d/ && pip install .
 cd ..
 rm -r pyjulip-72280a6ac3f0b4107fe73637fb409b0c42e9011d/
 

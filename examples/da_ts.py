@@ -10,9 +10,9 @@ if __name__ == '__main__':
     gap = mlt.potentials.GAP('da', system=system)
 
     gap.al_train(method_name='orca',
-                 temp=300,
+                 temp=300,            # K
                  selection_method=mlt.selection.MaxAtomicEnvDistance(),
-                 max_active_time=200,
+                 max_active_time=200,  # fs
                  fix_init_config=True)
 
     # Run some dynamics with the potential
