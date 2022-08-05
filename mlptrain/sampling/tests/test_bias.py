@@ -1,5 +1,7 @@
 import os
 import numpy as np
+import pytest
+
 import mlptrain as mlt
 from autode.atoms import Atom
 from mlptrain.utils import work_in_tmp_dir
@@ -20,6 +22,14 @@ def _get_avg_dists(atoms, atom_pair_list):
 def _h2():
     """Dihydrogen molecule"""
     atoms = [Atom('H', -0.80952, 2.49855, 0.), Atom('H', -0.34877, 1.961, 0.)]
+    return mlt.Molecule(atoms=atoms, charge=0, mult=1)
+
+
+def _h2o():
+    """Water molecule"""
+    atoms = [Atom('H', 2.32670, 0.51322, 0.),
+             Atom('H', 1.03337, 0.70894, -0.89333),
+             Atom('O', 1.35670, 0.51322, 0.)]
     return mlt.Molecule(atoms=atoms, charge=0, mult=1)
 
 
@@ -74,4 +84,34 @@ def test_bias():
     assert os.path.exists('tmp.xyz')
 
 
+@work_in_tmp_dir()
+def test_differencedistance():
+    """Test the DifferenceDistance class for reaction coordinate"""
 
+    system = mlt.System(_h2o(), box=[50, 50, 50])
+
+    config = system.random_configuration()
+    atoms = config.ase_atoms
+
+    diff_dist = mlt.DifferenceDistance((0, 1), (0, 2))
+
+    # Reaction coordinate should contain two pairs of atoms
+    assert len(diff_dist.atom_pair_list) == 2
+
+    rxn_coord = diff_dist(atoms)
+
+    # Check calling the class returns the reaction coordinate
+    assert np.isclose(rxn_coord, 0.614, 0.1)
+
+    grad = diff_dist.grad(atoms)
+
+    # Gradient matrix should consist of N atoms multiplied by 3 (x, y, z)
+    assert grad.shape == (len(atoms), 3)
+
+    # Pytest should raise a ValueError when != 2 atoms are specified
+    with pytest.raises(ValueError):
+        mlt.DifferenceDistance((0, 1, 2), (0, 1))
+
+    # Pytest should raise a ValueError when != 2 pairs are specified
+    with pytest.raises(ValueError):
+        mlt.DifferenceDistance((0, 1))
