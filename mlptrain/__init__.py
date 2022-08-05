@@ -7,7 +7,7 @@ from mlptrain.sampling import md, Bias, UmbrellaSampling
 from mlptrain import potentials
 from mlptrain import loss
 from mlptrain.training import selection
-from mlptrain.sampling.reaction_coord import AverageDistance
+from mlptrain.sampling.reaction_coord import AverageDistance, DifferenceDistance
 
 __version__ = '1.0.0a0'
 
@@ -21,6 +21,7 @@ __all__ = ['Configuration',
            'Bias',
            'UmbrellaSampling',
            'AverageDistance',
+           'DifferenceDistance',
            'md',
            'loss',
            'selection',
