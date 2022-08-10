@@ -105,6 +105,9 @@ def test_differencedistance():
 
     grad = diff_dist.grad(atoms)
 
+    # Check gradient is close to expected gradient
+    assert np.isclose(grad[0][0], -0.1835, 0.1)
+
     # Gradient matrix should consist of N atoms multiplied by 3 (x, y, z)
     assert grad.shape == (len(atoms), 3)
 

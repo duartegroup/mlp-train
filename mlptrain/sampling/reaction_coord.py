@@ -55,7 +55,26 @@ class DummyCoordinate(ReactionCoordinate):
         raise ValueError('Cannot call grad on a dummy coordinate')
 
 
-class AverageDistance(ReactionCoordinate):
+class _Distances:
+    """Base class for distance reaction coordinates"""
+
+    def __init__(self, *args):
+        """
+        Arguments:
+            args: Pairs of atom indices
+        """
+
+        self.atom_pair_list = []
+
+        for arg in args:
+            if len(arg) != 2:
+                raise ValueError('Distances must be initialised from a '
+                                 '2-tuple of atom indices')
+
+            self.atom_pair_list.append(tuple(arg))
+
+
+class AverageDistance(ReactionCoordinate, _Distances):
     """Average distance between each pair of atoms specified"""
 
     def __init__(self, *args):
@@ -73,14 +92,7 @@ class AverageDistance(ReactionCoordinate):
             args: Pairs of atom indices
         """
 
-        self.atom_pair_list = []
-
-        for arg in args:
-            if len(arg) != 2:
-                raise ValueError('Average distance must be initialised from '
-                                 'a 2-tuple of atom indices')
-
-            self.atom_pair_list.append(tuple(arg))
+        _Distances.__init__(self, *args)
 
         atom_idxs = [idx for pair in self.atom_pair_list for idx in pair]
 
@@ -130,7 +142,7 @@ class AverageDistance(ReactionCoordinate):
         return len(self.atom_pair_list)
 
 
-class DifferenceDistance(ReactionCoordinate):
+class DifferenceDistance(ReactionCoordinate, _Distances):
     """Difference in distance between two pairs of specified atoms"""
 
     def __init__(self, *args):
@@ -147,18 +159,11 @@ class DifferenceDistance(ReactionCoordinate):
             args: Pairs of atom indices
         """
 
-        self.atom_pair_list = []
+        _Distances.__init__(self, *args)
 
         if len(args) != 2:
-            raise ValueError('Difference Distance must comprise exactly two '
+            raise ValueError('DifferenceDistance must comprise exactly two '
                              'pairs of atoms')
-
-        for arg in args:
-            if len(arg) != 2:
-                raise ValueError('Average distance must be initialised from '
-                                 'a 2-tuple of atom indices')
-
-            self.atom_pair_list.append(tuple(arg))
 
     def _call(self, atoms: ase.atoms.Atoms):
         """Difference in distance between two atom pairs"""
