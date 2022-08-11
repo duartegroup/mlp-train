@@ -55,7 +55,26 @@ class DummyCoordinate(ReactionCoordinate):
         raise ValueError('Cannot call grad on a dummy coordinate')
 
 
-class AverageDistance(ReactionCoordinate):
+class _Distances:
+    """Base class for distance reaction coordinates"""
+
+    def __init__(self, *args):
+        """
+        Arguments:
+            args: Pairs of atom indices
+        """
+
+        self.atom_pair_list = []
+
+        for arg in args:
+            if len(arg) != 2:
+                raise ValueError('Distances must be initialised from a '
+                                 '2-tuple of atom indices')
+
+            self.atom_pair_list.append(tuple(arg))
+
+
+class AverageDistance(ReactionCoordinate, _Distances):
     """Average distance between each pair of atoms specified"""
 
     def __init__(self, *args):
@@ -73,14 +92,13 @@ class AverageDistance(ReactionCoordinate):
             args: Pairs of atom indices
         """
 
-        self.atom_pair_list = []
+        _Distances.__init__(self, *args)
 
-        for arg in args:
-            if len(arg) != 2:
-                raise ValueError('Average distance must be initialised from '
-                                 'a 2-tuple of atom indices')
+        atom_idxs = [idx for pair in self.atom_pair_list for idx in pair]
 
-            self.atom_pair_list.append(tuple(arg))
+        if len(set(atom_idxs)) != len(atom_idxs):
+            raise ValueError('All atoms in reaction coordinate must be '
+                             'different')
 
     def _call(self, atoms: ase.atoms.Atoms):
         """Average distance between atom pairs"""
@@ -91,7 +109,7 @@ class AverageDistance(ReactionCoordinate):
         """Gradient of the average distance between atom pairs. Each component
         of the gradient is calculated using ∇B_i,m:
 
-        ∇B_i,m = (1/M) * (r_i,m - r_i,m') / ||r_m||
+        ∇B_i,m = (1/M) * (r_i,m - r_i,m') / ||r_mm'||
 
         ∇B_i,m:  Gradient of bias for atom m along component i for pair m, m'
         M:       Number of atom pairs
@@ -122,3 +140,62 @@ class AverageDistance(ReactionCoordinate):
     def n_pairs(self) -> int:
         """Number of pairs of atoms in this set"""
         return len(self.atom_pair_list)
+
+
+class DifferenceDistance(ReactionCoordinate, _Distances):
+    """Difference in distance between two pairs of specified atoms"""
+
+    def __init__(self, *args):
+        """
+        Difference of a pair of distances e.g.
+
+        # Δr = r_1 - r_2, where r_i is the distance between atoms j and k
+        dists = DifferenceDistance((0, 1), (0, 2))
+
+        Must comprise two pairs of atoms
+
+        -----------------------------------------------------------------------
+        Arguments:
+            args: Pairs of atom indices
+        """
+
+        _Distances.__init__(self, *args)
+
+        if len(args) != 2:
+            raise ValueError('DifferenceDistance must comprise exactly two '
+                             'pairs of atoms')
+
+    def _call(self, atoms: ase.atoms.Atoms):
+        """Difference in distance between two atom pairs"""
+        dists = [atoms.get_distance(i, j, mic=True)
+                 for (i, j) in self.atom_pair_list]
+
+        return dists[0] - dists[1]
+
+    def _grad(self, atoms: ase.atoms.Atoms):
+        """Gradient of the difference in distance between two atom pairs. Each
+        component of the gradient is calculated using ∇B_i,m:
+
+        ∇B_i,m = (r_i,m - r_i,m') / ||r_mm'||
+
+        An additional term is subtracted if there are only 3 atoms in the 2
+        pairs. e.g. - (r_i,m - r_i,n) / ||r_mn||
+
+        ∇B_i,m:  Gradient of bias for atom m along component i for pair m, m'
+        r_i,m:   i (= x, y or z) position of atom in pair m, m'
+        ||r_m||: Euclidean distance between atoms in pair m, m'
+        """
+
+        derivative = np.zeros(shape=(len(atoms), 3))
+
+        for m, (i, j) in enumerate(self.atom_pair_list):
+
+            r = atoms[i].position - atoms[j].position
+            r /= np.linalg.norm(r)
+
+            sign = 1 if m == 0 else -1
+
+            derivative[i] += sign * r
+            derivative[j] += -sign * r
+
+        return derivative

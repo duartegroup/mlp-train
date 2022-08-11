@@ -1,9 +1,10 @@
 import os
 import numpy as np
+
 import mlptrain as mlt
-from autode.atoms import Atom
 from mlptrain.utils import work_in_tmp_dir
 from .test_potential import TestPotential
+from .molecules import _h2
 mlt.Config.n_cores = 1
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -15,12 +16,6 @@ def _get_avg_dists(atoms, atom_pair_list):
                        for (i, j) in atom_pair_list]
 
     return np.mean(euclidean_dists)
-
-
-def _h2():
-    """Dihydrogen molecule"""
-    atoms = [Atom('H', -0.80952, 2.49855, 0.), Atom('H', -0.34877, 1.961, 0.)]
-    return mlt.Molecule(atoms=atoms, charge=0, mult=1)
 
 
 @work_in_tmp_dir()
@@ -72,6 +67,3 @@ def test_bias():
     trajectory.save_xyz('tmp.xyz')
 
     assert os.path.exists('tmp.xyz')
-
-
-
