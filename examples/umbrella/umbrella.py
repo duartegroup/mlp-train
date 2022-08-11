@@ -9,7 +9,7 @@ if __name__ == '__main__':
                                     kappa=20)
 
     irc = mlt.ConfigurationSet()
-    irc.load_xyz(filename='traj.xyz', charge=-1, mult=1)
+    irc.load_xyz(filename='irc.xyz', charge=-1, mult=1)
 
     system = mlt.System(mlt.Molecule('sn2.xyz', charge=-1, mult=1),
                         box=None)
