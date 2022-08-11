@@ -23,12 +23,12 @@ If _mlptrain_ is used in a publication please consider citing the [paper](https:
 
 ```
 @article{MLPTraining2022,
-  doi = {10.26434/chemrxiv-2022-59qc9},
-  url = {https://doi.org/10.26434/chemrxiv-2022-59qc9},
+  doi = {10.1039/D2CP02978B},
+  url = {DOI	https://doi.org/10.1039/D2CP02978B},
   year = {2022},
-  publisher = {ChemRxiv},
-  author = {Tom Young and Tristan Johnston-Wood and Hanwen Zhang and Fernanda Duarte},
+  publisher = {The Royal Society of Chemistry},
+  author = {Young, Tom and Johnston-Wood, Tristan and Zhang, Hanwen and Duarte, Fernanda},
   title = {Reaction dynamics of Diels-Alder reactions from machine learned potentials},
-  journal = {ChemRxiv}
+  journal = {Phys. Chem. Chem. Phys.}
 }
 ```
