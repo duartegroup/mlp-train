@@ -188,27 +188,14 @@ class DifferenceDistance(ReactionCoordinate, _Distances):
 
         derivative = np.zeros(shape=(len(atoms), 3))
 
-        distances = [atoms.get_distance(i, j, mic=True)
-                     for (i, j) in self.atom_pair_list]
+    for m, (i, j) in enumerate(atom_pair_list):
 
-        for m, (i, j) in enumerate(self.atom_pair_list):
+        r = atoms[i].position - atoms[j].position
+        r /= np.linalg.norm(r)
 
-            x_dist, y_dist, z_dist = [atoms[i].position[k] -
-                                      atoms[j].position[k] for k in
-                                      range(3)]
+        sign = 1 if m == 0 else -1
 
-            x_i = x_dist / distances[m]
-            y_i = y_dist / distances[m]
-            z_i = z_dist / distances[m]
-
-            if m == 0:
-
-                derivative[i][:] += [x_i, y_i, z_i]
-                derivative[j][:] += [-x_i, -y_i, -z_i]
-
-            elif m == 1:
-
-                derivative[i][:] += [-x_i, -y_i, -z_i]
-                derivative[j][:] += [x_i, y_i, z_i]
+        derivative[i] += sign * r
+        derivative[j] += -sign * r
 
         return derivative
