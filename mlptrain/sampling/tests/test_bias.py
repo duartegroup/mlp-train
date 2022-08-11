@@ -67,7 +67,3 @@ def test_bias():
     trajectory.save_xyz('tmp.xyz')
 
     assert os.path.exists('tmp.xyz')
-
-
-
-
