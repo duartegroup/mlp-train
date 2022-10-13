@@ -120,8 +120,8 @@ def train(mlp:               'mlptrain.potentials._base.MLPotential',
                             init_config=(init_config if fix_init_config
                                          else mlp.training_data.lowest_energy),
                             selection_method=selection_method,
-                            n_configs=n_configs_iter,
                             torch = torch,
+                            n_configs=n_configs_iter,
                             method_name=method_name,
                             temp=temp,
                             max_time=max_active_time,
@@ -152,8 +152,8 @@ def train(mlp:               'mlptrain.potentials._base.MLPotential',
 def _add_active_configs(mlp,
                         init_config,
                         selection_method,
-                        n_configs=10,
                         torch,
+                        n_configs=10,
                         **kwargs
                         ) -> None:
     """
