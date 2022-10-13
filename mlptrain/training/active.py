@@ -18,6 +18,7 @@ def train(mlp:               'mlptrain.potentials._base.MLPotential',
           max_active_iters:  int = 50,
           n_init_configs:    int = 10,
           init_configs:      Optional['mlptrain.ConfigurationSet'] = None,
+          torch:             bool = False,
           fix_init_config:   bool = False,
           bbond_energy:      Optional[dict] = None,
           fbond_energy:      Optional[dict] = None,
@@ -69,7 +70,8 @@ def train(mlp:               'mlptrain.potentials._base.MLPotential',
 
         init_configs: (gt.ConfigurationSet) A set of configurations from
                       which to start the active learning from
-
+        
+        torch: (bool) if want to share tensor between processes, set torch == True
 
         fix_init_config: (bool) Always start from the same initial
                          configuration for the active learning loop, if
