@@ -19,6 +19,7 @@ def train(mlp:               'mlptrain.potentials._base.MLPotential',
           n_init_configs:    int = 10,
           init_configs:      Optional['mlptrain.ConfigurationSet'] = None,
           fix_init_config:   bool = False,
+          torch:             bool = False,
           bbond_energy:      Optional[dict] = None,
           fbond_energy:      Optional[dict] = None,
           init_active_temp:  Optional[float] = None,
@@ -76,7 +77,8 @@ def train(mlp:               'mlptrain.potentials._base.MLPotential',
                          False then the minimum energy structure is used.
                          Useful for TS learning, where dynamics should be
                          propagated from a saddle point not the minimum
-
+        torch: (bool) if the tensor want to be shared in the parallel computing, 
+                set torch is True
         bbond_energy: (dict | None) Additional energy to add to a breaking
                       bond. e.g. bbond_energy={(0, 1), 0.1} Adds 0.1 eV
                       to the 'bond' between atoms 0 and 1 as velocities
