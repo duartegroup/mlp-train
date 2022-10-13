@@ -1,6 +1,6 @@
 from copy import deepcopy
 from typing import Optional
-from multiprocessing import Pool
+import multiprocessing as mp
 from mlptrain.config import Config
 from mlptrain.sampling.md import run_mlp_md
 from mlptrain.training.selection import SelectionMethod, AbsDiffE
@@ -119,6 +119,7 @@ def train(mlp:               'mlptrain.potentials._base.MLPotential',
                                          else mlp.training_data.lowest_energy),
                             selection_method=selection_method,
                             n_configs=n_configs_iter,
+                            torch = torch,
                             method_name=method_name,
                             temp=temp,
                             max_time=max_active_time,
@@ -150,6 +151,7 @@ def _add_active_configs(mlp,
                         init_config,
                         selection_method,
                         n_configs=10,
+                        torch,
                         **kwargs
                         ) -> None:
     """
@@ -168,7 +170,12 @@ def _add_active_configs(mlp,
 
     configs = ConfigurationSet()
 
-    with Pool(processes=n_processes) as pool:
+    if torch:
+        ctx = mp.get_context('spawn')
+    else:
+        ctx = mp.get_context('fork')
+
+    with ctx.Pool(processes=n_processes) as pool:
 
         results = [pool.apply_async(_gen_active_config,
                                     args=(init_config.copy(),
