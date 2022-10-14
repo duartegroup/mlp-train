@@ -71,7 +71,9 @@ def train(mlp:               'mlptrain.potentials._base.MLPotential',
         init_configs: (gt.ConfigurationSet) A set of configurations from
                       which to start the active learning from
         
-        torch: (bool) if want to share tensor between processes, set torch == True
+        torch: (bool) Changing the starting method of multiprocessing.
+               If want to share tensor between processes, the starting 
+               method of multiprocessing need to set to be 'spawn'.
 
         fix_init_config: (bool) Always start from the same initial
                          configuration for the active learning loop, if
