@@ -54,7 +54,10 @@ class MACE(MLPotential):
         Train this potential on the current training data is adjusted from run_train.py in mace package
         https://github.com/ACEsuit/mace/tree/main/scripts
         """
-
+        import mace
+        from mace import data, modules, tools
+        from mace.tools import torch_geometric,  evaluate
+        
         if len(self.training_data) <100:
             max_num_epochs = 1000
         elif 100<=len(self.training_data) <300:
@@ -414,6 +417,11 @@ class MACE(MLPotential):
 
     def get_dataset_from_xyz(self,  train_path, valid_path, valid_fraction, config_type_weights, seed, energy_key, forces_key):
         """Load training and test dataset from xyz file"""
+        
+        import mace
+        from mace import data, modules, tools
+        from mace.tools import torch_geometric,  evaluate
+        
         _, all_train_configs = data.load_from_xyz(file_path=train_path,
                                                   config_type_weights=config_type_weights,
                                                   energy_key=energy_key,
@@ -440,6 +448,11 @@ class MACE(MLPotential):
         return (SubsetCollection(train=train_configs, valid=valid_configs))
     
     def create_error_table( self, table_type, all_collections, z_table, r_max, valid_batch_size, model, loss_fn, device):
+        
+        import mace
+        from mace import data, modules, tools
+        from mace.tools import torch_geometric,  evaluate
+
         table = PrettyTable()
         if table_type == "TotalRMSE":
             table.field_names = [
