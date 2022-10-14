@@ -1,10 +1,10 @@
 import numpy as np
 from time import time
 from copy import deepcopy
-from mltrain.box import Box
-from mltrain.log import logger
-from mltrain.config import Config
-from mltrain.potentials._base import MLPotential
+from mlptrain.box import Box
+from mlptrain.log import logger
+from mlptrain.config import Config
+from mlptrain.potentials._base import MLPotential
 import ast
 import logging
 import os
@@ -16,7 +16,7 @@ from torch_ema import ExponentialMovingAverage
 import mace
 from mace import data, modules, tools
 from mace.tools import torch_geometric,  evaluate
-from mltrain.config import Config
+from mlptrain.config import Config
 from ase.data import chemical_symbols
 import dataclasses
 from prettytable import PrettyTable
