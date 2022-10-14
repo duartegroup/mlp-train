@@ -1,4 +1,4 @@
-mport numpy as np
+import numpy as np
 from time import time
 from copy import deepcopy
 from mltrain.box import Box
