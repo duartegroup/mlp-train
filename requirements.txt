@@ -7,3 +7,11 @@ coloredlogs
 dscribe
 matplotlib-base
 pytest
+torch
+mace
+torch>=1.8
+e3nn==0.4.4
+opt_einsum
+torch-ema
+prettytable
+pandas
