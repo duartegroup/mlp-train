@@ -8,7 +8,6 @@ dscribe
 matplotlib-base
 pytest
 torch*
-mace*
 e3nn==0.4.4*
 opt_einsum
 torch-ema
