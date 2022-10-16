@@ -22,6 +22,12 @@ import torch
 
 @dataclasses.dataclass
 class SubsetCollection:
+    try:
+        from mace import data
+
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError('MACE install not found, install it '
+                                      'here: https://github.com/ACEsuit/mace')
     train: data.Configurations
     valid: data.Configurations
 
@@ -48,13 +54,19 @@ class MACE(MLPotential):
                     save_cpu = True
                     ) -> None:
         """
-        Train this potential on the current training data is adjusted from run_train.py in mace package
+        Train MACE potential is adjusted from run_train.py in mace package
         https://github.com/ACEsuit/mace/tree/main/scripts
         """
-        import mace
-        from mace import data, modules, tools
-        from mace.tools import torch_geometric,  evaluate
-        
+        try:
+            import mace
+            from mace import data, modules, tools
+            from mace.tools import torch_geometric
+
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError('MACE install not found, install it '
+                                      'here: https://github.com/ACEsuit/mace')
+            
+            
         if len(self.training_data) <100:
             max_num_epochs = 1000
         elif 100<=len(self.training_data) <300:
@@ -415,10 +427,13 @@ class MACE(MLPotential):
     def get_dataset_from_xyz(self,  train_path, valid_path, valid_fraction, config_type_weights, seed, energy_key, forces_key):
         """Load training and test dataset from xyz file"""
         
-        import mace
-        from mace import data, modules, tools
-        from mace.tools import torch_geometric,  evaluate
-        
+        try:
+            from mace import data
+
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError('MACE install not found, install it '
+                                      'here: https://github.com/ACEsuit/mace')
+            
         _, all_train_configs = data.load_from_xyz(file_path=train_path,
                                                   config_type_weights=config_type_weights,
                                                   energy_key=energy_key,
@@ -445,12 +460,16 @@ class MACE(MLPotential):
         return (SubsetCollection(train=train_configs, valid=valid_configs))
     
     def create_error_table( self, table_type, all_collections, z_table, r_max, valid_batch_size, model, loss_fn, device):
-        
-        import mace
-        from mace import data, modules, tools
-        from mace.tools import torch_geometric,  evaluate
-
         table = PrettyTable()
+        
+        try:
+            from mace import data
+            from mace.tools import torch_geometric,  evaluate
+
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError('MACE install not found, install it '
+                                      'here: https://github.com/ACEsuit/mace')
+            
         if table_type == "TotalRMSE":
             table.field_names = [
             "config_type",
@@ -545,7 +564,11 @@ class MACE(MLPotential):
     def ase_calculator(self) -> 'ase.calculators.calculator.Calculator':
         """ASE calculator for this potential"""
   
-        from mace.calculators import MACECalculator
+        try:
+            from mace.calculators import MACECalculator
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError('MACE install not found, install it '
+                                      'here: https://github.com/ACEsuit/mace')
         
         calculator = MACECalculator(model_path = self.path+f"/checkpoints/{self.name}.model",
                                    device='cpu', default_dtype="float64")
