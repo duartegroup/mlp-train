@@ -568,6 +568,11 @@ class MACE(MLPotential):
     @property
     def filename(self):
         return f'{self.name}.model'
+    
+    @property
+    def mp_start_method(self) -> float:
+    
+        return 'spawn'
 
     def __init__(self,
                  name,
