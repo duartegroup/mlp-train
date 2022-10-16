@@ -13,9 +13,6 @@ import torch.nn.functional
 from e3nn import o3
 from torch.optim.swa_utils import SWALR, AveragedModel
 from torch_ema import ExponentialMovingAverage
-import mace
-from mace import data, modules, tools
-from mace.tools import torch_geometric,  evaluate
 from mlptrain.config import Config
 from ase.data import chemical_symbols
 import dataclasses
