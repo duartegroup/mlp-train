@@ -1,10 +1,10 @@
 import numpy as np
 from time import time
 from copy import deepcopy
-from mltrain.box import Box
-from mltrain.log import logger
-from mltrain.config import Config
-from mltrain.potentials._base import MLPotential
+from mlptrain.box import Box
+from mlptrain.log import logger
+from mlptrain.config import Config
+from mlptrain.potentials._base import MLPotential
 import ast
 import logging
 import os
@@ -13,20 +13,11 @@ import torch.nn.functional
 from e3nn import o3
 from torch.optim.swa_utils import SWALR, AveragedModel
 from torch_ema import ExponentialMovingAverage
-import mace
-from mace import data, modules, tools
-from mace.tools import torch_geometric,  evaluate
-from mltrain.config import Config
+from mlptrain.config import Config
 from ase.data import chemical_symbols
 import dataclasses
 from prettytable import PrettyTable
 import torch
-
-
-@dataclasses.dataclass
-class SubsetCollection:
-    train: data.Configurations
-    valid: data.Configurations
 
 class MACE(MLPotential):
 
@@ -96,7 +87,7 @@ class MACE(MLPotential):
             config_type_weights = {"Default": 1.0}
 
         # Data preparation
-        collections = self.get_dataset_from_xyz(train_path=args.train_file,
+        train_configs, valid_configs = self.get_dataset_from_xyz(train_path=args.train_file,
                                                 valid_path=args.valid_file,
                                                 valid_fraction=valid_fraction,
                                                 config_type_weights=config_type_weights,
@@ -107,13 +98,13 @@ class MACE(MLPotential):
         atomic_energies_dict = self.system.atomic_energies
 
         logging.info(
-        f"Total number of configurations: train={len(collections.train)}, valid={len(collections.valid)}"
+        f"Total number of configurations: train={len(train_configs)}, valid={len(valid_configs)}"
         )
         # Atomic number table
         # yapf: disable
         z_table = tools.get_atomic_number_table_from_zs(
         z
-        for configs in (collections.train, collections.valid)
+        for configs in (train_configs, valid_configs)
         for config in configs
         for z in config.atomic_numbers
         )
@@ -135,7 +126,7 @@ class MACE(MLPotential):
         train_loader = torch_geometric.dataloader.DataLoader(
             dataset=[
                 data.AtomicData.from_config(config, z_table=z_table, cutoff=r_max)
-                for config in collections.train
+                for config in train_configs
             ],
             batch_size=batch_size,
             shuffle=True,
@@ -145,7 +136,7 @@ class MACE(MLPotential):
         valid_loader = torch_geometric.dataloader.DataLoader(
             dataset=[
                 data.AtomicData.from_config(config, z_table=z_table, cutoff=r_max)
-                for config in collections.valid
+                for config in valid_configs
             ],
             batch_size=args.valid_batch_size,
             shuffle=False,
@@ -210,7 +201,7 @@ class MACE(MLPotential):
             mean, std = modules.scaling_classes[args.scaling](train_loader, atomic_energies)
             model = modules.ScaleShiftMACE(
             **model_config,
-            correlation=args.correlation,
+            correlation=correlation,
             gate=modules.gate_dict[args.gate],
             interaction_cls_first=modules.interaction_classes[args.interaction_first],
             MLP_irreps=o3.Irreps(args.MLP_irreps),
@@ -376,8 +367,8 @@ class MACE(MLPotential):
         logging.info("Computing metrics for training, validation, and test sets")
         
         all_collections = [
-        ("train", collections.train),
-        ("valid", collections.valid),
+        ("train", train_configs),
+        ("valid", valid_configs),
         ]
 
         table = self.create_error_table(
@@ -454,7 +445,7 @@ class MACE(MLPotential):
             train_configs, valid_configs = data.random_train_valid_split(
             all_train_configs, valid_fraction, seed)
 
-        return (SubsetCollection(train=train_configs, valid=valid_configs))
+        return train_configs, valid_configs
     
     def create_error_table( self, table_type, all_collections, z_table, r_max, valid_batch_size, model, loss_fn, device):
         table = PrettyTable()
@@ -577,6 +568,11 @@ class MACE(MLPotential):
     @property
     def filename(self):
         return f'{self.name}.model'
+    
+    @property
+    def mp_start_method(self) -> float:
+    
+        return 'spawn'
 
     def __init__(self,
                  name,
