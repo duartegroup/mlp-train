@@ -165,6 +165,10 @@ class MLPotential(ABC):
             (int):
         """
         return sum(c.n_ref_evals for c in self._training_data)
+    
+    @property
+    def mp_start_method(self) -> float:    
+        return 'fork'
 
     def _save_training_data_as_npz_and_xyz(self) -> None:
         """Save the training data"""
