@@ -28,8 +28,9 @@ class SubsetCollection:
     except ModuleNotFoundError:
         raise ModuleNotFoundError('MACE install not found, install it '
                                       'here: https://github.com/ACEsuit/mace')
-    train: data.Configurations
-    valid: data.Configurations
+    else:
+        train: data.Configurations
+        valid: data.Configurations
 
 class MACE(MLPotential):
 
