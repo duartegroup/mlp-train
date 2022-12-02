@@ -1,4 +1,4 @@
-import mltrain as mlt
+import mlptrain as mlt
 
 mlt.Config.n_cores = 12
 mlt.Config.orca_keywords = ['MP2', 'def2-TZVP', 'NOFROZENCORE']
