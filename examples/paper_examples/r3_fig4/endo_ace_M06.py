@@ -1,4 +1,4 @@
-import mltrain as mlt
+import mlptrain as mlt
 
 mlt.Config.n_cores = 10
 mlt.Config.orca_keywords = ['M062X', 'RIJCOSX', 'def2/J', 'def2-SVP', 'EnGrad']

@@ -1,4 +1,4 @@
-import mltrain as mlt
+import mlptrain as mlt
 import autode as ade
 
 mlt.Config.n_cores = 10
