@@ -25,6 +25,7 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
                fbond_energy:  Optional[dict] = None,
                bbond_energy:  Optional[dict] = None,
                bias:          Optional['mlptrain.bias.Bias'] = None,
+               umbrella:      Optional[bool] = False,
                **kwargs
                ) -> 'mlptrain.Trajectory':
     """
@@ -58,6 +59,8 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
 
         bias (mlptrain.bias.Bias): ASE constraint to use in the dynamics
 
+        umbrella (bool): If True the number of OMP threads are not modified
+
     ---------------
     Keyword Arguments:
 
@@ -68,12 +71,13 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
     """
     logger.info('Running MLP MD')
 
-    # For modestly sized systems there is some slowdown using >8 cores
-    n_cores = kwargs['n_cores'] if 'n_cores' in kwargs else min(Config.n_cores, 8)
-    n_steps = _n_simulation_steps(dt, kwargs)
+    if not umbrella:
+        # For modestly sized systems there is some slowdown using >8 cores
+        n_cores = kwargs['n_cores'] if 'n_cores' in kwargs else min(Config.n_cores, 8)
+        os.environ['OMP_NUM_THREADS'] = str(n_cores)
+        logger.info(f'Using {n_cores} cores for MLP MD')
 
-    os.environ['OMP_NUM_THREADS'] = str(n_cores)
-    logger.info(f'Using {n_cores} cores for MLP MD')
+    n_steps = _n_simulation_steps(dt, kwargs)
 
     if mlp.requires_non_zero_box_size and configuration.box is None:
         logger.warning('Assuming vaccum simulation. Box size = 1000 nm^3')

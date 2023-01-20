@@ -1,4 +1,5 @@
 import os
+import time
 import mlptrain
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,9 +7,11 @@ from mlptrain.sampling.bias import Bias
 from mlptrain.sampling.reaction_coord import ReactionCoordinate, DummyCoordinate
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.sampling.md import run_mlp_md
+from mlptrain.config import Config
 from mlptrain.log import logger
 from typing import Optional, List, Callable, Tuple
 from scipy.optimize import curve_fit
+from multiprocessing import Pool
 
 
 def _run_individual_window(frame, mlp, temp, interval, dt, bias, **kwargs):
@@ -21,6 +24,7 @@ def _run_individual_window(frame, mlp, temp, interval, dt, bias, **kwargs):
                       dt=dt,
                       interval=interval,
                       bias=bias,
+                      umbrella=True,
                       **kwargs)
 
     return traj
@@ -323,35 +327,64 @@ class UmbrellaSampling:
             raise ValueError('Temperature must be positive and non-zero for '
                              'umbrella sampling')
 
+        start_umbrella = time.perf_counter()
+
         self.temp = temp
         zeta_refs = self._reference_values(traj, n_windows, init_ref, final_ref)
 
         combined_traj = ConfigurationSet()
-        for idx, ref in enumerate(zeta_refs):
+        win_trajs = []
+        biases = []
 
-            logger.info(f'Running US window {idx+1} with ζ_ref={ref:.2f} Å and '
-                        f'κ = {self.kappa:.3f} eV / Å^2')
+        n_processes = min(n_windows, Config.n_cores)
+        logger.info(f'Running Umbrella Sampling with {n_windows} windows, '
+                    f'{n_processes} windows are run in parallel')
 
-            bias = Bias(self.zeta_func, kappa=self.kappa, reference=ref)
-            _traj = combined_traj if self._no_ok_frame_in(traj, ref) else traj
+        with Pool(processes=n_processes) as pool:
 
-            win_traj = _run_individual_window(self._best_init_frame(bias, _traj),
-                                              mlp,
-                                              temp,
-                                              interval,
-                                              dt,
-                                              bias=bias,
-                                              **kwargs)
+            for idx, ref in enumerate(zeta_refs):
 
-            window = _Window(obs_zetas=self.zeta_func(win_traj), bias=bias)
-            window.plot(min_zeta=min(zeta_refs),
-                        max_zeta=max(zeta_refs),
-                        fit_gaussian=True)
+                logger.info(f'Running US window {idx+1} with ζ_ref={ref:.2f} Å and '
+                            f'κ = {self.kappa:.3f} eV / Å^2')
 
-            self.windows.append(window)
-            combined_traj = combined_traj + win_traj
+                bias = Bias(self.zeta_func, kappa=self.kappa, reference=ref)
+
+                if self._no_ok_frame_in(traj, ref):
+                    # If no ok frame takes the trajectory of the previous window,
+                    # .get() blocks the process until the previous window finishes
+                    _traj = win_trajs[idx-1].get()
+                else:
+                    _traj = traj
+
+                init_frame = self._best_init_frame(bias, _traj)
+
+                win_traj = pool.apply_async(func=_run_individual_window,
+                                            args=(init_frame,
+                                                  mlp,
+                                                  temp,
+                                                  interval,
+                                                  dt,
+                                                  bias),
+                                            kwds=kwargs)
+                win_trajs.append(win_traj)
+                biases.append(biases)
+
+            for win_traj, bias in zip(win_trajs, biases):
+
+                window = _Window(obs_zetas=self.zeta_func(win_traj.get()), bias=bias)
+                window.plot(min_zeta=min(zeta_refs),
+                            max_zeta=max(zeta_refs),
+                            fit_gaussian=True)
+
+                self.windows.append(window)
+                combined_traj = combined_traj + win_traj.get()
 
         combined_traj.save(filename='combined_windows.xyz')
+
+        finish_umbrella = time.perf_counter()
+        logger.info('Umbrella sampling done in '
+                    f'{(finish_umbrella - start_umbrella) / 60:.1f} m')
+
         return None
 
     def free_energies(self, prob_dist) -> np.ndarray:
