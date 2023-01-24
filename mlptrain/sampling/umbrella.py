@@ -287,6 +287,7 @@ class UmbrellaSampling:
                               init_ref:  Optional[float] = None,
                               final_ref: Optional[float] = None,
                               n_windows: int = 10,
+                              save_sep:  Optional[bool] = False,
                               **kwargs
                               ) -> None:
         """
@@ -318,6 +319,8 @@ class UmbrellaSampling:
             
             n_windows: (int) Number of windows to run in the umbrella sampling
 
+            save_sep: (bool) If True saves trajectories of each window separately
+
         -------------------
         Keyword Arguments:
 
@@ -332,8 +335,8 @@ class UmbrellaSampling:
         self.temp = temp
         zeta_refs = self._reference_values(traj, n_windows, init_ref, final_ref)
 
-        combined_traj = ConfigurationSet()
         win_trajs = []
+        pre_win_trajs = []
         biases = []
 
         n_processes = min(n_windows, Config.n_cores)
@@ -351,35 +354,46 @@ class UmbrellaSampling:
 
                 if self._no_ok_frame_in(traj, ref):
                     # If no ok frame takes the trajectory of the previous window,
-                    # .get() blocks the process until the previous window finishes
-                    _traj = win_trajs[idx-1].get()
+                    # .get() blocks the master thread until the previous window finishes
+                    _traj = pre_win_trajs[idx-1].get()
                 else:
                     _traj = traj
 
                 init_frame = self._best_init_frame(bias, _traj)
 
-                win_traj = pool.apply_async(func=_run_individual_window,
-                                            args=(init_frame,
-                                                  mlp,
-                                                  temp,
-                                                  interval,
-                                                  dt,
-                                                  bias),
-                                            kwds=kwargs)
-                win_trajs.append(win_traj)
-                biases.append(biases)
+                pre_win_traj = pool.apply_async(func=_run_individual_window,
+                                                args=(init_frame,
+                                                      mlp,
+                                                      temp,
+                                                      interval,
+                                                      dt,
+                                                      bias),
+                                                kwds=kwargs)
+                pre_win_trajs.append(pre_win_traj)
+                biases.append(bias)
 
-            for win_traj, bias in zip(win_trajs, biases):
+            for pre_win_traj, bias in zip(pre_win_trajs, biases):
 
-                window = _Window(obs_zetas=self.zeta_func(win_traj.get()), bias=bias)
+                window = _Window(obs_zetas=self.zeta_func(pre_win_traj.get()),
+                                 bias=bias)
                 window.plot(min_zeta=min(zeta_refs),
                             max_zeta=max(zeta_refs),
                             fit_gaussian=True)
 
                 self.windows.append(window)
-                combined_traj = combined_traj + win_traj.get()
+                win_trajs.append(pre_win_traj.get())
 
-        combined_traj.save(filename='combined_windows.xyz')
+        if save_sep:
+            os.mkdir('trajectories')
+            for idx, win_traj in enumerate(win_trajs):
+                win_traj.save(filename=f'trajectories/window_{idx}.xyz')
+
+        else:
+            combined_traj = ConfigurationSet()
+            for win_traj in win_trajs:
+                combined_traj += win_traj
+
+            combined_traj.save(filename='combined_windows.xyz')
 
         finish_umbrella = time.perf_counter()
         logger.info('Umbrella sampling done in '
