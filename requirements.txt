@@ -1,4 +1,4 @@
-numpy
+numpy=1.23*
 cython
 scipy
 autode==1.1*
