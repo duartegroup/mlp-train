@@ -25,7 +25,7 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
                fbond_energy:  Optional[dict] = None,
                bbond_energy:  Optional[dict] = None,
                bias:          Optional['mlptrain.bias.Bias'] = None,
-               type:          Optional[str] = None,
+               method:        Optional[str] = None,
                **kwargs
                ) -> 'mlptrain.Trajectory':
     """
@@ -59,7 +59,7 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
 
         bias (mlptrain.bias.Bias): ASE constraint to use in the dynamics
 
-        type (str): Specifies the type of dynamics to run (e.g. 'umbrella')
+        method (str): Specifies the type of dynamics to run (e.g. 'umbrella')
 
     ---------------
     Keyword Arguments:
@@ -71,7 +71,7 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
     """
     logger.info('Running MLP MD')
 
-    if type == 'umbrella':
+    if method == 'umbrella':
         # For modestly sized systems there is some slowdown using >8 cores
         n_cores = kwargs['n_cores'] if 'n_cores' in kwargs else min(Config.n_cores, 8)
         os.environ['OMP_NUM_THREADS'] = str(n_cores)

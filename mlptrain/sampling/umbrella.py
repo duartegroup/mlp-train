@@ -24,7 +24,7 @@ def _run_individual_window(frame, mlp, temp, interval, dt, bias, **kwargs):
                       dt=dt,
                       interval=interval,
                       bias=bias,
-                      type='umbrella',
+                      method='umbrella',
                       **kwargs)
 
     return traj
