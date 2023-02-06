@@ -336,9 +336,7 @@ class UmbrellaSampling:
         zeta_refs = self._reference_values(traj, n_windows, init_ref, final_ref)
 
         # window_process.get() --> window_traj
-        window_trajs = []
-        window_processes = []
-        biases = []
+        window_processes, window_trajs, biases = ([] for _ in range(3))
 
         n_processes = min(n_windows, Config.n_cores)
         logger.info(f'Running Umbrella Sampling with {n_windows} windows, '
