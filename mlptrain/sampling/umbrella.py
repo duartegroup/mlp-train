@@ -384,9 +384,9 @@ class UmbrellaSampling:
                 window_trajs.append(window_traj)
 
         if save_sep:
-            os.mkdir('trajectories')
+            os.mkdir('us_trajectories')
             for idx, window_traj in enumerate(window_trajs):
-                window_traj.save(filename=f'trajectories/window_{idx}.xyz')
+                window_traj.save(filename=f'us_trajectories/window_{idx}.xyz')
 
         else:
             combined_traj = ConfigurationSet()
