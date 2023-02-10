@@ -95,8 +95,10 @@ def move_files(moved_ext: str, folder: str) -> None:
 
     ---------------------------------------------------------------------------
     Arguments:
-        moved_ext (str): extention with which files are moved
-        folder (str): name of the new directory where files are moved
+
+        moved_ext (str): Extention with which files are moved
+
+        folder (str): Name of the new directory where files are moved
     """
     os.mkdir(folder)
 

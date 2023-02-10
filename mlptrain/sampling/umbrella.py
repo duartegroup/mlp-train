@@ -287,7 +287,7 @@ class UmbrellaSampling:
                               init_ref:  Optional[float] = None,
                               final_ref: Optional[float] = None,
                               n_windows: int = 10,
-                              save_sep:  Optional[bool] = False,
+                              save_sep:  bool = False,
                               **kwargs
                               ) -> None:
         """
@@ -319,7 +319,8 @@ class UmbrellaSampling:
             
             n_windows: (int) Number of windows to run in the umbrella sampling
 
-            save_sep: (bool) If True saves trajectories of each window separately
+            save_sep: (bool) If True saves trajectories of
+                             each window separately
 
         -------------------
         Keyword Arguments:
@@ -339,8 +340,8 @@ class UmbrellaSampling:
         window_processes, window_trajs, biases = ([] for _ in range(3))
 
         n_processes = min(n_windows, Config.n_cores)
-        logger.info(f'Running Umbrella Sampling with {n_windows} windows, '
-                    f'{n_processes} windows are run in parallel')
+        logger.info(f'Running Umbrella Sampling with {n_windows} window(s), '
+                    f'{n_processes} window(s) are run in parallel')
 
         with Pool(processes=n_processes) as pool:
 
@@ -361,13 +362,13 @@ class UmbrellaSampling:
                 init_frame = self._best_init_frame(bias, _traj)
 
                 window_process = pool.apply_async(func=_run_individual_window,
-                                                args=(init_frame,
-                                                      mlp,
-                                                      temp,
-                                                      interval,
-                                                      dt,
-                                                      bias),
-                                                kwds=kwargs)
+                                                  args=(init_frame,
+                                                        mlp,
+                                                        temp,
+                                                        interval,
+                                                        dt,
+                                                        bias),
+                                                  kwds=kwargs)
                 window_processes.append(window_process)
                 biases.append(bias)
 

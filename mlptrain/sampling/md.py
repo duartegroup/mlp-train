@@ -1,9 +1,9 @@
 import os
 import numpy as np
 import autode as ade
-from typing import Optional
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
+from mlptrain.sampling import PlumedBias
 from mlptrain.log import logger
 from mlptrain.box import Box
 from mlptrain.utils import work_in_tmp_dir
@@ -13,9 +13,11 @@ from ase.md.langevin import Langevin
 from ase.md.verlet import VelocityVerlet
 from ase import units as ase_units
 from numpy.random import RandomState
+from typing import Optional, Union, List
 
 
-@work_in_tmp_dir(copied_exts=['.xml', '.json', '.pth'])
+@work_in_tmp_dir(copied_exts=['.xml', '.json', '.pth'],
+                 kept_exts=['.dat', '.log'])
 def run_mlp_md(configuration: 'mlptrain.Configuration',
                mlp:           'mlptrain.potentials._base.MLPotential',
                temp:          float,
@@ -24,7 +26,8 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
                init_temp:     Optional[float] = None,
                fbond_energy:  Optional[dict] = None,
                bbond_energy:  Optional[dict] = None,
-               bias:          Optional['mlptrain.bias.Bias'] = None,
+               bias:          Optional[Union['mlptrain.Bias',
+                                             'mlptrain.PlumedBias']] = None,
                method:        Optional[str] = None,
                **kwargs
                ) -> 'mlptrain.Trajectory':
@@ -57,7 +60,8 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
         fbond_energy (dict | None): As bbond_energy but in the direction to
                          form a bond
 
-        bias (mlptrain.bias.Bias): ASE constraint to use in the dynamics
+        bias (mlptrain.Bias | mlptrain.PlumedBias): ASE or PLUMED constraint
+                                                    to use in the dynamics
 
         method (str): Specifies the type of dynamics to run (e.g. 'umbrella')
 
@@ -71,21 +75,23 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
     """
     logger.info('Running MLP MD')
 
-    if method == 'umbrella':
+    if method is None:
         # For modestly sized systems there is some slowdown using >8 cores
-        n_cores = kwargs['n_cores'] if 'n_cores' in kwargs else min(Config.n_cores, 8)
+        n_cores = (kwargs['n_cores'] if 'n_cores' in kwargs
+                   else min(Config.n_cores, 8))
+
         os.environ['OMP_NUM_THREADS'] = str(n_cores)
         logger.info(f'Using {n_cores} cores for MLP MD')
 
     n_steps = _n_simulation_steps(dt, kwargs)
+    # Transform dt from fs into ASE time units (for dynamics only)
+    dt_ase = dt * ase_units.fs
 
     if mlp.requires_non_zero_box_size and configuration.box is None:
         logger.warning('Assuming vaccum simulation. Box size = 1000 nm^3')
         configuration.box = Box([100, 100, 100])
 
     ase_atoms = configuration.ase_atoms
-    ase_atoms.set_calculator(mlp.ase_calculator)
-    ase_atoms.set_constraint(bias)
 
     _set_momenta(ase_atoms,
                  temp=init_temp if init_temp is not None else temp,
@@ -99,17 +105,39 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
         energies.append(_atoms.get_potential_energy())
 
     if temp > 0:                                         # Default Langevin NVT
-        dyn = Langevin(ase_atoms, dt * ase_units.fs,
+        dyn = Langevin(ase_atoms, dt_ase,
                        temperature_K=temp,
                        friction=0.02)
     else:                                               # Otherwise NVE
-        dyn = VelocityVerlet(ase_atoms, dt * ase_units.fs)
+        dyn = VelocityVerlet(ase_atoms, dt_ase)
 
     dyn.attach(append_energy, interval=interval)
     dyn.attach(traj.write, interval=interval)
 
     logger.info(f'Running {n_steps:.0f} steps with a timestep of {dt} fs')
-    dyn.run(steps=n_steps)
+
+    if isinstance(bias, PlumedBias):
+        from ase.calculators.plumed import Plumed
+
+        setup = _write_plumed_setup(bias, method, interval)
+        logfile = f'plumed_pid{os.getpid()}.log'
+
+        plumed_calc = Plumed(calc=mlp.ase_calculator,
+                             input=setup,
+                             log=logfile,
+                             timestep=dt_ase,
+                             atoms=ase_atoms,
+                             kT=temp * ase_units.kB)
+        ase_atoms.calc = plumed_calc
+
+        dyn.run(steps=n_steps)
+        plumed_calc.plumed.finalize()
+
+    else:
+        ase_atoms.calc = mlp.ase_calculator
+        ase_atoms.set_constraint(bias)
+
+        dyn.run(steps=n_steps)
 
     traj = _convert_ase_traj('tmp.traj')
 
@@ -122,7 +150,7 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
 
 
 def _convert_ase_traj(filename: str) -> 'mlptrain.Trajectory':
-    """Convert an ASE trajectory into a mlptrain ConfigurationSet"""
+    """Convert an ASE trajectory into an mlptrain Trajectory"""
 
     ase_traj = ASETrajectory(filename)
     mlt_traj = Trajectory()
@@ -227,3 +255,43 @@ def _n_simulation_steps(dt: float,
     n_steps = max(int(time_fs / dt), 1)                 # Run at least one step
 
     return n_steps
+
+
+def _write_plumed_setup(bias, method, interval) -> List:
+    """Generate a list which represents the PLUMED input file"""
+
+    setup = []
+
+    # Setting PLUMED units to ASE units
+    time_conversion = 1 / (ase_units.fs * 1000)
+    energy_conversion = ase_units.mol / ase_units.kJ
+    units_setup = ['UNITS '
+                   'LENGTH=A '
+                   f'TIME={time_conversion} '
+                   f'ENERGY={energy_conversion}']
+    setup.extend(units_setup)
+
+    # DOFs and CVs
+    for cv in bias.cvs:
+        setup.extend(cv.setup)
+
+    # Metadynamics
+    if method == 'metadynamics':
+        metad_setup = ['METAD '
+                       f'ARG={bias.cv_sequence} '
+                       f'PACE={bias.pace} '
+                       f'HEIGHT={bias.height} '
+                       f'SIGMA={bias.width} '
+                       f'BIASFACTOR={bias.biasfactor} '
+                       f'FILE=HILLS_pid{os.getpid()}.dat']
+        setup.extend(metad_setup)
+
+    # Print
+    for cv in bias.cvs:
+        print_setup = ['PRINT '
+                       f'ARG={cv.dof_sequence},{cv.name} '
+                       f'FILE=colvar_{cv.name}_pid{os.getpid()}.dat '
+                       f'STRIDE={interval}']
+        setup.extend(print_setup)
+
+    return setup

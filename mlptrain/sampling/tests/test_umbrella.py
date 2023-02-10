@@ -114,15 +114,16 @@ def test_umbrella_sparse_traj():
                                    fs=100,
                                    save_sep=True)
 
-    assert os.path.exists('trajectories') and os.path.isdir('trajectories')
+    assert os.path.exists('us_trajectories')
+    assert os.path.isdir('us_trajectories')
 
     previous_window_traj = mlt.ConfigurationSet()
-    previous_window_traj.load_xyz(filename='trajectories/window_4.xyz',
+    previous_window_traj.load_xyz(filename='us_trajectories/window_4.xyz',
                                   charge=0,
                                   mult=1)
 
     middle_window_traj = mlt.ConfigurationSet()
-    middle_window_traj.load_xyz(filename='trajectories/window_5.xyz',
+    middle_window_traj.load_xyz(filename='us_trajectories/window_5.xyz',
                                 charge=0,
                                 mult=1)
 
