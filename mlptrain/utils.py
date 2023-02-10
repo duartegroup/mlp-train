@@ -86,3 +86,23 @@ def unique_filename(filename: str) -> str:
         i += 1
 
     return f'{basename}.{ext}'
+
+
+def move_files(moved_ext: str, folder: str) -> None:
+    """
+    In the current directory make a new directory and move all files containing
+    a specific extention to that folder
+
+    ---------------------------------------------------------------------------
+    Arguments:
+        moved_ext (str): extention with which files are moved
+        folder (str): name of the new directory where files are moved
+    """
+    os.mkdir(folder)
+
+    for file in os.listdir():
+        ext = f'.{file.split(".")[-1]}'
+
+        if ext == moved_ext:
+            destination = os.path.join(folder, file)
+            os.replace(file, destination)
