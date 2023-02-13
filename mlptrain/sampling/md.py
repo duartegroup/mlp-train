@@ -3,7 +3,7 @@ import numpy as np
 import autode as ade
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
-from mlptrain.sampling import PlumedBias
+from mlptrain.sampling import Bias, PlumedBias
 from mlptrain.log import logger
 from mlptrain.box import Box
 from mlptrain.utils import work_in_tmp_dir
@@ -14,6 +14,9 @@ from ase.md.verlet import VelocityVerlet
 from ase import units as ase_units
 from numpy.random import RandomState
 from typing import Optional, Union, List
+
+
+_implemented_methods = ['umbrella', 'metadynamics']
 
 
 @work_in_tmp_dir(copied_exts=['.xml', '.json', '.pth'],
@@ -63,7 +66,8 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
         bias (mlptrain.Bias | mlptrain.PlumedBias): ASE or PLUMED constraint
                                                     to use in the dynamics
 
-        method (str): Specifies the type of dynamics to run (e.g. 'umbrella')
+        method (str): Biased method to use for running molecular dynamics, can
+                      be one of the implemented methods (e.g. 'umbrella')
 
     ---------------
     Keyword Arguments:
@@ -73,6 +77,10 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
     Returns:
         (mlptrain.ConfigurationSet):
     """
+
+    if all(method.lower() != m for m in _implemented_methods):
+        raise NotImplementedError(f'{method} is not implemented')
+
     logger.info('Running MLP MD')
 
     if method is None:
@@ -117,9 +125,11 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
     logger.info(f'Running {n_steps:.0f} steps with a timestep of {dt} fs')
 
     if isinstance(bias, PlumedBias):
+        logger.info('Using PLUMED bias for MLP MD')
+
         from ase.calculators.plumed import Plumed
 
-        setup = _write_plumed_setup(bias, method, interval)
+        setup = _write_plumed_setup(bias, method.lower(), interval)
         logfile = f'plumed_pid{os.getpid()}.log'
 
         plumed_calc = Plumed(calc=mlp.ase_calculator,
@@ -133,10 +143,15 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
         dyn.run(steps=n_steps)
         plumed_calc.plumed.finalize()
 
-    else:
+    elif isinstance(bias, Bias):
+        logger.info('Using ASE bias for MLP MD')
+
         ase_atoms.calc = mlp.ase_calculator
         ase_atoms.set_constraint(bias)
 
+        dyn.run(steps=n_steps)
+
+    else:
         dyn.run(steps=n_steps)
 
     traj = _convert_ase_traj('tmp.traj')
