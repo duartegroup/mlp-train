@@ -21,9 +21,11 @@ def test_plumed_cv_initialisation():
                          'PERIODIC=NO']
 
     with pytest.raises(ValueError):
-        mlt.PlumedAverageCV('cv1', [(0, 1, 2, 3, 4, 5)])
         mlt.PlumedAverageCV('cv2')
         mlt.PlumedDifferenceCV('cv3', ((0, 1), (2, 3), (4, 5)))
+
+    with pytest.raises(NotImplementedError):
+        mlt.PlumedAverageCV('cv1', [(0, 1, 2, 3, 4, 5)])
 
     cv4 = mlt.PlumedCustomCV('from_file.dat')
 

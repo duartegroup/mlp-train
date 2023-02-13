@@ -57,14 +57,16 @@ def work_in_tmp_dir(kept_exts:   Optional[List[str]] = None,
 def unique_filename(filename: str) -> str:
     """
     Return a unique filename based on not clashing with other files with the
-    same. Append 0, 1... iteratively until something unique is found
+    same. Append 0, 1... iteratively until something unique is found.
 
     ---------------------------------------------------------------------------
     Arguments:
-        filename:
+
+        filename (str): Name of the file
 
     Returns:
-        (str):
+
+        (str): Unique name which contains the name of the file as a root
     """
     if '.' not in filename:
         raise ValueError('Filename must have an extension to be uniquified!')
@@ -72,39 +74,76 @@ def unique_filename(filename: str) -> str:
     basename = ".".join(filename.split('.')[:-1])
     ext = filename.split('.')[-1]
 
-    def any_exist():
-        """Do any of the filenames with the possible extensions exist?"""
-        return os.path.exists(f'{basename}.{ext}')
-
-    if not any_exist():
+    if not _name_exists(basename, ext):
         return filename
 
     old_basename = basename
     i = 0
-    while any_exist():
+    while _name_exists(basename, ext):
         basename = f'{old_basename}{i}'
         i += 1
 
     return f'{basename}.{ext}'
 
 
+def unique_dirname(dirname: str) -> str:
+    """
+    Return a unique directory name based on not clashing with other files with
+    the same. Append 0, 1... iteratively until something unique is found.
+
+    ---------------------------------------------------------------------------
+    Arguments:
+
+        dirname (str): Name of the directory
+
+    Returns
+
+        (str): Unique name which contains the name of the directory as a root
+    """
+    if not _name_exists(dirname):
+        return dirname
+
+    old_dirname = dirname
+    i = 0
+    while _name_exists(dirname):
+        dirname = f'{old_dirname}{i}'
+        i += 1
+
+    return dirname
+
+
 def move_files(moved_ext: str, folder: str) -> None:
     """
     In the current directory make a new directory and move all files containing
-    a specific extention to that folder
+    a specific extention to that folder.
 
     ---------------------------------------------------------------------------
     Arguments:
 
         moved_ext (str): Extention with which files are moved
 
-        folder (str): Name of the new directory where files are moved
+        folder (str): Name of the new directory where files are moved. If a
+                      directory with the specified name already exists a unique
+                      name to the new directory is generated
     """
-    os.mkdir(folder)
+    unique_folder = unique_dirname(folder)
+    os.mkdir(unique_folder)
 
     for file in os.listdir():
         ext = f'.{file.split(".")[-1]}'
 
         if ext == moved_ext:
-            destination = os.path.join(folder, file)
+            destination = os.path.join(unique_folder, file)
             os.replace(file, destination)
+
+    return None
+
+
+def _name_exists(basename: str,
+                 extension: Optional[str] = None) -> bool:
+    """doc"""
+    if extension is None:
+        return os.path.exists(basename)
+
+    else:
+        return os.path.exists(f'{basename}.{extension}')

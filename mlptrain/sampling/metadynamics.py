@@ -4,7 +4,7 @@ import mlptrain
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.sampling.md import run_mlp_md
 from mlptrain.sampling.plumed import PlumedBias
-from mlptrain.utils import move_files
+from mlptrain.utils import move_files, unique_dirname
 from mlptrain.config import Config
 from mlptrain.log import logger
 from typing import Optional, Sequence
@@ -115,7 +115,7 @@ class Metadynamics:
                                    height=height,
                                    biasfactor=biasfactor)
 
-        metad_processes, metad_trajs = ([] for _ in range(2))
+        metad_processes, metad_trajs = [], []
 
         # TODO: Change if decide to use multiple walkers
         n_processes = min(Config.n_cores, n_runs)
@@ -144,9 +144,12 @@ class Metadynamics:
                 metad_trajs.append(metad_process.get())
 
         if save_sep:
-            os.mkdir('metad_trajectories')
+            metad_folder = unique_dirname('metad_trajectories')
+            os.mkdir(metad_folder)
+
             for idx, metad_traj in enumerate(metad_trajs):
-                metad_traj.save(filename=f'metad_trajectories/metad_{idx}.xyz')
+                metad_traj.save(filename=os.path.join(metad_folder,
+                                                      f'metad_{idx}.xyz'))
 
         else:
             combined_traj = ConfigurationSet()

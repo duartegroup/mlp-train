@@ -7,6 +7,7 @@ from mlptrain.sampling.bias import Bias
 from mlptrain.sampling.reaction_coord import ReactionCoordinate, DummyCoordinate
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.sampling.md import run_mlp_md
+from mlptrain.utils import unique_dirname
 from mlptrain.config import Config
 from mlptrain.log import logger
 from typing import Optional, List, Callable, Tuple
@@ -337,7 +338,7 @@ class UmbrellaSampling:
         zeta_refs = self._reference_values(traj, n_windows, init_ref, final_ref)
 
         # window_process.get() --> window_traj
-        window_processes, window_trajs, biases = ([] for _ in range(3))
+        window_processes, window_trajs, biases = [], [], []
 
         n_processes = min(n_windows, Config.n_cores)
         logger.info(f'Running Umbrella Sampling with {n_windows} window(s), '
@@ -385,9 +386,12 @@ class UmbrellaSampling:
                 window_trajs.append(window_traj)
 
         if save_sep:
-            os.mkdir('us_trajectories')
+            us_folder = unique_dirname('us_trajectories')
+            os.mkdir(us_folder)
+
             for idx, window_traj in enumerate(window_trajs):
-                window_traj.save(filename=f'us_trajectories/window_{idx}.xyz')
+                window_traj.save(filename=os.path.join(us_folder,
+                                                       f'window_{idx}.xyz'))
 
         else:
             combined_traj = ConfigurationSet()

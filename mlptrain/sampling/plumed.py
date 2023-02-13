@@ -73,7 +73,7 @@ class PlumedBias:
         return ','.join(cv_names)
 
 
-class PlumedCV:
+class _PlumedCV:
     """Parent class containing methods for initialising PLUMED collective
     variables"""
 
@@ -111,7 +111,7 @@ class PlumedCV:
         """
 
         self.name = None
-        self.dof_names, self.setup = ([] for _ in range(2))
+        self.dof_names, self.setup = [], []
 
         if file_name is not None:
             self._from_file(file_name)
@@ -145,6 +145,8 @@ class PlumedCV:
             if action != 'GROUP':
                 self.dof_names.append(f'{self.name}_{name}')
 
+        return None
+
     def _from_atom_groups(self, name, atom_groups) -> None:
         """Method to generate DOFs from atom_groups"""
 
@@ -156,9 +158,8 @@ class PlumedCV:
             atom_tuple = (f'{i+1}' for i in atom_group)
             atoms = ','.join(atom_tuple)
 
-            if len(atom_group) == 1:
-                raise ValueError('Atom group must contain '
-                                 'more than one atom')
+            if len(atom_group) < 2:
+                raise ValueError('Atom group must contain at least two atoms')
 
             if len(atom_group) == 2:
                 dof_name = f'{self.name}_dist{idx}'
@@ -179,8 +180,11 @@ class PlumedCV:
                                    f'TORSION ATOMS={atoms}'])
 
             if len(atom_group) > 4:
-                raise ValueError('Atom group cannot contain '
-                                 'more than 4 atoms')
+                raise NotImplementedError('Instatiation using atom groups '
+                                          'is only implemented for groups '
+                                          'not larger than four')
+
+        return None
 
     @property
     def dof_sequence(self) -> str:
@@ -188,7 +192,7 @@ class PlumedCV:
         return ','.join(self.dof_names)
 
 
-class PlumedAverageCV(PlumedCV):
+class PlumedAverageCV(_PlumedCV):
     """Class used to initialise a PLUMED collective variable as an average
     between multiple degrees of freedom"""
 
@@ -223,7 +227,7 @@ class PlumedAverageCV(PlumedCV):
                            f'PERIODIC=NO'])
 
 
-class PlumedDifferenceCV(PlumedCV):
+class PlumedDifferenceCV(_PlumedCV):
     """Class used to initialise a PLUMED collective variable as a difference
     between two degrees of freedom"""
 
@@ -261,7 +265,7 @@ class PlumedDifferenceCV(PlumedCV):
                            f'PERIODIC=NO'])
 
 
-class PlumedCustomCV(PlumedCV):
+class PlumedCustomCV(_PlumedCV):
     """Class used to initialise a PLUMED collective variable from a file"""
 
     def __init__(self,

@@ -78,8 +78,10 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
         (mlptrain.ConfigurationSet):
     """
 
-    if all(method.lower() != m for m in _implemented_methods):
-        raise NotImplementedError(f'{method} is not implemented')
+    if method is not None:
+        method = method.lower()
+        if all(method != m for m in _implemented_methods):
+            raise NotImplementedError(f'{method} is not implemented')
 
     logger.info('Running MLP MD')
 
@@ -129,7 +131,7 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
 
         from ase.calculators.plumed import Plumed
 
-        setup = _write_plumed_setup(bias, method.lower(), interval)
+        setup = _write_plumed_setup(bias, method, interval)
         logfile = f'plumed_pid{os.getpid()}.log'
 
         plumed_calc = Plumed(calc=mlp.ase_calculator,
