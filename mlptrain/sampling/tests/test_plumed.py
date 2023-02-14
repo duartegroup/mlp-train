@@ -1,6 +1,7 @@
 import os
 import pytest
 import mlptrain as mlt
+from .test_potential import TestPotential
 from .utils import work_in_zipped_dir
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -30,13 +31,13 @@ def test_plumed_cv_from_atom_groups():
                          'FUNC=1.0*(cv2_ang1) '
                          'PERIODIC=NO']
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         mlt.PlumedAverageCV('')
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         mlt.PlumedAverageCV('', 0)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         mlt.PlumedAverageCV('', ())
 
     with pytest.raises(ValueError):
@@ -52,7 +53,7 @@ def test_plumed_cv_from_atom_groups():
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
 def test_plumed_cv_from_file():
 
-    cv1 = mlt.PlumedCustomCV('from_file.dat')
+    cv1 = mlt.PlumedCustomCV('plumed_cv.dat')
 
     assert cv1.name == 'cv1'
     assert cv1.dof_names == ['cv1_dof1', 'cv1_dof2']
@@ -65,7 +66,7 @@ def test_plumed_cv_from_file():
                          'PERIODIC=NO']
 
 
-def test_plumed_bias_initialisation():
+def test_plumed_bias_from_cvs():
 
     cv1 = mlt.PlumedAverageCV('cv1', [(0, 1, 2, 3)])
     cv2 = mlt.PlumedAverageCV('cv2', [(4, 5, 6, 7)])
@@ -82,3 +83,19 @@ def test_plumed_bias_initialisation():
 
     with pytest.raises(ValueError):
         bias.set_metad_params(pace=10, width=0.2, height=0.5, biasfactor=0.5)
+
+
+@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+def test_plumed_bias_from_file():
+
+    bias = mlt.PlumedBias(file_name='plumed_bias.dat')
+
+    assert bias.setup == ['dof1: DISTANCE ATOMS=1,2',
+                          'METAD '
+                          'ARG=dof1 '
+                          'PACE=100 '
+                          'HEIGHT=0.1 '
+                          'SIGMA=0.5 '
+                          'BIASFACTOR=4 '
+                          'FILE=HILLS.dat',
+                          'PRINT ARG=dof1 FILE=colvar.dat STRIDE=10']

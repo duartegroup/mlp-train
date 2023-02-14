@@ -7,20 +7,37 @@ class PlumedBias:
     simulations"""
 
     def __init__(self,
-                 cvs: Sequence['mlptrain.sampling.plumed._PlumedCV']):
+                 cvs: Sequence['mlptrain.sampling.plumed._PlumedCV'] = None,
+                 file_name: str = None):
         """
         Class for storing collective variables and parameters used in biased
         simulations, parameters are not initialised with the object and have
         to be defined seperately using PlumedBias methods.
 
+        Can be initialised from a complete PLUMED input file as well.
+
         -----------------------------------------------------------------------
         Arguments:
 
             cvs (Sequence): Sequence of PLUMED collective variable objects
+
+            file_name (str): Complete PLUMED input file
         """
 
-        self.cvs = cvs
+        self.md_method = None
+        self.setup = None
         self.pace = self.width = self.height = self.biasfactor = None
+
+        if file_name is not None:
+            self._from_file(file_name)
+
+        elif cvs is not None:
+            self.cvs = cvs
+
+        else:
+            raise TypeError('PLUMED bias instantiation requires '
+                            'a list of collective variables (CVs) '
+                            'or a file containing PLUMED-type input')
 
     def set_metad_params(self,
                          pace: int,
@@ -44,6 +61,8 @@ class PlumedBias:
                                 larger values make gaussians to be placed
                                 less sensitive to the bias potential
         """
+
+        self.md_method = 'metadynamics'
 
         if not isinstance(pace, int) or pace <= 0:
             raise ValueError('Pace (τ_G/dt) must be a positive integer')
@@ -71,6 +90,21 @@ class PlumedBias:
         by commas"""
         cv_names = (cv.name for cv in self.cvs)
         return ','.join(cv_names)
+
+    def _from_file(self, file_name) -> None:
+        """Method to extract PLUMED setup from a file"""
+
+        self.setup = []
+
+        with open(file_name, 'r') as f:
+            for line in f:
+                if line[0] == '#' or line == '\n':
+                    continue
+                else:
+                    line = line.strip()
+                    self.setup.extend([line])
+
+        return None
 
 
 class _PlumedCV:
@@ -121,17 +155,17 @@ class _PlumedCV:
             self._from_atom_groups(name, atom_groups)
 
         else:
-            raise ValueError('Collective variable instantiation requires '
-                             'groups of atom indices (DOFs) '
-                             'or a file containing PLUMED-type input')
+            raise TypeError('Collective variable instantiation requires '
+                            'groups of atom indices (DOFs) '
+                            'or a file containing PLUMED-type input')
 
-    def _from_file(self, file_path) -> None:
+    def _from_file(self, file_name) -> None:
         """Method to generate DOFs and a CV from a file"""
 
-        with open(file_path, 'r') as f:
+        with open(file_name, 'r') as f:
             for line in f:
                 if line[0] == '#' or line == '\n':
-                    pass
+                    continue
                 else:
                     line = line.strip()
                     self.setup.extend([line])
@@ -157,17 +191,17 @@ class _PlumedCV:
         if (not isinstance(atom_groups, tuple)
                 and not isinstance(atom_groups, list)):
 
-            raise ValueError('atom_groups must be a tuple or a list')
+            raise TypeError('atom_groups must be a tuple or a list')
 
         # atom_groups = []; ()
         elif len(atom_groups) == 0:
 
-            raise ValueError('atom_groups cannot be an empty list '
-                             'or empty tuple')
+            raise TypeError('atom_groups cannot be an empty list '
+                            'or empty tuple')
 
         # e.g. atom_groups = [(1, 2), (3, 4)]; ([0, 1])
         elif (all(isinstance(atom_group, tuple) or isinstance(atom_group, list)
-                for atom_group in atom_groups)):
+                  for atom_group in atom_groups)):
 
             for idx, atom_group in enumerate(atom_groups):
                 self._atom_group_to_dof(idx, atom_group)
@@ -179,8 +213,8 @@ class _PlumedCV:
 
         # e.g. atom_groups = [(1, 2, 3), 1]
         else:
-            raise ValueError('Elements of atom_groups must all be sequences '
-                             'or all be integers')
+            raise TypeError('Elements of atom_groups must all be sequences '
+                            'or all be integers')
 
         return None
 
@@ -188,26 +222,26 @@ class _PlumedCV:
         """Method to check the atom group and generate a DOF"""
 
         # PLUMED atom enumeration starts from 1
-        atom_list = [f'{i+1}' for i in atom_group]
+        atom_list = [f'{i + 1}' for i in atom_group]
         atoms = ','.join(atom_list)
 
         if len(atom_list) < 2:
             raise ValueError('Atom group must contain at least two atoms')
 
         if len(atom_list) == 2:
-            dof_name = f'{self.name}_dist{idx+1}'
+            dof_name = f'{self.name}_dist{idx + 1}'
             self.dof_names.append(dof_name)
             self.setup.extend([f'{dof_name}: '
                                f'DISTANCE ATOMS={atoms}'])
 
         if len(atom_list) == 3:
-            dof_name = f'{self.name}_ang{idx+1}'
+            dof_name = f'{self.name}_ang{idx + 1}'
             self.dof_names.append(dof_name)
             self.setup.extend([f'{dof_name}: '
                                f'ANGLE ATOMS={atoms}'])
 
         if len(atom_list) == 4:
-            dof_name = f'{self.name}_tor{idx+1}'
+            dof_name = f'{self.name}_tor{idx + 1}'
             self.dof_names.append(dof_name)
             self.setup.extend([f'{dof_name}: '
                                f'TORSION ATOMS={atoms}'])
@@ -251,7 +285,7 @@ class PlumedAverageCV(_PlumedCV):
                          atom_groups=atom_groups)
 
         dof_sum = '+'.join(self.dof_names)
-        func = f'{1/len(self.dof_names)}*({dof_sum})'
+        func = f'{1 / len(self.dof_names)}*({dof_sum})'
 
         self.setup.extend([f'{self.name}: '
                            f'CUSTOM ARG={self.dof_sequence} '

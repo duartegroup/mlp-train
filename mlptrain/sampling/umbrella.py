@@ -352,6 +352,7 @@ class UmbrellaSampling:
                             f'and κ = {self.kappa:.3f} eV / Å^2')
 
                 bias = Bias(self.zeta_func, kappa=self.kappa, reference=ref)
+                bias.md_method = 'umbrella'
 
                 if self._no_ok_frame_in(traj, ref):
                     # Takes the trajectory of the previous window, .get() blocks

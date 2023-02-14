@@ -16,9 +16,6 @@ from numpy.random import RandomState
 from typing import Optional, Union, List
 
 
-_implemented_methods = ['umbrella', 'metadynamics']
-
-
 @work_in_tmp_dir(copied_exts=['.xml', '.json', '.pth'],
                  kept_exts=['.dat', '.log'])
 def run_mlp_md(configuration: 'mlptrain.Configuration',
@@ -31,7 +28,6 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
                bbond_energy:  Optional[dict] = None,
                bias:          Optional[Union['mlptrain.Bias',
                                              'mlptrain.PlumedBias']] = None,
-               method:        Optional[str] = None,
                **kwargs
                ) -> 'mlptrain.Trajectory':
     """
@@ -66,9 +62,6 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
         bias (mlptrain.Bias | mlptrain.PlumedBias): ASE or PLUMED constraint
                                                     to use in the dynamics
 
-        method (str): Biased method to use for running molecular dynamics, can
-                      be one of the implemented methods (e.g. 'umbrella')
-
     ---------------
     Keyword Arguments:
 
@@ -78,14 +71,9 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
         (mlptrain.ConfigurationSet):
     """
 
-    if method is not None:
-        method = method.lower()
-        if all(method != m for m in _implemented_methods):
-            raise NotImplementedError(f'{method} is not implemented')
-
     logger.info('Running MLP MD')
 
-    if method is None:
+    if bias is None or bias.md_method is None:
         # For modestly sized systems there is some slowdown using >8 cores
         n_cores = (kwargs['n_cores'] if 'n_cores' in kwargs
                    else min(Config.n_cores, 8))
@@ -131,7 +119,7 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
 
         from ase.calculators.plumed import Plumed
 
-        setup = _write_plumed_setup(bias, method, interval)
+        setup = _write_plumed_setup(bias, interval)
         logfile = f'plumed_pid{os.getpid()}.log'
 
         plumed_calc = Plumed(calc=mlp.ase_calculator,
@@ -274,18 +262,35 @@ def _n_simulation_steps(dt: float,
     return n_steps
 
 
-def _write_plumed_setup(bias, method, interval) -> List:
+def _write_plumed_setup(bias, interval) -> List:
     """Generate a list which represents the PLUMED input file"""
 
     setup = []
 
-    # Setting PLUMED units to ASE units
+    # Conversion of PLUMED units to ASE units
     time_conversion = 1 / (ase_units.fs * 1000)
     energy_conversion = ase_units.mol / ase_units.kJ
     units_setup = ['UNITS '
                    'LENGTH=A '
                    f'TIME={time_conversion} '
                    f'ENERGY={energy_conversion}']
+
+    if bias.setup is not None:
+        setup = bias.setup
+
+        if 'UNITS' in setup[0]:
+            logger.info('Setting PLUMED units to ASE units')
+            setup[0] = units_setup[0]
+
+            return setup
+
+        else:
+            logger.warning('Unit conversion not found in PLUMED input file, '
+                           'adding a conversion from PLUMED units to ASE units')
+            setup.insert(0, units_setup[0])
+
+            return setup
+
     setup.extend(units_setup)
 
     # DOFs and CVs
@@ -293,7 +298,7 @@ def _write_plumed_setup(bias, method, interval) -> List:
         setup.extend(cv.setup)
 
     # Metadynamics
-    if method == 'metadynamics':
+    if bias.md_method == 'metadynamics':
         metad_setup = ['METAD '
                        f'ARG={bias.cv_sequence} '
                        f'PACE={bias.pace} '
