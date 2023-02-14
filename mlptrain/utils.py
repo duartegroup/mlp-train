@@ -141,7 +141,9 @@ def move_files(moved_ext: str, folder: str) -> None:
 
 def _name_exists(basename: str,
                  extension: Optional[str] = None) -> bool:
-    """doc"""
+    """Return a bool based on whether a file or a folder with the given name
+    already exists in the current directory"""
+
     if extension is None:
         return os.path.exists(basename)
 
