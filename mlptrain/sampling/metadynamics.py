@@ -32,7 +32,7 @@ class Metadynamics:
     metadynamics bias and analysing the results"""
 
     def __init__(self,
-                 cvs: Sequence['mlptrain.sampling.plumed.PlumedCV'],
+                 cvs: Sequence['mlptrain.sampling.plumed._PlumedCV'],
                  temp: Optional[float] = None):
         """
         Molecular dynamics using metadynamics bias. Used for calculating free

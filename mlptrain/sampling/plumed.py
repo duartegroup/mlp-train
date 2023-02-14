@@ -7,7 +7,7 @@ class PlumedBias:
     simulations"""
 
     def __init__(self,
-                 cvs: Sequence['mlptrain.sampling.plumed.PlumedCV']):
+                 cvs: Sequence['mlptrain.sampling.plumed._PlumedCV']):
         """
         Class for storing collective variables and parameters used in biased
         simulations, parameters are not initialised with the object and have
