@@ -1,5 +1,5 @@
 import mlptrain
-from typing import Sequence
+from typing import Sequence, Optional
 
 
 class PlumedBias:
@@ -114,7 +114,8 @@ class _PlumedCV:
     def __init__(self,
                  name: str = None,
                  atom_groups: Sequence = None,
-                 file_name: str = None):
+                 file_name: str = None,
+                 component: Optional[str] = None):
         """
         This class contains methods to initialise PLUMED collective variables
         (CVs) and only acts as a parent class which should not be used to
@@ -143,13 +144,18 @@ class _PlumedCV:
 
             file_name (str): Name of the PLUMED file used to generate a CV
                              from that file
+
+            component (str): Name of a component of the last CV in the supplied
+                             PLUMED input file to use as a collective variable,
+                             e.g. 'spath' for PATH collective variable.
         """
 
         self.name = None
-        self.dof_names, self.setup = [], []
+        self.dof_names = None
+        self.setup = []
 
         if file_name is not None:
-            self._from_file(file_name)
+            self._from_file(file_name, component)
 
         elif atom_groups is not None:
             self._from_atom_groups(name, atom_groups)
@@ -159,7 +165,7 @@ class _PlumedCV:
                             'groups of atom indices (DOFs) '
                             'or a file containing PLUMED-type input')
 
-    def _from_file(self, file_name) -> None:
+    def _from_file(self, file_name, component) -> None:
         """Method to generate DOFs and a CV from a file"""
 
         with open(file_name, 'r') as f:
@@ -171,14 +177,12 @@ class _PlumedCV:
                     self.setup.extend([line])
 
         _names = [line.split(':')[0] for line in self.setup]
-        _actions = [line.split(' ')[1] for line in self.setup]
-        _names_and_actions = list(zip(_names, _actions))
 
-        self.name = _names_and_actions.pop()[0]
+        if component is not None:
+            self.name = f'{_names.pop()}.{component}'
 
-        for name, action in _names_and_actions:
-            if action != 'GROUP':
-                self.dof_names.append(f'{self.name}_{name}')
+        else:
+            self.name = _names.pop()
 
         return None
 
@@ -186,6 +190,7 @@ class _PlumedCV:
         """Method to generate DOFs from atom_groups"""
 
         self.name = name
+        self.dof_names = []
 
         # e.g. atom_groups = (2)
         if (not isinstance(atom_groups, tuple)
@@ -197,7 +202,7 @@ class _PlumedCV:
         elif len(atom_groups) == 0:
 
             raise TypeError('atom_groups cannot be an empty list '
-                            'or empty tuple')
+                            'or an empty tuple')
 
         # e.g. atom_groups = [(1, 2), (3, 4)]; ([0, 1])
         elif (all(isinstance(atom_group, tuple) or isinstance(atom_group, list)
@@ -336,7 +341,8 @@ class PlumedCustomCV(_PlumedCV):
     """Class used to initialise a PLUMED collective variable from a file"""
 
     def __init__(self,
-                 file_name: str):
+                 file_name: str,
+                 component: Optional[str] = None):
         """
         PLUMED collective variable from a file. The file must be written in the
         style of a PLUMED input file, but only contain input used in the
@@ -352,5 +358,9 @@ class PlumedCustomCV(_PlumedCV):
 
             file_name (str): Name of the PLUMED file used to generate a CV
                              from that file
+
+            component (str): Name of a component of the last CV in the supplied
+                             PLUMED input file to use as a collective variable
         """
-        super().__init__(file_name=file_name)
+        super().__init__(file_name=file_name,
+                         component=component)

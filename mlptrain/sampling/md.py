@@ -267,7 +267,7 @@ def _write_plumed_setup(bias, interval) -> List:
 
     setup = []
 
-    # Conversion of PLUMED units to ASE units
+    # Converting PLUMED units to ASE units
     time_conversion = 1 / (ase_units.fs * 1000)
     energy_conversion = ase_units.mol / ase_units.kJ
     units_setup = ['UNITS '
@@ -293,7 +293,7 @@ def _write_plumed_setup(bias, interval) -> List:
 
     setup.extend(units_setup)
 
-    # DOFs and CVs
+    # Defining DOFs and CVs
     for cv in bias.cvs:
         setup.extend(cv.setup)
 
@@ -308,11 +308,19 @@ def _write_plumed_setup(bias, interval) -> List:
                        f'FILE=HILLS_pid{os.getpid()}.dat']
         setup.extend(metad_setup)
 
-    # Print
+    # Printing trajectory in terms of DOFs and CVs
     for cv in bias.cvs:
+
+        if cv.dof_names is not None:
+            args = f'{cv.dof_sequence},{cv.name}'
+
+        else:
+            args = cv.name
+
+        name_without_dot = '_'.join(cv.name.split('.'))
         print_setup = ['PRINT '
-                       f'ARG={cv.dof_sequence},{cv.name} '
-                       f'FILE=colvar_{cv.name}_pid{os.getpid()}.dat '
+                       f'ARG={args} '
+                       f'FILE=colvar_{name_without_dot}_pid{os.getpid()}.dat '
                        f'STRIDE={interval}']
         setup.extend(print_setup)
 

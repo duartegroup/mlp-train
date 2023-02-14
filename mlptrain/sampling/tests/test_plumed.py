@@ -1,7 +1,6 @@
 import os
 import pytest
 import mlptrain as mlt
-from .test_potential import TestPotential
 from .utils import work_in_zipped_dir
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -53,10 +52,24 @@ def test_plumed_cv_from_atom_groups():
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
 def test_plumed_cv_from_file():
 
-    cv1 = mlt.PlumedCustomCV('plumed_cv.dat')
+    cv1 = mlt.PlumedCustomCV('plumed_cv_custom.dat')
 
     assert cv1.name == 'cv1'
-    assert cv1.dof_names == ['cv1_dof1', 'cv1_dof2']
+    assert cv1.setup == ['dof1: DISTANCE ATOMS=1,2',
+                         'dof2: DISTANCE ATOMS=3,4',
+                         'cv1: CUSTOM '
+                         'ARG=dof1,dof2 '
+                         'VAR=dof1,dof2 '
+                         'FUNC=dof1*dof2 '
+                         'PERIODIC=NO']
+
+
+@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+def test_plumed_cv_component():
+
+    cv1 = mlt.PlumedCustomCV('plumed_cv_custom.dat')
+
+    assert cv1.name == 'cv1.x'
     assert cv1.setup == ['dof1: DISTANCE ATOMS=1,2',
                          'dof2: DISTANCE ATOMS=3,4',
                          'cv1: CUSTOM '
