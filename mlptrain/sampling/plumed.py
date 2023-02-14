@@ -104,7 +104,8 @@ class _PlumedCV:
 
             atom_groups (Sequence[Sequence[int]]): List of atom index sequences
                                                 which are used to generate DOFs,
-                                                e.g. [(0, 1), (2, 3)]
+                                                e.g. [(0, 1), (2, 3)];
+                                                     [0, 1, 2]
 
             file_name (str): Name of the PLUMED file used to generate a CV
                              from that file
@@ -152,37 +153,69 @@ class _PlumedCV:
 
         self.name = name
 
-        for idx, atom_group in enumerate(atom_groups):
+        # e.g. atom_groups = (2)
+        if (not isinstance(atom_groups, tuple)
+                and not isinstance(atom_groups, list)):
 
-            # PLUMED atom enumeration starts from 1
-            atom_tuple = (f'{i+1}' for i in atom_group)
-            atoms = ','.join(atom_tuple)
+            raise ValueError('atom_groups must be a tuple or a list')
 
-            if len(atom_group) < 2:
-                raise ValueError('Atom group must contain at least two atoms')
+        # atom_groups = []; ()
+        elif len(atom_groups) == 0:
 
-            if len(atom_group) == 2:
-                dof_name = f'{self.name}_dist{idx}'
-                self.dof_names.append(dof_name)
-                self.setup.extend([f'{dof_name}: '
-                                   f'DISTANCE ATOMS={atoms}'])
+            raise ValueError('atom_groups cannot be an empty list '
+                             'or empty tuple')
 
-            if len(atom_group) == 3:
-                dof_name = f'{self.name}_ang{idx}'
-                self.dof_names.append(dof_name)
-                self.setup.extend([f'{dof_name}: '
-                                   f'ANGLE ATOMS={atoms}'])
+        # e.g. atom_groups = [(1, 2), (3, 4)]; ([0, 1])
+        elif (all(isinstance(atom_group, tuple) or isinstance(atom_group, list)
+                for atom_group in atom_groups)):
 
-            if len(atom_group) == 4:
-                dof_name = f'{self.name}_tor{idx}'
-                self.dof_names.append(dof_name)
-                self.setup.extend([f'{dof_name}: '
-                                   f'TORSION ATOMS={atoms}'])
+            for idx, atom_group in enumerate(atom_groups):
+                self._atom_group_to_dof(idx, atom_group)
 
-            if len(atom_group) > 4:
-                raise NotImplementedError('Instatiation using atom groups '
-                                          'is only implemented for groups '
-                                          'not larger than four')
+        # e.g. atom_groups = [0, 1]
+        elif all(isinstance(atom_index, int) for atom_index in atom_groups):
+
+            self._atom_group_to_dof(0, atom_groups)
+
+        # e.g. atom_groups = [(1, 2, 3), 1]
+        else:
+            raise ValueError('Elements of atom_groups must all be sequences '
+                             'or all be integers')
+
+        return None
+
+    def _atom_group_to_dof(self, idx, atom_group) -> None:
+        """Method to check the atom group and generate a DOF"""
+
+        # PLUMED atom enumeration starts from 1
+        atom_list = [f'{i+1}' for i in atom_group]
+        atoms = ','.join(atom_list)
+
+        if len(atom_list) < 2:
+            raise ValueError('Atom group must contain at least two atoms')
+
+        if len(atom_list) == 2:
+            dof_name = f'{self.name}_dist{idx+1}'
+            self.dof_names.append(dof_name)
+            self.setup.extend([f'{dof_name}: '
+                               f'DISTANCE ATOMS={atoms}'])
+
+        if len(atom_list) == 3:
+            dof_name = f'{self.name}_ang{idx+1}'
+            self.dof_names.append(dof_name)
+            self.setup.extend([f'{dof_name}: '
+                               f'ANGLE ATOMS={atoms}'])
+
+        if len(atom_list) == 4:
+            dof_name = f'{self.name}_tor{idx+1}'
+            self.dof_names.append(dof_name)
+            self.setup.extend([f'{dof_name}: '
+                               f'TORSION ATOMS={atoms}'])
+
+        if len(atom_list) > 4:
+            raise NotImplementedError('Instatiation using atom groups '
+                                      'is only implemented for groups '
+                                      'not larger than four')
 
         return None
 

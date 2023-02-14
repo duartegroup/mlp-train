@@ -17,8 +17,8 @@ def _h2_configuration():
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
 def test_run_metadynamics():
 
-    cv0 = mlt.PlumedAverageCV('cv0', [(0, 1)])
-    metadynamics = mlt.Metadynamics([cv0])
+    cv1 = mlt.PlumedAverageCV('cv1', [(0, 1)])
+    metadynamics = mlt.Metadynamics([cv1])
     assert metadynamics.bias is not None
 
     metadynamics.run_metadynamics(start_config=_h2_configuration(),
@@ -35,6 +35,6 @@ def test_run_metadynamics():
 
     assert os.path.exists('combined_trajectory.xyz')
 
-    assert glob.glob(f'plumed_files/colvar_cv0_pid*.dat')
+    assert glob.glob(f'plumed_files/colvar_cv1_pid*.dat')
     assert glob.glob(f'plumed_files/HILLS_pid*.dat')
     assert glob.glob(f'plumed_logs/plumed_pid*.log')

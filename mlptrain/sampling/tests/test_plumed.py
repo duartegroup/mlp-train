@@ -5,51 +5,76 @@ from .utils import work_in_zipped_dir
 here = os.path.abspath(os.path.dirname(__file__))
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
-def test_plumed_cv_initialisation():
+def test_plumed_cv_from_atom_groups():
 
-    cv0 = mlt.PlumedAverageCV('cv0', ((0, 1), (2, 3)))
+    cv1 = mlt.PlumedDifferenceCV('cv1', ((0, 1), (2, 3)))
 
-    assert cv0.name == 'cv0'
-    assert cv0.dof_names == ['cv0_dist0', 'cv0_dist1']
-    assert cv0.setup == ['cv0_dist0: DISTANCE ATOMS=1,2',
-                         'cv0_dist1: DISTANCE ATOMS=3,4',
-                         'cv0: CUSTOM '
-                         'ARG=cv0_dist0,cv0_dist1 '
-                         'VAR=cv0_dist0,cv0_dist1 '
-                         'FUNC=0.5*(cv0_dist0+cv0_dist1) '
+    assert cv1.name == 'cv1'
+    assert cv1.dof_names == ['cv1_dist1', 'cv1_dist2']
+    assert cv1.setup == ['cv1_dist1: DISTANCE ATOMS=1,2',
+                         'cv1_dist2: DISTANCE ATOMS=3,4',
+                         'cv1: CUSTOM '
+                         'ARG=cv1_dist1,cv1_dist2 '
+                         'VAR=cv1_dist1,cv1_dist2 '
+                         'FUNC=cv1_dist2-cv1_dist1 '
+                         'PERIODIC=NO']
+
+    cv2 = mlt.PlumedAverageCV('cv2', (0, 1, 2))
+
+    assert cv2.name == 'cv2'
+    assert cv2.dof_names == ['cv2_ang1']
+    assert cv2.setup == ['cv2_ang1: ANGLE ATOMS=1,2,3',
+                         'cv2: CUSTOM '
+                         'ARG=cv2_ang1 '
+                         'VAR=cv2_ang1 '
+                         'FUNC=1.0*(cv2_ang1) '
                          'PERIODIC=NO']
 
     with pytest.raises(ValueError):
-        mlt.PlumedAverageCV('cv2')
-        mlt.PlumedDifferenceCV('cv3', ((0, 1), (2, 3), (4, 5)))
+        mlt.PlumedAverageCV('')
+
+    with pytest.raises(ValueError):
+        mlt.PlumedAverageCV('', 0)
+
+    with pytest.raises(ValueError):
+        mlt.PlumedAverageCV('', ())
+
+    with pytest.raises(ValueError):
+        mlt.PlumedAverageCV('', (1,))
 
     with pytest.raises(NotImplementedError):
-        mlt.PlumedAverageCV('cv1', [(0, 1, 2, 3, 4, 5)])
+        mlt.PlumedAverageCV('', [(0, 1, 2, 3, 4, 5), (1, 2, 3)])
 
-    cv4 = mlt.PlumedCustomCV('from_file.dat')
+    with pytest.raises(ValueError):
+        mlt.PlumedDifferenceCV('', ((0, 1), (2, 3), (4, 5)))
 
-    assert cv4.name == 'cv4'
-    assert cv4.dof_names == ['cv4_dof0', 'cv4_dof1']
-    assert cv4.setup == ['dof0: DISTANCE ATOMS=1,2',
-                         'dof1: DISTANCE ATOMS=3,4',
-                         'cv4: CUSTOM '
-                         'ARG=dof0,dof1 '
-                         'VAR=dof0,dof1 '
-                         'FUNC=dof0*dof1 '
+
+@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+def test_plumed_cv_from_file():
+
+    cv1 = mlt.PlumedCustomCV('from_file.dat')
+
+    assert cv1.name == 'cv1'
+    assert cv1.dof_names == ['cv1_dof1', 'cv1_dof2']
+    assert cv1.setup == ['dof1: DISTANCE ATOMS=1,2',
+                         'dof2: DISTANCE ATOMS=3,4',
+                         'cv1: CUSTOM '
+                         'ARG=dof1,dof2 '
+                         'VAR=dof1,dof2 '
+                         'FUNC=dof1*dof2 '
                          'PERIODIC=NO']
 
 
 def test_plumed_bias_initialisation():
 
-    cv0 = mlt.PlumedAverageCV('cv0', [(0, 1, 2, 3)])
-    cv1 = mlt.PlumedAverageCV('cv1', [(4, 5, 6, 7)])
+    cv1 = mlt.PlumedAverageCV('cv1', [(0, 1, 2, 3)])
+    cv2 = mlt.PlumedAverageCV('cv2', [(4, 5, 6, 7)])
 
-    bias = mlt.PlumedBias((cv0, cv1))
+    bias = mlt.PlumedBias((cv1, cv2))
 
     bias.set_metad_params(pace=10, width=0.2, height=0.5, biasfactor=2)
 
-    assert bias.cvs == (cv0, cv1)
+    assert bias.cvs == (cv1, cv2)
     assert bias.pace == 10
     assert bias.width == 0.2
     assert bias.height == 0.5
