@@ -67,7 +67,7 @@ def test_plumed_cv_from_file():
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
 def test_plumed_cv_component():
 
-    cv1 = mlt.PlumedCustomCV('plumed_cv_custom.dat')
+    cv1 = mlt.PlumedCustomCV('plumed_cv_custom.dat', 'x')
 
     assert cv1.name == 'cv1.x'
     assert cv1.setup == ['dof1: DISTANCE ATOMS=1,2',
