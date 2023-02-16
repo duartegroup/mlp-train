@@ -54,6 +54,44 @@ def work_in_tmp_dir(kept_exts:   Optional[List[str]] = None,
     return func_decorator
 
 
+def work_in_dir(dirname: str,
+                moved_exts: Optional[List[str]] = None):
+    """
+    Execute a function in a different directory.
+
+    ---------------------------------------------------------------------------
+    Arguments:
+
+        dirname (str): Name of the directory
+
+        moved_exts (Optional[List[str]]): File extentions that are moved back
+                                          from the different directory
+    """
+
+    def func_decorator(func):
+
+        @wraps(func)
+        def wrapped_function(*args, **kwargs):
+            here_path = os.getcwd()
+            dir_path = os.path.join(here_path, dirname)
+
+            os.chdir(dir_path)
+            out = func(*args, **kwargs)
+
+            if moved_exts is not None:
+                for filename in os.listdir(os.getcwd()):
+                    if any(filename.endswith(ext) for ext in moved_exts):
+                        shutil.move(src=filename,
+                                    dst=os.path.join(here_path, filename))
+
+            os.chdir(here_path)
+
+            return out
+
+        return wrapped_function
+    return func_decorator
+
+
 def unique_filename(filename: str) -> str:
     """
     Return a unique filename based on not clashing with other files with the
@@ -134,7 +172,7 @@ def move_files(moved_ext: str, folder: str) -> None:
 
         if ext == moved_ext:
             destination = os.path.join(unique_folder, file)
-            os.replace(file, destination)
+            shutil.move(file, destination)
 
     return None
 
