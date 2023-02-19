@@ -12,6 +12,8 @@ pip install -e .
 
 ACE can be installed directly from `scripts/` with `source install_ace.sh`.
 
+PLUMED bias is supported only with the unreleased ASE version which can be installed directly from `scripts/` with `source install_ase.sh`.
+
 ### Notes
 
 - Units are: distance (Å), energy (eV), force (eV Å-1), time (fs)
