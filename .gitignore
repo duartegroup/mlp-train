@@ -4,4 +4,5 @@ dist/
 *.egg-info/
 *DS_store
 **/__pycache__/
+**/__MACOSX/
 .coverage
