@@ -90,7 +90,7 @@ def test_plumed_bias_from_cvs():
 
     assert bias.cvs == (cv1, cv2)
     assert bias.pace == 10
-    assert bias.width == 0.2
+    assert bias.width == [0.2]
     assert bias.height == 0.5
     assert bias.biasfactor == 2
 

@@ -117,7 +117,7 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
 
         from ase.calculators.plumed import Plumed
 
-        setup = _write_plumed_setup(bias, interval)
+        setup = _write_plumed_setup(bias, interval, **kwargs)
         logfile = f'plumed_pid{os.getpid()}.log'
 
         plumed_calc = Plumed(calc=mlp.ase_calculator,
@@ -260,7 +260,7 @@ def _n_simulation_steps(dt: float,
     return n_steps
 
 
-def _write_plumed_setup(bias, interval) -> List:
+def _write_plumed_setup(bias, interval, **kwargs) -> List:
     """Generate a list which represents the PLUMED input file"""
 
     setup = []
@@ -296,12 +296,12 @@ def _write_plumed_setup(bias, interval) -> List:
         setup.extend(cv.setup)
 
     # Metadynamics
-    if bias.md_method == 'metadynamics':
+    if kwargs['_method'] == 'metadynamics':
         metad_setup = ['METAD '
                        f'ARG={bias.cv_sequence} '
                        f'PACE={bias.pace} '
                        f'HEIGHT={bias.height} '
-                       f'SIGMA={bias.width} '
+                       f'SIGMA={bias.width_sequence} '
                        f'BIASFACTOR={bias.biasfactor} '
                        f'FILE=HILLS_pid{os.getpid()}.dat']
         setup.extend(metad_setup)

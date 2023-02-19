@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 from tempfile import mkdtemp
 from functools import wraps
@@ -24,7 +25,7 @@ def work_in_tmp_dir(kept_exts:   Optional[List[str]] = None,
             here_path = os.getcwd()
             tmpdir_path = mkdtemp()
 
-            for item in os.listdir(os.getcwd()):
+            for item in os.listdir(here_path):
 
                 if copied_exts is None:
                     continue
@@ -38,7 +39,7 @@ def work_in_tmp_dir(kept_exts:   Optional[List[str]] = None,
             out = func(*args, **kwargs)
 
             if kept_exts is not None:
-                for filename in os.listdir(os.getcwd()):
+                for filename in os.listdir(tmpdir_path):
                     if any(filename.endswith(ext) for ext in kept_exts):
                         shutil.copy(src=filename,
                                     dst=os.path.join(here_path, filename))
@@ -54,8 +55,7 @@ def work_in_tmp_dir(kept_exts:   Optional[List[str]] = None,
     return func_decorator
 
 
-def work_in_dir(dirname: str,
-                moved_exts: Optional[List[str]] = None):
+def work_in_dir(dirname: str):
     """
     Execute a function in a different directory.
 
@@ -63,9 +63,6 @@ def work_in_dir(dirname: str,
     Arguments:
 
         dirname (str): Name of the directory
-
-        moved_exts (Optional[List[str]]): File extentions that are moved back
-                                          from the different directory
     """
 
     def func_decorator(func):
@@ -77,13 +74,6 @@ def work_in_dir(dirname: str,
 
             os.chdir(dir_path)
             out = func(*args, **kwargs)
-
-            if moved_exts is not None:
-                for filename in os.listdir(os.getcwd()):
-                    if any(filename.endswith(ext) for ext in moved_exts):
-                        shutil.move(src=filename,
-                                    dst=os.path.join(here_path, filename))
-
             os.chdir(here_path)
 
             return out
@@ -150,29 +140,27 @@ def unique_dirname(dirname: str) -> str:
     return dirname
 
 
-def move_files(moved_ext: str, folder: str) -> None:
+def move_files(moved_exts: List[str], folder: str) -> None:
     """
-    In the current directory make a new directory and move all files containing
-    a specific extention to that folder.
+    Move files with given extensions from the current directory to a new
+    directory specified by the folder.
 
     ---------------------------------------------------------------------------
     Arguments:
 
-        moved_ext (str): Extention with which files are moved
+        moved_exts (List[str]): List of extentions specifying which files
+                                are moved
 
-        folder (str): Name of the new directory where files are moved. If a
-                      directory with the specified name already exists a unique
-                      name to the new directory is generated
+        folder (str): Name of the new directory where files are moved.
     """
-    unique_folder = unique_dirname(folder)
-    os.mkdir(unique_folder)
 
-    for file in os.listdir():
-        ext = f'.{file.split(".")[-1]}'
+    if not os.path.exists(folder):
+        os.mkdir(folder)
 
-        if ext == moved_ext:
-            destination = os.path.join(unique_folder, file)
-            shutil.move(file, destination)
+    for filename in os.listdir():
+        if any(filename.endswith(ext) for ext in moved_exts):
+            destination = os.path.join(folder, filename)
+            shutil.move(src=filename, dst=destination)
 
     return None
 
@@ -187,3 +175,33 @@ def _name_exists(basename: str,
 
     else:
         return os.path.exists(f'{basename}.{extension}')
+
+
+def _newest_dirname(basename: str) -> str:
+    """Return a dirname with a highest coefficient which would correspond to
+    the newest directory created with a given basename using unique_dirname"""
+
+    _basenames = []
+    for filename in os.listdir():
+        if basename in filename:
+            _basenames.append(filename)
+
+    if len(_basenames) == 1:
+        newest_dirname = basename
+
+    else:
+        index_pattern = re.compile(r'(?<=_)(\d+)(?=\.|$)')
+        largest_index = 0
+
+        for _basename in _basenames:
+            matched_object = index_pattern.search(_basename)
+
+            if matched_object is not None:
+                index = int(matched_object.group())
+
+                if index > largest_index:
+                    largest_index = index
+
+        newest_dirname = f'{basename}_{largest_index}'
+
+    return newest_dirname

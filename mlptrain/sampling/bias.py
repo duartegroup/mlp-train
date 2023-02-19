@@ -26,7 +26,6 @@ class Bias(ASEConstraint, Function):
 
             reference: Reference value of the reaction coordinate, ζ_ref
         """
-        self.md_method = None
         self.ref = reference
         self.kappa = kappa
         self.f = zeta_func

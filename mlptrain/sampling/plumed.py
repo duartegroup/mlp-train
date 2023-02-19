@@ -24,7 +24,6 @@ class PlumedBias:
             file_name (str): Complete PLUMED input file
         """
 
-        self.md_method = None
         self.setup = None
         self.pace = self.width = self.height = self.biasfactor = None
 
@@ -51,7 +50,7 @@ class PlumedBias:
 
     def set_metad_params(self,
                          pace: int,
-                         width: float,
+                         width: Union[Sequence[float], float],
                          height: float,
                          biasfactor: float) -> None:
         """
@@ -72,17 +71,24 @@ class PlumedBias:
                                 less sensitive to the bias potential
         """
 
-        self.md_method = 'metadynamics'
-
         if not isinstance(pace, int) or pace <= 0:
             raise ValueError('Pace (τ_G/dt) must be a positive integer')
         else:
             self.pace = pace
 
-        if width <= 0:
-            raise ValueError('Gaussian width (σ) must be positive')
+        self.width = []
+        if isinstance(width, list) or isinstance(width, tuple):
+            for single_width in width:
+                if single_width <= 0:
+                    raise ValueError('Gaussian width (σ) must be positive')
+                else:
+                    self.width.append(single_width)
+
         else:
-            self.width = width
+            if width <= 0:
+                raise ValueError('Gaussian width (σ) must be positive')
+            else:
+                self.width.append(width)
 
         if height <= 0:
             raise ValueError('Gaussian height (ω) must be positive')
@@ -100,6 +106,14 @@ class PlumedBias:
         by commas"""
         cv_names = (cv.name for cv in self.cvs)
         return ','.join(cv_names)
+
+    @property
+    def width_sequence(self) -> str:
+        """String containing width values separated by commas"""
+        if self.width is None:
+            raise TypeError('Width is not initialised')
+        else:
+            return ','.join(str(width) for width in self.width)
 
     def _from_file(self, file_name) -> None:
         """Method to extract PLUMED setup from a file"""

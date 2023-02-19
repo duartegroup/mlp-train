@@ -19,13 +19,13 @@ def _run_individual_window(frame, mlp, temp, interval, dt, bias, **kwargs):
     be implemented"""
 
     kwargs['n_cores'] = 1
+    kwargs['_method'] = 'umbrella'
     traj = run_mlp_md(configuration=frame,
                       mlp=mlp,
                       temp=temp,
                       dt=dt,
                       interval=interval,
                       bias=bias,
-                      method='umbrella',
                       **kwargs)
 
     return traj
