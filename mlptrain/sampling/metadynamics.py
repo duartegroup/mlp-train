@@ -1,14 +1,13 @@
 import os
 import time
-import mlptrain
+from typing import Optional, Sequence, Union
+from multiprocessing import Pool
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.sampling.md import run_mlp_md
 from mlptrain.sampling.plumed import PlumedBias
 from mlptrain.utils import move_files, unique_dirname
 from mlptrain.config import Config
 from mlptrain.log import logger
-from typing import Optional, Sequence
-from multiprocessing import Pool
 
 
 def _run_single_metadynamics(start_config, mlp, temp, interval, dt, bias,
@@ -32,7 +31,8 @@ class Metadynamics:
     metadynamics bias and analysing the results"""
 
     def __init__(self,
-                 cvs: Sequence['mlptrain.sampling.plumed._PlumedCV'],
+                 cvs: Union[Sequence['mlptrain._PlumedCV'],
+                                     'mlptrain._PlumedCV'],
                  temp: Optional[float] = None):
         """
         Molecular dynamics using metadynamics bias. Used for calculating free
@@ -42,9 +42,9 @@ class Metadynamics:
         -----------------------------------------------------------------------
         Arguments:
 
-            cvs (Sequence): Sequence of PLUMED collective variable objects
+            cvs: Sequence of PLUMED collective variables
         """
-        self.bias:     mlptrain.PlumedBias = PlumedBias(cvs)
+        self.bias:     'mlptrain.PlumedBias' = PlumedBias(cvs)
         self.temp:     Optional[float] = temp                     # K
 
     def run_metadynamics(self,

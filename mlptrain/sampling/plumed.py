@@ -1,5 +1,4 @@
-import mlptrain
-from typing import Sequence, Optional
+from typing import Sequence, Optional, Union
 
 
 class PlumedBias:
@@ -7,7 +6,8 @@ class PlumedBias:
     simulations"""
 
     def __init__(self,
-                 cvs: Sequence['mlptrain.sampling.plumed._PlumedCV'] = None,
+                 cvs: Union[Sequence['_PlumedCV'],
+                                     '_PlumedCV'] = None,
                  file_name: str = None):
         """
         Class for storing collective variables and parameters used in biased
@@ -19,7 +19,7 @@ class PlumedBias:
         -----------------------------------------------------------------------
         Arguments:
 
-            cvs (Sequence): Sequence of PLUMED collective variable objects
+            cvs: Sequence of PLUMED collective variables
 
             file_name (str): Complete PLUMED input file
         """
@@ -32,7 +32,17 @@ class PlumedBias:
             self._from_file(file_name)
 
         elif cvs is not None:
-            self.cvs = cvs
+
+            # e.g. cvs = [cv1, cv2]; (cv1, cv2)
+            if isinstance(cvs, list) or isinstance(cvs, tuple):
+                self.cvs = cvs
+
+            # e.g. cvs = cv1
+            elif cvs.__class__.__base__ == _PlumedCV:
+                self.cvs = [cvs]
+
+            else:
+                raise TypeError('Supplied CVs are in incorrect format')
 
         else:
             raise TypeError('PLUMED bias instantiation requires '

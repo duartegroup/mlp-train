@@ -1,6 +1,8 @@
 import os
 import numpy as np
 import autode as ade
+from typing import Optional, Union, List
+from numpy.random import RandomState
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
 from mlptrain.sampling import Bias, PlumedBias
@@ -12,8 +14,6 @@ from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.md.langevin import Langevin
 from ase.md.verlet import VelocityVerlet
 from ase import units as ase_units
-from numpy.random import RandomState
-from typing import Optional, Union, List
 
 
 @work_in_tmp_dir(copied_exts=['.xml', '.json', '.pth'],
