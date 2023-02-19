@@ -73,13 +73,11 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
 
     logger.info('Running MLP MD')
 
-    if bias is None or bias.md_method is None:
-        # For modestly sized systems there is some slowdown using >8 cores
-        n_cores = (kwargs['n_cores'] if 'n_cores' in kwargs
-                   else min(Config.n_cores, 8))
+    n_cores = (kwargs['n_cores'] if 'n_cores' in kwargs
+               else min(Config.n_cores, 8))
 
-        os.environ['OMP_NUM_THREADS'] = str(n_cores)
-        logger.info(f'Using {n_cores} cores for MLP MD')
+    os.environ['OMP_NUM_THREADS'] = str(n_cores)
+    logger.info(f'Using {n_cores} cores for MLP MD')
 
     n_steps = _n_simulation_steps(dt, kwargs)
     # Transform dt from fs into ASE time units (for dynamics only)

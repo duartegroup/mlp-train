@@ -118,7 +118,7 @@ def unique_filename(filename: str) -> str:
     old_basename = basename
     i = 0
     while _name_exists(basename, ext):
-        basename = f'{old_basename}{i}'
+        basename = f'{old_basename}_{i}'
         i += 1
 
     return f'{basename}.{ext}'
@@ -144,7 +144,7 @@ def unique_dirname(dirname: str) -> str:
     old_dirname = dirname
     i = 0
     while _name_exists(dirname):
-        dirname = f'{old_dirname}{i}'
+        dirname = f'{old_dirname}_{i}'
         i += 1
 
     return dirname

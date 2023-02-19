@@ -1,6 +1,5 @@
 import os
 import time
-import mlptrain
 import numpy as np
 import matplotlib.pyplot as plt
 from mlptrain.sampling.bias import Bias
@@ -19,6 +18,7 @@ def _run_individual_window(frame, mlp, temp, interval, dt, bias, **kwargs):
     """Runs an individual umbrella sampling window. Adaptive sampling to
     be implemented"""
 
+    kwargs['n_cores'] = 1
     traj = run_mlp_md(configuration=frame,
                       mlp=mlp,
                       temp=temp,

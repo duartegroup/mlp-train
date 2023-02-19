@@ -14,6 +14,7 @@ def _run_single_metadynamics(start_config, mlp, temp, interval, dt, bias,
                              **kwargs):
     """Initiates a single well-tempered metadynamics run"""
 
+    kwargs['n_cores'] = 1
     traj = run_mlp_md(configuration=start_config,
                       mlp=mlp,
                       temp=temp,

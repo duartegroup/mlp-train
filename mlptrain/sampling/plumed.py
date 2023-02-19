@@ -206,12 +206,12 @@ class _PlumedCV:
         if (not isinstance(atom_groups, tuple)
                 and not isinstance(atom_groups, list)):
 
-            raise TypeError('atom_groups must be a tuple or a list')
+            raise TypeError('Atom_groups must be a tuple or a list')
 
         # atom_groups = []; ()
         elif len(atom_groups) == 0:
 
-            raise TypeError('atom_groups cannot be an empty list '
+            raise TypeError('Atom_groups cannot be an empty list '
                             'or an empty tuple')
 
         # e.g. atom_groups = [(1, 2), (3, 4)]; ([0, 1])
