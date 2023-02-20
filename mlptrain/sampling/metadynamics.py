@@ -7,7 +7,7 @@ from subprocess import Popen
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.sampling.md import run_mlp_md
 from mlptrain.sampling.plumed import PlumedBias
-from mlptrain.utils import move_files, unique_dirname, work_in_dir
+from mlptrain.utils import move_files, unique_dirname
 from mlptrain.config import Config
 from mlptrain.log import logger
 
@@ -49,6 +49,11 @@ class Metadynamics:
         """
         self.bias:     'mlptrain.PlumedBias' = PlumedBias(cvs)
         self.temp:     Optional[float] = temp                     # K
+
+    @property
+    def n_cvs(self) -> int:
+        """Returns the number of collective variables used in metadynamics"""
+        return len(self.bias.cvs)
 
     def run_metadynamics(self,
                          start_config: 'mlptrain.Configuration',
@@ -170,14 +175,97 @@ class Metadynamics:
 
         return None
 
-    def _compute_fes_files(self) -> None:
+    def compute_fes(self,
+                    n_bins: int = 300) -> np.ndarray:
+        """
+        Computes fes.dat files using generated HILLS.dat files from metadynamics
+        simulation, using fes.dat files creates grids which contain collective
+        variables and free energy surfaces, and saves the grids in .npy format
+        which can be used to plot FES.
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            n_bins (int): Number of bins to use in every dimension for fes file
+                          generation from HILLS
+        """
+
+        if not os.path.exists('plumed_files'):
+            raise FileNotFoundError('Folder with PLUMED files was not found, '
+                                    'make sure to run metadynamics before '
+                                    'using this method')
+
+        os.chdir('plumed_files')
+
+        self._compute_fes_files(n_bins)
+
+        grid_shape = tuple([n_bins+1 for _ in range(self.n_cvs)])
+
+        # Compute CV grids
+        cv_grids = []
+        for filename in os.listdir():
+            if filename.startswith('fes'):
+
+                for idx in range(self.n_cvs):
+                    cv_vector = np.loadtxt(filename, usecols=idx)
+
+                    cv_grid = np.reshape(cv_vector, grid_shape)
+                    cv_grids.append(cv_grid)
+
+                # All fes files would generate same grids -> can break
+                break
+
+        # Compute fes grids
+        fes_grids = []
+        for filename in os.listdir():
+            if filename.startswith('fes'):
+
+                fes_vector = np.loadtxt(filename,
+                                        usecols=self.n_cvs+1)
+
+                fes_grid = np.reshape(fes_vector, grid_shape)
+                fes_grids.append(fes_grid)
+
+        total_cv_grid = np.stack(tuple(cv_grids), axis=0)
+        total_fes_grid = np.stack(tuple(fes_grids), axis=0)
+
+        fes_raw = np.concatenate((total_cv_grid, total_fes_grid), axis=0)
+        np.save('../fes_raw.npy', fes_raw)
+
+        mean_fes_grid = np.mean(total_fes_grid, axis=0)
+        std_fes_grid = np.std(total_fes_grid, axis=0)
+        statistical_fes_grid = np.stack((mean_fes_grid, std_fes_grid), axis=0)
+
+        fes = np.concatenate((total_cv_grid, statistical_fes_grid), axis=0)
+        np.save('../fes.npy', fes)
+
+        os.chdir('..')
+
+        return fes
+
+    def plot_fes(self,
+                 fes: Union[np.ndarray, str]) -> None:
+        """
+        Plots FES (mean and standard deviation from multiple runs) for
+        metadynamics simulations involving one or two collective variables
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            fes (np.ndarray | str): Numpy grid of the free energy surface to be
+                                    plotted
+        """
+
+        return None
+
+    def _compute_fes_files(self, n_bins) -> None:
         """Generate fes files from HILLS files"""
 
         if not any(filename.startswith('HILLS') for filename in os.listdir()):
             raise FileNotFoundError('No HILLS files found in plumed_files, '
                                     'make sure to run metadynamics first')
 
-        bin_params = ','.join(str(300) for _ in range(len(self.bias.cvs)))
+        bin_params = ','.join(str(n_bins) for _ in range(self.n_cvs))
         min_params, max_params = self._get_min_max_params()
 
         for filename in os.listdir():
@@ -211,14 +299,14 @@ class Metadynamics:
             for filename in os.listdir():
 
                 if filename.startswith(f'colvar_{cv.name}'):
-                    cv_values = np.loadtxt(filename, usecols=1)[1, :]
+                    cv_values = np.loadtxt(filename, usecols=1)
 
                     min_value = np.min(cv_values)
                     max_value = np.max(cv_values)
                     extension = (max_value - min_value) * 1/2
 
-                    min_params.append(min_value - extension)
-                    max_params.append(max_value + extension)
+                    min_params.append(str(min_value - extension))
+                    max_params.append(str(max_value + extension))
 
                     # Generated parameters from a single colvar_{cv.name}* file
                     break

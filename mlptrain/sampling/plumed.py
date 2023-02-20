@@ -48,6 +48,21 @@ class PlumedBias:
                             'a list of collective variables (CVs) '
                             'or a file containing PLUMED-type input')
 
+    @property
+    def cv_sequence(self) -> str:
+        """String containing names of collective variables separated
+        by commas"""
+        cv_names = (cv.name for cv in self.cvs)
+        return ','.join(cv_names)
+
+    @property
+    def width_sequence(self) -> str:
+        """String containing width values separated by commas"""
+        if self.width is None:
+            raise TypeError('Width is not initialised')
+        else:
+            return ','.join(str(width) for width in self.width)
+
     def set_metad_params(self,
                          pace: int,
                          width: Union[Sequence[float], float],
@@ -99,21 +114,6 @@ class PlumedBias:
             raise ValueError('Bias factor (γ) must be larger than one')
         else:
             self.biasfactor = biasfactor
-
-    @property
-    def cv_sequence(self) -> str:
-        """String containing names of collective variables separated
-        by commas"""
-        cv_names = (cv.name for cv in self.cvs)
-        return ','.join(cv_names)
-
-    @property
-    def width_sequence(self) -> str:
-        """String containing width values separated by commas"""
-        if self.width is None:
-            raise TypeError('Width is not initialised')
-        else:
-            return ','.join(str(width) for width in self.width)
 
     def _from_file(self, file_name) -> None:
         """Method to extract PLUMED setup from a file"""
@@ -188,6 +188,11 @@ class _PlumedCV:
             raise TypeError('Collective variable instantiation requires '
                             'groups of atom indices (DOFs) '
                             'or a file containing PLUMED-type input')
+
+    @property
+    def dof_sequence(self) -> str:
+        """String containing names of DOFs separated by commas"""
+        return ','.join(self.dof_names)
 
     def _from_file(self, file_name, component) -> None:
         """Method to generate DOFs and a CV from a file"""
@@ -281,11 +286,6 @@ class _PlumedCV:
                                       'not larger than four')
 
         return None
-
-    @property
-    def dof_sequence(self) -> str:
-        """String containing names of DOFs separated by commas"""
-        return ','.join(self.dof_names)
 
 
 class PlumedAverageCV(_PlumedCV):
