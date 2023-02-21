@@ -2,6 +2,10 @@ import os
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+from typing import Optional, List, Callable, Tuple
+from scipy.optimize import curve_fit
+from multiprocessing import Pool
+from copy import deepcopy
 from mlptrain.sampling.bias import Bias
 from mlptrain.sampling.reaction_coord import ReactionCoordinate, DummyCoordinate
 from mlptrain.configurations import ConfigurationSet
@@ -9,26 +13,6 @@ from mlptrain.sampling.md import run_mlp_md
 from mlptrain.utils import unique_dirname
 from mlptrain.config import Config
 from mlptrain.log import logger
-from typing import Optional, List, Callable, Tuple
-from scipy.optimize import curve_fit
-from multiprocessing import Pool
-
-
-def _run_individual_window(frame, mlp, temp, interval, dt, bias, **kwargs):
-    """Runs an individual umbrella sampling window. Adaptive sampling to
-    be implemented"""
-
-    kwargs['n_cores'] = 1
-    kwargs['_method'] = 'umbrella'
-    traj = run_mlp_md(configuration=frame,
-                      mlp=mlp,
-                      temp=temp,
-                      dt=dt,
-                      interval=interval,
-                      bias=bias,
-                      **kwargs)
-
-    return traj
 
 
 class _Window:
@@ -348,11 +332,12 @@ class UmbrellaSampling:
 
             for idx, ref in enumerate(zeta_refs):
 
-                logger.info(f'Running US window {idx} with ζ_ref={ref:.2f} Å '
-                            f'and κ = {self.kappa:.3f} eV / Å^2')
+                # Without copy kwargs is overwritten at every iteration
+                kwargs_single = deepcopy(kwargs)
+                kwargs_single['_idx'] = idx
+                kwargs_single['_ref'] = ref
 
                 bias = Bias(self.zeta_func, kappa=self.kappa, reference=ref)
-                bias.md_method = 'umbrella'
 
                 if self._no_ok_frame_in(traj, ref):
                     # Takes the trajectory of the previous window, .get() blocks
@@ -363,14 +348,14 @@ class UmbrellaSampling:
 
                 init_frame = self._best_init_frame(bias, _traj)
 
-                window_process = pool.apply_async(func=_run_individual_window,
+                window_process = pool.apply_async(func=self._run_individual_window,
                                                   args=(init_frame,
                                                         mlp,
                                                         temp,
                                                         interval,
                                                         dt,
                                                         bias),
-                                                  kwds=kwargs)
+                                                  kwds=kwargs_single)
                 window_processes.append(window_process)
                 biases.append(bias)
 
@@ -406,6 +391,28 @@ class UmbrellaSampling:
                     f'{(finish_umbrella - start_umbrella) / 60:.1f} m')
 
         return None
+
+    def _run_individual_window(self, frame, mlp, temp, interval, dt, bias,
+                               **kwargs):
+        """Runs an individual umbrella sampling window. Adaptive sampling to
+        be implemented"""
+
+        logger.info(f'Running US window {kwargs["_idx"]} with '
+                    f'ζ_ref={kwargs["_ref"]:.2f} Å '
+                    f'and κ = {self.kappa:.3f} eV / Å^2')
+
+        kwargs['n_cores'] = 1
+        kwargs['_method'] = 'umbrella'
+
+        traj = run_mlp_md(configuration=frame,
+                          mlp=mlp,
+                          temp=temp,
+                          dt=dt,
+                          interval=interval,
+                          bias=bias,
+                          **kwargs)
+
+        return traj
 
     def free_energies(self, prob_dist) -> np.ndarray:
         """
@@ -646,7 +653,7 @@ def _plot_and_save_free_energy(free_energies,
     fig, ax = plt.subplots()
     ax.plot(zetas, rel_free_energies, color='k')
 
-    with open(f'free_energy.txt', 'w') as outfile:
+    with open(f'umbrella_free_energy.txt', 'w') as outfile:
         for zeta, free_energy in zip(zetas, rel_free_energies):
             print(zeta, free_energy, file=outfile)
 
@@ -654,6 +661,6 @@ def _plot_and_save_free_energy(free_energies,
     ax.set_ylabel('ΔG / kcal mol$^{-1}$')
 
     fig.tight_layout()
-    fig.savefig('free_energy.pdf')
+    fig.savefig('umbrella_free_energy.pdf')
     plt.close(fig)
     return None

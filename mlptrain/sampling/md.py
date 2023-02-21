@@ -118,7 +118,12 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
         from ase.calculators.plumed import Plumed
 
         setup = _write_plumed_setup(bias, interval, **kwargs)
-        logfile = f'plumed_pid{os.getpid()}.log'
+
+        # Evade the error when running run_mlp_md() directly
+        try:
+            logfile = f'plumed_{kwargs["_idx"]}.log'
+        except:
+            logfile = 'plumed.log'
 
         plumed_calc = Plumed(calc=mlp.ase_calculator,
                              input=setup,
@@ -297,13 +302,15 @@ def _write_plumed_setup(bias, interval, **kwargs) -> List:
 
     # Metadynamics
     if kwargs['_method'] == 'metadynamics':
+        hills_filename = f'HILLS_{kwargs["_idx"]}.dat'
+
         metad_setup = ['METAD '
                        f'ARG={bias.cv_sequence} '
                        f'PACE={bias.pace} '
                        f'HEIGHT={bias.height} '
                        f'SIGMA={bias.width_sequence} '
                        f'BIASFACTOR={bias.biasfactor} '
-                       f'FILE=HILLS_pid{os.getpid()}.dat']
+                       f'FILE={hills_filename}']
         setup.extend(metad_setup)
 
     # Printing trajectory in terms of DOFs and CVs
@@ -316,9 +323,11 @@ def _write_plumed_setup(bias, interval, **kwargs) -> List:
             args = cv.name
 
         name_without_dot = '_'.join(cv.name.split('.'))
+        colvar_filename = f'colvar_{name_without_dot}_{kwargs["_idx"]}.dat'
+
         print_setup = ['PRINT '
                        f'ARG={args} '
-                       f'FILE=colvar_{name_without_dot}_pid{os.getpid()}.dat '
+                       f'FILE={colvar_filename} '
                        f'STRIDE={interval}']
         setup.extend(print_setup)
 

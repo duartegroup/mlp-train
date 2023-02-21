@@ -5,7 +5,9 @@ import mlptrain as mlt
 from .test_potential import TestPotential
 from .molecules import _h2
 from .utils import work_in_zipped_dir
+mlt.Config.n_cores = 2
 here = os.path.abspath(os.path.dirname(__file__))
+
 
 
 def _h2_configuration():
@@ -41,22 +43,14 @@ def test_run_metadynamics():
 
     assert os.path.exists('combined_trajectory.xyz')
 
-    assert glob.glob('plumed_files/colvar_cv1_pid*.dat')
-    assert glob.glob('plumed_files/HILLS_pid*.dat')
-    assert glob.glob('plumed_logs/plumed_pid*.log')
+    assert glob.glob('plumed_files/colvar_cv1_*.dat')
+    assert glob.glob('plumed_files/HILLS_*.dat')
+    assert glob.glob('plumed_logs/plumed_*.log')
 
-
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
-def test_compute_fes():
-
-    cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
-    metadynamics = mlt.Metadynamics(cv1)
-
-    _run_metadynamics(metadynamics)
     metadynamics.compute_fes(n_bins=100)
 
-    assert glob.glob('plumed_files/fes_pid*.dat')
-    assert glob.glob('plumed_logs/fes_pid*.log')
+    assert glob.glob('plumed_files/fes_*.dat')
+    assert glob.glob('plumed_logs/fes_*.log')
 
     assert os.path.exists('fes_raw.npy')
     assert os.path.exists('fes.npy')
@@ -64,11 +58,15 @@ def test_compute_fes():
     fes_raw = np.load('fes_raw.npy')
     fes = np.load('fes.npy')
 
-    # 1 cv, 4 fes -> 5; 101 bins
+    # 1 cv, 4 fes -> 5; 100 bins + 1 -> 101
     assert np.shape(fes_raw) == (5, 101)
 
-    # 1 cv, 1 mean fes, 1 std dev -> 3; 101 bins
+    # 1 cv, 1 mean fes, 1 std dev -> 3; 100 bins + 1 -> 101
     assert np.shape(fes) == (3, 101)
+
+    metadynamics.plot_fes(fes)
+
+    assert os.path.exists('metad_free_energy.pdf')
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
@@ -79,4 +77,4 @@ def test_run_metadynamics_with_component():
 
     _run_metadynamics(metadynamics)
 
-    assert glob.glob('plumed_files/colvar_cv1_x_pid*.dat')
+    assert glob.glob('plumed_files/colvar_cv1_x_*.dat')

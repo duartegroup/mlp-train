@@ -74,7 +74,7 @@ def test_umbrella_parallel():
                                        interval=5,
                                        dt=0.5,
                                        n_windows=4,
-                                       fs=100)
+                                       fs=500)
         finish = time.perf_counter()
 
         execution_time[n_cores] = finish - start
