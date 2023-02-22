@@ -114,7 +114,7 @@ class Metadynamics:
         n_processes = min(Config.n_cores, n_runs)
         logger.info(f'Running {n_runs} independent Well-Tempered '
                     'Metadynamics simulation(s), '
-                    f'{n_processes} simulation(s) are run parallel, '
+                    f'{n_processes} simulation(s) run in parallel, '
                     f'{n_walkers} walker(s) per simulation')
 
         with Pool(processes=n_processes) as pool:
@@ -166,8 +166,7 @@ class Metadynamics:
                                  bias, **kwargs):
         """Initiates a single well-tempered metadynamics run"""
 
-        logger.info('Running Metadynamics simulation number '
-                    f'{kwargs["_idx"]+1}')
+        logger.info(f'Running Metadynamics simulation number {kwargs["_idx"]}')
 
         kwargs['n_cores'] = 1
         kwargs['_method'] = 'metadynamics'
@@ -188,8 +187,8 @@ class Metadynamics:
         """
         Computes fes.dat files using generated HILLS.dat files from metadynamics
         simulation, using fes.dat files creates grids which contain collective
-        variables and free energy surfaces, and saves the grids in .npy format
-        which can be used to plot FES.
+        variables and free energy surfaces (in eV), and saves the grids in .npy
+        format which can be used to plot FES.
 
         -----------------------------------------------------------------------
         Arguments:
@@ -207,11 +206,12 @@ class Metadynamics:
                                     'make sure to run metadynamics before '
                                     'computing the FES')
 
-        logger.info('Computing the free energy surface')
 
         os.chdir('plumed_files')
 
         self._compute_fes_files(n_bins, cvs_bounds)
+
+        logger.info('Computing the free energy surface')
 
         grid_shape = tuple([n_bins+1 for _ in range(self.n_cvs)])
 
@@ -256,31 +256,6 @@ class Metadynamics:
         os.chdir('..')
 
         return fes
-
-    def plot_fes(self,
-                 fes: Union[np.ndarray, str]) -> None:
-        """
-        Plots FES (mean and standard deviation from multiple runs) for
-        metadynamics simulations involving one or two collective variables
-
-        -----------------------------------------------------------------------
-        Arguments:
-
-            fes (np.ndarray | str): Numpy grid of the free energy surface to be
-                                    plotted
-        """
-
-        if self.n_cvs == 1:
-            self._plot_1d_fes(fes)
-
-        elif self.n_cvs == 2:
-            self._plot_2d_fes(fes)
-
-        else:
-            raise NotImplementedError('Plotting FES is only available for one '
-                                      'or two collective variables')
-
-        return None
 
     def _compute_fes_files(self, n_bins, cvs_bounds) -> None:
         """Generate fes.dat files from HILLS.dat files"""
@@ -398,13 +373,55 @@ class Metadynamics:
 
         return cvs_bounds_checked
 
-    def _plot_1d_fes(self, fes) -> None:
+    def plot_fes(self,
+                 fes: Union[np.ndarray, str],
+                 units: Optional[str] = 'kcal mol-1') -> None:
+        """
+        Plots FES (mean and standard deviation from multiple runs) for
+        metadynamics simulations involving one or two collective variables
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            fes (np.ndarray | str): Numpy grid of the free energy surface to be
+                                    plotted
+        """
+
+        if self.n_cvs == 1:
+            self._plot_1d_fes(fes, units)
+
+        elif self.n_cvs == 2:
+            self._plot_2d_fes(fes, units)
+
+        else:
+            raise NotImplementedError('Plotting FES is only available for one '
+                                      'and two collective variables')
+
+        return None
+
+    def _plot_1d_fes(self, fes, units) -> None:
         """Plots 1D mean free energy surface with standard error from multiple
         metadynamics runs"""
+
+        logger.info('Plotting 1D FES')
 
         cv = fes[0]
         mean_fes = fes[1]
         std_error = fes[2]
+
+        if units.lower() == 'ev':
+            pass
+
+        elif units.lower() == 'kcal mol-1':
+            mean_fes *= 23.060541945329334  # eV -> kcal mol-1
+            std_error *= 23.060541945329334
+
+        elif units.lower() == 'kj mol-1':
+            mean_fes *= 96.48530749925793  # eV -> kJ mol-1
+            std_error *= 96.48530749925793
+
+        else:
+            raise ValueError(f'Unknown energy units: {units}')
 
         lower_bound = mean_fes - 1/2 * std_error
         upper_bound = mean_fes + 1/2 * std_error
@@ -424,28 +441,44 @@ class Metadynamics:
 
         return None
 
-    def _plot_2d_fes(self, fes) -> None:
+    def _plot_2d_fes(self, fes, units) -> None:
         """Plots 2D mean free energy surface and standard error from multiple
         metadynamics runs"""
+
+        logger.info('Plotting 2D FES')
 
         cv1 = fes[0]
         cv2 = fes[1]
         mean_fes = fes[2]
         std_error = fes[3]
 
+        if units.lower() == 'ev':
+            pass
+
+        elif units.lower() == 'kcal mol-1':
+            mean_fes *= 23.060541945329334  # eV -> kcal mol-1
+            std_error *= 23.060541945329334
+
+        elif units.lower() == 'kj mol-1':
+            mean_fes *= 96.48530749925793  # eV -> kJ mol-1
+            std_error *= 96.48530749925793
+
+        else:
+            raise ValueError(f'Unknown energy units: {units}')
+
         fig, (ax_mean, ax_std_error) = plt.subplots(nrows=1, ncols=2,
                                                     figsize=(10, 5))
 
-        mean_contourf = ax_mean.contourf(cv1, cv2, mean_fes, 10,
+        mean_contourf = ax_mean.contourf(cv1, cv2, mean_fes, 20,
                                          cmap='turbo')
-        ax_mean.contour = (cv1, cv2, mean_fes, 10)
+        ax_mean.contour = (cv1, cv2, mean_fes, 20)
 
         mean_cbar = fig.colorbar(mean_contourf, ax=ax_mean)
         mean_cbar.set_label(label=r'Free Energy $\Delta G$')
 
-        std_error_contourf = ax_std_error.contourf(cv1, cv2, std_error, 10,
+        std_error_contourf = ax_std_error.contourf(cv1, cv2, std_error, 20,
                                                    cmap='Blues')
-        ax_std_error.contour = (cv1, cv2, mean_fes, 10)
+        ax_std_error.contour = (cv1, cv2, mean_fes, 20)
 
         std_error_cbar = fig.colorbar(std_error_contourf, ax=ax_std_error)
         std_error_cbar.set_label(label=r'Standard Error $\sigma$')

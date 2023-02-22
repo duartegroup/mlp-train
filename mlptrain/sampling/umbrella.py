@@ -637,13 +637,15 @@ def _plot_and_save_free_energy(free_energies,
         zetas: Values of the reaction coordinate
     """
     if units.lower() == 'ev':
-        pass
+        units_str = 'eV'
 
     elif units.lower() == 'kcal mol-1':
         free_energies *= 23.060541945329334  # eV -> kcal mol-1
+        units_str = 'kcal mol$^{-1}$'
 
     elif units.lower() == 'kj mol-1':
         free_energies *= 96.48530749925793  # eV -> kJ mol-1
+        units_str = 'kJ mol$^{-1}$'
 
     else:
         raise ValueError(f'Unknown energy units: {units}')
@@ -658,7 +660,7 @@ def _plot_and_save_free_energy(free_energies,
             print(zeta, free_energy, file=outfile)
 
     ax.set_xlabel('Reaction coordinate / Å')
-    ax.set_ylabel('ΔG / kcal mol$^{-1}$')
+    ax.set_ylabel(f'ΔG / {units_str}')
 
     fig.tight_layout()
     fig.savefig('umbrella_free_energy.pdf')
