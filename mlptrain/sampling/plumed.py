@@ -32,12 +32,21 @@ class PlumedBias:
 
         elif cvs is not None:
 
-            # e.g. cvs = [cv1, cv2]; (cv1, cv2)
+            # e.g. cvs == [cv1, cv2]; (cv1, cv2)
             if isinstance(cvs, list) or isinstance(cvs, tuple):
-                self.cvs = cvs
 
-            # e.g. cvs = cv1
-            elif cvs.__class__.__base__ == _PlumedCV:
+                if len(cvs) == 0:
+                    raise TypeError('The provided collective variable '
+                                    'sequence is empty')
+
+                elif all(issubclass(cv.__class__, _PlumedCV) for cv in cvs):
+                    self.cvs = cvs
+
+                else:
+                    raise TypeError('Supplied CVs are in incorrect format')
+
+            # e.g. cvs == cv1
+            elif issubclass(cvs.__class__, _PlumedCV):
                 self.cvs = [cvs]
 
             else:
@@ -88,30 +97,37 @@ class PlumedBias:
 
         if not isinstance(pace, int) or pace <= 0:
             raise ValueError('Pace (τ_G/dt) must be a positive integer')
+
         else:
             self.pace = pace
 
-        self.width = []
         if isinstance(width, list) or isinstance(width, tuple):
-            for single_width in width:
-                if single_width <= 0:
-                    raise ValueError('Gaussian width (σ) must be positive')
-                else:
-                    self.width.append(single_width)
+
+            if len(width) == 0:
+                raise TypeError('The provided width sequence is empty')
+
+            elif any(single_width <= 0 for single_width in width):
+                raise ValueError('All gaussian widths (σ) must be positive')
+
+            else:
+                self.width = width
 
         else:
             if width <= 0:
                 raise ValueError('Gaussian width (σ) must be positive')
+
             else:
-                self.width.append(width)
+                self.width = [width]
 
         if height <= 0:
             raise ValueError('Gaussian height (ω) must be positive')
+
         else:
             self.height = height
 
         if biasfactor < 1:
             raise ValueError('Bias factor (γ) must be larger than one')
+
         else:
             self.biasfactor = biasfactor
 
@@ -221,34 +237,31 @@ class _PlumedCV:
         self.name = name
         self.dof_names = []
 
-        # e.g. atom_groups = (2)
-        if (not isinstance(atom_groups, tuple)
-                and not isinstance(atom_groups, list)):
+        if isinstance(atom_groups, list) or isinstance(atom_groups, tuple):
 
-            raise TypeError('Atom_groups must be a tuple or a list')
+            if len(atom_groups) == 0:
+                raise TypeError('Atom groups cannot be an empty list or an '
+                                'empty tuple')
 
-        # atom_groups = []; ()
-        elif len(atom_groups) == 0:
+            # e.g. atom_groups == [(1, 2), (3, 4)]; ([0, 1])
+            elif all(isinstance(atom_group, list)
+                     or isinstance(atom_group, tuple)
+                     for atom_group in atom_groups):
 
-            raise TypeError('Atom_groups cannot be an empty list '
-                            'or an empty tuple')
+                for idx, atom_group in enumerate(atom_groups):
+                    self._atom_group_to_dof(idx, atom_group)
 
-        # e.g. atom_groups = [(1, 2), (3, 4)]; ([0, 1])
-        elif (all(isinstance(atom_group, tuple) or isinstance(atom_group, list)
-                  for atom_group in atom_groups)):
+            # e.g. atom_groups = [0, 1]
+            elif all(isinstance(idx, int) for idx in atom_groups):
 
-            for idx, atom_group in enumerate(atom_groups):
-                self._atom_group_to_dof(idx, atom_group)
+                self._atom_group_to_dof(0, atom_groups)
 
-        # e.g. atom_groups = [0, 1]
-        elif all(isinstance(atom_index, int) for atom_index in atom_groups):
+            else:
+                raise TypeError('Elements of atom_groups must all be sequences '
+                                'or all be integers')
 
-            self._atom_group_to_dof(0, atom_groups)
-
-        # e.g. atom_groups = [(1, 2, 3), 1]
         else:
-            raise TypeError('Elements of atom_groups must all be sequences '
-                            'or all be integers')
+            raise TypeError('Atom groups are in incorrect format')
 
         return None
 

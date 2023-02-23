@@ -333,45 +333,31 @@ class Metadynamics:
     def _check_cv_bounds(self, cvs_bounds) -> Sequence:
         """doc"""
 
-        cvs_bounds_checked = []
+        if isinstance(cvs_bounds, list) or isinstance(cvs_bounds, tuple):
 
-        if (not isinstance(cvs_bounds, tuple)
-                and not isinstance(cvs_bounds, list)):
+            if len(cvs_bounds) == 0:
+                raise TypeError('CVs bounds cannot be an empty list or '
+                                'an empty tuple')
 
-            raise TypeError('CVs_bounds must be a tuple or a list')
+            elif all(isinstance(cv_bounds, list) or isinstance(cv_bounds, tuple)
+                     for cv_bounds in cvs_bounds):
+                _cvs_bounds = cvs_bounds
 
-        elif len(cvs_bounds) == 0:
+            elif all(isinstance(cv_bound, float) or isinstance(cv_bound, int)
+                     for cv_bound in cvs_bounds):
+                _cvs_bounds = [cvs_bounds]
 
-            raise TypeError('CVs_bounds cannot be an empty list '
-                            'or an empty tuple')
-
-        elif (all(isinstance(cv_bounds, tuple)
-                  or isinstance(cv_bounds, list) for cv_bounds in cvs_bounds)):
-
-            for cv_bounds in cvs_bounds:
-                if len(cv_bounds) != 2 or not all(isinstance(cv_bound, float)
-                                                  for cv_bound in cv_bounds):
-                    raise ValueError('Supplied bounds must be sequences '
-                                     'of two floats')
-
-                cvs_bounds_checked.append(sorted(cv_bounds))
-
-        elif all(isinstance(cv_bound, float) for cv_bound in cvs_bounds):
-            if len(cvs_bounds) != 2:
-                raise ValueError('Supplied bounds must be a sequence '
-                                 'of two floats')
-
-            cvs_bounds_checked.append(sorted(cvs_bounds))
+            else:
+                raise TypeError('CVs bounds are in incorrect format')
 
         else:
-            raise TypeError('CVs_bounds must be a sequence of sequences of '
-                            'two floats, or a sequence of two floats')
+            raise TypeError('CVs bounds are in incorrect format')
 
-        if len(cvs_bounds_checked) != self.n_cvs:
-            raise ValueError('The number of supplied CV bounds does not agree '
-                             'with the number of CVs used in metadynamics')
+        if len(_cvs_bounds) != self.n_cvs:
+            raise ValueError('The number of supplied CVs bounds is not equal '
+                             'to the number of CVs used in metadynamics')
 
-        return cvs_bounds_checked
+        return _cvs_bounds
 
     def plot_fes(self,
                  fes: Union[np.ndarray, str],
