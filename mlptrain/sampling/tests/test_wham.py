@@ -19,7 +19,7 @@ def test_wham():
     zeta_refs = np.linspace(1.8245, 3.1100, num=20)  # 20 windows
 
     for window_idx in range(20):
-        data_lines = open(f'window_{window_idx}.txt', 'r').readlines()
+        data_lines = open(f'window_{window_idx+1}.txt', 'r').readlines()
 
         # Ensure the data has the correct reference value for the hard
         # coded array

@@ -1,4 +1,8 @@
+import numpy as np
+import matplotlib.pyplot as plt
 from typing import Sequence, Optional, Union
+from ase import units as ase_units
+from mlptrain.log import logger
 
 
 class PlumedBias:
@@ -72,11 +76,11 @@ class PlumedBias:
         else:
             return ','.join(str(width) for width in self.width)
 
-    def set_metad_params(self,
-                         pace: int,
-                         width: Union[Sequence[float], float],
-                         height: float,
-                         biasfactor: float) -> None:
+    def _set_metad_params(self,
+                          pace: int,
+                          width: Union[Sequence[float], float],
+                          height: float,
+                          biasfactor: float) -> None:
         """
         Define parameters used in well-tempered metadynamics.
 
@@ -190,9 +194,8 @@ class _PlumedCV:
                              e.g. 'spath' for PATH collective variable.
         """
 
-        self.name = None
-        self.dof_names = None
         self.setup = []
+        self.name = self.units = self.dof_names = self.dof_units = None
 
         if file_name is not None:
             self._from_file(file_name, component)
@@ -211,7 +214,7 @@ class _PlumedCV:
         return ','.join(self.dof_names)
 
     def _from_file(self, file_name, component) -> None:
-        """Method to generate DOFs and a CV from a file"""
+        """Generate DOFs and a CV from a file"""
 
         with open(file_name, 'r') as f:
             for line in f:
@@ -232,10 +235,10 @@ class _PlumedCV:
         return None
 
     def _from_atom_groups(self, name, atom_groups) -> None:
-        """Method to generate DOFs from atom_groups"""
+        """Generate DOFs from atom_groups"""
 
         self.name = name
-        self.dof_names = []
+        self.dof_names, self.dof_units = [], []
 
         if isinstance(atom_groups, list) or isinstance(atom_groups, tuple):
 
@@ -266,7 +269,7 @@ class _PlumedCV:
         return None
 
     def _atom_group_to_dof(self, idx, atom_group) -> None:
-        """Method to check the atom group and generate a DOF"""
+        """Check the atom group and generate a DOF"""
 
         # PLUMED atom enumeration starts from 1
         atom_list = [f'{i + 1}' for i in atom_group]
@@ -278,18 +281,21 @@ class _PlumedCV:
         if len(atom_list) == 2:
             dof_name = f'{self.name}_dist{idx + 1}'
             self.dof_names.append(dof_name)
+            self.dof_units.append('Å')
             self.setup.extend([f'{dof_name}: '
                                f'DISTANCE ATOMS={atoms}'])
 
         if len(atom_list) == 3:
             dof_name = f'{self.name}_ang{idx + 1}'
             self.dof_names.append(dof_name)
+            self.dof_units.append('°')
             self.setup.extend([f'{dof_name}: '
                                f'ANGLE ATOMS={atoms}'])
 
         if len(atom_list) == 4:
             dof_name = f'{self.name}_tor{idx + 1}'
             self.dof_names.append(dof_name)
+            self.dof_units.append('°')
             self.setup.extend([f'{dof_name}: '
                                f'TORSION ATOMS={atoms}'])
 
@@ -299,6 +305,21 @@ class _PlumedCV:
                                       'not larger than four')
 
         return None
+
+    def _set_units(self, units = None):
+        """Set units of the collective variable as a string"""
+
+        if self.dof_units is not None:
+
+            if len(set(self.dof_units)) == 1:
+                self.units = set(self.dof_units).pop()
+
+            else:
+                logger.warning('DOFs in a defined CV have different units, '
+                               'setting units of this CV to None')
+
+        else:
+            self.units = units
 
 
 class PlumedAverageCV(_PlumedCV):
@@ -325,6 +346,8 @@ class PlumedAverageCV(_PlumedCV):
 
         super().__init__(name=name,
                          atom_groups=atom_groups)
+
+        self._set_units()
 
         dof_sum = '+'.join(self.dof_names)
         func = f'{1 / len(self.dof_names)}*({dof_sum})'
@@ -361,6 +384,8 @@ class PlumedDifferenceCV(_PlumedCV):
         super().__init__(name=name,
                          atom_groups=atom_groups)
 
+        self._set_units()
+
         if len(self.dof_names) != 2:
             raise ValueError('DifferenceCV must comprise exactly two '
                              'groups of atoms')
@@ -379,7 +404,8 @@ class PlumedCustomCV(_PlumedCV):
 
     def __init__(self,
                  file_name: str,
-                 component: Optional[str] = None):
+                 component: Optional[str] = None,
+                 units: Optional[str] = None):
         """
         PLUMED collective variable from a file. The file must be written in the
         style of a PLUMED input file, but only contain input used in the
@@ -398,6 +424,84 @@ class PlumedCustomCV(_PlumedCV):
 
             component (str): Name of a component of the last CV in the supplied
                              PLUMED input file to use as a collective variable
+
+            units(str): Units of the collective variable, used in plots
         """
         super().__init__(file_name=file_name,
                          component=component)
+
+        self.units = units
+
+
+def plot_cv(filename: str,
+            time_units: str = 'ps',
+            cv_units: Optional[Sequence[str]] = None,
+            index: Optional[int] = None) -> None:
+    """
+    Plots a collective variable as a function of time from a given colvar file.
+    Only plots the first collective variable in the colvar file.
+
+    ---------------------------------------------------------------------------
+    Arguments:
+
+        filename (str): Name of the colvar file used for plotting
+
+        time_units (str): Units of time
+
+        cv_units (Sequence[str]): Units of the CV to be plotted
+
+        index (int): Index to be used in naming the plot, useful when multiple
+                     plots of the same CV are generated in the same directory
+    """
+
+    with open(filename, 'r') as f:
+        header = f.readlines()[0]
+
+    cv_name = header.split()[3]  # (#! FIELDS time cv_name ...)
+    time_array = np.loadtxt(filename, usecols=0)
+    cv_array = np.loadtxt(filename, usecols=1)
+
+    # Reconvert time from ASE time_units
+    if time_units == 'fs':
+        conversion = 1 / ase_units.fs
+        time_array *= conversion
+
+    elif time_units == 'ps':
+        conversion = 1 / (ase_units.fs * 10**3)
+        time_array *= conversion
+
+    elif time_units == 'ns':
+        conversion = 1 / (ase_units.fs * 10**6)
+        time_array *= conversion
+
+    else:
+        raise ValueError(f'Unknown time time_units: {time_units}')
+
+    fig, ax = plt.subplots()
+    ax.scatter(time_array, cv_array)
+
+    ax.set_xlabel(f'Time / {time_units}')
+
+    if cv_units is not None:
+        ax.set_ylabel(f'{cv_name} / {cv_units}')
+
+    else:
+        ax.set_ylabel(f'{cv_name}')
+
+    fig.tight_layout()
+
+    if index is not None:
+        fig.savefig(f'{cv_name}_{index}.pdf')
+
+    else:
+        fig.savefig(f'{cv_name}.pdf')
+
+    plt.close(fig)
+
+    return None
+
+
+def plot_trajectory():
+    """doc"""
+
+    pass

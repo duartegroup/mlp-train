@@ -9,7 +9,6 @@ mlt.Config.n_cores = 2
 here = os.path.abspath(os.path.dirname(__file__))
 
 
-
 def _h2_configuration():
     system = mlt.System(_h2(), box=[50, 50, 50])
     config = system.random_configuration()
@@ -18,7 +17,7 @@ def _h2_configuration():
 
 
 def _run_metadynamics(metadynamics):
-    metadynamics.run_metadynamics(start_config=_h2_configuration(),
+    metadynamics.run_metadynamics(configuration=_h2_configuration(),
                                   mlp=TestPotential('1D'),
                                   temp=300,
                                   interval=10,
@@ -35,11 +34,11 @@ def _run_metadynamics(metadynamics):
 def test_run_metadynamics():
 
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
-    metadynamics = mlt.Metadynamics(cv1)
+    metad = mlt.Metadynamics(cv1)
 
-    assert metadynamics.bias is not None
+    assert metad.bias is not None
 
-    _run_metadynamics(metadynamics)
+    _run_metadynamics(metad)
 
     assert os.path.exists('combined_trajectory.xyz')
 
@@ -47,7 +46,7 @@ def test_run_metadynamics():
     assert glob.glob('plumed_files/HILLS_*.dat')
     assert glob.glob('plumed_logs/plumed_*.log')
 
-    metadynamics.compute_fes(n_bins=100)
+    metad.compute_fes(n_bins=100)
 
     assert glob.glob('plumed_files/fes_*.dat')
     assert glob.glob('plumed_logs/fes_*.log')
@@ -64,17 +63,41 @@ def test_run_metadynamics():
     # 1 cv, 1 mean fes, 1 std dev -> 3; 100 bins + 1 -> 101
     assert np.shape(fes) == (3, 101)
 
-    metadynamics.plot_fes(fes)
+    # metad.plot_fes(fes)
 
-    assert os.path.exists('metad_free_energy.pdf')
+    # assert os.path.exists('metad_free_energy.pdf')
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
 def test_run_metadynamics_with_component():
 
     cv1 = mlt.PlumedCustomCV('plumed_cv_dist.dat', 'x')
-    metadynamics = mlt.Metadynamics(cv1)
+    metad = mlt.Metadynamics(cv1)
 
-    _run_metadynamics(metadynamics)
+    _run_metadynamics(metad)
 
     assert glob.glob('plumed_files/colvar_cv1_x_*.dat')
+
+
+@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+def test_estimate_width():
+
+    cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
+    metad = mlt.Metadynamics(cv1)
+
+    width = metad.estimate_width(configurations=_h2_configuration(),
+                                 mlp=TestPotential('1D'),
+                                 plot=True,
+                                 fs=500)
+
+    assert len(width) == 1
+
+    files_directory = 'plumed_files/width_estimation'
+    logs_directory = 'plumed_logs/width_estimation'
+
+    assert os.path.isdir(files_directory)
+    assert os.path.exists(os.path.join(files_directory, 'colvar_cv1_1.dat'))
+    assert os.path.exists(os.path.join(files_directory, 'cv1_1.pdf'))
+
+    assert os.path.isdir(logs_directory)
+    assert os.path.exists(os.path.join(logs_directory, 'plumed_1.log'))

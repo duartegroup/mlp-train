@@ -88,9 +88,9 @@ def test_umbrella_sparse_traj():
 
     umbrella = _h2_umbrella()
     traj = _h2_sparse_traj()
-    n_windows = 11
+    n_windows = 9
 
-    # Indices from 0 to 10
+    # Indices from 1 to 9
     zeta_refs = umbrella._reference_values(traj=traj,
                                            num=n_windows,
                                            final_ref=None,
@@ -131,8 +131,8 @@ def test_umbrella_sparse_traj():
                                               traj=previous_window_traj)
     starting_frame = middle_window_traj[0]
 
-    # The starting frame for the middle window (index 5) should be the closest frame
-    # from the previous window (index 4)
+    # The starting frame for the middle window (index 5) should be
+    # the closest frame from the previous window (index 4)
     assert starting_frame == closest_frame
 
 

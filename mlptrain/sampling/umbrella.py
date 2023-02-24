@@ -7,7 +7,7 @@ from scipy.optimize import curve_fit
 from multiprocessing import Pool
 from copy import deepcopy
 from mlptrain.sampling.bias import Bias
-from mlptrain.sampling.reaction_coord import ReactionCoordinate, DummyCoordinate
+from mlptrain.sampling.reaction_coord import DummyCoordinate
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.sampling.md import run_mlp_md
 from mlptrain.utils import unique_dirname
@@ -334,7 +334,7 @@ class UmbrellaSampling:
 
                 # Without copy kwargs is overwritten at every iteration
                 kwargs_single = deepcopy(kwargs)
-                kwargs_single['_idx'] = idx
+                kwargs_single['_idx'] = idx + 1
                 kwargs_single['_ref'] = ref
 
                 bias = Bias(self.zeta_func, kappa=self.kappa, reference=ref)
@@ -377,7 +377,7 @@ class UmbrellaSampling:
 
             for idx, window_traj in enumerate(window_trajs):
                 window_traj.save(filename=os.path.join(us_folder,
-                                                       f'window_{idx}.xyz'))
+                                                       f'window_{idx+1}.xyz'))
 
         else:
             combined_traj = ConfigurationSet()
@@ -525,7 +525,8 @@ class UmbrellaSampling:
 
         os.mkdir(folder_name)
         for idx, window in enumerate(self.windows):
-            window.save(filename=os.path.join(folder_name, f'window_{idx}.txt'))
+            window.save(filename=os.path.join(folder_name,
+                                              f'window_{idx+1}.txt'))
 
         return None
 

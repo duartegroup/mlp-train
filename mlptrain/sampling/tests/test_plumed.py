@@ -10,6 +10,7 @@ def test_plumed_cv_from_atom_groups():
     cv1 = mlt.PlumedDifferenceCV('cv1', ((0, 1), (2, 3)))
 
     assert cv1.name == 'cv1'
+    assert cv1.units == 'Å'
     assert cv1.dof_names == ['cv1_dist1', 'cv1_dist2']
     assert cv1.setup == ['cv1_dist1: DISTANCE ATOMS=1,2',
                          'cv1_dist2: DISTANCE ATOMS=3,4',
@@ -22,6 +23,7 @@ def test_plumed_cv_from_atom_groups():
     cv2 = mlt.PlumedAverageCV('cv2', (0, 1, 2))
 
     assert cv2.name == 'cv2'
+    assert cv2.units == '°'
     assert cv2.dof_names == ['cv2_ang1']
     assert cv2.setup == ['cv2_ang1: ANGLE ATOMS=1,2,3',
                          'cv2: CUSTOM '
@@ -52,9 +54,10 @@ def test_plumed_cv_from_atom_groups():
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
 def test_plumed_cv_from_file():
 
-    cv1 = mlt.PlumedCustomCV('plumed_cv_custom.dat')
+    cv1 = mlt.PlumedCustomCV('plumed_cv_custom.dat', units='Å')
 
     assert cv1.name == 'cv1'
+    assert cv1.units == 'Å'
     assert cv1.setup == ['dof1: DISTANCE ATOMS=1,2',
                          'dof2: DISTANCE ATOMS=3,4',
                          'cv1: CUSTOM '
@@ -63,20 +66,16 @@ def test_plumed_cv_from_file():
                          'FUNC=dof1*dof2 '
                          'PERIODIC=NO']
 
+    cv1_component = mlt.PlumedCustomCV('plumed_cv_custom.dat', component='x')
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
-def test_plumed_cv_component():
-
-    cv1 = mlt.PlumedCustomCV('plumed_cv_custom.dat', 'x')
-
-    assert cv1.name == 'cv1.x'
-    assert cv1.setup == ['dof1: DISTANCE ATOMS=1,2',
-                         'dof2: DISTANCE ATOMS=3,4',
-                         'cv1: CUSTOM '
-                         'ARG=dof1,dof2 '
-                         'VAR=dof1,dof2 '
-                         'FUNC=dof1*dof2 '
-                         'PERIODIC=NO']
+    assert cv1_component.name == 'cv1.x'
+    assert cv1_component.setup == ['dof1: DISTANCE ATOMS=1,2',
+                                   'dof2: DISTANCE ATOMS=3,4',
+                                   'cv1: CUSTOM '
+                                   'ARG=dof1,dof2 '
+                                   'VAR=dof1,dof2 '
+                                   'FUNC=dof1*dof2 '
+                                   'PERIODIC=NO']
 
 
 def test_plumed_bias_from_cvs():
@@ -86,7 +85,7 @@ def test_plumed_bias_from_cvs():
 
     bias = mlt.PlumedBias((cv1, cv2))
 
-    bias.set_metad_params(pace=10, width=0.2, height=0.5, biasfactor=2)
+    bias._set_metad_params(pace=10, width=0.2, height=0.5, biasfactor=2)
 
     assert bias.cvs == (cv1, cv2)
     assert bias.pace == 10
@@ -95,7 +94,7 @@ def test_plumed_bias_from_cvs():
     assert bias.biasfactor == 2
 
     with pytest.raises(ValueError):
-        bias.set_metad_params(pace=10, width=0.2, height=0.5, biasfactor=0.5)
+        bias._set_metad_params(pace=10, width=0.2, height=0.5, biasfactor=0.5)
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
@@ -112,3 +111,11 @@ def test_plumed_bias_from_file():
                           'BIASFACTOR=4 '
                           'FILE=HILLS.dat',
                           'PRINT ARG=dof1 FILE=colvar.dat STRIDE=10']
+
+
+@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+def test_plumed_plot():
+
+    mlt.plot_cv('colvar.dat', cv_units='Å', index=0)
+
+    assert os.path.exists('cv1_0.pdf')

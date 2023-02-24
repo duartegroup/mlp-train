@@ -155,7 +155,7 @@ def move_files(moved_exts: List[str], folder: str) -> None:
     """
 
     if not os.path.exists(folder):
-        os.mkdir(folder)
+        os.makedirs(folder)
 
     for filename in os.listdir():
         if any(filename.endswith(ext) for ext in moved_exts):

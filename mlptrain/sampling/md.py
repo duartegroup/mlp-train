@@ -77,7 +77,7 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
                else min(Config.n_cores, 8))
 
     os.environ['OMP_NUM_THREADS'] = str(n_cores)
-    logger.info(f'Using {n_cores} cores for MLP MD')
+    logger.info(f'Using {n_cores} core(s) for MLP MD')
 
     n_steps = _n_simulation_steps(dt, kwargs)
     # Transform dt from fs into ASE time units (for dynamics only)
@@ -119,10 +119,10 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
 
         setup = _write_plumed_setup(bias, interval, **kwargs)
 
-        # Evade the error when running run_mlp_md() directly
-        try:
+        if '_idx' in kwargs:
             logfile = f'plumed_{kwargs["_idx"]}.log'
-        except:
+
+        else:
             logfile = 'plumed.log'
 
         plumed_calc = Plumed(calc=mlp.ase_calculator,
@@ -301,7 +301,7 @@ def _write_plumed_setup(bias, interval, **kwargs) -> List:
         setup.extend(cv.setup)
 
     # Metadynamics
-    if kwargs['_method'] == 'metadynamics':
+    if '_method' in kwargs and kwargs['_method'] == 'metadynamics':
         hills_filename = f'HILLS_{kwargs["_idx"]}.dat'
 
         metad_setup = ['METAD '
@@ -317,13 +317,18 @@ def _write_plumed_setup(bias, interval, **kwargs) -> List:
     for cv in bias.cvs:
 
         if cv.dof_names is not None:
-            args = f'{cv.dof_sequence},{cv.name}'
+            args = f'{cv.name},{cv.dof_sequence}'
 
         else:
             args = cv.name
 
         name_without_dot = '_'.join(cv.name.split('.'))
-        colvar_filename = f'colvar_{name_without_dot}_{kwargs["_idx"]}.dat'
+
+        if '_idx' in kwargs:
+            colvar_filename = f'colvar_{name_without_dot}_{kwargs["_idx"]}.dat'
+
+        else:
+            colvar_filename = f'colvar_{name_without_dot}.dat'
 
         print_setup = ['PRINT '
                        f'ARG={args} '

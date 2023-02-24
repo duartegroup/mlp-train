@@ -1,14 +1,15 @@
 import os
 import time
 import numpy as np
+import multiprocessing as mp
 import matplotlib.pyplot as plt
-from typing import Optional, Sequence, Union, Tuple
+from typing import Optional, Sequence, Union, Tuple, List
 from multiprocessing import Pool
 from subprocess import Popen
 from copy import deepcopy
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.sampling.md import run_mlp_md
-from mlptrain.sampling.plumed import PlumedBias
+from mlptrain.sampling.plumed import PlumedBias, plot_cv
 from mlptrain.utils import move_files, unique_dirname
 from mlptrain.config import Config
 from mlptrain.log import logger
@@ -40,8 +41,115 @@ class Metadynamics:
         """Returns the number of collective variables used in metadynamics"""
         return len(self.bias.cvs)
 
+    def estimate_width(self,
+                       configurations: Union['mlptrain.Configuration',
+                                             'mlptrain.ConfigurationSet'],
+                       mlp: 'mlptrain.potentials._base.MLPotential',
+                       plot: bool = False,
+                       **kwargs) -> List:
+        """
+        Estimates optimal widths (σ) to be used in metadynamics.
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            configurations: A set of all known minima configurations that are
+                            likely to be visited during metadynamics
+
+            mlp: Machine learnt potential
+
+            plot (bool): If True plots trajectories of collective variables as
+                         a function of time
+
+        -------------------
+        Keyword Arguments:
+
+            {fs, ps, ns}: Simulation time in some units
+        """
+
+        if not any(key in kwargs for key in ['fs', 'ps', 'ns']):
+            kwargs['ps'] = 10
+
+        temp = 300
+        dt = 1
+        interval = 10
+
+        configuration_set = ConfigurationSet()
+        configuration_set = configuration_set + configurations
+
+        logger.info('Estimating optimal width (σ)')
+
+        width_processes = []
+        all_widths = []
+
+        n_processes = min(Config.n_cores, len(configuration_set))
+
+        # Spawn is likely to make it slower, but fork in combination
+        # with plotting gives errors on MacOS > 10.13
+        with mp.get_context('spawn').Pool(processes=n_processes) as pool:
+
+            for idx, configuration in enumerate(configuration_set):
+
+                kwargs_single = deepcopy(kwargs)
+                kwargs_single['_idx'] = idx + 1
+
+                width_process = pool.apply_async(func=self._get_width_for_single,
+                                                 args=(configuration,
+                                                       mlp,
+                                                       temp,
+                                                       dt,
+                                                       interval,
+                                                       self.bias,
+                                                       plot),
+                                                 kwds=kwargs_single)
+                width_processes.append(width_process)
+
+            for width_process in width_processes:
+                all_widths.append(width_process.get())
+
+        return [min(all_widths[:][idx]) for idx in range(self.n_cvs)]
+
+    def _get_width_for_single(self, configuration, mlp, temp, dt, interval,
+                              bias, plot, **kwargs) -> List:
+        """Estimates optimal widths (σ) for a single configuration"""
+
+        logger.info(f'Running MD simulation number {kwargs["_idx"]}')
+
+        kwargs['n_cores'] = 1
+
+        run_mlp_md(configuration=configuration,
+                   mlp=mlp,
+                   temp=temp,
+                   dt=dt,
+                   interval=interval,
+                   bias=bias,
+                   **kwargs)
+
+        move_files(['.dat'], 'plumed_files/width_estimation')
+        move_files(['.log'], 'plumed_logs/width_estimation')
+        os.chdir('plumed_files/width_estimation')
+
+        widths = []
+
+        for cv in self.bias.cvs:
+            colvar_filename = f'colvar_{cv.name}_{kwargs["_idx"]}.dat'
+
+            cv_array = np.loadtxt(colvar_filename, usecols=1)
+
+            width = np.std(cv_array)
+            widths.append(width)
+
+            if plot is True:
+                plot_cv(filename=colvar_filename,
+                        cv_units=cv.units,
+                        index=kwargs["_idx"])
+
+        os.chdir('../..')
+
+        return widths
+
     def run_metadynamics(self,
-                         start_config: 'mlptrain.Configuration',
+                         configuration: 'mlptrain.Configuration',
                          mlp: 'mlptrain.potentials._base.MLPotential',
                          temp: float,
                          interval: int,
@@ -62,7 +170,7 @@ class Metadynamics:
         -----------------------------------------------------------------------
         Arguments:
 
-            start_config: Configuration from which the simulation is started
+            configuration: Configuration from which the simulation is started
 
             mlp: Machine learnt potential
 
@@ -100,13 +208,13 @@ class Metadynamics:
             raise ValueError('Temperature must be positive and non-zero for '
                              'well-tempered metadynamics')
 
-        start_metadynamics = time.perf_counter()
+        start_metad = time.perf_counter()
 
         self.temp = temp
-        self.bias.set_metad_params(width=width,
-                                   pace=pace,
-                                   height=height,
-                                   biasfactor=biasfactor)
+        self.bias._set_metad_params(width=width,
+                                    pace=pace,
+                                    height=height,
+                                    biasfactor=biasfactor)
 
         metad_processes, metad_trajs = [], []
 
@@ -123,10 +231,10 @@ class Metadynamics:
 
                 # Without copy kwargs is overwritten at every iteration
                 kwargs_single = deepcopy(kwargs)
-                kwargs_single['_idx'] = idx
+                kwargs_single['_idx'] = idx + 1
 
-                metad_process = pool.apply_async(func=self._run_single_metadynamics,
-                                                 args=(start_config,
+                metad_process = pool.apply_async(func=self._run_single_metad,
+                                                 args=(configuration,
                                                        mlp,
                                                        temp,
                                                        interval,
@@ -144,7 +252,7 @@ class Metadynamics:
 
             for idx, metad_traj in enumerate(metad_trajs):
                 metad_traj.save(filename=os.path.join(metad_folder,
-                                                      f'metad_{idx}.xyz'))
+                                                      f'metad_{idx+1}.xyz'))
 
         else:
             combined_traj = ConfigurationSet()
@@ -156,22 +264,23 @@ class Metadynamics:
         move_files(['.dat'], 'plumed_files')
         move_files(['.log'], 'plumed_logs')
 
-        finish_metadynamics = time.perf_counter()
+        finish_metad = time.perf_counter()
         logger.info('Metadynamics done in '
-                    f'{(finish_metadynamics - start_metadynamics) / 60:.1f} m')
+                    f'{(finish_metad - start_metad) / 60:.1f} m')
 
         return None
 
-    def _run_single_metadynamics(self, start_config, mlp, temp, interval, dt,
-                                 bias, **kwargs):
+    def _run_single_metad(self, configuration, mlp, temp, interval, dt, bias,
+                          **kwargs):
         """Initiates a single well-tempered metadynamics run"""
 
-        logger.info(f'Running Metadynamics simulation number {kwargs["_idx"]}')
+        logger.info(f'Running Metadynamics simulation number '
+                    f'{kwargs["_idx"]}')
 
         kwargs['n_cores'] = 1
         kwargs['_method'] = 'metadynamics'
 
-        traj = run_mlp_md(configuration=start_config,
+        traj = run_mlp_md(configuration=configuration,
                           mlp=mlp,
                           temp=temp,
                           dt=dt,
@@ -188,7 +297,8 @@ class Metadynamics:
         Computes fes.dat files using generated HILLS.dat files from metadynamics
         simulation, using fes.dat files creates grids which contain collective
         variables and free energy surfaces (in eV), and saves the grids in .npy
-        format which can be used to plot FES.
+        format which can be used to plot the FES (other way to generate plots
+        is to open fes.dat with gnuplot).
 
         -----------------------------------------------------------------------
         Arguments:
@@ -202,10 +312,9 @@ class Metadynamics:
         """
 
         if not os.path.exists('plumed_files'):
-            raise FileNotFoundError('Folder with PLUMED files was not found, '
+            raise FileNotFoundError('Folder with PLUMED files not found, '
                                     'make sure to run metadynamics before '
                                     'computing the FES')
-
 
         os.chdir('plumed_files')
 
@@ -361,7 +470,7 @@ class Metadynamics:
 
     def plot_fes(self,
                  fes: Union[np.ndarray, str],
-                 units: Optional[str] = 'kcal mol-1') -> None:
+                 units: str = 'kcal mol-1') -> None:
         """
         Plots FES (mean and standard deviation from multiple runs) for
         metadynamics simulations involving one or two collective variables
@@ -470,7 +579,6 @@ class Metadynamics:
         std_error_cbar.set_label(label=r'Standard Error $\sigma$')
 
         fig.tight_layout()
-
         fig.savefig('metad_free_energy.pdf')
         plt.close(fig)
 
