@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Sequence, Optional, Union
+from typing import Sequence, Optional, Union, List
 from ase import units as ase_units
 from mlptrain.log import logger
 
@@ -306,7 +306,7 @@ class _PlumedCV:
 
         return None
 
-    def _set_units(self, units = None):
+    def _set_units(self, units=None):
         """Set units of the collective variable as a string"""
 
         if self.dof_units is not None:
@@ -425,7 +425,7 @@ class PlumedCustomCV(_PlumedCV):
             component (str): Name of a component of the last CV in the supplied
                              PLUMED input file to use as a collective variable
 
-            units(str): Units of the collective variable, used in plots
+            units (str): Units of the collective variable, used in plots
         """
         super().__init__(file_name=file_name,
                          component=component)
@@ -435,8 +435,9 @@ class PlumedCustomCV(_PlumedCV):
 
 def plot_cv(filename: str,
             time_units: str = 'ps',
-            cv_units: Optional[Sequence[str]] = None,
-            index: Optional[int] = None) -> None:
+            cv_units: Optional[str] = None,
+            cv_limits: Optional[Sequence[float]] = None,
+            label: Optional[str] = None) -> None:
     """
     Plots a collective variable as a function of time from a given colvar file.
     Only plots the first collective variable in the colvar file.
@@ -448,10 +449,13 @@ def plot_cv(filename: str,
 
         time_units (str): Units of time
 
-        cv_units (Sequence[str]): Units of the CV to be plotted
+        cv_units: Units of the CV to be plotted
 
-        index (int): Index to be used in naming the plot, useful when multiple
-                     plots of the same CV are generated in the same directory
+        cv_limits: Min and max limits of the CV in the plot
+
+        label (str): Label attached to the name of the plot, useful when
+                     multiple plots of the same CVs are generated in the same
+                     directory
     """
 
     with open(filename, 'r') as f:
@@ -486,12 +490,15 @@ def plot_cv(filename: str,
         ax.set_ylabel(f'{cv_name} / {cv_units}')
 
     else:
-        ax.set_ylabel(f'{cv_name}')
+        ax.set_ylabel(cv_name)
+
+    if cv_limits is not None:
+        ax.set(ylim=tuple(cv_limits))
 
     fig.tight_layout()
 
-    if index is not None:
-        fig.savefig(f'{cv_name}_{index}.pdf')
+    if label is not None:
+        fig.savefig(f'{cv_name}_{label}.pdf')
 
     else:
         fig.savefig(f'{cv_name}.pdf')
@@ -501,7 +508,61 @@ def plot_cv(filename: str,
     return None
 
 
-def plot_trajectory():
-    """doc"""
+def plot_trajectory(filenames: Sequence[str],
+                    cvs_units: Optional[Sequence[str]] = None,
+                    cvs_limits: Optional[Sequence[Sequence[float]]] = None,
+                    label: Optional[str] = None) -> None:
+    """
+    Plots the trajectory of the system by tracking two collective variables
+    using two colvar files. The function only works for two collective
+    variables.
 
-    pass
+    ---------------------------------------------------------------------------
+    Arguments:
+
+        filenames: Names of two colvar files used for plotting
+
+        cvs_units: Units of the CVs to be plotted
+
+        cvs_limits: Min and max limits of the CVs in the plot
+
+        label (str): Label attached to the name of the plot, useful when
+                     multiple plots of the same CVs are generated in the same
+                     directory
+    """
+
+    cvs_names, cvs_arrays = [], []
+
+    for filename in filenames:
+
+        with open(filename, 'r') as f:
+            header = f.readlines()[0]
+
+        cvs_names.append(header.split()[3])  # (#! FIELDS time cv_name ...)
+        cvs_arrays.append(np.loadtxt(filename, usecols=1))
+
+    fig, ax = plt.subplots()
+    ax.scatter(*cvs_arrays)
+
+    if cvs_units is not None:
+        ax.set_xlabel(f'{cvs_names[0]} / {cvs_units[0]}')
+        ax.set_ylabel(f'{cvs_names[1]} / {cvs_units[1]}')
+
+    else:
+        ax.set_xlabel(cvs_names[0])
+        ax.set_ylabel(cvs_names[1])
+
+    if cvs_limits is not None:
+        ax.set(xlim=tuple(cvs_limits[0]), ylim=tuple(cvs_limits[1]))
+
+    fig.tight_layout()
+
+    if label is not None:
+        fig.savefig(f'traj_{cvs_names[0]}_{cvs_names[1]}_{label}.pdf')
+
+    else:
+        fig.savefig(f'traj_{cvs_names[0]}_{cvs_names[1]}.pdf')
+
+    plt.close(fig)
+
+    return None

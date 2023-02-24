@@ -65,6 +65,12 @@ class Metadynamics:
         Keyword Arguments:
 
             {fs, ps, ns}: Simulation time in some units
+
+        -------------------
+        Returns:
+
+            (List): List of optimal width values for each CV,
+                    e.g. [0.02, 0.03] for two CVs
         """
 
         if not any(key in kwargs for key in ['fs', 'ps', 'ns']):
@@ -142,7 +148,7 @@ class Metadynamics:
             if plot is True:
                 plot_cv(filename=colvar_filename,
                         cv_units=cv.units,
-                        index=kwargs["_idx"])
+                        label=str(kwargs["_idx"]))
 
         os.chdir('../..')
 

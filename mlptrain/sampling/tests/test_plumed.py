@@ -116,6 +116,17 @@ def test_plumed_bias_from_file():
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
 def test_plumed_plot():
 
-    mlt.plot_cv('colvar.dat', cv_units='Å', index=0)
+    mlt.plot_cv(filename='colvar1.dat',
+                time_units='fs',
+                cv_units='Å',
+                cv_limits=(0.5, 1.5),
+                label='0')
 
     assert os.path.exists('cv1_0.pdf')
+
+    mlt.plot_trajectory(filenames=('colvar1.dat', 'colvar2.dat'),
+                        cvs_units=('Å', 'Å'),
+                        cvs_limits=((0.5, 1.5), (0.5, 1.5)),
+                        label='0')
+
+    assert os.path.exists('traj_cv1_cv2_0.pdf')
