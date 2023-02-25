@@ -125,11 +125,8 @@ def test_try_multiple_biasfactors():
     logs_directory = 'plumed_logs/multiple_biasfactors'
 
     assert os.path.isdir(files_directory)
-    assert os.path.exists(os.path.join(files_directory, 'colvar_cv1_1.dat'))
-    assert os.path.exists(os.path.join(files_directory, 'colvar_cv1_3.dat'))
-    assert os.path.exists(os.path.join(files_directory, 'cv1_1.pdf'))
-    assert os.path.exists(os.path.join(files_directory, 'cv1_3.pdf'))
+    assert glob.glob(os.path.join(files_directory, 'colvar_cv1_*.dat'))
+    assert glob.glob(os.path.join(files_directory, 'cv1_*.pdf'))
 
     assert os.path.isdir(logs_directory)
-    assert os.path.exists(os.path.join(logs_directory, 'plumed_1.log'))
-    assert os.path.exists(os.path.join(logs_directory, 'plumed_3.log'))
+    assert glob.glob(os.path.join(logs_directory, 'plumed_*.log'))

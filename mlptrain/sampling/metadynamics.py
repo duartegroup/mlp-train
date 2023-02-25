@@ -131,8 +131,8 @@ class Metadynamics:
                    bias=bias,
                    **kwargs)
 
-        move_files(['.dat'], 'plumed_files/width_estimation')
-        move_files(['.log'], 'plumed_logs/width_estimation')
+        move_files(['.dat'], dst_folder='plumed_files/width_estimation')
+        move_files(['.log'], dst_folder='plumed_logs/width_estimation')
         os.chdir('plumed_files/width_estimation')
 
         widths = []
@@ -267,8 +267,8 @@ class Metadynamics:
 
             combined_traj.save(filename='combined_trajectory.xyz')
 
-        move_files(['.dat'], 'plumed_files')
-        move_files(['.log'], 'plumed_logs')
+        move_files(['.dat'], dst_folder='plumed_files')
+        move_files(['.log'], dst_folder='plumed_logs')
 
         finish_metad = time.perf_counter()
         logger.info('Metadynamics done in '
@@ -312,7 +312,7 @@ class Metadynamics:
         """
         Executes multiple well-tempered metadynamics runs in parallel with a
         provided sequence of biasfactors and plots the resulting trajectories,
-        useful for estimating the optimal biasfactor value
+        useful for estimating the optimal biasfactor value.
 
         -----------------------------------------------------------------------
         Arguments:
@@ -416,8 +416,8 @@ class Metadynamics:
                                bias=bias,
                                **kwargs)
 
-        move_files(['.dat'], 'plumed_files/multiple_biasfactors')
-        move_files(['.log'], 'plumed_logs/multiple_biasfactors')
+        move_files(['.dat'], dst_folder='plumed_files/multiple_biasfactors')
+        move_files(['.log'], dst_folder='plumed_logs/multiple_biasfactors')
         os.chdir('plumed_files/multiple_biasfactors')
 
         filenames = [f'colvar_{cv.name}_{kwargs["_idx"]}.dat'
@@ -544,7 +544,7 @@ class Metadynamics:
                                         stderr=logfile)
                     compute_fes.wait()
 
-        move_files(['.log'], '../plumed_logs')
+        move_files(['.log'], dst_folder='../plumed_logs')
 
         return None
 

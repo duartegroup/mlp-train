@@ -140,10 +140,12 @@ def unique_dirname(dirname: str) -> str:
     return dirname
 
 
-def move_files(moved_exts: List[str], folder: str) -> None:
+def move_files(moved_exts: List[str],
+               dst_folder: str,
+               src_folder: Optional[str] = None) -> None:
     """
-    Move files with given extensions from the current directory to a new
-    directory specified by the folder.
+    Move files with given extensions from directory src_folder to a new
+    directory dst_folder.
 
     ---------------------------------------------------------------------------
     Arguments:
@@ -151,16 +153,22 @@ def move_files(moved_exts: List[str], folder: str) -> None:
         moved_exts (List[str]): List of extentions specifying which files
                                 are moved
 
-        folder (str): Name of the new directory where files are moved.
+        dst_folder (str): Name of the new directory where files are moved
+
+        src_folder (str): Name of the directory where files are located
     """
 
-    if not os.path.exists(folder):
-        os.makedirs(folder)
+    if src_folder is None:
+        src_folder = os.getcwd()
 
-    for filename in os.listdir():
+    if not os.path.exists(dst_folder):
+        os.makedirs(dst_folder)
+
+    for filename in os.listdir(src_folder):
         if any(filename.endswith(ext) for ext in moved_exts):
-            destination = os.path.join(folder, filename)
-            shutil.move(src=filename, dst=destination)
+            source = os.path.join(src_folder, filename)
+            destination = os.path.join(dst_folder, filename)
+            shutil.move(src=source, dst=destination)
 
     return None
 
