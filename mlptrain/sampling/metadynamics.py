@@ -9,7 +9,7 @@ from subprocess import Popen
 from copy import deepcopy
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.sampling.md import run_mlp_md
-from mlptrain.sampling.plumed import PlumedBias, plot_cv
+from mlptrain.sampling.plumed import PlumedBias, plot_cv, plot_trajectory
 from mlptrain.utils import move_files, unique_dirname
 from mlptrain.config import Config
 from mlptrain.log import logger
@@ -295,6 +295,147 @@ class Metadynamics:
                           **kwargs)
 
         return traj
+
+    def try_multiple_biasfactors(self,
+                                 configuration: 'mlptrain.Configuration',
+                                 mlp: 'mlptrain.potentials._base.MLPotential',
+                                 temp: float,
+                                 interval: int,
+                                 dt: float,
+                                 pace: int,
+                                 width: Union[Sequence[float], float],
+                                 height: float,
+                                 biasfactors: Sequence[float],
+                                 plotted_cvs: Optional = None,
+                                 n_walkers: int = 1,
+                                 **kwargs) -> None:
+        """
+        Executes multiple well-tempered metadynamics runs in parallel with a
+        provided sequence of biasfactors and plots the resulting trajectories,
+        useful for estimating the optimal biasfactor value
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            configuration: Configuration from which the simulation is started
+
+            mlp: Machine learnt potential
+
+            temp (float): Temperature in K to initialise velocities and to run
+                          NVT MD. Must be positive
+
+            interval (int): Interval between saving the geometry
+
+            dt (float): Time-step in fs
+
+            pace (int): τ_G/dt, interval at which a new gaussian is placed
+
+            width (float): σ, standard deviation (parameter describing the
+                           width) of the placed gaussian
+
+            height (float): ω, initial height of placed gaussians
+
+            biasfactors: Sequence of γ, describes how quickly gaussians shrink,
+                         larger values make gaussians to be placed less
+                         sensitive to the bias potential
+
+            plotted_cvs: Sequence of one or two PlumedCV objects which are
+                         going to be plotted, must be a subset for CVs used to
+                         define Metadynamics
+
+            n_walkers (int): Number of walkers to use in each simulation
+
+        -------------------
+        Keyword Arguments:
+
+            {fs, ps, ns}: Simulation time in some units
+        """
+
+        logger.info(f'Trying {len(biasfactors)} different biasfactors')
+
+        # Dummy bias which stores cvs, useful for checking cvs input
+        if plotted_cvs is not None:
+            cvs_holder = PlumedBias(plotted_cvs)
+
+        else:
+            cvs_holder = self.bias
+
+        if len(cvs_holder.cvs) > 2:
+            raise NotImplementedError('Plotting using more than two CVs is not '
+                                      'implemented')
+
+        if not all(cv in self.bias.cvs for cv in cvs_holder.cvs):
+            raise ValueError('At least one of the supplied CVs are not within '
+                             'the set of CVs used to define Metadynamics')
+
+        self.bias._set_metad_params(width=width,
+                                    pace=pace,
+                                    height=height)
+
+        n_processes = min(Config.n_cores, len(biasfactors))
+        logger.info('Running Well-Tempered Metadynamics simulations '
+                    f'with {len(biasfactors)} different biasfactors, '
+                    f'{n_processes} simulation(s) run in parallel, '
+                    f'{n_walkers} walker(s) per simulation')
+
+        with mp.get_context('spawn').Pool(processes=n_processes) as pool:
+
+            for idx, biasfactor in enumerate(biasfactors):
+
+                bias = deepcopy(self.bias)
+                bias.biasfactor = biasfactor
+
+                kwargs_single = deepcopy(kwargs)
+                kwargs_single['_idx'] = idx + 1
+
+                pool.apply_async(func=self._try_single_biasfactor,
+                                 args=(configuration,
+                                       mlp,
+                                       temp,
+                                       interval,
+                                       dt,
+                                       bias,
+                                       cvs_holder.cvs),
+                                 kwds=kwargs_single)
+
+            pool.close()
+            pool.join()
+
+        return None
+
+    def _try_single_biasfactor(self, configuration, mlp, temp, interval, dt,
+                               bias, plotted_cvs, **kwargs):
+        """Executes a single well-tempered metadynamics run and plots the
+        resulting trajectory"""
+
+        self._run_single_metad(configuration=configuration,
+                               mlp=mlp,
+                               temp=temp,
+                               interval=interval,
+                               dt=dt,
+                               bias=bias,
+                               **kwargs)
+
+        move_files(['.dat'], 'plumed_files/multiple_biasfactors')
+        move_files(['.log'], 'plumed_logs/multiple_biasfactors')
+        os.chdir('plumed_files/multiple_biasfactors')
+
+        filenames = [f'colvar_{cv.name}_{kwargs["_idx"]}.dat'
+                     for cv in plotted_cvs]
+
+        for filename, cv in zip(filenames, plotted_cvs):
+            plot_cv(filename=filename,
+                    cv_units=cv.units,
+                    label=str(kwargs['_idx']))
+
+        if len(plotted_cvs) == 2:
+            plot_trajectory(filenames=filenames,
+                            cvs_units=[cv.units for cv in plotted_cvs],
+                            label=str(kwargs['_idx']))
+
+        os.chdir('../..')
+
+        return None
 
     def compute_fes(self,
                     n_bins: int = 300,

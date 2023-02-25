@@ -101,3 +101,35 @@ def test_estimate_width():
 
     assert os.path.isdir(logs_directory)
     assert os.path.exists(os.path.join(logs_directory, 'plumed_1.log'))
+
+
+@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+def test_try_multiple_biasfactors():
+
+    cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
+    metad = mlt.Metadynamics(cv1)
+
+    metad.try_multiple_biasfactors(configuration=_h2_configuration(),
+                                   mlp=TestPotential('1D'),
+                                   temp=300,
+                                   interval=10,
+                                   dt=1,
+                                   pace=100,
+                                   width=0.05,
+                                   height=0.1,
+                                   biasfactors=range(5, 16, 5),
+                                   plotted_cvs=cv1,
+                                   ps=1)
+
+    files_directory = 'plumed_files/multiple_biasfactors'
+    logs_directory = 'plumed_logs/multiple_biasfactors'
+
+    assert os.path.isdir(files_directory)
+    assert os.path.exists(os.path.join(files_directory, 'colvar_cv1_1.dat'))
+    assert os.path.exists(os.path.join(files_directory, 'colvar_cv1_3.dat'))
+    assert os.path.exists(os.path.join(files_directory, 'cv1_1.pdf'))
+    assert os.path.exists(os.path.join(files_directory, 'cv1_3.pdf'))
+
+    assert os.path.isdir(logs_directory)
+    assert os.path.exists(os.path.join(logs_directory, 'plumed_1.log'))
+    assert os.path.exists(os.path.join(logs_directory, 'plumed_3.log'))

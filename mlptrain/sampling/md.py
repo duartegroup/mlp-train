@@ -304,12 +304,18 @@ def _write_plumed_setup(bias, interval, **kwargs) -> List:
     if '_method' in kwargs and kwargs['_method'] == 'metadynamics':
         hills_filename = f'HILLS_{kwargs["_idx"]}.dat'
 
+        if bias.biasfactor is not None:
+            biasfactor_setup = f'BIASFACTOR={bias.biasfactor} '
+
+        else:
+            biasfactor_setup = ''
+
         metad_setup = ['METAD '
                        f'ARG={bias.cv_sequence} '
                        f'PACE={bias.pace} '
                        f'HEIGHT={bias.height} '
                        f'SIGMA={bias.width_sequence} '
-                       f'BIASFACTOR={bias.biasfactor} '
+                       f'{biasfactor_setup}'
                        f'FILE={hills_filename}']
         setup.extend(metad_setup)
 

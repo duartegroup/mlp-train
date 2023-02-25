@@ -80,7 +80,7 @@ class PlumedBias:
                           pace: int,
                           width: Union[Sequence[float], float],
                           height: float,
-                          biasfactor: float) -> None:
+                          biasfactor: Optional[float] = None) -> None:
         """
         Define parameters used in well-tempered metadynamics.
 
@@ -129,8 +129,8 @@ class PlumedBias:
         else:
             self.height = height
 
-        if biasfactor < 1:
-            raise ValueError('Bias factor (γ) must be larger than one')
+        if biasfactor is not None and biasfactor < 1:
+            raise ValueError('Biasfactor (γ) must be larger than one')
 
         else:
             self.biasfactor = biasfactor
