@@ -27,9 +27,9 @@ class Metadynamics:
     metadynamics bias and analysing the results"""
 
     def __init__(self,
-                 cvs: Union[Sequence['mlptrain._PlumedCV'],
-                                     'mlptrain._PlumedCV'],
-                 temp: Optional[float] = None):
+                 cvs:   Union[Sequence['mlptrain._PlumedCV'],
+                                       'mlptrain._PlumedCV'],
+                 temp:  Optional[float] = None):
         """
         Molecular dynamics using metadynamics bias. Used for calculating free
         energies (by using well-tempered metadynamics bias) and sampling
@@ -709,7 +709,9 @@ class Metadynamics:
         os.chdir('plumed_files/metadynamics')
 
         self._compute_fes_files(n_bins, cvs_bounds)
-        cv_grids, fes_grids = self._fes_files_to_grids(energy_units, n_bins)
+        cv_grids, fes_grids = self._fes_files_to_grids(energy_units,
+                                                       n_bins,
+                                                       relative=True)
 
         os.chdir('../..')
 
@@ -718,8 +720,8 @@ class Metadynamics:
 
         return None
 
-    @staticmethod
-    def _plot_1d_fes(fes_npy:               str,
+    def _plot_1d_fes(self,
+                     fes_npy:               str,
                      energy_units:          str = 'kcal mol-1',
                      block_analysis_error:  Optional[str] = None
                      ) -> None:
@@ -729,7 +731,7 @@ class Metadynamics:
 
         fes = np.load(fes_npy)
 
-        cv = fes[0]
+        cv_grid = fes[0]
         fes_grids = fes[1:]
 
         mean_fes = np.mean(fes_grids, axis=0)
@@ -745,10 +747,16 @@ class Metadynamics:
 
         fig, ax = plt.subplots()
 
-        ax.plot(cv, mean_fes)
-        ax.fill_between(cv, lower_bound, upper_bound, alpha=0.5)
+        ax.plot(cv_grid, mean_fes)
+        ax.fill_between(cv_grid, lower_bound, upper_bound, alpha=0.5)
 
-        ax.set_xlabel('Reaction coordinate')
+        cv = self.bias.cvs[0]
+        if cv.units is not None:
+            ax.set_xlabel(f'{cv.name} / {cv.units}')
+
+        else:
+            ax.set_xlabel(f'{cv.name}')
+
         ax.set_ylabel(r'$\Delta G$ / '
                       f'{convert_exponents(energy_units)}')
 
@@ -763,8 +771,8 @@ class Metadynamics:
 
         return None
 
-    @staticmethod
-    def _plot_2d_fes(fes_npy:               str,
+    def _plot_2d_fes(self,
+                     fes_npy:               str,
                      energy_units:          str = 'kcal mol-1',
                      block_analysis_error:  Optional[str] = None
                      ) -> None:
@@ -774,8 +782,8 @@ class Metadynamics:
 
         fes = np.load(fes_npy)
 
-        cv1 = fes[0]
-        cv2 = fes[1]
+        cv1_grid = fes[0]
+        cv2_grid = fes[1]
         fes_grids = fes[2:]
 
         mean_fes = np.mean(fes_grids, axis=0)
@@ -787,25 +795,40 @@ class Metadynamics:
             std_error = 1 / np.sqrt(len(fes_grids)) * block_analysis_error
 
         fig, (ax_mean, ax_std_error) = plt.subplots(nrows=1, ncols=2,
-                                                    figsize=(10, 5))
+                                                    figsize=(12, 5))
 
-        mean_contourf = ax_mean.contourf(cv1, cv2, mean_fes,
-                                         range(0, 70),
+        mean_contourf = ax_mean.contourf(cv1_grid, cv2_grid, mean_fes, 100,
                                          cmap='jet')
-        ax_mean.contour = (cv1, cv2, mean_fes, range(0, 70, 5))
+        ax_mean.contour = (cv1_grid, cv2_grid, mean_fes, 20)
 
         mean_cbar = fig.colorbar(mean_contourf, ax=ax_mean)
         mean_cbar.set_label(label=r'$\Delta G$ / '
                                   f'{convert_exponents(energy_units)}')
 
-        std_error_contourf = ax_std_error.contourf(cv1, cv2, std_error,
-                                                   range(0, 70),
+        std_error_contourf = ax_std_error.contourf(cv1_grid, cv2_grid,
+                                                   std_error, 100,
                                                    cmap='Blues')
-        ax_std_error.contour = (cv1, cv2, mean_fes, range(0, 70, 5))
+        ax_std_error.contour = (cv1_grid, cv2_grid, mean_fes, 20)
 
         std_error_cbar = fig.colorbar(std_error_contourf, ax=ax_std_error)
         std_error_cbar.set_label(label=r'$\sigma$ / '
                                        f'{convert_exponents(energy_units)}')
+
+        cv1 = self.bias.cvs[0]
+        cv2 = self.bias.cvs[1]
+        for ax in (ax_mean, ax_std_error):
+
+            if cv1.units is not None:
+                ax.set_xlabel(f'{cv1.name} / {cv1.units}')
+
+            else:
+                ax.set_xlabel(f'{cv1.name}')
+
+            if cv2.units is not None:
+                ax.set_ylabel(f'{cv2.name} / {cv2.units}')
+
+            else:
+                ax.set_ylabel(f'{cv2.name}')
 
         fig.tight_layout()
 
@@ -1021,7 +1044,7 @@ class Metadynamics:
 
         Returns:
 
-            (Tuple): Two grids containing CVs and FESs
+            (Tuple): Two grids containing CVs and FESs in supplied energy units
         """
 
         grid_shape = tuple([n_bins+1 for _ in range(self.n_cvs)])
@@ -1083,7 +1106,11 @@ class Metadynamics:
         Arguments:
 
             cvs_bounds: Specifies the range between which to compute the free
-                        energy for each collective variable,
+                        energy for each collective variable
+
+        Returns:
+
+            (Tuple): Two sequences of min and max parameters
         """
 
         if cvs_bounds is None:
@@ -1121,7 +1148,7 @@ class Metadynamics:
             return ','.join(min_params), ','.join(max_params)
 
     def _check_cv_bounds(self,
-                         cvs_bounds
+                         cvs_bounds: Sequence
                          ) -> Sequence:
         """
         Checks the validity of the supplied CVs bounds and returns the

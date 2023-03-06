@@ -10,8 +10,7 @@ class PlumedBias:
     simulations"""
 
     def __init__(self,
-                 cvs: Union[Sequence['_PlumedCV'],
-                                     '_PlumedCV'] = None,
+                 cvs:       Union[Sequence['_PlumedCV'], '_PlumedCV'] = None,
                  file_name: str = None):
         """
         Class for storing collective variables and parameters used in biased
@@ -78,10 +77,11 @@ class PlumedBias:
             return ','.join(str(width) for width in self.width)
 
     def _set_metad_params(self,
-                          pace: int,
-                          width: Union[Sequence[float], float],
-                          height: float,
-                          biasfactor: Optional[float] = None) -> None:
+                          pace:        int,
+                          width:       Union[Sequence[float], float],
+                          height:      float,
+                          biasfactor:  Optional[float] = None
+                          ) -> None:
         """
         Define parameters used in well-tempered metadynamics.
 
@@ -157,10 +157,10 @@ class _PlumedCV:
     variables"""
 
     def __init__(self,
-                 name: str = None,
-                 atom_groups: Sequence = None,
-                 file_name: str = None,
-                 component: Optional[str] = None):
+                 name:         str = None,
+                 atom_groups:  Sequence = None,
+                 file_name:    str = None,
+                 component:    Optional[str] = None):
         """
         This class contains methods to initialise PLUMED collective variables
         (CVs) and only acts as a parent class which should not be used to
@@ -328,8 +328,8 @@ class PlumedAverageCV(_PlumedCV):
     between multiple degrees of freedom"""
 
     def __init__(self,
-                 name: str,
-                 atom_groups: Sequence = None):
+                 name:         str,
+                 atom_groups:  Sequence = None):
         """
         PLUMED collective variable as an average between multiple degrees of
         freedom (distances, angles, torsions),
@@ -365,8 +365,8 @@ class PlumedDifferenceCV(_PlumedCV):
     between two degrees of freedom"""
 
     def __init__(self,
-                 name: str,
-                 atom_groups: Sequence = None):
+                 name:         str,
+                 atom_groups:  Sequence = None):
         """
         PLUMED collective variable as a difference between two degrees of
         freedom (distances, angles, torsions),
@@ -404,9 +404,9 @@ class PlumedCustomCV(_PlumedCV):
     """Class used to initialise a PLUMED collective variable from a file"""
 
     def __init__(self,
-                 file_name: str,
-                 component: Optional[str] = None,
-                 units: Optional[str] = None):
+                 file_name:  str,
+                 component:  Optional[str] = None,
+                 units:      Optional[str] = None):
         """
         PLUMED collective variable from a file. The file must be written in the
         style of a PLUMED input file, but only contain input used in the
@@ -434,11 +434,11 @@ class PlumedCustomCV(_PlumedCV):
         self.units = units
 
 
-def plot_cv(filename: str,
-            time_units: str = 'ps',
-            cv_units: Optional[str] = None,
-            cv_limits: Optional[Sequence[float]] = None,
-            label: Optional[str] = None
+def plot_cv(filename:    str,
+            time_units:  str = 'ps',
+            cv_units:    Optional[str] = None,
+            cv_limits:   Optional[Sequence[float]] = None,
+            label:       Optional[str] = None
             ) -> None:
     """
     Plots a collective variable as a function of time from a given colvar file.
@@ -496,10 +496,10 @@ def plot_cv(filename: str,
     return None
 
 
-def plot_trajectory(filenames: Sequence[str],
-                    cvs_units: Optional[Sequence[str]] = None,
-                    cvs_limits: Optional[Sequence[Sequence[float]]] = None,
-                    label: Optional[str] = None
+def plot_trajectory(filenames:   Sequence[str],
+                    cvs_units:   Optional[Sequence[str]] = None,
+                    cvs_limits:  Optional[Sequence[Sequence[float]]] = None,
+                    label:       Optional[str] = None
                     ) -> None:
     """
     Plots the trajectory of the system by tracking two collective variables
