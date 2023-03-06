@@ -1,3 +1,4 @@
+import glob
 import os
 import time
 import numpy as np
@@ -43,7 +44,8 @@ def test_window_umbrella():
                                    interval=5,
                                    dt=0.5,
                                    n_windows=3,
-                                   fs=1000)
+                                   fs=1000,
+                                   save_sep=False)
 
     # Sampling with a high force constant should lead to fitted Gaussians
     # that closely match the reference (target) values
@@ -51,7 +53,8 @@ def test_window_umbrella():
         assert window.fitted_gaussian is not None
         assert np.isclose(window.fitted_gaussian.mean, window.zeta_ref, atol=0.1)
 
-    assert os.path.exists('combined_windows.xyz')
+    assert os.path.exists('trajectories/combined_trajectory.xyz')
+    assert glob.glob('trajectories/trajectory_*.traj')
     assert os.path.exists('fitted_data.pdf')
 
 
@@ -114,16 +117,16 @@ def test_umbrella_sparse_traj():
                                    fs=100,
                                    save_sep=True)
 
-    assert os.path.exists('us_trajectories')
-    assert os.path.isdir('us_trajectories')
+    assert os.path.exists('trajectories')
+    assert os.path.isdir('trajectories')
 
     previous_window_traj = mlt.ConfigurationSet()
-    previous_window_traj.load_xyz(filename='us_trajectories/window_4.xyz',
+    previous_window_traj.load_xyz(filename='trajectories/window_4.xyz',
                                   charge=0,
                                   mult=1)
 
     middle_window_traj = mlt.ConfigurationSet()
-    middle_window_traj.load_xyz(filename='us_trajectories/window_5.xyz',
+    middle_window_traj.load_xyz(filename='trajectories/window_5.xyz',
                                 charge=0,
                                 mult=1)
 
@@ -148,7 +151,8 @@ def test_umbrella_save_load():
                                    interval=5,
                                    dt=0.5,
                                    n_windows=3,
-                                   fs=100)
+                                   fs=100,
+                                   save_sep=False)
 
     umbrella.save(folder_name='tmp_us')
     assert os.path.exists('tmp_us') and os.path.isdir('tmp_us')

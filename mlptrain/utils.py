@@ -1,47 +1,59 @@
 import os
 import re
 import shutil
+import numpy as np
 from tempfile import mkdtemp
 from functools import wraps
-from typing import Optional, List
+from typing import Optional, List, Sequence
+from ase import units as ase_units
 
 
-def work_in_tmp_dir(kept_exts:   Optional[List[str]] = None,
-                    copied_exts: Optional[List[str]] = None):
+def work_in_tmp_dir(kept_substrings:   Optional[Sequence[str]] = None,
+                    copied_substrings: Optional[Sequence[str]] = None):
     """
     Execute a function in a temporary directory
 
     ---------------------------------------------------------------------------
     Arguments:
-        kept_exts: File extensions copied back from the tmp dir
 
-        copied_exts: File extensions that are copied to the tmp dir
+        kept_substrings: List of substrings with which files are copied back
+                         from the temporary directory
+                         e.g. '.json', 'trajectory_1.traj'
+
+        copied_substrings: List of substrings with which files are copied to
+                           the temporary directory
     """
 
     def func_decorator(func):
 
         @wraps(func)
         def wrapped_function(*args, **kwargs):
+
             here_path = os.getcwd()
             tmpdir_path = mkdtemp()
 
-            for item in os.listdir(here_path):
+            if copied_substrings is not None:
 
-                if copied_exts is None:
-                    continue
+                for filename in os.listdir(here_path):
+                    if _name_contains_substring(name=filename,
+                                                substrings=copied_substrings,
+                                                regex=False):
 
-                if any(item.endswith(ext) for ext in copied_exts):
-                    # logger.info(f'Copying {item}')
-                    shutil.copy(item, tmpdir_path)
+                        shutil.copy(src=os.path.join(here_path, filename),
+                                    dst=os.path.join(tmpdir_path, filename))
 
             # Move directories and execute
             os.chdir(tmpdir_path)
             out = func(*args, **kwargs)
 
-            if kept_exts is not None:
+            if kept_substrings is not None:
+
                 for filename in os.listdir(tmpdir_path):
-                    if any(filename.endswith(ext) for ext in kept_exts):
-                        shutil.copy(src=filename,
+                    if _name_contains_substring(name=filename,
+                                                substrings=kept_substrings,
+                                                regex=False):
+
+                        shutil.copy(src=os.path.join(tmpdir_path, filename),
                                     dst=os.path.join(here_path, filename))
 
             os.chdir(here_path)
@@ -55,6 +67,24 @@ def work_in_tmp_dir(kept_exts:   Optional[List[str]] = None,
     return func_decorator
 
 
+def _name_contains_substring(name: str,
+                             substrings: Sequence[str],
+                             regex: bool
+                             ) -> bool:
+    """Returns True if one of the regex or regular substrings are found
+    in the name"""
+
+    if regex:
+        for substr in substrings:
+            if re.search(substr, name) is not None:
+                return True
+
+        return False
+
+    else:
+        return any(substr in name for substr in substrings)
+
+
 def work_in_dir(dirname: str):
     """
     Execute a function in a different directory.
@@ -62,7 +92,7 @@ def work_in_dir(dirname: str):
     ---------------------------------------------------------------------------
     Arguments:
 
-        dirname (str): Name of the directory
+        dirname: (str) Name of the directory
     """
 
     def func_decorator(func):
@@ -82,90 +112,91 @@ def work_in_dir(dirname: str):
     return func_decorator
 
 
-def unique_filename(filename: str) -> str:
+def unique_name(name: str,
+                path: Optional[str] = None
+                ) -> str:
     """
-    Return a unique filename based on not clashing with other files with the
-    same. Append 0, 1... iteratively until something unique is found.
+    Returns a unique name for a file or directory in the specified directory
+    by adding bck0, bck1, ... to the front of the name until a unique name
+    is found.
 
     ---------------------------------------------------------------------------
     Arguments:
 
-        filename (str): Name of the file
+        name: (str) Name of the file or directory
+
+        path: (str) Path of the directory where the uniqueness of the name
+              is checked
 
     Returns:
 
-        (str): Unique name which contains the name of the file as a root
+        (str): Unique name
     """
-    if '.' not in filename:
-        raise ValueError('Filename must have an extension to be uniquified!')
 
-    basename = ".".join(filename.split('.')[:-1])
-    ext = filename.split('.')[-1]
+    def _name_exists():
+        if path is not None:
+            return os.path.exists(os.path.join(path, name))
 
-    if not _name_exists(basename, ext):
-        return filename
+        else:
+            return os.path.exists(name)
 
-    old_basename = basename
     i = 0
-    while _name_exists(basename, ext):
-        basename = f'{old_basename}_{i}'
+    old_name = name
+    while _name_exists():
+        name = f'bck{i}_{old_name}'
         i += 1
 
-    return f'{basename}.{ext}'
+    return name
 
 
-def unique_dirname(dirname: str) -> str:
+def move_files(moved_substrings: List[str],
+               dst_folder:       str,
+               src_folder:       Optional[str] = None,
+               unique:           bool = True,
+               regex:            bool = False
+               ) -> None:
     """
-    Return a unique directory name based on not clashing with other files with
-    the same. Append 0, 1... iteratively until something unique is found.
+    Move files with given regex or regular substrings from a directory
+    src_folder to a directory dst_folder. If dst_folder already exists
+    the function renames the existing folder (in the case of unique == True).
 
     ---------------------------------------------------------------------------
     Arguments:
 
-        dirname (str): Name of the directory
+        moved_substrings: List of regex substrings specifying which files
+                          are moved
 
-    Returns
+        dst_folder: Name of the new directory where files are moved
 
-        (str): Unique name which contains the name of the directory as a root
-    """
-    if not _name_exists(dirname):
-        return dirname
+        src_folder: Name of the directory where files are located
 
-    old_dirname = dirname
-    i = 0
-    while _name_exists(dirname):
-        dirname = f'{old_dirname}_{i}'
-        i += 1
+        unique: (bool) If False the existing directory is not renamed and the
+                files are moved to that directory
 
-    return dirname
-
-
-def move_files(moved_exts: List[str],
-               dst_folder: str,
-               src_folder: Optional[str] = None) -> None:
-    """
-    Move files with given extensions from directory src_folder to a new
-    directory dst_folder.
-
-    ---------------------------------------------------------------------------
-    Arguments:
-
-        moved_exts (List[str]): List of extentions specifying which files
-                                are moved
-
-        dst_folder (str): Name of the new directory where files are moved
-
-        src_folder (str): Name of the directory where files are located
+        regex: (bool) If True the supplied substrings will be interpreted as
+                      regex patterns
     """
 
     if src_folder is None:
         src_folder = os.getcwd()
 
-    if not os.path.exists(dst_folder):
+    if os.path.exists(dst_folder) and unique:
+
+        name = dst_folder.split('/')[-1]
+        path = '/'.join(dst_folder.split('/')[:-1])
+        unique_dst_folder = os.path.join(path, unique_name(name, path))
+
+        os.rename(dst_folder, unique_dst_folder)
+        os.makedirs(dst_folder)
+
+    elif not os.path.exists(dst_folder):
         os.makedirs(dst_folder)
 
     for filename in os.listdir(src_folder):
-        if any(filename.endswith(ext) for ext in moved_exts):
+        if _name_contains_substring(name=filename,
+                                    substrings=moved_substrings,
+                                    regex=regex):
+
             source = os.path.join(src_folder, filename)
             destination = os.path.join(dst_folder, filename)
             shutil.move(src=source, dst=destination)
@@ -173,43 +204,91 @@ def move_files(moved_exts: List[str],
     return None
 
 
-def _name_exists(basename: str,
-                 extension: Optional[str] = None) -> bool:
-    """Return a bool based on whether a file or a folder with the given name
-    already exists in the current directory"""
+def convert_exponents(string: str) -> str:
+    """
+    Finds exponents in a string and modifies the string such that the exponents
+    are shown as exponents in plots.
 
-    if extension is None:
-        return os.path.exists(basename)
+    ---------------------------------------------------------------------------
+    Arguments:
+
+        string: String to be modified
+
+    Returns
+
+        (str): The modified string
+    """
+
+    def _modified_exponent(exponent):
+        return f'$^{{{exponent.group(2)}}}$'
+
+    exponent_pattern = re.compile(r'(\^?)(-?\d+)')
+
+    return re.sub(exponent_pattern, _modified_exponent, string)
+
+
+def convert_ase_time(time_array: np.ndarray,
+                     units: str) -> np.ndarray:
+    """
+    Converts ASE time units to different time units.
+
+    ---------------------------------------------------------------------------
+    Arguments:
+
+        time_array: (np.ndarray) Numpy array containing time in ase units
+
+        units: (str) Name of the units to convert to
+
+    Returns:
+
+        (np.ndarray): Numpy array containing time in the other units
+    """
+
+    if units == 'fs':
+        conversion = 1 / ase_units.fs
+        time_array *= conversion
+
+    elif units == 'ps':
+        conversion = 1 / (ase_units.fs * 10**3)
+        time_array *= conversion
+
+    elif units == 'ns':
+        conversion = 1 / (ase_units.fs * 10**6)
+        time_array *= conversion
 
     else:
-        return os.path.exists(f'{basename}.{extension}')
+        raise ValueError(f'Unknown time time_units: {units}')
+
+    return time_array
 
 
-def _newest_dirname(basename: str) -> str:
-    """Return a dirname with a highest coefficient which would correspond to
-    the newest directory created with a given basename using unique_dirname"""
+def convert_ase_energy(energy_array: np.ndarray,
+                       units: str) -> np.ndarray:
+    """
+    Converts ASE energy units to different energy units.
 
-    _basenames = []
-    for filename in os.listdir():
-        if basename in filename:
-            _basenames.append(filename)
+    ---------------------------------------------------------------------------
+    Arguments:
 
-    if len(_basenames) == 1:
-        newest_dirname = basename
+        energy_array: (np.ndarray) Numpy array containing energy in ase units
+
+        units: Name of the units to convert to
+
+    Returns:
+
+        (np.ndarray): Numpy array containing energy in the other units
+    """
+
+    if units.lower() == 'ev':
+        pass
+
+    elif units.lower() == 'kcal mol-1':
+        energy_array *= 23.060541945329334
+
+    elif units.lower() == 'kj mol-1':
+        energy_array *= 96.48530749925793
 
     else:
-        index_pattern = re.compile(r'(?<=_)(\d+)(?=\.|$)')
-        largest_index = 0
+        raise ValueError(f'Unknown energy units: {units}')
 
-        for _basename in _basenames:
-            matched_object = index_pattern.search(_basename)
-
-            if matched_object is not None:
-                index = int(matched_object.group())
-
-                if index > largest_index:
-                    largest_index = index
-
-        newest_dirname = f'{basename}_{largest_index}'
-
-    return newest_dirname
+    return energy_array

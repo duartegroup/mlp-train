@@ -23,7 +23,7 @@ def test_plumed_cv_from_atom_groups():
     cv2 = mlt.PlumedAverageCV('cv2', (0, 1, 2))
 
     assert cv2.name == 'cv2'
-    assert cv2.units == '°'
+    assert cv2.units == 'rad'
     assert cv2.dof_names == ['cv2_ang1']
     assert cv2.setup == ['cv2_ang1: ANGLE ATOMS=1,2,3',
                          'cv2: CUSTOM '
@@ -116,7 +116,10 @@ def test_plumed_bias_from_file():
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
 def test_plumed_plot():
 
-    mlt.plot_cv(filename='colvar1.dat',
+    colvar1 = 'test_plumed_plot/colvar1.dat'
+    colvar2 = 'test_plumed_plot/colvar2.dat'
+
+    mlt.plot_cv(filename=colvar1,
                 time_units='fs',
                 cv_units='Å',
                 cv_limits=(0.5, 1.5),
@@ -124,7 +127,7 @@ def test_plumed_plot():
 
     assert os.path.exists('cv1_0.pdf')
 
-    mlt.plot_trajectory(filenames=('colvar1.dat', 'colvar2.dat'),
+    mlt.plot_trajectory(filenames=(colvar1, colvar2),
                         cvs_units=('Å', 'Å'),
                         cvs_limits=((0.5, 1.5), (0.5, 1.5)),
                         label='0')

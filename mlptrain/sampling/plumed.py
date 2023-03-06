@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Sequence, Optional, Union, List
-from ase import units as ase_units
+from typing import Sequence, Optional, Union
+from mlptrain.utils import convert_ase_time
 from mlptrain.log import logger
 
 
@@ -25,11 +25,12 @@ class PlumedBias:
 
             cvs: Sequence of PLUMED collective variables
 
-            file_name (str): Complete PLUMED input file
+            file_name: (str) Complete PLUMED input file
         """
 
         self.setup = None
         self.pace = self.width = self.height = self.biasfactor = None
+        self.restart = False
 
         if file_name is not None:
             self._from_file(file_name)
@@ -87,14 +88,14 @@ class PlumedBias:
         -----------------------------------------------------------------------
         Arguments:
 
-            pace (int): τ_G/dt, interval at which a new gaussian is placed
+            pace: (int) τ_G/dt, interval at which a new gaussian is placed
 
-            width (float): σ, standard deviation (parameter describing the
+            width: (float) σ, standard deviation (parameter describing the
                            width) of the placed gaussian
 
-            height (float): ω, initial height of placed gaussians
+            height: (float) ω, initial height of placed gaussians
 
-            biasfactor (float): γ, describes how quickly gaussians shrink,
+            biasfactor: (float) γ, describes how quickly gaussians shrink,
                                 larger values make gaussians to be placed
                                 less sensitive to the bias potential
         """
@@ -177,19 +178,19 @@ class _PlumedCV:
         -----------------------------------------------------------------------
         Arguments:
 
-            name (str): Name of the collective variable (only for generating
+            name: (str) Name of the collective variable (only for generating
                         CVs from atom_groups, the name when generating CVs from
                         a file is taken directly from the file)
 
-            atom_groups (Sequence[Sequence[int]]): List of atom index sequences
-                                                which are used to generate DOFs,
-                                                e.g. [(0, 1), (2, 3)];
-                                                     [0, 1, 2]
+            atom_groups: (Sequence[Sequence[int]]) List of atom index sequences
+                          which are used to generate DOFs,
+                          e.g. [(0, 1), (2, 3)];
+                               [0, 1, 2]
 
-            file_name (str): Name of the PLUMED file used to generate a CV
+            file_name: (str) Name of the PLUMED file used to generate a CV
                              from that file
 
-            component (str): Name of a component of the last CV in the supplied
+            component: (str) Name of a component of the last CV in the supplied
                              PLUMED input file to use as a collective variable,
                              e.g. 'spath' for PATH collective variable.
         """
@@ -288,14 +289,14 @@ class _PlumedCV:
         if len(atom_list) == 3:
             dof_name = f'{self.name}_ang{idx + 1}'
             self.dof_names.append(dof_name)
-            self.dof_units.append('°')
+            self.dof_units.append('rad')
             self.setup.extend([f'{dof_name}: '
                                f'ANGLE ATOMS={atoms}'])
 
         if len(atom_list) == 4:
             dof_name = f'{self.name}_tor{idx + 1}'
             self.dof_names.append(dof_name)
-            self.dof_units.append('°')
+            self.dof_units.append('rad')
             self.setup.extend([f'{dof_name}: '
                                f'TORSION ATOMS={atoms}'])
 
@@ -338,9 +339,9 @@ class PlumedAverageCV(_PlumedCV):
         -----------------------------------------------------------------------
         Arguments:
 
-            name (str): Name of the collective variable
+            name: (str) Name of the collective variable
 
-            atom_groups (Sequence[Sequence[int]]): List of atom index sequences
+            atom_groups: (Sequence[Sequence[int]]) List of atom index sequences
                                                 which are used to generate DOFs
         """
 
@@ -375,9 +376,9 @@ class PlumedDifferenceCV(_PlumedCV):
         -----------------------------------------------------------------------
         Arguments:
 
-            name (str): Name of the collective variable
+            name: (str) Name of the collective variable
 
-            atom_groups (Sequence[Sequence[int]]): List of atom index sequences
+            atom_groups: (Sequence[Sequence[int]]) List of atom index sequences
                                                 which are used to generate DOFs
         """
 
@@ -419,13 +420,13 @@ class PlumedCustomCV(_PlumedCV):
         -----------------------------------------------------------------------
         Arguments:
 
-            file_name (str): Name of the PLUMED file used to generate a CV
+            file_name: (str) Name of the PLUMED file used to generate a CV
                              from that file
 
-            component (str): Name of a component of the last CV in the supplied
+            component: (str) Name of a component of the last CV in the supplied
                              PLUMED input file to use as a collective variable
 
-            units (str): Units of the collective variable, used in plots
+            units: (str) Units of the collective variable, used in plots
         """
         super().__init__(file_name=file_name,
                          component=component)
@@ -437,7 +438,8 @@ def plot_cv(filename: str,
             time_units: str = 'ps',
             cv_units: Optional[str] = None,
             cv_limits: Optional[Sequence[float]] = None,
-            label: Optional[str] = None) -> None:
+            label: Optional[str] = None
+            ) -> None:
     """
     Plots a collective variable as a function of time from a given colvar file.
     Only plots the first collective variable in the colvar file.
@@ -445,15 +447,15 @@ def plot_cv(filename: str,
     ---------------------------------------------------------------------------
     Arguments:
 
-        filename (str): Name of the colvar file used for plotting
+        filename: (str) Name of the colvar file used for plotting
 
-        time_units (str): Units of time
+        time_units: (str) Units of time
 
         cv_units: Units of the CV to be plotted
 
         cv_limits: Min and max limits of the CV in the plot
 
-        label (str): Label attached to the name of the plot, useful when
+        label: (str) Label attached to the name of the plot, useful when
                      multiple plots of the same CVs are generated in the same
                      directory
     """
@@ -462,24 +464,10 @@ def plot_cv(filename: str,
         header = f.readlines()[0]
 
     cv_name = header.split()[3]  # (#! FIELDS time cv_name ...)
-    time_array = np.loadtxt(filename, usecols=0)
+    ase_time_array = np.loadtxt(filename, usecols=0)
     cv_array = np.loadtxt(filename, usecols=1)
 
-    # Reconvert time from ASE time_units
-    if time_units == 'fs':
-        conversion = 1 / ase_units.fs
-        time_array *= conversion
-
-    elif time_units == 'ps':
-        conversion = 1 / (ase_units.fs * 10**3)
-        time_array *= conversion
-
-    elif time_units == 'ns':
-        conversion = 1 / (ase_units.fs * 10**6)
-        time_array *= conversion
-
-    else:
-        raise ValueError(f'Unknown time time_units: {time_units}')
+    time_array = convert_ase_time(ase_time_array, time_units)
 
     fig, ax = plt.subplots()
     ax.scatter(time_array, cv_array)
@@ -511,7 +499,8 @@ def plot_cv(filename: str,
 def plot_trajectory(filenames: Sequence[str],
                     cvs_units: Optional[Sequence[str]] = None,
                     cvs_limits: Optional[Sequence[Sequence[float]]] = None,
-                    label: Optional[str] = None) -> None:
+                    label: Optional[str] = None
+                    ) -> None:
     """
     Plots the trajectory of the system by tracking two collective variables
     using two colvar files. The function only works for two collective
@@ -526,7 +515,7 @@ def plot_trajectory(filenames: Sequence[str],
 
         cvs_limits: Min and max limits of the CVs in the plot
 
-        label (str): Label attached to the name of the plot, useful when
+        label: (str) Label attached to the name of the plot, useful when
                      multiple plots of the same CVs are generated in the same
                      directory
     """

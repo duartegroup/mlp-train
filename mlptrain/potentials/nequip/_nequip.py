@@ -6,7 +6,7 @@ from subprocess import Popen, PIPE
 from mlptrain.potentials._base import MLPotential
 from mlptrain.config import Config
 from mlptrain.log import logger
-from mlptrain.utils import unique_filename
+from mlptrain.utils import unique_name
 
 
 class NequIP(MLPotential):
@@ -198,7 +198,7 @@ class NequIP(MLPotential):
         """Clean up the directories created by NeQUIP train"""
 
         shutil.rmtree('processed')
-        shutil.make_archive(unique_filename(f'{self.name}.zip')[:-4],
+        shutil.make_archive(unique_name(f'{self.name}.zip')[:-4],
                             'zip',
                             self.name)
         try:

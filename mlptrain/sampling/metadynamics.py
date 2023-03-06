@@ -7,12 +7,19 @@ from typing import Optional, Sequence, Union, Tuple, List
 from multiprocessing import Pool
 from subprocess import Popen
 from copy import deepcopy
+from ase import units as ase_units
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.sampling.md import run_mlp_md
 from mlptrain.sampling.plumed import PlumedBias, plot_cv, plot_trajectory
-from mlptrain.utils import move_files, unique_dirname
 from mlptrain.config import Config
 from mlptrain.log import logger
+from mlptrain.utils import (
+    unique_name,
+    move_files,
+    convert_ase_time,
+    convert_ase_energy,
+    convert_exponents,
+)
 
 
 class Metadynamics:
@@ -38,15 +45,24 @@ class Metadynamics:
 
     @property
     def n_cvs(self) -> int:
-        """Returns the number of collective variables used in metadynamics"""
+        """Number of collective variables used in metadynamics"""
         return len(self.bias.cvs)
+
+    @property
+    def kbt(self):
+        """Value of k_B*T in ASE units"""
+        return ase_units.kB * self.temp
 
     def estimate_width(self,
                        configurations: Union['mlptrain.Configuration',
                                              'mlptrain.ConfigurationSet'],
-                       mlp: 'mlptrain.potentials._base.MLPotential',
-                       plot: bool = False,
-                       **kwargs) -> List:
+                       mlp:            'mlptrain.potentials._base.MLPotential',
+                       temp:           float = 300,
+                       interval:       int = 10,
+                       dt:             float = 1,
+                       plot:           bool = False,
+                       **kwargs
+                       ) -> List:
         """
         Estimates optimal widths (σ) to be used in metadynamics.
 
@@ -58,8 +74,15 @@ class Metadynamics:
 
             mlp: Machine learnt potential
 
-            plot (bool): If True plots trajectories of collective variables as
-                         a function of time
+            temp: (float) Temperature in K to initialise velocities and to run
+                  NVT MD. Must be positive
+
+            interval: (int) Interval between saving the geometry
+
+            dt: (float) Time-step in fs
+
+            plot: (bool) If True plots trajectories of collective variables as
+                  a function of time
 
         -------------------
         Keyword Arguments:
@@ -73,25 +96,22 @@ class Metadynamics:
                     e.g. [0.02, 0.03] for two CVs
         """
 
+        start = time.perf_counter()
+
         if not any(key in kwargs for key in ['fs', 'ps', 'ns']):
             kwargs['ps'] = 10
-
-        temp = 300
-        dt = 1
-        interval = 10
 
         configuration_set = ConfigurationSet()
         configuration_set = configuration_set + configurations
 
         logger.info('Estimating optimal width (σ)')
 
-        width_processes = []
-        all_widths = []
+        width_processes, all_widths = [], []
 
         n_processes = min(Config.n_cores, len(configuration_set))
 
         # Spawn is likely to make it slower, but fork in combination
-        # with plotting gives errors on MacOS > 10.13
+        # with plotting is likely to give errors on MacOS > 10.13
         with mp.get_context('spawn').Pool(processes=n_processes) as pool:
 
             for idx, configuration in enumerate(configuration_set):
@@ -112,8 +132,20 @@ class Metadynamics:
 
             for width_process in width_processes:
                 all_widths.append(width_process.get())
+                all_widths = np.array(all_widths)
 
-        return [min(all_widths[:][idx]) for idx in range(self.n_cvs)]
+        move_files([r'colvar_\w+_\d+\.dat'],
+                   dst_folder='plumed_files/width_estimation',
+                   regex=True)
+
+        move_files([r'\w+_config\d+\.pdf'],
+                   dst_folder='width_estimation',
+                   regex=True)
+
+        finish = time.perf_counter()
+        logger.info(f'Width estimation done in {(finish - start) / 60:.1f} m')
+
+        return list(np.min(all_widths, axis=0))
 
     def _get_width_for_single(self, configuration, mlp, temp, dt, interval,
                               bias, plot, **kwargs) -> List:
@@ -129,11 +161,8 @@ class Metadynamics:
                    dt=dt,
                    interval=interval,
                    bias=bias,
+                   kept_substrings=['.dat'],
                    **kwargs)
-
-        move_files(['.dat'], dst_folder='plumed_files/width_estimation')
-        move_files(['.log'], dst_folder='plumed_logs/width_estimation')
-        os.chdir('plumed_files/width_estimation')
 
         widths = []
 
@@ -148,29 +177,28 @@ class Metadynamics:
             if plot is True:
                 plot_cv(filename=colvar_filename,
                         cv_units=cv.units,
-                        label=str(kwargs["_idx"]))
-
-        os.chdir('../..')
+                        label=f'config{kwargs["_idx"]}')
 
         return widths
 
     def run_metadynamics(self,
                          configuration: 'mlptrain.Configuration',
-                         mlp: 'mlptrain.potentials._base.MLPotential',
-                         temp: float,
-                         interval: int,
-                         dt: float,
-                         pace: int,
-                         width: Union[Sequence[float], float],
-                         height: float,
-                         biasfactor: float,
-                         n_runs: int = 1,
-                         n_walkers: int = 1,
-                         save_sep: bool = False,
-                         **kwargs) -> None:
+                         mlp:           'mlptrain.potentials._base.MLPotential',
+                         temp:          float,
+                         interval:      int,
+                         dt:            float,
+                         pace:          int = 500,
+                         height:        Optional[float] = None,
+                         width:         Optional = None,
+                         biasfactor:    Optional[float] = None,
+                         n_runs:        int = 1,
+                         save_sep:      bool = True,
+                         restart:       bool = False,
+                         **kwargs
+                         ) -> None:
         """
-        Perform multiple well-tempered metadynamics runs in parallel, generate
-        .xyz files containing trajectories of the runs, generate PLUMED files
+        Perform multiple metadynamics runs in parallel, generate .xyz and .traj
+        files containing trajectories of the runs, generate PLUMED files
         containing deposited gaussians and trajectories in terms of the CVs.
 
         -----------------------------------------------------------------------
@@ -180,43 +208,99 @@ class Metadynamics:
 
             mlp: Machine learnt potential
 
-            temp (float): Temperature in K to initialise velocities and to run
-                          NVT MD. Must be positive
+            temp: (float) Temperature in K to initialise velocities and to run
+                  NVT MD. Must be positive
 
-            interval (int): Interval between saving the geometry
+            interval: (int) Interval between saving the geometry
 
-            dt (float): Time-step in fs
+            dt: (float) Time-step in fs
 
-            pace (int): τ_G/dt, interval at which a new gaussian is placed
+            pace: (int) τ_G/dt, interval at which a new gaussian is placed
 
-            width (float): σ, standard deviation (parameter describing the
-                           width) of the placed gaussian
+            height: (float) ω, initial height of placed gaussians
 
-            height (float): ω, initial height of placed gaussians
+            width: (List[float] | float | None) σ, standard deviation
+                   (parameter describing the width) of placed gaussians,
+                   if not supplied it is estimated automatically
 
-            biasfactor (float): γ, describes how quickly gaussians shrink,
+            biasfactor: (float) γ, describes how quickly gaussians shrink,
                                 larger values make gaussians to be placed
                                 less sensitive to the bias potential
 
-            n_runs (int): Number of times to run metadynamics
+            n_runs: (int) Number of times to run metadynamics
 
-            n_walkers (int): Number of walkers to use in each simulation
+            save_sep: (bool) If True saves trajectories of
+                             each simulation separately
 
-            save_sep (bool): If True saves trajectories of
-                             each window separately
-
+            restart: (bool) If True restarts the most recent metadynamics
+                            simulation
         -------------------
         Keyword Arguments:
 
             {fs, ps, ns}: Simulation time in some units
         """
-        if temp <= 0:
-            raise ValueError('Temperature must be positive and non-zero for '
-                             'well-tempered metadynamics')
 
         start_metad = time.perf_counter()
 
         self.temp = temp
+        if height is None:
+            if temp > 0:
+                logger.info('Height was not supplied, '
+                            'setting height to 0.5*k_B*T')
+
+                height = 0.5 * self.kbt
+
+            else:
+                raise ValueError('Height was not supplied')
+
+        if biasfactor is not None and temp <= 0:
+            raise ValueError('Temperature must be positive and non-zero for '
+                             'well-tempered metadynamics')
+
+        if restart:
+            if width is None:
+                raise ValueError('Make sure to use exactly the same width as '
+                                 'in the previous simulation')
+
+            if not os.path.exists('plumed_files/metadynamics'):
+                raise FileNotFoundError('Metadynamics folder not found, make '
+                                        'sure to run metadynamics before '
+                                        'trying to restart')
+
+            n_colvar_files = len([filename for filename in
+                                  os.listdir('plumed_files/metadynamics')
+                                  if 'colvar' in filename])
+
+            if n_colvar_files != n_runs:
+                raise NotImplementedError('Restart is implemented only if the '
+                                          'number of runs matches the number '
+                                          'of runs in the previous simulation')
+
+            move_files(['.dat'],
+                       dst_folder=os.getcwd(),
+                       src_folder=os.path.join(os.getcwd(),
+                                               'plumed_files/metadynamics'),
+                       unique=False)
+
+            move_files(['.traj'],
+                       dst_folder=os.getcwd(),
+                       src_folder=os.path.join(os.getcwd(),
+                                               'trajectories'),
+                       unique=False)
+
+            kept_substrings = None
+
+        else:
+            if width is None:
+                logger.info('Width parameters were not supplied to the '
+                            'metadynamics simulation, estimating widths '
+                            'automatically')
+
+                width = self.estimate_width(configurations=configuration,
+                                            mlp=mlp)
+
+            kept_substrings = ['.traj', '.dat']
+
         self.bias._set_metad_params(width=width,
                                     pace=pace,
                                     height=height,
@@ -224,12 +308,10 @@ class Metadynamics:
 
         metad_processes, metad_trajs = [], []
 
-        # TODO: Change if decide to use multiple walkers
         n_processes = min(Config.n_cores, n_runs)
-        logger.info(f'Running {n_runs} independent Well-Tempered '
-                    'Metadynamics simulation(s), '
+        logger.info(f'Running {n_runs} independent Metadynamics simulation(s), '
                     f'{n_processes} simulation(s) run in parallel, '
-                    f'{n_walkers} walker(s) per simulation')
+                    f'1 walker per simulation')
 
         with Pool(processes=n_processes) as pool:
 
@@ -245,7 +327,9 @@ class Metadynamics:
                                                        temp,
                                                        interval,
                                                        dt,
-                                                       self.bias),
+                                                       self.bias,
+                                                       kept_substrings,
+                                                       restart),
                                                  kwds=kwargs_single)
                 metad_processes.append(metad_process)
 
@@ -253,12 +337,13 @@ class Metadynamics:
                 metad_trajs.append(metad_process.get())
 
         if save_sep:
-            metad_folder = unique_dirname('metad_trajectories')
-            os.mkdir(metad_folder)
-
             for idx, metad_traj in enumerate(metad_trajs):
-                metad_traj.save(filename=os.path.join(metad_folder,
-                                                      f'metad_{idx+1}.xyz'))
+                metad_traj.save(filename=f'metad_{idx+1}.xyz')
+
+            move_files([r'metad_\d+\.xyz'],
+                       dst_folder='trajectories',
+                       regex=True,
+                       unique=True if not restart else False)
 
         else:
             combined_traj = ConfigurationSet()
@@ -267,8 +352,21 @@ class Metadynamics:
 
             combined_traj.save(filename='combined_trajectory.xyz')
 
-        move_files(['.dat'], dst_folder='plumed_files')
-        move_files(['.log'], dst_folder='plumed_logs')
+            move_files(['combined_trajectory.xyz'],
+                       dst_folder='trajectories',
+                       unique=True if not restart else False)
+
+        move_files([r'trajectory_\d+\.traj'],
+                   dst_folder='trajectories',
+                   regex=True,
+                   unique=False)
+
+        move_files(['.dat'],
+                   dst_folder='plumed_files/metadynamics',
+                   unique=True if not restart else False)
+
+        if restart:
+            self._remove_duplicate_frames()
 
         finish_metad = time.perf_counter()
         logger.info('Metadynamics done in '
@@ -277,11 +375,32 @@ class Metadynamics:
         return None
 
     def _run_single_metad(self, configuration, mlp, temp, interval, dt, bias,
-                          **kwargs):
-        """Initiates a single well-tempered metadynamics run"""
+                          kept_substrings=None, restart=False, **kwargs):
+        """Initiates a single metadynamics run"""
 
-        logger.info(f'Running Metadynamics simulation number '
-                    f'{kwargs["_idx"]}')
+        if restart:
+            logger.info(f'Restarting Metadynamics simulation number '
+                        f'{kwargs["_idx"]}')
+
+            restart_files = []
+
+            for cv in self.bias.cvs:
+                restart_files.append(f'colvar_{cv.name}_{kwargs["_idx"]}.dat')
+
+            restart_files.append(f'HILLS_{kwargs["_idx"]}.dat')
+            restart_files.append(f'trajectory_{kwargs["_idx"]}.traj')
+
+        else:
+            if bias.biasfactor is None:
+                logger.info('Running Metadynamics simulation '
+                            f'number {kwargs["_idx"]}')
+
+            else:
+                logger.info('Running Well-tempered Metadynamics simulation '
+                            f'number {kwargs["_idx"]} '
+                            f'with a biasfactor {bias.biasfactor}')
+
+            restart_files = None
 
         kwargs['n_cores'] = 1
         kwargs['_method'] = 'metadynamics'
@@ -292,23 +411,59 @@ class Metadynamics:
                           dt=dt,
                           interval=interval,
                           bias=bias,
+                          kept_substrings=kept_substrings,
+                          restart_files=restart_files,
                           **kwargs)
 
         return traj
 
+    @staticmethod
+    def _remove_duplicate_frames() -> None:
+        """Removes a duplicate frame from colvar files after restarting
+        metadynamics"""
+
+        os.chdir('plumed_files/metadynamics')
+
+        for filename in os.listdir():
+            if filename.startswith('colvar'):
+
+                with open(filename, 'r') as f:
+                    lines = f.readlines()
+
+                duplicate_index = None
+                for i, line in enumerate(lines):
+                    if line.startswith('#!') and i != 0:
+
+                        # First frame before the redundant header is a duplicate
+                        duplicate_index = i - 1
+                        break
+
+                if duplicate_index is None:
+                    raise TypeError('Duplicate frame was not found')
+
+                lines.pop(duplicate_index)
+
+                with open(filename, 'w') as f:
+                    for line in lines:
+                        f.write(line)
+
+        os.chdir('../..')
+
+        return None
+
     def try_multiple_biasfactors(self,
                                  configuration: 'mlptrain.Configuration',
-                                 mlp: 'mlptrain.potentials._base.MLPotential',
-                                 temp: float,
-                                 interval: int,
-                                 dt: float,
-                                 pace: int,
-                                 width: Union[Sequence[float], float],
-                                 height: float,
-                                 biasfactors: Sequence[float],
-                                 plotted_cvs: Optional = None,
-                                 n_walkers: int = 1,
-                                 **kwargs) -> None:
+                                 mlp:   'mlptrain.potentials._base.MLPotential',
+                                 temp:          float,
+                                 interval:      int,
+                                 dt:            float,
+                                 biasfactors:   Sequence[float],
+                                 pace:          Optional[int] = 500,
+                                 height:        Optional[float] = None,
+                                 width:         Optional = None,
+                                 plotted_cvs:   Optional = None,
+                                 **kwargs
+                                 ) -> None:
         """
         Executes multiple well-tempered metadynamics runs in parallel with a
         provided sequence of biasfactors and plots the resulting trajectories,
@@ -321,29 +476,28 @@ class Metadynamics:
 
             mlp: Machine learnt potential
 
-            temp (float): Temperature in K to initialise velocities and to run
+            temp: (float) Temperature in K to initialise velocities and to run
                           NVT MD. Must be positive
 
-            interval (int): Interval between saving the geometry
+            interval: (int) Interval between saving the geometry
 
-            dt (float): Time-step in fs
-
-            pace (int): τ_G/dt, interval at which a new gaussian is placed
-
-            width (float): σ, standard deviation (parameter describing the
-                           width) of the placed gaussian
-
-            height (float): ω, initial height of placed gaussians
+            dt: (float) Time-step in fs
 
             biasfactors: Sequence of γ, describes how quickly gaussians shrink,
                          larger values make gaussians to be placed less
                          sensitive to the bias potential
 
+            pace: (int) τ_G/dt, interval at which a new gaussian is placed
+
+            height: (float) ω, initial height of placed gaussians
+
+            width: (List[float] | float | None) σ, standard deviation
+                   (parameter describing the width) of placed gaussians,
+                   if not supplied it is estimated automatically
+
             plotted_cvs: Sequence of one or two PlumedCV objects which are
                          going to be plotted, must be a subset for CVs used to
-                         define Metadynamics
-
-            n_walkers (int): Number of walkers to use in each simulation
+                         define the Metadynamics object
 
         -------------------
         Keyword Arguments:
@@ -352,6 +506,25 @@ class Metadynamics:
         """
 
         logger.info(f'Trying {len(biasfactors)} different biasfactors')
+        start = time.perf_counter()
+
+        if temp <= 0:
+            raise ValueError('Temperature must be positive and non-zero for '
+                             'well-tempered metadynamics')
+
+        self.temp = temp
+        if height is None:
+            logger.info('Height was not supplied, setting height to 0.5*k_B*T')
+
+            height = 0.5 * self.kbt
+
+        if width is None:
+            logger.info('Width parameters were not supplied to the multiple '
+                        'biasfactor simulation, estimating widths '
+                        'automatically')
+
+            width = self.estimate_width(configurations=configuration,
+                                        mlp=mlp)
 
         # Dummy bias which stores cvs, useful for checking cvs input
         if plotted_cvs is not None:
@@ -366,7 +539,8 @@ class Metadynamics:
 
         if not all(cv in self.bias.cvs for cv in cvs_holder.cvs):
             raise ValueError('At least one of the supplied CVs are not within '
-                             'the set of CVs used to define Metadynamics')
+                             'the set of CVs used to define the Metadynamics '
+                             'object')
 
         self.bias._set_metad_params(width=width,
                                     pace=pace,
@@ -376,7 +550,7 @@ class Metadynamics:
         logger.info('Running Well-Tempered Metadynamics simulations '
                     f'with {len(biasfactors)} different biasfactors, '
                     f'{n_processes} simulation(s) run in parallel, '
-                    f'{n_walkers} walker(s) per simulation')
+                    f'1 walker per simulation')
 
         with mp.get_context('spawn').Pool(processes=n_processes) as pool:
 
@@ -401,6 +575,18 @@ class Metadynamics:
             pool.close()
             pool.join()
 
+        move_files([r'colvar_\w+_\d+\.dat'],
+                   dst_folder='plumed_files/multiple_biasfactors',
+                   regex=True)
+
+        move_files([r'\w+_biasf\d+\.pdf'],
+                   dst_folder='multiple_biasfactors',
+                   regex=True)
+
+        finish = time.perf_counter()
+        logger.info('Simulations with multiple biasfactors done in '
+                    f'{(finish - start) / 60:.1f} m')
+
         return None
 
     def _try_single_biasfactor(self, configuration, mlp, temp, interval, dt,
@@ -414,11 +600,8 @@ class Metadynamics:
                                interval=interval,
                                dt=dt,
                                bias=bias,
+                               kept_substrings=['.dat'],
                                **kwargs)
-
-        move_files(['.dat'], dst_folder='plumed_files/multiple_biasfactors')
-        move_files(['.log'], dst_folder='plumed_logs/multiple_biasfactors')
-        os.chdir('plumed_files/multiple_biasfactors')
 
         filenames = [f'colvar_{cv.name}_{kwargs["_idx"]}.dat'
                      for cv in plotted_cvs]
@@ -426,31 +609,91 @@ class Metadynamics:
         for filename, cv in zip(filenames, plotted_cvs):
             plot_cv(filename=filename,
                     cv_units=cv.units,
-                    label=str(kwargs['_idx']))
+                    label=f'biasf{bias.biasfactor}')
 
         if len(plotted_cvs) == 2:
             plot_trajectory(filenames=filenames,
                             cvs_units=[cv.units for cv in plotted_cvs],
-                            label=str(kwargs['_idx']))
-
-        os.chdir('../..')
+                            label=f'biasf{bias.biasfactor}')
 
         return None
 
-    def compute_fes(self,
-                    n_bins: int = 300,
-                    cvs_bounds: Optional[Sequence] = None) -> np.ndarray:
+    def block_analysis(self) -> None:
         """
-        Computes fes.dat files using generated HILLS.dat files from metadynamics
-        simulation, using fes.dat files creates grids which contain collective
-        variables and free energy surfaces (in eV), and saves the grids in .npy
-        format which can be used to plot the FES (other way to generate plots
-        is to open fes.dat with gnuplot).
+        Performs block analysis on the most recent metadynamics run.
 
         -----------------------------------------------------------------------
         Arguments:
 
-            n_bins (int): Number of bins to use in every dimension for fes file
+        """
+
+        return None
+
+    def plot_fes(self,
+                 energy_units:          str = 'kcal mol-1',
+                 n_bins:                int = 300,
+                 cvs_bounds:            Optional[Sequence] = None,
+                 fes_npy:               Optional[str] = None,
+                 block_analysis_error:  Optional[str] = None,
+                 ) -> None:
+        """
+        Plots the free energy surface using a supplied .npy file. If the file
+        is not given computes the file using HILLS.dat files from the most
+        recent metadynamics run.
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            energy_units: (str) Energy units to be used in plotting
+
+            n_bins: (int) Number of bins to use in every dimension for fes file
+                          generation from HILLS
+
+            cvs_bounds: Specifies the range between which to compute the free
+                        energy for each collective variable,
+                        e.g. [(0.8, 1.5), (80, 120)]
+
+            fes_npy: (str) File name of the .npy file used for plotting
+
+            block_analysis_error: (str) File name containing a standard error
+                                        grid from block analysis
+        """
+
+        if fes_npy is None:
+            if not os.path.exists('fes_raw.npy'):
+                self.compute_fes(energy_units, n_bins, cvs_bounds)
+
+            logger.info('Using fes_raw.npy for plotting')
+            fes_npy = 'fes_raw.npy'
+
+        if self.n_cvs == 1:
+            self._plot_1d_fes(fes_npy, energy_units, block_analysis_error)
+
+        elif self.n_cvs == 2:
+            self._plot_2d_fes(fes_npy, energy_units, block_analysis_error)
+
+        else:
+            raise NotImplementedError('Plotting FES is available only for one '
+                                      'and two collective variables')
+
+        return None
+
+    def compute_fes(self,
+                    energy_units:         str = 'kcal mol-1',
+                    n_bins:               int = 300,
+                    cvs_bounds:           Optional[Sequence] = None,
+                    ) -> None:
+        """
+        Generates fes.dat files from HILLS.dat files and computes a total grid
+        containing collective variable grids and free energy surface grids,
+        which is saved in the current directory as .npy file.
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            energy_units: (str) Energy units to be used in plotting
+
+            n_bins: (int) Number of bins to use in every dimension for fes file
                           generation from HILLS
 
             cvs_bounds: Specifies the range between which to compute the free
@@ -458,63 +701,263 @@ class Metadynamics:
                         e.g. [(0.8, 1.5), (80, 120)]
         """
 
-        if not os.path.exists('plumed_files'):
-            raise FileNotFoundError('Folder with PLUMED files not found, '
-                                    'make sure to run metadynamics before '
-                                    'computing the FES')
-
-        os.chdir('plumed_files')
+        os.chdir('plumed_files/metadynamics')
 
         self._compute_fes_files(n_bins, cvs_bounds)
+        cv_grids, fes_grids = self._fes_files_to_grids(energy_units, n_bins)
 
-        logger.info('Computing the free energy surface')
+        os.chdir('../..')
 
-        grid_shape = tuple([n_bins+1 for _ in range(self.n_cvs)])
+        fes_raw = np.concatenate((cv_grids, fes_grids), axis=0)
+        np.save('fes_raw.npy', fes_raw)
 
-        # Compute CV grids
-        cv_grids = []
-        for filename in os.listdir():
-            if filename.startswith('fes'):
+        return None
 
-                for idx in range(self.n_cvs):
-                    cv_vector = np.loadtxt(filename, usecols=idx)
+    @staticmethod
+    def _plot_1d_fes(fes_npy:              str,
+                     energy_units:         str = 'kcal mol-1',
+                     block_analysis_error:  Optional[str] = None
+                     ) -> None:
+        """Plots 1D mean free energy surface with standard error"""
 
-                    cv_grid = np.reshape(cv_vector, grid_shape)
-                    cv_grids.append(cv_grid)
+        logger.info('Plotting 1D FES')
 
-                # All fes files would generate same grids -> can break
-                break
+        fes = np.load(fes_npy)
 
-        # Compute fes grids
-        fes_grids = []
-        for filename in os.listdir():
-            if filename.startswith('fes'):
+        cv = fes[0]
+        fes_grids = fes[1:]
 
-                fes_vector = np.loadtxt(filename,
-                                        usecols=self.n_cvs)
+        mean_fes = np.mean(fes_grids, axis=0)
 
-                fes_grid = np.reshape(fes_vector, grid_shape)
-                fes_grids.append(fes_grid)
+        if block_analysis_error is None:
+            std_error = np.std(fes_grids, axis=0)
 
-        total_cv_grid = np.stack(cv_grids, axis=0)
-        total_fes_grid = np.stack(fes_grids, axis=0)
+        else:
+            std_error = 1 / np.sqrt(len(fes_grids)) * block_analysis_error
 
-        fes_raw = np.concatenate((total_cv_grid, total_fes_grid), axis=0)
-        np.save('../fes_raw.npy', fes_raw)
+        lower_bound = mean_fes - 1/2 * std_error
+        upper_bound = mean_fes + 1/2 * std_error
 
-        mean_fes_grid = np.mean(total_fes_grid, axis=0)
-        std_fes_grid = np.std(total_fes_grid, axis=0)
-        statistical_fes_grid = np.stack((mean_fes_grid, std_fes_grid), axis=0)
+        fig, ax = plt.subplots()
 
-        fes = np.concatenate((total_cv_grid, statistical_fes_grid), axis=0)
-        np.save('../fes.npy', fes)
+        ax.plot(cv, mean_fes)
+        ax.fill_between(cv, lower_bound, upper_bound, alpha=0.5)
 
-        os.chdir('..')
+        ax.set_xlabel('Reaction coordinate')
+        ax.set_ylabel(r'$\Delta G$ / '
+                      f'{convert_exponents(energy_units)}')
 
-        return fes
+        fig.tight_layout()
 
-    def _compute_fes_files(self, n_bins, cvs_bounds) -> None:
-        """Generate fes.dat files from HILLS.dat files"""
+        figname = 'metad_free_energy.pdf'
+        if os.path.exists(figname):
+            os.rename(figname, unique_name(figname))
+
+        fig.savefig(figname)
+        plt.close(fig)
+
+        return None
+
+    @staticmethod
+    def _plot_2d_fes(fes_npy:               str,
+                     energy_units:          str = 'kcal mol-1',
+                     block_analysis_error:  Optional[str] = None
+                     ) -> None:
+        """Plots 2D mean free energy surface with standard error"""
+
+        logger.info('Plotting 2D FES')
+
+        fes = np.load(fes_npy)
+
+        cv1 = fes[0]
+        cv2 = fes[1]
+        fes_grids = fes[2:]
+
+        mean_fes = np.mean(fes_grids, axis=0)
+
+        if block_analysis_error is None:
+            std_error = np.std(fes_grids, axis=0)
+
+        else:
+            std_error = 1 / np.sqrt(len(fes_grids)) * block_analysis_error
+
+        fig, (ax_mean, ax_std_error) = plt.subplots(nrows=1, ncols=2,
+                                                    figsize=(10, 5))
+
+        mean_contourf = ax_mean.contourf(cv1, cv2, mean_fes,
+                                         range(0, 70),
+                                         cmap='jet')
+        ax_mean.contour = (cv1, cv2, mean_fes, range(0, 70, 5))
+
+        mean_cbar = fig.colorbar(mean_contourf, ax=ax_mean)
+        mean_cbar.set_label(label=r'$\Delta G$ / '
+                                  f'{convert_exponents(energy_units)}')
+
+        std_error_contourf = ax_std_error.contourf(cv1, cv2, std_error,
+                                                   range(0, 70),
+                                                   cmap='Blues')
+        ax_std_error.contour = (cv1, cv2, mean_fes, range(0, 70, 5))
+
+        std_error_cbar = fig.colorbar(std_error_contourf, ax=ax_std_error)
+        std_error_cbar.set_label(label=r'$\sigma$ / '
+                                       f'{convert_exponents(energy_units)}')
+
+        fig.tight_layout()
+
+        figname = 'metad_free_energy.pdf'
+        if os.path.exists(figname):
+            os.rename(figname, unique_name(figname))
+
+        fig.savefig(figname)
+        plt.close(fig)
+
+        return None
+
+    def plot_fes_convergence(self,
+                             stride:       int,
+                             n_surfaces:   int = 5,
+                             time_units:   str = 'ps',
+                             energy_units: str = 'kcal mol-1',
+                             n_bins:       int = 300,
+                             cvs_bounds:   Optional[Sequence] = None,
+                             idx:          int = 1
+                             ) -> None:
+        """
+        Computes multiple fes.dat files from a HILLS_idx.dat file by summing
+        the deposited gaussians using a stride. Uses the computed files to plot
+        multiple FESs as a function of simulation time.
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            stride: (int) Interval that specifies the number new of gaussians
+                          that is put into subsequent fes_idx_*.dat file
+
+            n_surfaces: (int) Number of surfaces to be plotted (counting from
+                              the last computed surface), must not exceed the
+                              number of computed surfaces
+
+            time_units: (str) Time units to be used in plotting
+
+            energy_units: (str) Energy units to be used in plotting
+
+            n_bins: (int) Number of bins to use in every dimension for fes file
+                          generation from HILLS
+
+            cvs_bounds: Specifies the range between which to compute the free
+                        energy for each collective variable,
+                        e.g. [(0.8, 1.5), (80, 120)]
+
+            idx: (int) Integer which specifies which metadynamics run to use
+                       for plotting the FES convergence
+        """
+
+        os.chdir('plumed_files/metadynamics')
+
+        deposit_time = np.loadtxt(f'HILLS_{idx}.dat', usecols=0)
+
+        fes_time = [deposit_time[i]
+                    for i in range(stride - 1, len(deposit_time), stride)]
+
+        remove_duplicate = fes_time[-1] == deposit_time[-1]
+
+        fes_time = convert_ase_time(np.array(fes_time), time_units)
+        fes_time = np.round(fes_time, decimals=1)
+
+        # sum_hills generates surfaces with the stride,
+        # but it also always computes the final FES
+        self._compute_fes_files(n_bins=n_bins,
+                                cvs_bounds=cvs_bounds,
+                                stride=stride,
+                                idx=idx)
+
+        move_files([fr'fes_{idx}_\d+\.dat'],
+                   dst_folder='../fes_convergence',
+                   regex=True)
+        os.chdir('../fes_convergence')
+
+        # Remove the final FES if it has already been computed with the stride
+        if remove_duplicate:
+            os.remove(f'fes_{idx}_{len(fes_time)}.dat')
+
+        cv_grids, fes_grids = self._fes_files_to_grids(energy_units,
+                                                       n_bins,
+                                                       relative=True)
+
+        fes_diff_grids = np.diff(fes_grids, axis=0)
+        rms_diffs = [np.sqrt(np.mean(grid * grid)) for grid in fes_diff_grids]
+
+        fig, ax = plt.subplots()
+        ax.plot(fes_time[:-1], rms_diffs)
+
+        ax.set_xlabel(f'Time / {time_units}')
+        ax.set_ylabel(r'$\left\langle\Delta\Delta G^{2} \right\rangle^{1/2}$ / '
+                      f'{convert_exponents(energy_units)}')
+
+        fig.tight_layout()
+
+        fig.savefig('fes_convergence_diff.pdf')
+        plt.close(fig)
+
+        if self.n_cvs == 1:
+            plotted_cv = self.bias.cvs[0]
+
+            if n_surfaces > len(fes_grids):
+                raise ValueError('The number of surfaces requested to plot is '
+                                 'larger than the number of computed surfaces')
+
+            fig, ax = plt.subplots()
+            for i in range(len(fes_grids) - n_surfaces, len(fes_grids)):
+                ax.plot(cv_grids[0], fes_grids[i],
+                        label=f'{fes_time[i]} {time_units}')
+
+            ax.legend()
+
+            if plotted_cv.units is not None:
+                ax.set_xlabel(f'{plotted_cv.name} / {plotted_cv.units}')
+
+            else:
+                ax.set_xlabel(f'{plotted_cv.name}')
+
+            ax.set_ylabel(f'ΔG / {convert_exponents(energy_units)}')
+
+            fig.tight_layout()
+
+            fig.savefig('fes_convergence.pdf')
+            plt.close(fig)
+
+        os.chdir('../..')
+
+        move_files(['fes_convergence.pdf', 'fes_convergence_diff.pdf'],
+                   dst_folder='fes_convergence',
+                   src_folder='plumed_files/fes_convergence')
+
+        return None
+
+    def _compute_fes_files(self,
+                           n_bins:      int,
+                           cvs_bounds:  Optional[Sequence] = None,
+                           stride:      Optional[int] = None,
+                           idx:         Optional[int] = None
+                           ) -> None:
+        """
+        Generates fes.dat files from a HILLS.dat file.
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            n_bins: (int) Number of bins to use in every dimension for fes file
+                          generation from HILLS
+
+            cvs_bounds: Specifies the range between which to compute the free
+                        energy for each collective variable,
+
+            stride: (int) Interval that specifies the number new of gaussians
+                          that is put into subsequent fes_idx_*.dat file
+
+            idx: (int) Integer which specifies which metadynamics run to use
+                       for plotting the FES convergence
+        """
 
         if not any(filename.startswith('HILLS') for filename in os.listdir()):
             raise FileNotFoundError('No HILLS.dat files were found in '
@@ -526,31 +969,117 @@ class Metadynamics:
         bin_param_seq = ','.join(str(n_bins) for _ in range(self.n_cvs))
         min_param_seq, max_param_seq = self._get_min_max_params(cvs_bounds)
 
+        hills_filename_start = 'HILLS' if idx is None else f'HILLS_{idx}'
+
         for filename in os.listdir():
 
-            if filename.startswith('HILLS'):
+            if filename.startswith(hills_filename_start):
 
                 # HILLS_*.dat -> *
-                name_specifier = filename.split('_')[1][:-4]
+                index = filename[:-4].split('_')[-1]
 
-                with open(f'fes_{name_specifier}.log', 'w') as logfile:
-                    compute_fes = Popen(['plumed', 'sum_hills',
-                                         '--hills', filename,
-                                         '--outfile', f'fes_{name_specifier}.dat',
-                                         '--bin', bin_param_seq,
-                                         '--min', min_param_seq,
-                                         '--max', max_param_seq],
-                                        stdout=logfile,
-                                        stderr=logfile)
-                    compute_fes.wait()
+                if stride is None:
+                    fes_filename = f'fes_{index}.dat'
+                    stride_setup = ''
 
-        move_files(['.log'], dst_folder='../plumed_logs')
+                else:
+                    fes_filename = f'fes_{index}_'
+                    stride_setup = ['--stride', f'{stride}']
+
+                compute_fes = Popen(['plumed', 'sum_hills',
+                                     '--hills', filename,
+                                     '--outfile', fes_filename,
+                                     '--bin', bin_param_seq,
+                                     '--min', min_param_seq,
+                                     '--max', max_param_seq,
+                                     *stride_setup])
+                compute_fes.wait()
 
         return None
 
-    def _get_min_max_params(self, cvs_bounds) -> Tuple:
-        """Compute min and max parameters for generating fes.dat files from
-        HILLS.dat files"""
+    def _fes_files_to_grids(self,
+                            energy_units: str,
+                            n_bins:       int,
+                            relative:     bool = False
+                            ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Uses fes.dat files in a current directory to compute a grid containing
+        collective variables and a grid containing free energy surfaces.
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            energy_units: (str) Energy units to be used in plotting
+
+            n_bins: (int) Number of bins to use in every dimension for fes file
+                          generation from HILLS
+
+        Returns:
+
+            (Tuple): Two grids containing CVs and FESs
+        """
+
+        grid_shape = tuple([n_bins+1 for _ in range(self.n_cvs)])
+
+        # Sort names to retain ordering in the final grid
+        unordered_fes_files = [name for name in os.listdir() if 'fes' in name]
+
+        # 'fes_1_12.dat' -> int(112)
+        def _get_combined_index(name):
+            name_without_extension = name.split('.')[0]
+            indexes = name_without_extension.split('_')[1:]
+            combined_index = ''.join(indexes)
+
+            return int(combined_index)
+
+        fes_files = sorted(unordered_fes_files, key=_get_combined_index)
+
+        # Compute CV grids
+        cv_grids = []
+        for filename in fes_files:
+
+            for idx in range(self.n_cvs):
+                cv_vector = np.loadtxt(filename, usecols=idx)
+
+                cv_grid = np.reshape(cv_vector, grid_shape)
+                cv_grids.append(cv_grid)
+
+            # All fes files would generate same grids -> can break
+            break
+
+        # Compute fes grids
+        fes_grids = []
+        for filename in fes_files:
+
+            fes_vector = np.loadtxt(filename,
+                                    usecols=self.n_cvs)
+
+            fes_grid = np.reshape(fes_vector, grid_shape)
+            fes_grid = convert_ase_energy(fes_grid, energy_units)
+
+            if relative:
+                fes_grid -= np.min(fes_grid)
+
+            fes_grids.append(fes_grid)
+
+        total_cv_grid = np.stack(cv_grids, axis=0)
+        total_fes_grid = np.stack(fes_grids, axis=0)
+
+        return total_cv_grid, total_fes_grid
+
+    def _get_min_max_params(self,
+                            cvs_bounds: Optional[Sequence] = None
+                            ) -> Tuple:
+        """
+        Compute min and max parameters for generating fes.dat files from
+        HILLS.dat files.
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            cvs_bounds: Specifies the range between which to compute the free
+                        energy for each collective variable,
+        """
 
         if cvs_bounds is None:
             logger.info('CVs bounds were not supplied, generating min and max '
@@ -571,7 +1100,6 @@ class Metadynamics:
                 total_min = min(min_values)
                 total_max = max(max_values)
 
-                # TODO: Change based on sigma probably
                 extension = 0.2 * (total_max - total_min)
 
                 min_params.append(str(total_min - extension))
@@ -579,15 +1107,31 @@ class Metadynamics:
 
             return ','.join(min_params), ','.join(max_params)
 
-        cvs_bounds_checked = self._check_cv_bounds(cvs_bounds)
+        else:
+            cvs_bounds_checked = self._check_cv_bounds(cvs_bounds)
 
-        min_params = [str(cv_bounds[0]) for cv_bounds in cvs_bounds_checked]
-        max_params = [str(cv_bounds[1]) for cv_bounds in cvs_bounds_checked]
+            min_params = [str(cv_bounds[0]) for cv_bounds in cvs_bounds_checked]
+            max_params = [str(cv_bounds[1]) for cv_bounds in cvs_bounds_checked]
 
-        return ','.join(min_params), ','.join(max_params)
+            return ','.join(min_params), ','.join(max_params)
 
-    def _check_cv_bounds(self, cvs_bounds) -> Sequence:
-        """doc"""
+    def _check_cv_bounds(self,
+                         cvs_bounds
+                         ) -> Sequence:
+        """
+        Checks the validity of the supplied CVs bounds and returns the
+        bounds in a universal format.
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            cvs_bounds: Specifies the range between which to compute the free
+                        energy for each collective variable,
+
+        Returns:
+
+            (Sequence): CVs bounds in a universal format
+        """
 
         if isinstance(cvs_bounds, list) or isinstance(cvs_bounds, tuple):
 
@@ -614,119 +1158,3 @@ class Metadynamics:
                              'to the number of CVs used in metadynamics')
 
         return _cvs_bounds
-
-    def plot_fes(self,
-                 fes: Union[np.ndarray, str],
-                 units: str = 'kcal mol-1') -> None:
-        """
-        Plots FES (mean and standard deviation from multiple runs) for
-        metadynamics simulations involving one or two collective variables
-
-        -----------------------------------------------------------------------
-        Arguments:
-
-            fes (np.ndarray | str): Numpy grid of the free energy surface to be
-                                    plotted
-        """
-
-        if self.n_cvs == 1:
-            self._plot_1d_fes(fes, units)
-
-        elif self.n_cvs == 2:
-            self._plot_2d_fes(fes, units)
-
-        else:
-            raise NotImplementedError('Plotting FES is only available for one '
-                                      'and two collective variables')
-
-        return None
-
-    def _plot_1d_fes(self, fes, units) -> None:
-        """Plots 1D mean free energy surface with standard error from multiple
-        metadynamics runs"""
-
-        logger.info('Plotting 1D FES')
-
-        cv = fes[0]
-        mean_fes = fes[1]
-        std_error = fes[2]
-
-        if units.lower() == 'ev':
-            pass
-
-        elif units.lower() == 'kcal mol-1':
-            mean_fes *= 23.060541945329334  # eV -> kcal mol-1
-            std_error *= 23.060541945329334
-
-        elif units.lower() == 'kj mol-1':
-            mean_fes *= 96.48530749925793  # eV -> kJ mol-1
-            std_error *= 96.48530749925793
-
-        else:
-            raise ValueError(f'Unknown energy units: {units}')
-
-        lower_bound = mean_fes - 1/2 * std_error
-        upper_bound = mean_fes + 1/2 * std_error
-
-        fig, ax = plt.subplots()
-
-        ax.plot(cv, mean_fes)
-        ax.fill_between(cv, lower_bound, upper_bound, alpha=0.5)
-
-        ax.set_xlabel('Reaction coordinate')
-        ax.set_ylabel('ΔG')  # TODO: Change units from ASE to something else
-
-        fig.tight_layout()
-
-        fig.savefig('metad_free_energy.pdf')
-        plt.close(fig)
-
-        return None
-
-    def _plot_2d_fes(self, fes, units) -> None:
-        """Plots 2D mean free energy surface and standard error from multiple
-        metadynamics runs"""
-
-        logger.info('Plotting 2D FES')
-
-        cv1 = fes[0]
-        cv2 = fes[1]
-        mean_fes = fes[2]
-        std_error = fes[3]
-
-        if units.lower() == 'ev':
-            pass
-
-        elif units.lower() == 'kcal mol-1':
-            mean_fes *= 23.060541945329334  # eV -> kcal mol-1
-            std_error *= 23.060541945329334
-
-        elif units.lower() == 'kj mol-1':
-            mean_fes *= 96.48530749925793  # eV -> kJ mol-1
-            std_error *= 96.48530749925793
-
-        else:
-            raise ValueError(f'Unknown energy units: {units}')
-
-        fig, (ax_mean, ax_std_error) = plt.subplots(nrows=1, ncols=2,
-                                                    figsize=(10, 5))
-
-        mean_contourf = ax_mean.contourf(cv1, cv2, mean_fes, 20,
-                                         cmap='turbo')
-        ax_mean.contour = (cv1, cv2, mean_fes, 20)
-
-        mean_cbar = fig.colorbar(mean_contourf, ax=ax_mean)
-        mean_cbar.set_label(label=r'Free Energy $\Delta G$')
-
-        std_error_contourf = ax_std_error.contourf(cv1, cv2, std_error, 20,
-                                                   cmap='Blues')
-        ax_std_error.contour = (cv1, cv2, mean_fes, 20)
-
-        std_error_cbar = fig.colorbar(std_error_contourf, ax=ax_std_error)
-        std_error_cbar.set_label(label=r'Standard Error $\sigma$')
-
-        fig.tight_layout()
-        fig.savefig('metad_free_energy.pdf')
-        plt.close(fig)
-
-        return None

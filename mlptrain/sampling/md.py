@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import autode as ade
-from typing import Optional, Union, List
+from typing import Optional, Sequence, List, Tuple
 from numpy.random import RandomState
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
@@ -13,32 +13,36 @@ from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.md.langevin import Langevin
 from ase.md.verlet import VelocityVerlet
+from ase.io import read
 from ase import units as ase_units
 
 
-@work_in_tmp_dir(copied_exts=['.xml', '.json', '.pth'],
-                 kept_exts=['.dat', '.log'])
-def run_mlp_md(configuration: 'mlptrain.Configuration',
-               mlp:           'mlptrain.potentials._base.MLPotential',
-               temp:          float,
-               dt:            float,
-               interval:      int,
-               init_temp:     Optional[float] = None,
-               fbond_energy:  Optional[dict] = None,
-               bbond_energy:  Optional[dict] = None,
-               bias:          Optional[Union['mlptrain.Bias',
-                                             'mlptrain.PlumedBias']] = None,
+def run_mlp_md(configuration:      'mlptrain.Configuration',
+               mlp:                'mlptrain.potentials._base.MLPotential',
+               temp:               float,
+               dt:                 float,
+               interval:           int,
+               init_temp:          Optional[float] = None,
+               fbond_energy:       Optional[dict] = None,
+               bbond_energy:       Optional[dict] = None,
+               bias:               Optional = None,
+               restart_files:      Optional[List[str]] = None,
+               copied_substrings:  Sequence[str] = ('.xml', '.json', '.pth'),
+               kept_substrings:    Sequence[str] = None,
                **kwargs
                ) -> 'mlptrain.Trajectory':
     """
     Run molecular dynamics on a system using a MLP to predict energies and
-    forces and ASE to drive dynamics
+    forces and ASE to drive dynamics. The function is executed in a temporary
+    directory.
 
     ---------------------------------------------------------------------------
     Arguments:
-        configuration:
 
-        mlp:
+        configuration: Configuration from which the simulation is started
+                       (if restart is False)
+
+        mlp: Machine learnt potential
 
         temp: Temperature in K to initialise velocities and to run
               NVT MD, if temp=0 then will run NVE
@@ -50,28 +54,135 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
 
         interval: (int) Interval between saving the geometry
 
-
-        bbond_energy (dict | None):  Additional energy to add to a breaking
+        bbond_energy: (dict | None) Additional energy to add to a breaking
                          bond. e.g. bbond_energy={(0, 1), 0.1} Adds 0.1 eV
                          to the 'bond' between atoms 0 and 1 as velocities
                          shared between the atoms in the breaking bond direction
 
-        fbond_energy (dict | None): As bbond_energy but in the direction to
+        fbond_energy: (dict | None) As bbond_energy but in the direction to
                          form a bond
 
-        bias (mlptrain.Bias | mlptrain.PlumedBias): ASE or PLUMED constraint
-                                                    to use in the dynamics
+        bias: (mlptrain.Bias | mlptrain.PlumedBias) ASE or PLUMED constraint
+              to use in the dynamics
 
+        restart_files: List of files which are needed for restarting the
+                       simulation
+
+        kept_substrings: List of substrings with which files are copied back
+                         from the temporary directory
+                         e.g. '.json', 'trajectory_1.traj'
+
+        copied_substrings: List of substrings with which files are copied
+                           to the temporary directory
     ---------------
     Keyword Arguments:
 
         {fs, ps, ns}: Simulation time in some units
 
     Returns:
+
         (mlptrain.ConfigurationSet):
     """
 
-    logger.info('Running MLP MD')
+    restart = restart_files is not None
+
+    if kept_substrings is None:
+        kept_substrings = []
+
+    copied_substrings_list = list(copied_substrings)
+    kept_substrings_list = list(kept_substrings)
+
+    if restart:
+        logger.info('Restarting MLP MD')
+
+        if not any(file.endswith('.traj') for file in restart_files):
+
+            raise ValueError('Restaring a simulation requires a .traj file '
+                             'from the previous simulation')
+
+        if (isinstance(bias, PlumedBias) and
+                not any(file.endswith('.dat') for file in restart_files)):
+
+            raise ValueError('Restarting a PLUMED simulation requires a '
+                             'colvar.dat (and in the case of metadynamics also '
+                             'a HILLS.dat) file from the previous simulation')
+
+        copied_substrings_list.extend(restart_files)
+        kept_substrings_list.extend(restart_files)
+
+    else:
+        logger.info('Running MLP MD')
+
+    decorator = work_in_tmp_dir(copied_substrings=copied_substrings_list,
+                                kept_substrings=kept_substrings_list)
+
+    _run_mlp_md_decorated = decorator(_run_mlp_md)
+
+    traj = _run_mlp_md_decorated(configuration, mlp, temp, dt, interval,
+                                 init_temp, fbond_energy, bbond_energy,
+                                 bias, restart_files, **kwargs)
+
+    return traj
+
+
+def _run_mlp_md(configuration:  'mlptrain.Configuration',
+                mlp:            'mlptrain.potentials._base.MLPotential',
+                temp:           float,
+                dt:             float,
+                interval:       int,
+                init_temp:      Optional[float] = None,
+                fbond_energy:   Optional[dict] = None,
+                bbond_energy:   Optional[dict] = None,
+                bias:           Optional = None,
+                restart_files:  Optional[List[str]] = None,
+                **kwargs
+                ) -> 'mlptrain.Trajectory':
+    """
+    Run molecular dynamics on a system using a MLP to predict energies and
+    forces and ASE to drive dynamics.
+
+    ---------------------------------------------------------------------------
+    Arguments:
+
+        configuration: Configuration from which the simulation is started
+                       (if restart is False)
+
+        mlp: Machine learnt potential
+
+        temp: Temperature in K to initialise velocities and to run
+              NVT MD, if temp=0 then will run NVE
+
+        init_temp: (float | None) Initial temperature to initialise momenta
+                   with. If None then will be set to temp
+
+        dt: (float) Time-step in fs
+
+        interval: (int) Interval between saving the geometry
+
+        bbond_energy: (dict | None) Additional energy to add to a breaking
+                         bond. e.g. bbond_energy={(0, 1), 0.1} Adds 0.1 eV
+                         to the 'bond' between atoms 0 and 1 as velocities
+                         shared between the atoms in the breaking bond direction
+
+        fbond_energy: (dict | None) As bbond_energy but in the direction to
+                         form a bond
+
+        bias: (mlptrain.Bias | mlptrain.PlumedBias) ASE or PLUMED constraint
+              to use in the dynamics
+
+        restart_files: List of files which are needed for restarting the
+                       simulation
+    ---------------
+    Keyword Arguments:
+
+        {fs, ps, ns}: Simulation time in some units
+
+    Returns:
+
+        (mlptrain.ConfigurationSet):
+    """
+
+    restart = restart_files is not None
 
     n_cores = (kwargs['n_cores'] if 'n_cores' in kwargs
                else min(Config.n_cores, 8))
@@ -79,9 +190,14 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
     os.environ['OMP_NUM_THREADS'] = str(n_cores)
     logger.info(f'Using {n_cores} core(s) for MLP MD')
 
-    n_steps = _n_simulation_steps(dt, kwargs)
     # Transform dt from fs into ASE time units (for dynamics only)
     dt_ase = dt * ase_units.fs
+    n_steps = _n_simulation_steps(dt, kwargs)
+
+    if restart and n_steps % interval != 0:
+        raise NotImplementedError('Current implementation requires the number '
+                                  'of steps to be divisible by the interval '
+                                  'if the simulation is restarted')
 
     if mlp.requires_non_zero_box_size and configuration.box is None:
         logger.warning('Assuming vaccum simulation. Box size = 1000 nm^3')
@@ -89,18 +205,23 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
 
     ase_atoms = configuration.ase_atoms
 
-    _set_momenta(ase_atoms,
-                 temp=init_temp if init_temp is not None else temp,
-                 bbond_energy=bbond_energy,
-                 fbond_energy=fbond_energy)
+    _set_momenta_and_geometry(ase_atoms,
+                              temp=init_temp if init_temp is not None else temp,
+                              bbond_energy=bbond_energy,
+                              fbond_energy=fbond_energy,
+                              restart_files=restart_files)
 
-    traj = ASETrajectory("tmp.traj", 'w', ase_atoms)
-    energies = []
+    traj, traj_name = _initialise_traj(ase_atoms=ase_atoms,
+                                       restart_files=restart_files,
+                                       **kwargs)
+
+    n_previous_steps = interval * len(traj)
+    energies = [None for _ in range(len(traj))]
 
     def append_energy(_atoms=ase_atoms):
         energies.append(_atoms.get_potential_energy())
 
-    if temp > 0:                                         # Default Langevin NVT
+    if temp > 0:                                        # Default Langevin NVT
         dyn = Langevin(ase_atoms, dt_ase,
                        temperature_K=temp,
                        friction=0.02)
@@ -119,18 +240,16 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
 
         setup = _write_plumed_setup(bias, interval, **kwargs)
 
-        if '_idx' in kwargs:
-            logfile = f'plumed_{kwargs["_idx"]}.log'
-
-        else:
-            logfile = 'plumed.log'
-
         plumed_calc = Plumed(calc=mlp.ase_calculator,
                              input=setup,
-                             log=logfile,
                              timestep=dt_ase,
                              atoms=ase_atoms,
-                             kT=temp * ase_units.kB)
+                             kT=temp*ase_units.kB,
+                             restart=restart)
+
+        if restart:
+            plumed_calc.istep = n_previous_steps
+
         ase_atoms.calc = plumed_calc
 
         dyn.run(steps=n_steps)
@@ -145,9 +264,11 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
         dyn.run(steps=n_steps)
 
     else:
+        ase_atoms.calc = mlp.ase_calculator
+
         dyn.run(steps=n_steps)
 
-    traj = _convert_ase_traj('tmp.traj')
+    traj = _convert_ase_traj(traj_name)
 
     for i, (frame, energy) in enumerate(zip(traj, energies)):
         frame.update_attr_from(configuration)
@@ -157,10 +278,10 @@ def run_mlp_md(configuration: 'mlptrain.Configuration',
     return traj
 
 
-def _convert_ase_traj(filename: str) -> 'mlptrain.Trajectory':
+def _convert_ase_traj(traj_name: str) -> 'mlptrain.Trajectory':
     """Convert an ASE trajectory into an mlptrain Trajectory"""
 
-    ase_traj = ASETrajectory(filename)
+    ase_traj = ASETrajectory(traj_name)
     mlt_traj = Trajectory()
 
     # Iterate through each frame (set of atoms) in the trajectory
@@ -177,58 +298,115 @@ def _convert_ase_traj(filename: str) -> 'mlptrain.Trajectory':
     return mlt_traj
 
 
-def _set_momenta(ase_atoms:     'ase.atoms.Atoms',
-                 temp:          float,
-                 bbond_energy:  dict,
-                 fbond_energy:  dict):
-    """Set the initial momenta of some ASE atoms"""
+def _set_momenta_and_geometry(ase_atoms:      'ase.atoms.Atoms',
+                              temp:           float,
+                              bbond_energy:   dict,
+                              fbond_energy:   dict,
+                              restart_files:  List[str]):
+    """Set the initial momenta and geometry of the starting configuration"""
 
-    if temp > 0:
-        logger.info(f'Initialising initial velocities for {temp} K')
+    if restart_files is None:
 
-        MaxwellBoltzmannDistribution(ase_atoms, temperature_K=temp,
-                                     rng=RandomState())
+        if temp > 0:
+            logger.info(f'Initialising initial velocities for {temp} K')
+
+            MaxwellBoltzmannDistribution(ase_atoms, temperature_K=temp,
+                                         rng=RandomState())
+        else:
+            # Set the momenta to zero
+            ase_atoms.arrays['momenta'] = np.zeros((len(ase_atoms), 3))
+
+        def add_momenta(idx, vector, energy):
+            masses = ase_atoms.get_masses()
+            ase_atoms.arrays['momenta'][idx] = (np.sqrt(masses[idx] * energy)
+                                                * vector)
+            return None
+
+        coords = ase_atoms.positions
+        if bbond_energy is not None:
+            logger.info('Adding breaking bond momenta')
+
+            for atom_idxs, energy in bbond_energy.items():
+                i, j = atom_idxs
+                logger.info(f'Adding {energy} eV to break bond: {i}-{j}')
+
+                #    vec
+                #   <---   i--j         where i and j are two atoms
+                #
+                vec = coords[i] - coords[j]
+                vec /= np.linalg.norm(vec)    # normalise
+
+                add_momenta(idx=i, vector=vec, energy=energy)
+                add_momenta(idx=j, vector=-vec, energy=energy)
+
+        if fbond_energy is not None:
+            for atom_idxs, energy in fbond_energy.items():
+                i, j = atom_idxs
+                logger.info(f'Adding {energy} eV to form bond: {i}-{j}')
+
+                #    vec
+                #   --->   i--j         where i and j are two atoms
+                #
+                vec = coords[j] - coords[i]
+                vec /= np.linalg.norm(vec)  # normalise
+
+                add_momenta(idx=i, vector=vec, energy=energy)
+                add_momenta(idx=j, vector=-vec, energy=energy)
+
     else:
-        # Set the momenta to zero
-        ase_atoms.arrays['momenta'] = np.zeros((len(ase_atoms), 3))
+        logger.info('Initialising starting geometry and momenta from the '
+                    'last configuration')
 
-    def add_momenta(idx, vector, energy):
-        masses = ase_atoms.get_masses()
-        ase_atoms.arrays['momenta'][idx] = (np.sqrt(masses[idx] * energy) * vector)
-        return None
+        restart_traj = _get_restart_traj_name(restart_files)
+        last_configuration = read(restart_traj)
 
-    coords = ase_atoms.positions
-    if bbond_energy is not None:
-        logger.info('Adding breaking bond momenta')
-
-        for atom_idxs, energy in bbond_energy.items():
-            i, j = atom_idxs
-            logger.info(f'Adding {energy} eV to break bond: {i}-{j}')
-
-            #    vec
-            #   <---   i--j         where i and j are two atoms
-            #
-            vec = coords[i] - coords[j]
-            vec /= np.linalg.norm(vec)    # normalise
-
-            add_momenta(idx=i, vector=vec, energy=energy)
-            add_momenta(idx=j, vector=-vec, energy=energy)
-
-    if fbond_energy is not None:
-        for atom_idxs, energy in fbond_energy.items():
-            i, j = atom_idxs
-            logger.info(f'Adding {energy} eV to form bond: {i}-{j}')
-
-            #    vec
-            #   --->   i--j         where i and j are two atoms
-            #
-            vec = coords[j] - coords[i]
-            vec /= np.linalg.norm(vec)  # normalise
-
-            add_momenta(idx=i, vector=vec, energy=energy)
-            add_momenta(idx=j, vector=-vec, energy=energy)
+        ase_atoms.set_positions(last_configuration.get_positions())
+        ase_atoms.set_momenta(last_configuration.get_momenta())
 
     return None
+
+
+def _initialise_traj(ase_atoms:      'ase.atoms.Atoms',
+                     restart_files:  List[str],
+                     **kwargs
+                     ) -> Tuple:
+    """Initialise the trajectory and its name"""
+
+    if restart_files is None:
+
+        if '_idx' in kwargs:
+            traj_name = f'trajectory_{kwargs["_idx"]}.traj'
+
+        else:
+            traj_name = f'trajectory.traj'
+
+        traj = ASETrajectory(traj_name, 'w', ase_atoms)
+
+    else:
+        traj_name = _get_restart_traj_name(restart_files)
+
+        # Remove the last frame to avoid duplicate frames
+        previous_traj = ASETrajectory(traj_name, 'r', ase_atoms)
+        previous_atoms = previous_traj[:-1]
+
+        os.remove(traj_name)
+
+        traj = ASETrajectory(traj_name, 'w', ase_atoms)
+        for atoms in previous_atoms:
+            traj.write(atoms)
+
+    return traj, traj_name
+
+
+def _get_restart_traj_name(restart_files: List[str]) -> str:
+    """Returns the filename of the restart trajectory"""
+
+    restart_traj = None
+    for filename in restart_files:
+        if filename.endswith('.traj'):
+            restart_traj = filename
+
+    return restart_traj
 
 
 def _n_simulation_steps(dt: float,
@@ -310,12 +488,19 @@ def _write_plumed_setup(bias, interval, **kwargs) -> List:
         else:
             biasfactor_setup = ''
 
+        if bias.restart:
+            restart_setup = 'RESTART=YES'
+
+        else:
+            restart_setup = ''
+
         metad_setup = ['METAD '
                        f'ARG={bias.cv_sequence} '
                        f'PACE={bias.pace} '
                        f'HEIGHT={bias.height} '
                        f'SIGMA={bias.width_sequence} '
                        f'{biasfactor_setup}'
+                       f'{restart_setup}'
                        f'FILE={hills_filename}']
         setup.extend(metad_setup)
 

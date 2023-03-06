@@ -10,7 +10,7 @@ from mlptrain.sampling.bias import Bias
 from mlptrain.sampling.reaction_coord import DummyCoordinate
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.sampling.md import run_mlp_md
-from mlptrain.utils import unique_dirname
+from mlptrain.utils import move_files, convert_ase_energy, convert_exponents
 from mlptrain.config import Config
 from mlptrain.log import logger
 
@@ -272,7 +272,7 @@ class UmbrellaSampling:
                               init_ref:  Optional[float] = None,
                               final_ref: Optional[float] = None,
                               n_windows: int = 10,
-                              save_sep:  bool = False,
+                              save_sep:  bool = True,
                               **kwargs
                               ) -> None:
         """
@@ -305,18 +305,20 @@ class UmbrellaSampling:
             n_windows: (int) Number of windows to run in the umbrella sampling
 
             save_sep: (bool) If True saves trajectories of
-                             each window separately
+                      each window separately
 
         -------------------
         Keyword Arguments:
 
             {fs, ps, ns}: Simulation time in some units
         """
+
+        start_umbrella = time.perf_counter()
+
         if temp <= 0:
             raise ValueError('Temperature must be positive and non-zero for '
                              'umbrella sampling')
 
-        start_umbrella = time.perf_counter()
 
         self.temp = temp
         zeta_refs = self._reference_values(traj, n_windows, init_ref, final_ref)
@@ -372,19 +374,27 @@ class UmbrellaSampling:
                 window_trajs.append(window_traj)
 
         if save_sep:
-            us_folder = unique_dirname('us_trajectories')
-            os.mkdir(us_folder)
+            for idx, metad_traj in enumerate(window_trajs):
+                metad_traj.save(filename=f'window_{idx+1}.xyz')
 
-            for idx, window_traj in enumerate(window_trajs):
-                window_traj.save(filename=os.path.join(us_folder,
-                                                       f'window_{idx+1}.xyz'))
+            move_files([r'window_\d+\.xyz'],
+                       dst_folder='trajectories',
+                       regex=True)
 
         else:
             combined_traj = ConfigurationSet()
             for window_traj in window_trajs:
                 combined_traj += window_traj
 
-            combined_traj.save(filename='combined_windows.xyz')
+            combined_traj.save(filename='combined_trajectory.xyz')
+
+            move_files(['combined_trajectory.xyz'],
+                       dst_folder='trajectories')
+
+        move_files([r'trajectory_\d+\.traj'],
+                   dst_folder='trajectories',
+                   regex=True,
+                   unique=False)
 
         finish_umbrella = time.perf_counter()
         logger.info('Umbrella sampling done in '
@@ -410,6 +420,7 @@ class UmbrellaSampling:
                           dt=dt,
                           interval=interval,
                           bias=bias,
+                          kept_substrings=['.traj'],
                           **kwargs)
 
         return traj
@@ -637,19 +648,8 @@ def _plot_and_save_free_energy(free_energies,
 
         zetas: Values of the reaction coordinate
     """
-    if units.lower() == 'ev':
-        units_str = 'eV'
 
-    elif units.lower() == 'kcal mol-1':
-        free_energies *= 23.060541945329334  # eV -> kcal mol-1
-        units_str = 'kcal mol$^{-1}$'
-
-    elif units.lower() == 'kj mol-1':
-        free_energies *= 96.48530749925793  # eV -> kJ mol-1
-        units_str = 'kJ mol$^{-1}$'
-
-    else:
-        raise ValueError(f'Unknown energy units: {units}')
+    free_energies = convert_ase_energy(free_energies, units)
 
     rel_free_energies = free_energies - min(free_energies)
 
@@ -661,7 +661,7 @@ def _plot_and_save_free_energy(free_energies,
             print(zeta, free_energy, file=outfile)
 
     ax.set_xlabel('Reaction coordinate / Å')
-    ax.set_ylabel(f'ΔG / {units_str}')
+    ax.set_ylabel(f'ΔG / {convert_exponents(units)}')
 
     fig.tight_layout()
     fig.savefig('umbrella_free_energy.pdf')
