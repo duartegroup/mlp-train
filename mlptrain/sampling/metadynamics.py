@@ -276,16 +276,21 @@ class Metadynamics:
                                           'number of runs matches the number '
                                           'of runs in the previous simulation')
 
+            metad_path = os.path.join(os.getcwd(), 'plumed_files/metadynamics')
+            traj_path = os.path.join(os.getcwd(), 'trajectories')
+
+            for filename in os.listdir(metad_path):
+                if filename.startswith('fes'):
+                    os.remove(os.path.join(metad_path, filename))
+
             move_files(['.dat'],
                        dst_folder=os.getcwd(),
-                       src_folder=os.path.join(os.getcwd(),
-                                               'plumed_files/metadynamics'),
+                       src_folder=metad_path,
                        unique=False)
 
             move_files(['.traj'],
                        dst_folder=os.getcwd(),
-                       src_folder=os.path.join(os.getcwd(),
-                                               'trajectories'),
+                       src_folder=traj_path,
                        unique=False)
 
             kept_substrings = None
@@ -458,7 +463,7 @@ class Metadynamics:
                                  interval:      int,
                                  dt:            float,
                                  biasfactors:   Sequence[float],
-                                 pace:          Optional[int] = 500,
+                                 pace:          int = 500,
                                  height:        Optional[float] = None,
                                  width:         Optional = None,
                                  plotted_cvs:   Optional = None,
@@ -714,8 +719,8 @@ class Metadynamics:
         return None
 
     @staticmethod
-    def _plot_1d_fes(fes_npy:              str,
-                     energy_units:         str = 'kcal mol-1',
+    def _plot_1d_fes(fes_npy:               str,
+                     energy_units:          str = 'kcal mol-1',
                      block_analysis_error:  Optional[str] = None
                      ) -> None:
         """Plots 1D mean free energy surface with standard error"""
