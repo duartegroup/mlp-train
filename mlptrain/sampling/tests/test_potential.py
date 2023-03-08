@@ -24,8 +24,8 @@ class HarmonicPotential(Calculator):
 
         x_i, y_i, z_i = (x_dist / r), (y_dist / r), (z_dist / r)
 
-        derivative[0][:] = [x_i, y_i, z_i]
-        derivative[1][:] = [-x_i, -y_i, -z_i]
+        derivative[0] = [x_i, y_i, z_i]
+        derivative[1] = [-x_i, -y_i, -z_i]
 
         force = -2 * derivative * (r - 1)
 

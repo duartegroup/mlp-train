@@ -50,7 +50,11 @@ def test_md_restart():
 
     final_trajectory = ASETrajectory('md_restart.traj', 'r', atoms)
 
+    # 10 ps simulation with interval 10 -> 1001 frames
     assert len(initial_trajectory) == 1001
+
+    # Adding 1 ps simulation with interval 10 -> 101 frames, but removing one
+    # duplicate frame
     assert len(final_trajectory) == 1001 + 101 - 1
 
 

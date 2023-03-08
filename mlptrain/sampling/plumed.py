@@ -29,7 +29,6 @@ class PlumedBias:
 
         self.setup = None
         self.pace = self.width = self.height = self.biasfactor = None
-        self.restart = False
 
         if file_name is not None:
             self._from_file(file_name)
@@ -135,6 +134,8 @@ class PlumedBias:
 
         else:
             self.biasfactor = biasfactor
+
+        return None
 
     def _from_file(self, file_name) -> None:
         """Method to extract PLUMED setup from a file"""
@@ -307,7 +308,7 @@ class _PlumedCV:
 
         return None
 
-    def _set_units(self, units=None):
+    def _set_units(self, units=None) -> None:
         """Set units of the collective variable as a string"""
 
         if self.dof_units is not None:
@@ -321,6 +322,8 @@ class _PlumedCV:
 
         else:
             self.units = units
+
+        return None
 
 
 class PlumedAverageCV(_PlumedCV):

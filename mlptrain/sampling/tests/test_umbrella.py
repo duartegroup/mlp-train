@@ -28,7 +28,7 @@ def _h2_sparse_traj():
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
-def test_umbrella():
+def test_run_umbrella():
 
     umbrella = _h2_umbrella()
     traj = _h2_pulled_traj()
@@ -55,14 +55,15 @@ def test_umbrella():
         assert window.fitted_gaussian is not None
         assert np.isclose(window.fitted_gaussian.mean, window.zeta_ref, atol=0.1)
 
+    assert os.path.exists('trajectories')
     assert os.path.exists('trajectories/combined_trajectory.xyz')
 
     for idx in range(1, n_windows + 1):
         assert os.path.exists(f'trajectories/trajectory_{idx}.traj')
 
-        for time in [300, 600, 900]:
-            assert os.path.exists(f'trajectories/trajectory_{idx}_{time}fs.traj')
-            assert os.path.exists(f'trajectories/window_{idx}_{time}fs.xyz')
+        for sim_time in [300, 600, 900]:
+            assert os.path.exists(f'trajectories/trajectory_{idx}_{sim_time}fs.traj')
+            assert os.path.exists(f'trajectories/window_{idx}_{sim_time}fs.xyz')
 
     assert os.path.exists('fitted_data.pdf')
 

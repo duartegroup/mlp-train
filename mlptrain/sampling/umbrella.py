@@ -267,8 +267,8 @@ class UmbrellaSampling:
         return np.min(np.abs(self.zeta_func(traj) - ref)) > 0.5
 
     def run_umbrella_sampling(self,
-                              traj:       'mlptrain.ConfigurationSet',
-                              mlp:        'mlptrain.potentials._base.MLPotential',
+                              traj:     'mlptrain.ConfigurationSet',
+                              mlp:      'mlptrain.potentials._base.MLPotential',
                               temp:        float,
                               interval:    int,
                               dt:          float,
@@ -321,7 +321,6 @@ class UmbrellaSampling:
 
             {save_fs, save_ps, save_ns}: Trajectory saving interval
                                          in some units
-
         """
 
         start_umbrella = time.perf_counter()
@@ -329,7 +328,6 @@ class UmbrellaSampling:
         if temp <= 0:
             raise ValueError('Temperature must be positive and non-zero for '
                              'umbrella sampling')
-
 
         self.temp = temp
         zeta_refs = self._reference_values(traj, n_windows, init_ref, final_ref)
@@ -394,8 +392,7 @@ class UmbrellaSampling:
 
     def _run_individual_window(self, frame, mlp, temp, interval, dt, bias,
                                **kwargs):
-        """Runs an individual umbrella sampling window. Adaptive sampling to
-        be implemented"""
+        """Runs an individual umbrella sampling window"""
 
         logger.info(f'Running US window {kwargs["_idx"]} with '
                     f'ζ_ref={kwargs["_ref"]:.2f} Å '
@@ -416,7 +413,7 @@ class UmbrellaSampling:
         return traj
 
     @staticmethod
-    def _move_and_save_files(window_trajs, save_sep, all_to_xyz):
+    def _move_and_save_files(window_trajs, save_sep, all_to_xyz) -> None:
         """Saves window trajectories, moves them into trajectories folder and
         computes .xyz files"""
 
@@ -444,10 +441,10 @@ class UmbrellaSampling:
                 if re.search(pattern, filename) is not None:
                     basename = filename[:-5]
                     idx = basename.split('_')[1]
-                    time = basename.split('_')[2]
+                    sim_time = basename.split('_')[2]
 
                     ase_traj = ASETrajectory(filename)
-                    ase_write(f'window_{idx}_{time}.xyz', ase_traj)
+                    ase_write(f'window_{idx}_{sim_time}.xyz', ase_traj)
 
         os.chdir('..')
 
