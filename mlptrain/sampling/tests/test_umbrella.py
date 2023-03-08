@@ -1,4 +1,3 @@
-import glob
 import os
 import time
 import numpy as np
@@ -29,10 +28,11 @@ def _h2_sparse_traj():
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
-def test_window_umbrella():
+def test_umbrella():
 
     umbrella = _h2_umbrella()
     traj = _h2_pulled_traj()
+    n_windows = 3
 
     assert umbrella.kappa is not None and np.isclose(umbrella.kappa, 100.)
     assert umbrella.zeta_refs is None
@@ -43,9 +43,11 @@ def test_window_umbrella():
                                    temp=300,
                                    interval=5,
                                    dt=0.5,
-                                   n_windows=3,
+                                   n_windows=n_windows,
+                                   save_sep=False,
+                                   all_to_xyz=True,
                                    fs=1000,
-                                   save_sep=False)
+                                   save_fs=300)
 
     # Sampling with a high force constant should lead to fitted Gaussians
     # that closely match the reference (target) values
@@ -54,7 +56,14 @@ def test_window_umbrella():
         assert np.isclose(window.fitted_gaussian.mean, window.zeta_ref, atol=0.1)
 
     assert os.path.exists('trajectories/combined_trajectory.xyz')
-    assert glob.glob('trajectories/trajectory_*.traj')
+
+    for idx in range(1, n_windows + 1):
+        assert os.path.exists(f'trajectories/trajectory_{idx}.traj')
+
+        for time in [300, 600, 900]:
+            assert os.path.exists(f'trajectories/trajectory_{idx}_{time}fs.traj')
+            assert os.path.exists(f'trajectories/window_{idx}_{time}fs.xyz')
+
     assert os.path.exists('fitted_data.pdf')
 
 

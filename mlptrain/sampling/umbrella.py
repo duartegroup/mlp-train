@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,6 +7,8 @@ from typing import Optional, List, Callable, Tuple
 from scipy.optimize import curve_fit
 from multiprocessing import Pool
 from copy import deepcopy
+from ase.io.trajectory import Trajectory as ASETrajectory
+from ase.io import write as ase_write
 from mlptrain.sampling.bias import Bias
 from mlptrain.sampling.reaction_coord import DummyCoordinate
 from mlptrain.configurations import ConfigurationSet
@@ -264,15 +267,16 @@ class UmbrellaSampling:
         return np.min(np.abs(self.zeta_func(traj) - ref)) > 0.5
 
     def run_umbrella_sampling(self,
-                              traj: 'mlptrain.ConfigurationSet',
-                              mlp: 'mlptrain.potentials._base.MLPotential',
-                              temp:      float,
-                              interval:  int,
-                              dt:        float,
-                              init_ref:  Optional[float] = None,
-                              final_ref: Optional[float] = None,
-                              n_windows: int = 10,
-                              save_sep:  bool = True,
+                              traj:       'mlptrain.ConfigurationSet',
+                              mlp:        'mlptrain.potentials._base.MLPotential',
+                              temp:        float,
+                              interval:    int,
+                              dt:          float,
+                              init_ref:    Optional[float] = None,
+                              final_ref:   Optional[float] = None,
+                              n_windows:   int = 10,
+                              save_sep:    bool = True,
+                              all_to_xyz:  bool = False,
                               **kwargs
                               ) -> None:
         """
@@ -297,20 +301,27 @@ class UmbrellaSampling:
             dt: (float) Time-step in fs
             
             init_ref: (float | None) Value of reaction coordinate in Å for
-                       first window
+                                     first window
             
             final_ref: (float | None) Value of reaction coordinate in Å for
-                       first window
+                                      first window
             
             n_windows: (int) Number of windows to run in the umbrella sampling
 
-            save_sep: (bool) If True saves trajectories of
-                      each window separately
+            save_sep: (bool) If True saves trajectories of each window
+                             separately as .xyz files
+
+            all_to_xyz: (bool) If True all .traj trajectory files are saved as
+                               .xyz files (when using save_fs, save_ps, save_ns)
 
         -------------------
         Keyword Arguments:
 
             {fs, ps, ns}: Simulation time in some units
+
+            {save_fs, save_ps, save_ns}: Trajectory saving interval
+                                         in some units
+
         """
 
         start_umbrella = time.perf_counter()
@@ -373,28 +384,7 @@ class UmbrellaSampling:
                 self.windows.append(window)
                 window_trajs.append(window_traj)
 
-        if save_sep:
-            for idx, metad_traj in enumerate(window_trajs):
-                metad_traj.save(filename=f'window_{idx+1}.xyz')
-
-            move_files([r'window_\d+\.xyz'],
-                       dst_folder='trajectories',
-                       regex=True)
-
-        else:
-            combined_traj = ConfigurationSet()
-            for window_traj in window_trajs:
-                combined_traj += window_traj
-
-            combined_traj.save(filename='combined_trajectory.xyz')
-
-            move_files(['combined_trajectory.xyz'],
-                       dst_folder='trajectories')
-
-        move_files([r'trajectory_\d+\.traj'],
-                   dst_folder='trajectories',
-                   regex=True,
-                   unique=False)
+        self._move_and_save_files(window_trajs, save_sep, all_to_xyz)
 
         finish_umbrella = time.perf_counter()
         logger.info('Umbrella sampling done in '
@@ -424,6 +414,44 @@ class UmbrellaSampling:
                           **kwargs)
 
         return traj
+
+    @staticmethod
+    def _move_and_save_files(window_trajs, save_sep, all_to_xyz):
+        """Saves window trajectories, moves them into trajectories folder and
+        computes .xyz files"""
+
+        move_files([r'trajectory_\d+\.traj', r'trajectory_\d+_\w+\.traj'],
+                   dst_folder='trajectories',
+                   regex=True)
+
+        os.chdir('trajectories')
+
+        if save_sep:
+            for idx, metad_traj in enumerate(window_trajs, start=1):
+                metad_traj.save(filename=f'window_{idx}.xyz')
+
+        else:
+            combined_traj = ConfigurationSet()
+            for window_traj in window_trajs:
+                combined_traj += window_traj
+
+            combined_traj.save(filename='combined_trajectory.xyz')
+
+        if all_to_xyz:
+            pattern = re.compile(r'trajectory_\d+_\w+\.traj')
+
+            for filename in os.listdir():
+                if re.search(pattern, filename) is not None:
+                    basename = filename[:-5]
+                    idx = basename.split('_')[1]
+                    time = basename.split('_')[2]
+
+                    ase_traj = ASETrajectory(filename)
+                    ase_write(f'window_{idx}_{time}.xyz', ase_traj)
+
+        os.chdir('..')
+
+        return None
 
     def free_energies(self, prob_dist) -> np.ndarray:
         """

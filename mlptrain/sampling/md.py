@@ -1,7 +1,8 @@
 import os
+import shutil
 import numpy as np
 import autode as ade
-from typing import Optional, Sequence, List, Tuple
+from typing import Optional, Sequence, List
 from numpy.random import RandomState
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
@@ -79,6 +80,8 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
 
         {fs, ps, ns}: Simulation time in some units
 
+        {save_fs, save_ps, save_ns}: Trajectory saving interval in some units
+
     Returns:
 
         (mlptrain.ConfigurationSet):
@@ -94,6 +97,14 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
 
     if restart:
         logger.info('Restarting MLP MD')
+
+        if not isinstance(restart_files, list):
+            raise TypeError('Restart files must be a list')
+
+        for file in restart_files:
+            if not isinstance(file, str):
+                raise TypeError('Restart files must be a list of strings '
+                                'specifying filenames')
 
         if not any(file.endswith('.traj') for file in restart_files):
 
@@ -177,6 +188,8 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
 
         {fs, ps, ns}: Simulation time in some units
 
+        {save_fs, save_ps, save_ns}: Trajectory saving interval in some units
+
     Returns:
 
         (mlptrain.ConfigurationSet):
@@ -204,22 +217,21 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
         configuration.box = Box([100, 100, 100])
 
     ase_atoms = configuration.ase_atoms
+    traj_name = _get_traj_name(restart_files, **kwargs)
 
     _set_momenta_and_geometry(ase_atoms,
                               temp=init_temp if init_temp is not None else temp,
                               bbond_energy=bbond_energy,
                               fbond_energy=fbond_energy,
-                              restart_files=restart_files)
+                              restart_files=restart_files,
+                              traj_name=traj_name)
 
-    traj, traj_name = _initialise_traj(ase_atoms=ase_atoms,
-                                       restart_files=restart_files,
-                                       **kwargs)
+    ase_traj = _initialise_traj(ase_atoms=ase_atoms,
+                                restart_files=restart_files,
+                                traj_name=traj_name)
 
-    n_previous_steps = interval * len(traj)
-    energies = [None for _ in range(len(traj))]
-
-    def append_energy(_atoms=ase_atoms):
-        energies.append(_atoms.get_potential_energy())
+    n_previous_steps = interval * len(ase_traj)
+    energies = [None for _ in range(len(ase_traj))]
 
     if temp > 0:                                        # Default Langevin NVT
         dyn = Langevin(ase_atoms, dt_ase,
@@ -228,8 +240,18 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
     else:                                               # Otherwise NVE
         dyn = VelocityVerlet(ase_atoms, dt_ase)
 
+    def append_energy():
+        energies.append(ase_atoms.get_potential_energy())
+
+    def save_trajectory():
+        _save_trajectory(ase_traj, traj_name, **kwargs)
+
     dyn.attach(append_energy, interval=interval)
-    dyn.attach(traj.write, interval=interval)
+    dyn.attach(ase_traj.write, interval=interval)
+
+    if any(key in kwargs for key in ['save_fs', 'save_ps', 'save_ns']):
+        dyn.attach(save_trajectory,
+                   interval=_traj_saving_interval(dt, kwargs))
 
     logger.info(f'Running {n_steps:.0f} steps with a timestep of {dt} fs')
 
@@ -238,7 +260,7 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
 
         from ase.calculators.plumed import Plumed
 
-        setup = _write_plumed_setup(bias, interval, **kwargs)
+        setup = _plumed_setup(bias, interval, **kwargs)
 
         plumed_calc = Plumed(calc=mlp.ase_calculator,
                              input=setup,
@@ -278,10 +300,63 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
     return traj
 
 
+def _save_trajectory(ase_traj: 'ase.io.trajectory.Trajectory',
+                     traj_name: str,
+                     **kwargs
+                     ) -> None:
+    """Saves the trajectory with a unique name based on the current simulation
+    time"""
+
+    # Prevents initial trajectory save at time == 0
+    if len(ase_traj) == 1:
+        return None
+
+    specified_key = None
+    for key in ['save_ns', 'save_fs', 'save_ps']:
+        if key in kwargs:
+            specified_key = key
+            break
+
+    traj_basename = traj_name[:-5]
+    time_units = specified_key.split('_')[-1]
+    saving_interval = kwargs[specified_key]
+
+    time = saving_interval
+    while os.path.exists(f'{traj_basename}_{time}{time_units}.traj'):
+        time += saving_interval
+
+    shutil.copyfile(src=traj_name,
+                    dst=f'{traj_basename}_{time}{time_units}.traj')
+
+    return None
+
+
+def _get_traj_name(restart_files: Optional[List[str]] = None,
+                   **kwargs
+                   ) -> str:
+    """Returns the name of the trajectory which is going to be created
+    (or on to which the new frames will be appended in the case of restart)"""
+
+    if restart_files is None:
+        if '_idx' in kwargs:
+            traj_name = f'trajectory_{kwargs["_idx"]}.traj'
+        else:
+            traj_name = f'trajectory.traj'
+
+        return traj_name
+
+    else:
+        for filename in restart_files:
+            if filename.endswith('.traj'):
+                traj_name = filename
+
+                return traj_name
+
+
 def _convert_ase_traj(traj_name: str) -> 'mlptrain.Trajectory':
     """Convert an ASE trajectory into an mlptrain Trajectory"""
 
-    ase_traj = ASETrajectory(traj_name)
+    ase_traj = ASETrajectory(traj_name, 'r')
     mlt_traj = Trajectory()
 
     # Iterate through each frame (set of atoms) in the trajectory
@@ -302,7 +377,9 @@ def _set_momenta_and_geometry(ase_atoms:      'ase.atoms.Atoms',
                               temp:           float,
                               bbond_energy:   dict,
                               fbond_energy:   dict,
-                              restart_files:  List[str]):
+                              restart_files:  List[str],
+                              traj_name:      str
+                              ) -> None:
     """Set the initial momenta and geometry of the starting configuration"""
 
     if restart_files is None:
@@ -357,8 +434,7 @@ def _set_momenta_and_geometry(ase_atoms:      'ase.atoms.Atoms',
         logger.info('Initialising starting geometry and momenta from the '
                     'last configuration')
 
-        restart_traj = _get_restart_traj_name(restart_files)
-        last_configuration = read(restart_traj)
+        last_configuration = read(traj_name)
 
         ase_atoms.set_positions(last_configuration.get_positions())
         ase_atoms.set_momenta(last_configuration.get_momenta())
@@ -368,23 +444,14 @@ def _set_momenta_and_geometry(ase_atoms:      'ase.atoms.Atoms',
 
 def _initialise_traj(ase_atoms:      'ase.atoms.Atoms',
                      restart_files:  List[str],
-                     **kwargs
-                     ) -> Tuple:
-    """Initialise the trajectory and its name"""
+                     traj_name:      str
+                     ) -> 'ase.io.trajectory.Trajectory':
+    """Initialise ASE trajectory object"""
 
     if restart_files is None:
-
-        if '_idx' in kwargs:
-            traj_name = f'trajectory_{kwargs["_idx"]}.traj'
-
-        else:
-            traj_name = f'trajectory.traj'
-
         traj = ASETrajectory(traj_name, 'w', ase_atoms)
 
     else:
-        traj_name = _get_restart_traj_name(restart_files)
-
         # Remove the last frame to avoid duplicate frames
         previous_traj = ASETrajectory(traj_name, 'r', ase_atoms)
         previous_atoms = previous_traj[:-1]
@@ -395,22 +462,12 @@ def _initialise_traj(ase_atoms:      'ase.atoms.Atoms',
         for atoms in previous_atoms:
             traj.write(atoms)
 
-    return traj, traj_name
-
-
-def _get_restart_traj_name(restart_files: List[str]) -> str:
-    """Returns the filename of the restart trajectory"""
-
-    restart_traj = None
-    for filename in restart_files:
-        if filename.endswith('.traj'):
-            restart_traj = filename
-
-    return restart_traj
+    return traj
 
 
 def _n_simulation_steps(dt: float,
-                        kwargs: dict) -> int:
+                        kwargs: dict
+                        ) -> int:
     """Calculate the number of simulation steps from a set of keyword
     arguments e.g. kwargs = {'fs': 100}
 
@@ -443,7 +500,29 @@ def _n_simulation_steps(dt: float,
     return n_steps
 
 
-def _write_plumed_setup(bias, interval, **kwargs) -> List:
+def _traj_saving_interval(dt:     float,
+                          kwargs: dict
+                          ) -> int:
+    """Calculate the interval at which a trajectory is saved"""
+
+    if 'save_ps' in kwargs:
+        time_fs = 1E3 * kwargs['save_ps']
+
+    elif 'save_fs' in kwargs:
+        time_fs = kwargs['save_fs']
+
+    elif 'save_ns' in kwargs:
+        time_fs = 1E6 * kwargs['save_ns']
+
+    else:
+        raise ValueError('Saving time not found')
+
+    saving_interval = max(int(time_fs / dt), 1)
+
+    return saving_interval
+
+
+def _plumed_setup(bias, interval, **kwargs) -> List:
     """Generate a list which represents the PLUMED input file"""
 
     setup = []
