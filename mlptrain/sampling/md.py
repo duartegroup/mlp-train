@@ -567,19 +567,12 @@ def _plumed_setup(bias, interval, **kwargs) -> List:
         else:
             biasfactor_setup = ''
 
-        if bias.restart:
-            restart_setup = 'RESTART=YES'
-
-        else:
-            restart_setup = ''
-
         metad_setup = ['METAD '
                        f'ARG={bias.cv_sequence} '
                        f'PACE={bias.pace} '
                        f'HEIGHT={bias.height} '
                        f'SIGMA={bias.width_sequence} '
                        f'{biasfactor_setup}'
-                       f'{restart_setup}'
                        f'FILE={hills_filename}']
         setup.extend(metad_setup)
 
