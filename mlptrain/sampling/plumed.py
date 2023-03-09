@@ -554,7 +554,7 @@ def plot_cv1_and_cv2(filenames:   Sequence[str],
         ax.plot(cvs_arrays[0], cvs_arrays[1])
 
     if style.lower() == 'histogram':
-        hist = ax.hist2d(cvs_arrays[0], cvs_arrays[1], bins=300, density=True)
+        hist = ax.hist2d(cvs_arrays[0], cvs_arrays[1], bins=50, cmin=1)
 
         cbar = fig.colorbar(hist[-1], ax=ax)
         cbar.set_label(label='Count')

@@ -186,3 +186,17 @@ def test_try_multiple_biasfactors():
     for idx, biasf in enumerate(biasfactors, start=1):
         assert os.path.exists(os.path.join(files_dir, f'colvar_cv1_{idx}.dat'))
         assert os.path.exists(os.path.join(plots_dir, f'cv1_biasf{biasf}.pdf'))
+
+@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+def test_block_analysis():
+
+    cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
+    metad = mlt.Metadynamics(cv1)
+    n_runs = 1
+
+    _run_metadynamics(metad, n_runs)
+
+    metad.block_analysis()
+
+    assert os.path.exists('block_analysis.pdf')
+    assert os.path.exists('block_analysis_error.npy')

@@ -82,6 +82,8 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
 
         {save_fs, save_ps, save_ns}: Trajectory saving interval in some units
 
+        {write_plumed_setup}: If True saves the PLUMED input file as setup.dat
+
     Returns:
 
         (mlptrain.ConfigurationSet):
@@ -260,7 +262,7 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
 
         from ase.calculators.plumed import Plumed
 
-        setup = _plumed_setup(bias, interval, **kwargs)
+        setup = _plumed_setup(bias, temp, interval, **kwargs)
 
         plumed_calc = Plumed(calc=mlp.ase_calculator,
                              input=setup,
@@ -522,7 +524,7 @@ def _traj_saving_interval(dt:     float,
     return saving_interval
 
 
-def _plumed_setup(bias, interval, **kwargs) -> List:
+def _plumed_setup(bias, temp, interval, **kwargs) -> List:
     """Generate a list which represents the PLUMED input file"""
 
     setup = []
@@ -567,12 +569,20 @@ def _plumed_setup(bias, interval, **kwargs) -> List:
         else:
             biasfactor_setup = ''
 
-        metad_setup = ['METAD '
+        if '_block_analysis' in kwargs and kwargs['_block_analysis'] == True:
+            block_analysis_setup = 'RESTART=YES '
+
+        else:
+            block_analysis_setup = ''
+
+        metad_setup = ['metad: METAD '
                        f'ARG={bias.cv_sequence} '
                        f'PACE={bias.pace} '
                        f'HEIGHT={bias.height} '
                        f'SIGMA={bias.width_sequence} '
+                       f'TEMP={temp} '
                        f'{biasfactor_setup}'
+                       f'{block_analysis_setup}'
                        f'FILE={hills_filename}']
         setup.extend(metad_setup)
 
@@ -598,5 +608,15 @@ def _plumed_setup(bias, interval, **kwargs) -> List:
                        f'FILE={colvar_filename} '
                        f'STRIDE={interval}']
         setup.extend(print_setup)
+
+    if '_block_analysis' in kwargs and kwargs['_block_analysis'] == True:
+        for line in setup[::-1]:
+            if line.startswith('PRINT'):
+                setup.pop()
+
+    if 'write_plumed_setup' in kwargs and kwargs['write_plumed_setup'] == True:
+        with open('setup.dat', 'w') as f:
+            for line in setup:
+                f.write(f'{line}\n')
 
     return setup
