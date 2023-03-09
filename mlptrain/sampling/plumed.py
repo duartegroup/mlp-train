@@ -234,8 +234,8 @@ class _PlumedCV:
             exp: (float) The power of the wall
         """
 
-        if self.upper_wall is not None:
-            raise TypeError(f'Upper wall for {self.name} CV has already '
+        if self.lower_wall is not None:
+            raise TypeError(f'Lower wall for {self.name} CV has already '
                             'been set')
 
         self.lower_wall = {'location': location, 'kappa': kappa, 'exp': exp}
