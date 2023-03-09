@@ -198,6 +198,7 @@ class _PlumedCV:
 
         self.setup = []
         self.name = self.units = self.dof_names = self.dof_units = None
+        self.lower_wall = self.upper_wall = None
 
         if file_name is not None:
             self._from_file(file_name, component)
@@ -214,6 +215,68 @@ class _PlumedCV:
     def dof_sequence(self) -> str:
         """String containing names of DOFs separated by commas"""
         return ','.join(self.dof_names)
+
+    def attach_lower_wall(self,
+                          location:  float,
+                          kappa:     float,
+                          exp:       float = 2
+                          ) -> None:
+        """
+        Attaches lower wall bias to the collective variable.
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            location: (float) Value of the CV where the wall will be located
+
+            kappa: (float) The force constant of the wall
+
+            exp: (float) The power of the wall
+        """
+
+        if self.upper_wall is not None:
+            raise TypeError(f'Upper wall for {self.name} CV has already '
+                            'been set')
+
+        self.lower_wall = {'location': location, 'kappa': kappa, 'exp': exp}
+        self.setup.extend(['LOWER_WALLS '
+                           f'ARG={self.name} '
+                           f'AT={location} '
+                           f'KAPPA={kappa} '
+                           f'EXP={exp}'])
+
+        return None
+
+    def attach_upper_wall(self,
+                          location:  float,
+                          kappa:     float,
+                          exp:       float = 2
+                          ) -> None:
+        """
+        Attaches upper wall bias to the collective variable.
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            location: (float) Value of the CV where the wall will be located
+
+            kappa: (float) The force constant of the wall
+
+            exp: (float) The power of the wall
+        """
+
+        if self.upper_wall is not None:
+            raise TypeError(f'Upper wall for {self.name} CV has already '
+                            'been set')
+
+        self.upper_wall = {'location': location, 'kappa': kappa, 'exp': exp}
+        self.setup.extend(['UPPER_WALLS '
+                           f'ARG={self.name} '
+                           f'AT={location} '
+                           f'KAPPA={kappa} '
+                           f'EXP={exp}'])
+
+        return None
 
     def _from_file(self, file_name, component) -> None:
         """Generate DOFs and a CV from a file"""

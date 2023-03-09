@@ -857,7 +857,8 @@ class Metadynamics:
 
         return std_fes_grid
 
-    def _plot_block_analysis(self, blocksizes, std_grids, energy_units) -> None:
+    @staticmethod
+    def _plot_block_analysis(blocksizes, std_grids, energy_units) -> None:
         """Plots the standard deviation versus block size"""
 
         mean_stds = [np.nanmean(std_grid) for std_grid in std_grids]

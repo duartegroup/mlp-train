@@ -78,6 +78,27 @@ def test_plumed_cv_from_file():
                                    'PERIODIC=NO']
 
 
+def test_plumed_cv_walls():
+
+    cv1 = mlt.PlumedDifferenceCV('cv1', ((0, 1), (2, 3)))
+
+    cv1.attach_lower_wall(location=1, kappa=150.0, exp=3)
+    cv1.attach_upper_wall(location=3, kappa=150.0, exp=3)
+
+    assert cv1.setup == ['cv1_dist1: DISTANCE ATOMS=1,2',
+                         'cv1_dist2: DISTANCE ATOMS=3,4',
+                         'cv1: CUSTOM '
+                         'ARG=cv1_dist1,cv1_dist2 '
+                         'VAR=cv1_dist1,cv1_dist2 '
+                         'FUNC=cv1_dist2-cv1_dist1 '
+                         'PERIODIC=NO',
+                         'LOWER_WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
+                         'UPPER_WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3']
+
+    with pytest.raises(TypeError):
+        cv1.attach_lower_wall(location=0.5, kappa=150.0, exp=3)
+
+
 def test_plumed_bias_from_cvs():
 
     cv1 = mlt.PlumedAverageCV('cv1', [(0, 1, 2, 3)])
