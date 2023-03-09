@@ -119,17 +119,17 @@ def test_plumed_plot():
     colvar1 = 'test_plumed_plot/colvar1.dat'
     colvar2 = 'test_plumed_plot/colvar2.dat'
 
-    mlt.plot_cv(filename=colvar1,
-                time_units='fs',
-                cv_units='Å',
-                cv_limits=(0.5, 1.5),
-                label='0')
+    mlt.plot_cv_versus_time(filename=colvar1,
+                            time_units='fs',
+                            cv_units='Å',
+                            cv_limits=(0.5, 1.5),
+                            label='0')
 
     assert os.path.exists('cv1_0.pdf')
 
-    mlt.plot_trajectory(filenames=(colvar1, colvar2),
-                        cvs_units=('Å', 'Å'),
-                        cvs_limits=((0.5, 1.5), (0.5, 1.5)),
-                        label='0')
+    mlt.plot_cv1_and_cv2(filenames=(colvar1, colvar2),
+                         cvs_units=('Å', 'Å'),
+                         cvs_limits=((0.5, 1.5), (0.5, 1.5)),
+                         label='0')
 
-    assert os.path.exists('traj_cv1_cv2_0.pdf')
+    assert os.path.exists('cv1_cv2_0.pdf')

@@ -437,12 +437,13 @@ class PlumedCustomCV(_PlumedCV):
         self.units = units
 
 
-def plot_cv(filename:    str,
-            time_units:  str = 'ps',
-            cv_units:    Optional[str] = None,
-            cv_limits:   Optional[Sequence[float]] = None,
-            label:       Optional[str] = None
-            ) -> None:
+def plot_cv_versus_time(filename:    str,
+                        style:       str = 'scatter',
+                        time_units:  str = 'ps',
+                        cv_units:    Optional[str] = None,
+                        cv_limits:   Optional[Sequence[float]] = None,
+                        label:       Optional[str] = None,
+                        ) -> None:
     """
     Plots a collective variable as a function of time from a given colvar file.
     Only plots the first collective variable in the colvar file.
@@ -451,6 +452,8 @@ def plot_cv(filename:    str,
     Arguments:
 
         filename: (str) Name of the colvar file used for plotting
+
+        style: (str) Style to use for plotting, e.g. 'scatter', 'trajectory'
 
         time_units: (str) Units of time
 
@@ -473,7 +476,12 @@ def plot_cv(filename:    str,
     time_array = convert_ase_time(ase_time_array, time_units)
 
     fig, ax = plt.subplots()
-    ax.scatter(time_array, cv_array)
+
+    if style.lower() == 'scatter':
+        ax.scatter(time_array, cv_array)
+
+    if style.lower() == 'trajectory':
+        ax.plot(time_array, cv_array)
 
     ax.set_xlabel(f'Time / {time_units}')
 
@@ -499,11 +507,12 @@ def plot_cv(filename:    str,
     return None
 
 
-def plot_trajectory(filenames:   Sequence[str],
-                    cvs_units:   Optional[Sequence[str]] = None,
-                    cvs_limits:  Optional[Sequence[Sequence[float]]] = None,
-                    label:       Optional[str] = None
-                    ) -> None:
+def plot_cv1_and_cv2(filenames:   Sequence[str],
+                     style:       str = 'scatter',
+                     cvs_units:   Optional[Sequence[str]] = None,
+                     cvs_limits:  Optional[Sequence[Sequence[float]]] = None,
+                     label:       Optional[str] = None
+                     ) -> None:
     """
     Plots the trajectory of the system by tracking two collective variables
     using two colvar files. The function only works for two collective
@@ -513,6 +522,9 @@ def plot_trajectory(filenames:   Sequence[str],
     Arguments:
 
         filenames: Names of two colvar files used for plotting
+
+        style: (str) Style to use for plotting, e.g. 'scatter', 'trajectory',
+                     'histogram'
 
         cvs_units: Units of the CVs to be plotted
 
@@ -534,7 +546,18 @@ def plot_trajectory(filenames:   Sequence[str],
         cvs_arrays.append(np.loadtxt(filename, usecols=1))
 
     fig, ax = plt.subplots()
-    ax.scatter(*cvs_arrays)
+
+    if style.lower() == 'scatter':
+        ax.scatter(cvs_arrays[0], cvs_arrays[1])
+
+    if style.lower() == 'trajectory':
+        ax.plot(cvs_arrays[0], cvs_arrays[1])
+
+    if style.lower() == 'histogram':
+        hist = ax.hist2d(cvs_arrays[0], cvs_arrays[1], bins=300, density=True)
+
+        cbar = fig.colorbar(hist[-1], ax=ax)
+        cbar.set_label(label='Count')
 
     if cvs_units is not None:
         ax.set_xlabel(f'{cvs_names[0]} / {cvs_units[0]}')
@@ -550,10 +573,10 @@ def plot_trajectory(filenames:   Sequence[str],
     fig.tight_layout()
 
     if label is not None:
-        fig.savefig(f'traj_{cvs_names[0]}_{cvs_names[1]}_{label}.pdf')
+        fig.savefig(f'{cvs_names[0]}_{cvs_names[1]}_{label}.pdf')
 
     else:
-        fig.savefig(f'traj_{cvs_names[0]}_{cvs_names[1]}.pdf')
+        fig.savefig(f'{cvs_names[0]}_{cvs_names[1]}.pdf')
 
     plt.close(fig)
 

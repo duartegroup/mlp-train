@@ -13,7 +13,11 @@ from ase.io import write as ase_write
 from ase.io.trajectory import Trajectory as ASETrajectory
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.sampling.md import run_mlp_md
-from mlptrain.sampling.plumed import PlumedBias, plot_cv, plot_trajectory
+from mlptrain.sampling.plumed import (
+    PlumedBias,
+    plot_cv_versus_time,
+    plot_cv1_and_cv2
+)
 from mlptrain.config import Config
 from mlptrain.log import logger
 from mlptrain.utils import (
@@ -178,9 +182,9 @@ class Metadynamics:
             widths.append(width)
 
             if plot is True:
-                plot_cv(filename=colvar_filename,
-                        cv_units=cv.units,
-                        label=f'config{kwargs["_idx"]}')
+                plot_cv_versus_time(filename=colvar_filename,
+                                    cv_units=cv.units,
+                                    label=f'config{kwargs["_idx"]}')
 
         return widths
 
@@ -658,14 +662,14 @@ class Metadynamics:
                      for cv in plotted_cvs]
 
         for filename, cv in zip(filenames, plotted_cvs):
-            plot_cv(filename=filename,
-                    cv_units=cv.units,
-                    label=f'biasf{bias.biasfactor}')
+            plot_cv_versus_time(filename=filename,
+                                cv_units=cv.units,
+                                label=f'biasf{bias.biasfactor}')
 
         if len(plotted_cvs) == 2:
-            plot_trajectory(filenames=filenames,
-                            cvs_units=[cv.units for cv in plotted_cvs],
-                            label=f'biasf{bias.biasfactor}')
+            plot_cv1_and_cv2(filenames=filenames,
+                             cvs_units=[cv.units for cv in plotted_cvs],
+                             label=f'biasf{bias.biasfactor}')
 
         return None
 
