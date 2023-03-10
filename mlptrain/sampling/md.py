@@ -82,7 +82,8 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
 
         {save_fs, save_ps, save_ns}: Trajectory saving interval in some units
 
-        {write_plumed_setup}: If True saves the PLUMED input file as setup.dat
+        {write_plumed_setup}: If True saves the PLUMED input file as
+                              plumed_setup.dat
 
     Returns:
 
@@ -615,7 +616,7 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
                 setup.pop()
 
     if 'write_plumed_setup' in kwargs and kwargs['write_plumed_setup'] == True:
-        with open('setup.dat', 'w') as f:
+        with open('plumed_setup.dat', 'w') as f:
             for line in setup:
                 f.write(f'{line}\n')
 

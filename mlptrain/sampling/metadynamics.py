@@ -1,6 +1,8 @@
 import os
 import re
 import time
+import shutil
+import warnings
 import numpy as np
 import multiprocessing as mp
 import matplotlib.pyplot as plt
@@ -219,7 +221,7 @@ class Metadynamics:
             mlp: Machine learnt potential
 
             temp: (float) Temperature in K to initialise velocities and to run
-                  NVT MD. Must be positive
+                          NVT MD. Must be positive
 
             interval: (int) Interval between saving the geometry
 
@@ -698,10 +700,16 @@ class Metadynamics:
         return None
 
     def block_analysis(self,
-                       energy_units:  str = 'kcal mol-1',
-                       n_bins:        int = 300,
-                       cvs_bounds:    Optional[Sequence] = None,
-                       idx:           int = 1
+                       energy_units:   str = 'kcal mol-1',
+                       n_bins:         int = 300,
+                       cvs_bounds:     Optional[Sequence] = None,
+                       idx:            int = 1,
+                       configuration:  Optional = None,
+                       mlp:            Optional = None,
+                       temp:           Optional[float] = None,
+                       dt:             Optional[float] = None,
+                       interval:       Optional[int] = None,
+                       **kwargs
                        ) -> None:
         """
         Performs block analysis on the most recent metadynamics run. Plots the
@@ -715,19 +723,54 @@ class Metadynamics:
         -----------------------------------------------------------------------
         Arguments:
 
+            energy_units: (str) Energy units to be used in plotting
+
+            n_bins: (int) Number of bins to use when dumping histograms
+
+            cvs_bounds: Specifies the range between which to compute the free
+                        energy for each collective variable,
+                        e.g. [(0.8, 1.5), (80, 120)]
+
+            idx: (int) Index specifying which metadynamics run (from n_runs)
+                       to use for block analysis
+
+            configuration: Configuration from which the simulation is started
+
+            mlp: Machine learnt potential
+
+            temp: (float) Temperature in K to initialise velocities and to run
+                          NVT MD. Must be positive
+
+            dt: (float) Time-step in fs
+
+            interval: (int) Interval between saving the geometry
+        -------------------
+        Keyword Arguments:
+
+            {fs, ps, ns}: Simulation time in some units
         """
 
         block_analysis_bias = deepcopy(self.bias)
         block_analysis_bias.pace = 10**9
 
-        configuration = self._previous_run_parameters['configuration']
-        mlp = self._previous_run_parameters['mlp']
-        temp = self._previous_run_parameters['temp']
-        dt = self._previous_run_parameters['dt']
-        interval = self._previous_run_parameters['interval']
-        sim_time_dict = self._previous_run_parameters['sim_time_dict']
+        _parameters = [configuration, mlp, temp, dt, interval]
 
-        os.chdir('plumed_files/metadynamics')
+        if self._previous_run_parameters is not None:
+            configuration = self._previous_run_parameters['configuration']
+            mlp = self._previous_run_parameters['mlp']
+            temp = self._previous_run_parameters['temp']
+            dt = self._previous_run_parameters['dt']
+            interval = self._previous_run_parameters['interval']
+            kwargs = self._previous_run_parameters['sim_time_dict']
+
+        elif any(param is None for param in _parameters):
+            raise TypeError('Metadynamics object does not have all the '
+                            'required parameters for block analysis. '
+                            'Please provide parameters from the previous '
+                            'metadynamics run to the block analysis method')
+
+        shutil.copyfile(src=f'plumed_files/metadynamics/HILLS_{idx}.dat',
+                        dst=f'HILLS_{idx}.dat')
 
         traj = run_mlp_md(configuration=configuration,
                           mlp=mlp,
@@ -735,23 +778,28 @@ class Metadynamics:
                           dt=dt,
                           interval=interval,
                           bias=block_analysis_bias,
-                          copied_substrings=[f'HILLS_{idx}.dat'],
-                          kept_substrings=['setup.dat'],
+                          copied_substrings=[f'HILLS_{idx}.dat', '.json'],
+                          kept_substrings=['plumed_setup.dat'],
                           write_plumed_setup=True,
                           _method='metadynamics',
                           _idx=idx,
                           _block_analysis=True,
-                          **sim_time_dict)
+                          **kwargs)
 
         traj.save('block_analysis.xyz')
 
+        os.chdir('plumed_files/metadynamics')
         min_max_params = self._get_min_max_params(cvs_bounds=cvs_bounds)
+        os.chdir('../..')
 
-        total_n_steps = self._n_simulation_steps(dt, **sim_time_dict)
+        total_n_steps = self._n_simulation_steps(dt, **kwargs)
         n_steps = total_n_steps // interval
 
         # n_blocks < 10 if blocksize > blocksize_upper_limit
         blocksize_upper_limit = n_steps // 10
+        if blocksize_upper_limit <= 10:
+            raise ValueError('The simulation is too short to perform '
+                             'block analysis')
 
         # for loop starting here, running a function in temp dir (with decor)
         logger.info('Performing block analysis in parallel using '
@@ -761,7 +809,7 @@ class Metadynamics:
 
         with Pool(processes=Config.n_cores) as pool:
 
-            for blocksize in range(5, blocksize_upper_limit, 5):
+            for blocksize in range(10, blocksize_upper_limit, 10):
 
                 grid_proc = pool.apply_async(func=self._compute_single_std_grid,
                                              args=(blocksize,
@@ -775,9 +823,9 @@ class Metadynamics:
             for grid_proc in grid_procs:
                 std_grids.append(grid_proc.get())
 
-        os.remove('setup.dat')
+        os.remove('plumed_setup.dat')
         os.remove('block_analysis.xyz')
-        os.chdir('../..')
+        os.remove(f'HILLS_{idx}.dat')
 
         np.save('block_analysis_error.npy', std_grids[-1])
 
@@ -806,32 +854,36 @@ class Metadynamics:
         return n_steps
 
     @work_in_tmp_dir(copied_substrings=['block_analysis.xyz',
-                                        'setup.dat',
+                                        'plumed_setup.dat',
                                         'HILLS'])
     def _compute_single_std_grid(self, blocksize, temp, energy_units,
                                  min_max_params, n_bins) -> np.ndarray:
         """Computes a grid containing the standard deviation of the free energy
         surface over blocks of size blocksize"""
 
+        os.environ['PLUMED_MAXBACKUP'] = '10000'
+
         min_param_seq, max_param_seq = min_max_params
+        bandwidth_sequence = ','.join(['0.05' for _ in range(self.n_cvs)])
 
         reweight_setup = ['as: REWEIGHT_BIAS '
                           f'TEMP={temp} '
                           'ARG=metad.bias',
                           'hist: HISTOGRAM '
                           f'ARG={self.bias.cv_sequence} '
-                          f'STRIDE={blocksize} '  # modify
+                          f'STRIDE=1 '
+                          f'CLEAR={blocksize} '
                           f'GRID_MIN={min_param_seq} '
                           f'GRID_MAX={max_param_seq} '
                           f'GRID_BIN={n_bins} '
-                          'BANDWIDTH=0.05 '
+                          f'BANDWIDTH={bandwidth_sequence} '
                           'LOGWEIGHTS=as',
                           'fes: CONVERT_TO_FES '
                           f'TEMP={temp} '
                           'GRID=hist',
                           f'DUMPGRID GRID=fes FILE=fes.dat STRIDE={blocksize}']
 
-        os.rename('setup.dat', 'reweight.dat')
+        os.rename('plumed_setup.dat', 'reweight.dat')
         with open('reweight.dat', 'a') as f:
             for line in reweight_setup:
                 f.write(f'{line}\n')
@@ -842,18 +894,28 @@ class Metadynamics:
                                 '--length-units', 'A'])
         driver_process.wait()
 
-        # Files generated: fes.dat, analysis.0.fes.dat, analysis.1.fes.dat, ...
+        # Files generated: analysis.0.fes.dat, analysis.1.fes.dat, ..., fes.dat
         # Filenames wanted: fes_0.dat, fes_1.dat, fes_2.dat, ...
-        os.rename('fes.dat', 'fes_0.dat')
+        max_idx = 0
         for filename in os.listdir():
             if filename.startswith('analysis'):
-                idx = int(filename.split('.')[1]) + 1
+                idx = int(filename.split('.')[1])
                 os.rename(filename, f'fes_{idx}.dat')
+
+                if idx > max_idx:
+                    max_idx = idx
+
+        os.rename('fes.dat', f'fes_{max_idx+1}.dat')
 
         _, fes_grids = self._fes_files_to_grids(energy_units, n_bins)
 
         fes_grids[fes_grids == np.inf] = np.nan
-        std_fes_grid = np.nanstd(fes_grids, axis=0)
+        n_blocks = len(fes_grids)
+
+        # Taking nanstd() of a line of only np.nan values raises warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            std_fes_grid = (1 / n_blocks) * np.nanstd(fes_grids, axis=0)
 
         return std_fes_grid
 
@@ -872,11 +934,7 @@ class Metadynamics:
 
         fig.tight_layout()
 
-        figname = 'block_analysis.pdf'
-        if os.path.exists(figname):
-            os.rename(figname, unique_name(figname))
-
-        fig.savefig(figname)
+        fig.savefig('block_analysis.pdf')
         plt.close(fig)
 
         return None
@@ -926,6 +984,12 @@ class Metadynamics:
 
         if block_analysis_error_npy is not None:
             block_analysis_error = np.load(block_analysis_error_npy)
+
+            if np.shape(block_analysis_error) != np.shape(fes[0]):
+                raise ValueError('Grid sizes of block analysis error and '
+                                 'the free energy surface are not compatible. '
+                                 'Make sure to use the same CVs bounds and '
+                                 'the same number of bins when computing each')
 
         else:
             block_analysis_error = None
@@ -1387,7 +1451,6 @@ class Metadynamics:
 
     def _get_min_max_params(self,
                             cvs_bounds:        Optional[Sequence] = None,
-                            width_multiplier:  float = 3,
                             ) -> Tuple:
         """
         Compute min and max parameters for generating fes.dat files from
@@ -1398,10 +1461,6 @@ class Metadynamics:
 
             cvs_bounds: Specifies the range between which to compute the free
                         energy for each collective variable
-
-            width_multiplier: (float) Number which defines how large the bounds
-                                      should be, value of 1 would add a single
-                                      width on both sides for a given CV
 
         Returns:
 
@@ -1414,7 +1473,7 @@ class Metadynamics:
 
             min_params, max_params = [], []
 
-            for cv, width in zip(self.bias.cvs, self.bias.width):
+            for cv in self.bias.cvs:
                 min_values, max_values = [], []
 
                 for filename in os.listdir():
@@ -1427,10 +1486,7 @@ class Metadynamics:
                 total_min = min(min_values)
                 total_max = max(max_values)
 
-                # Three standard deviations => would capture more than 99% of
-                # the deposited bias if gaussians were deposited at these
-                # min and max collective variable configurations
-                extension = width_multiplier * width
+                extension = 0.309 * (total_max - total_min)
 
                 min_params.append(str(total_min - extension))
                 max_params.append(str(total_max + extension))

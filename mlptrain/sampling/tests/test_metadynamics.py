@@ -21,6 +21,7 @@ def _run_metadynamics(metadynamics,
                       save_sep=False,
                       all_to_xyz=False,
                       restart=False,
+                      ps=1,
                       **kwargs):
     metadynamics.run_metadynamics(configuration=_h2_configuration(),
                                   mlp=TestPotential('1D'),
@@ -35,7 +36,7 @@ def _run_metadynamics(metadynamics,
                                   save_sep=save_sep,
                                   all_to_xyz=all_to_xyz,
                                   restart=restart,
-                                  ps=1,
+                                  ps=ps,
                                   **kwargs)
 
 
@@ -187,6 +188,7 @@ def test_try_multiple_biasfactors():
         assert os.path.exists(os.path.join(files_dir, f'colvar_cv1_{idx}.dat'))
         assert os.path.exists(os.path.join(plots_dir, f'cv1_biasf{biasf}.pdf'))
 
+
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
 def test_block_analysis():
 
@@ -194,7 +196,7 @@ def test_block_analysis():
     metad = mlt.Metadynamics(cv1)
     n_runs = 1
 
-    _run_metadynamics(metad, n_runs)
+    _run_metadynamics(metad, n_runs, ps=2)
 
     metad.block_analysis()
 
