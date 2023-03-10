@@ -570,7 +570,7 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
         else:
             biasfactor_setup = ''
 
-        if '_block_analysis' in kwargs and kwargs['_block_analysis'] == True:
+        if '_block_analysis' in kwargs and kwargs['_block_analysis'] is True:
             block_analysis_setup = 'RESTART=YES '
 
         else:
@@ -610,12 +610,12 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
                        f'STRIDE={interval}']
         setup.extend(print_setup)
 
-    if '_block_analysis' in kwargs and kwargs['_block_analysis'] == True:
+    if '_block_analysis' in kwargs and kwargs['_block_analysis'] is True:
         for line in setup[::-1]:
             if line.startswith('PRINT'):
                 setup.pop()
 
-    if 'write_plumed_setup' in kwargs and kwargs['write_plumed_setup'] == True:
+    if 'write_plumed_setup' in kwargs and kwargs['write_plumed_setup'] is True:
         with open('plumed_setup.dat', 'w') as f:
             for line in setup:
                 f.write(f'{line}\n')

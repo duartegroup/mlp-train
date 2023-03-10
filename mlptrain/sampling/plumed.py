@@ -229,7 +229,7 @@ class _PlumedCV:
 
             location: (float) Value of the CV where the wall will be located
 
-            kappa: (float) The force constant of the wall
+            kappa: (float) The force constant of the wall (eV/Å)
 
             exp: (float) The power of the wall
         """
@@ -260,7 +260,7 @@ class _PlumedCV:
 
             location: (float) Value of the CV where the wall will be located
 
-            kappa: (float) The force constant of the wall
+            kappa: (float) The force constant of the wall (eV/Å)
 
             exp: (float) The power of the wall
         """
@@ -501,7 +501,7 @@ class PlumedCustomCV(_PlumedCV):
 
 
 def plot_cv_versus_time(filename:    str,
-                        style:       str = 'scatter',
+                        style:       str = 'trajectory',
                         time_units:  str = 'ps',
                         cv_units:    Optional[str] = None,
                         cv_limits:   Optional[Sequence[float]] = None,

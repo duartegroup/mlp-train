@@ -327,6 +327,7 @@ class Metadynamics:
             for metad_process in metad_processes:
                 metad_trajs.append(metad_process.get())
 
+        # Move .traj files into 'trajectories' folder and compute .xyz files
         self._move_and_save_files(metad_trajs, save_sep, all_to_xyz, restart)
 
         if restart:
@@ -450,7 +451,7 @@ class Metadynamics:
 
         if save_sep:
             for idx, metad_traj in enumerate(metad_trajs, start=1):
-                metad_traj.save(filename=f'metad_{idx+1}.xyz')
+                metad_traj.save(filename=f'metad_{idx}.xyz')
 
         else:
             combined_traj = ConfigurationSet()
@@ -723,7 +724,8 @@ class Metadynamics:
         -----------------------------------------------------------------------
         Arguments:
 
-            energy_units: (str) Energy units to be used in plotting
+            energy_units: (str) Energy units to be used in plotting, available
+                                units: 'eV', 'kcal mol-1', 'kJ mol-1'
 
             n_bins: (int) Number of bins to use when dumping histograms
 
@@ -864,7 +866,8 @@ class Metadynamics:
         os.environ['PLUMED_MAXBACKUP'] = '10000'
 
         min_param_seq, max_param_seq = min_max_params
-        bandwidth_sequence = ','.join(['0.05' for _ in range(self.n_cvs)])
+        bandwidth_sequence = ','.join('0.05' for _ in range(self.n_cvs))
+        bin_param_sequence = ','.join(str(n_bins) for _ in range(self.n_cvs))
 
         reweight_setup = ['as: REWEIGHT_BIAS '
                           f'TEMP={temp} '
@@ -875,7 +878,7 @@ class Metadynamics:
                           f'CLEAR={blocksize} '
                           f'GRID_MIN={min_param_seq} '
                           f'GRID_MAX={max_param_seq} '
-                          f'GRID_BIN={n_bins} '
+                          f'GRID_BIN={bin_param_sequence} '
                           f'BANDWIDTH={bandwidth_sequence} '
                           'LOGWEIGHTS=as',
                           'fes: CONVERT_TO_FES '
@@ -954,7 +957,8 @@ class Metadynamics:
         -----------------------------------------------------------------------
         Arguments:
 
-            energy_units: (str) Energy units to be used in plotting
+            energy_units: (str) Energy units to be used in plotting, available
+                                units: 'eV', 'kcal mol-1', 'kJ mol-1'
 
             n_bins: (int) Number of bins to use in every dimension for fes file
                           generation from HILLS
@@ -1019,7 +1023,8 @@ class Metadynamics:
         -----------------------------------------------------------------------
         Arguments:
 
-            energy_units: (str) Energy units to be used in plotting
+            energy_units: (str) Energy units to be used in plotting, available
+                                units: 'eV', 'kcal mol-1', 'kJ mol-1'
 
             n_bins: (int) Number of bins to use in every dimension for fes file
                           generation from HILLS
@@ -1190,7 +1195,8 @@ class Metadynamics:
 
             time_units: (str) Time units to be used in plotting
 
-            energy_units: (str) Energy units to be used in plotting
+            energy_units: (str) Energy units to be used in plotting, available
+                                units: 'eV', 'kcal mol-1', 'kJ mol-1'
 
             n_bins: (int) Number of bins to use in every dimension for fes file
                           generation from HILLS
@@ -1388,7 +1394,8 @@ class Metadynamics:
         -----------------------------------------------------------------------
         Arguments:
 
-            energy_units: (str) Energy units to be used in plotting
+            energy_units: (str) Energy units to be used in plotting, available
+                                units: 'eV', 'kcal mol-1', 'kJ mol-1'
 
             n_bins: (int) Number of bins to used in every dimension when fes
                           files were generated
