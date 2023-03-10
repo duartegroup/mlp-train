@@ -1,6 +1,7 @@
 import numpy as np
 from mlptrain.potentials._base import MLPotential
 from ase.calculators.calculator import Calculator
+from ase.calculators.lj import LennardJones
 
 
 class HarmonicPotential(Calculator):
@@ -24,8 +25,8 @@ class HarmonicPotential(Calculator):
 
         x_i, y_i, z_i = (x_dist / r), (y_dist / r), (z_dist / r)
 
-        derivative[0][:] = [x_i, y_i, z_i]
-        derivative[1][:] = [-x_i, -y_i, -z_i]
+        derivative[0] = [x_i, y_i, z_i]
+        derivative[1] = [-x_i, -y_i, -z_i]
 
         force = -2 * derivative * (r - 1)
 
@@ -38,14 +39,24 @@ class TestPotential(MLPotential):
 
     def __init__(self,
                  name: str,
+                 calculator='harmonic',
                  system=None):
 
         super().__init__(name=name, system=system)
+        self.calculator = calculator.lower()
 
     @property
     def ase_calculator(self):
 
-        return HarmonicPotential()
+        if self.calculator == 'harmonic':
+            return HarmonicPotential()
+
+        if self.calculator == 'lj':
+            return LennardJones(rc=2.5, r0=3.0)
+
+        else:
+            raise NotImplementedError(f'{self.calculator} is not implemented '
+                                      f'as a test potential')
 
     def _train(self) -> None:
         """ABC for MLPotential required but unused in TestPotential"""

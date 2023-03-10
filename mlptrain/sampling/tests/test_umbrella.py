@@ -28,10 +28,11 @@ def _h2_sparse_traj():
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
-def test_window_umbrella():
+def test_run_umbrella():
 
     umbrella = _h2_umbrella()
     traj = _h2_pulled_traj()
+    n_windows = 3
 
     assert umbrella.kappa is not None and np.isclose(umbrella.kappa, 100.)
     assert umbrella.zeta_refs is None
@@ -42,8 +43,11 @@ def test_window_umbrella():
                                    temp=300,
                                    interval=5,
                                    dt=0.5,
-                                   n_windows=3,
-                                   fs=1000)
+                                   n_windows=n_windows,
+                                   save_sep=False,
+                                   all_to_xyz=True,
+                                   fs=1000,
+                                   save_fs=300)
 
     # Sampling with a high force constant should lead to fitted Gaussians
     # that closely match the reference (target) values
@@ -51,7 +55,16 @@ def test_window_umbrella():
         assert window.fitted_gaussian is not None
         assert np.isclose(window.fitted_gaussian.mean, window.zeta_ref, atol=0.1)
 
-    assert os.path.exists('combined_windows.xyz')
+    assert os.path.exists('trajectories')
+    assert os.path.exists('trajectories/combined_trajectory.xyz')
+
+    for idx in range(1, n_windows + 1):
+        assert os.path.exists(f'trajectories/trajectory_{idx}.traj')
+
+        for sim_time in [300, 600, 900]:
+            assert os.path.exists(f'trajectories/trajectory_{idx}_{sim_time}fs.traj')
+            assert os.path.exists(f'trajectories/window_{idx}_{sim_time}fs.xyz')
+
     assert os.path.exists('fitted_data.pdf')
 
 
@@ -74,7 +87,7 @@ def test_umbrella_parallel():
                                        interval=5,
                                        dt=0.5,
                                        n_windows=4,
-                                       fs=100)
+                                       fs=500)
         finish = time.perf_counter()
 
         execution_time[n_cores] = finish - start
@@ -88,9 +101,9 @@ def test_umbrella_sparse_traj():
 
     umbrella = _h2_umbrella()
     traj = _h2_sparse_traj()
-    n_windows = 11
+    n_windows = 9
 
-    # Indices from 0 to 10
+    # Indices from 1 to 9
     zeta_refs = umbrella._reference_values(traj=traj,
                                            num=n_windows,
                                            final_ref=None,
@@ -114,7 +127,8 @@ def test_umbrella_sparse_traj():
                                    fs=100,
                                    save_sep=True)
 
-    assert os.path.exists('trajectories') and os.path.isdir('trajectories')
+    assert os.path.exists('trajectories')
+    assert os.path.isdir('trajectories')
 
     previous_window_traj = mlt.ConfigurationSet()
     previous_window_traj.load_xyz(filename='trajectories/window_4.xyz',
@@ -130,8 +144,8 @@ def test_umbrella_sparse_traj():
                                               traj=previous_window_traj)
     starting_frame = middle_window_traj[0]
 
-    # The starting frame for the middle window (index 5) should be the closest frame
-    # from the previous window (index 4)
+    # The starting frame for the middle window (index 5) should be
+    # the closest frame from the previous window (index 4)
     assert starting_frame == closest_frame
 
 
@@ -147,7 +161,8 @@ def test_umbrella_save_load():
                                    interval=5,
                                    dt=0.5,
                                    n_windows=3,
-                                   fs=100)
+                                   fs=100,
+                                   save_sep=False)
 
     umbrella.save(folder_name='tmp_us')
     assert os.path.exists('tmp_us') and os.path.isdir('tmp_us')

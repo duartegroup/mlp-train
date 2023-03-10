@@ -1,33 +1,21 @@
 import os
+import re
 import time
-import mlptrain
 import numpy as np
 import matplotlib.pyplot as plt
-from mlptrain.sampling.bias import Bias
-from mlptrain.sampling.reaction_coord import ReactionCoordinate, DummyCoordinate
-from mlptrain.configurations import ConfigurationSet
-from mlptrain.sampling.md import run_mlp_md
-from mlptrain.config import Config
-from mlptrain.log import logger
 from typing import Optional, List, Callable, Tuple
 from scipy.optimize import curve_fit
 from multiprocessing import Pool
-
-
-def _run_individual_window(frame, mlp, temp, interval, dt, bias, **kwargs):
-    """Runs an individual umbrella sampling window. Adaptive sampling to
-    be implemented"""
-
-    traj = run_mlp_md(configuration=frame,
-                      mlp=mlp,
-                      temp=temp,
-                      dt=dt,
-                      interval=interval,
-                      bias=bias,
-                      method='umbrella',
-                      **kwargs)
-
-    return traj
+from copy import deepcopy
+from ase.io.trajectory import Trajectory as ASETrajectory
+from ase.io import write as ase_write
+from mlptrain.sampling.bias import Bias
+from mlptrain.sampling.reaction_coord import DummyCoordinate
+from mlptrain.configurations import ConfigurationSet
+from mlptrain.sampling.md import run_mlp_md
+from mlptrain.utils import move_files, convert_ase_energy, convert_exponents
+from mlptrain.config import Config
+from mlptrain.log import logger
 
 
 class _Window:
@@ -279,15 +267,16 @@ class UmbrellaSampling:
         return np.min(np.abs(self.zeta_func(traj) - ref)) > 0.5
 
     def run_umbrella_sampling(self,
-                              traj: 'mlptrain.ConfigurationSet',
-                              mlp: 'mlptrain.potentials._base.MLPotential',
-                              temp:      float,
-                              interval:  int,
-                              dt:        float,
-                              init_ref:  Optional[float] = None,
-                              final_ref: Optional[float] = None,
-                              n_windows: int = 10,
-                              save_sep:  Optional[bool] = False,
+                              traj:     'mlptrain.ConfigurationSet',
+                              mlp:      'mlptrain.potentials._base.MLPotential',
+                              temp:        float,
+                              interval:    int,
+                              dt:          float,
+                              init_ref:    Optional[float] = None,
+                              final_ref:   Optional[float] = None,
+                              n_windows:   int = 10,
+                              save_sep:    bool = True,
+                              all_to_xyz:  bool = False,
                               **kwargs
                               ) -> None:
         """
@@ -312,44 +301,52 @@ class UmbrellaSampling:
             dt: (float) Time-step in fs
             
             init_ref: (float | None) Value of reaction coordinate in Å for
-                       first window
+                                     first window
             
             final_ref: (float | None) Value of reaction coordinate in Å for
-                       first window
+                                      first window
             
             n_windows: (int) Number of windows to run in the umbrella sampling
 
-            save_sep: (bool) If True saves trajectories of each window separately
+            save_sep: (bool) If True saves trajectories of each window
+                             separately as .xyz files
+
+            all_to_xyz: (bool) If True all .traj trajectory files are saved as
+                               .xyz files (when using save_fs, save_ps, save_ns)
 
         -------------------
         Keyword Arguments:
 
             {fs, ps, ns}: Simulation time in some units
+
+            {save_fs, save_ps, save_ns}: Trajectory saving interval
+                                         in some units
         """
+
+        start_umbrella = time.perf_counter()
+
         if temp <= 0:
             raise ValueError('Temperature must be positive and non-zero for '
                              'umbrella sampling')
-
-        start_umbrella = time.perf_counter()
 
         self.temp = temp
         zeta_refs = self._reference_values(traj, n_windows, init_ref, final_ref)
 
         # window_process.get() --> window_traj
-        window_trajs = []
-        window_processes = []
-        biases = []
+        window_processes, window_trajs, biases = [], [], []
 
         n_processes = min(n_windows, Config.n_cores)
-        logger.info(f'Running Umbrella Sampling with {n_windows} windows, '
-                    f'{n_processes} windows are run in parallel')
+        logger.info(f'Running Umbrella Sampling with {n_windows} window(s), '
+                    f'{n_processes} window(s) are run in parallel')
 
         with Pool(processes=n_processes) as pool:
 
             for idx, ref in enumerate(zeta_refs):
 
-                logger.info(f'Running US window {idx} with ζ_ref={ref:.2f} Å '
-                            f'and κ = {self.kappa:.3f} eV / Å^2')
+                # Without copy kwargs is overwritten at every iteration
+                kwargs_single = deepcopy(kwargs)
+                kwargs_single['_idx'] = idx + 1
+                kwargs_single['_ref'] = ref
 
                 bias = Bias(self.zeta_func, kappa=self.kappa, reference=ref)
 
@@ -362,14 +359,14 @@ class UmbrellaSampling:
 
                 init_frame = self._best_init_frame(bias, _traj)
 
-                window_process = pool.apply_async(func=_run_individual_window,
-                                                args=(init_frame,
-                                                      mlp,
-                                                      temp,
-                                                      interval,
-                                                      dt,
-                                                      bias),
-                                                kwds=kwargs)
+                window_process = pool.apply_async(func=self._run_individual_window,
+                                                  args=(init_frame,
+                                                        mlp,
+                                                        temp,
+                                                        interval,
+                                                        dt,
+                                                        bias),
+                                                  kwds=kwargs_single)
                 window_processes.append(window_process)
                 biases.append(bias)
 
@@ -385,21 +382,72 @@ class UmbrellaSampling:
                 self.windows.append(window)
                 window_trajs.append(window_traj)
 
+        # Move .traj files into 'trajectories' folder and compute .xyz files
+        self._move_and_save_files(window_trajs, save_sep, all_to_xyz)
+
+        finish_umbrella = time.perf_counter()
+        logger.info('Umbrella sampling done in '
+                    f'{(finish_umbrella - start_umbrella) / 60:.1f} m')
+
+        return None
+
+    def _run_individual_window(self, frame, mlp, temp, interval, dt, bias,
+                               **kwargs):
+        """Runs an individual umbrella sampling window"""
+
+        logger.info(f'Running US window {kwargs["_idx"]} with '
+                    f'ζ_ref={kwargs["_ref"]:.2f} Å '
+                    f'and κ = {self.kappa:.3f} eV / Å^2')
+
+        kwargs['n_cores'] = 1
+        kwargs['_method'] = 'umbrella'
+
+        traj = run_mlp_md(configuration=frame,
+                          mlp=mlp,
+                          temp=temp,
+                          dt=dt,
+                          interval=interval,
+                          bias=bias,
+                          kept_substrings=['.traj'],
+                          **kwargs)
+
+        return traj
+
+    @staticmethod
+    def _move_and_save_files(window_trajs, save_sep, all_to_xyz) -> None:
+        """Saves window trajectories, moves them into trajectories folder and
+        computes .xyz files"""
+
+        move_files([r'trajectory_\d+\.traj', r'trajectory_\d+_\w+\.traj'],
+                   dst_folder='trajectories',
+                   regex=True)
+
+        os.chdir('trajectories')
+
         if save_sep:
-            os.mkdir('trajectories')
-            for idx, window_traj in enumerate(window_trajs):
-                window_traj.save(filename=f'trajectories/window_{idx}.xyz')
+            for idx, metad_traj in enumerate(window_trajs, start=1):
+                metad_traj.save(filename=f'window_{idx}.xyz')
 
         else:
             combined_traj = ConfigurationSet()
             for window_traj in window_trajs:
                 combined_traj += window_traj
 
-            combined_traj.save(filename='combined_windows.xyz')
+            combined_traj.save(filename='combined_trajectory.xyz')
 
-        finish_umbrella = time.perf_counter()
-        logger.info('Umbrella sampling done in '
-                    f'{(finish_umbrella - start_umbrella) / 60:.1f} m')
+        if all_to_xyz:
+            pattern = re.compile(r'trajectory_\d+_\w+\.traj')
+
+            for filename in os.listdir():
+                if re.search(pattern, filename) is not None:
+                    basename = filename[:-5]
+                    idx = basename.split('_')[1]
+                    sim_time = basename.split('_')[2]
+
+                    ase_traj = ASETrajectory(filename)
+                    ase_write(f'window_{idx}_{sim_time}.xyz', ase_traj)
+
+        os.chdir('..')
 
         return None
 
@@ -514,7 +562,8 @@ class UmbrellaSampling:
 
         os.mkdir(folder_name)
         for idx, window in enumerate(self.windows):
-            window.save(filename=os.path.join(folder_name, f'window_{idx}.txt'))
+            window.save(filename=os.path.join(folder_name,
+                                              f'window_{idx+1}.txt'))
 
         return None
 
@@ -625,31 +674,22 @@ def _plot_and_save_free_energy(free_energies,
 
         zetas: Values of the reaction coordinate
     """
-    if units.lower() == 'ev':
-        pass
 
-    elif units.lower() == 'kcal mol-1':
-        free_energies *= 23.060541945329334  # eV -> kcal mol-1
-
-    elif units.lower() == 'kj mol-1':
-        free_energies *= 96.48530749925793  # eV -> kJ mol-1
-
-    else:
-        raise ValueError(f'Unknown energy units: {units}')
+    free_energies = convert_ase_energy(free_energies, units)
 
     rel_free_energies = free_energies - min(free_energies)
 
     fig, ax = plt.subplots()
     ax.plot(zetas, rel_free_energies, color='k')
 
-    with open(f'free_energy.txt', 'w') as outfile:
+    with open(f'umbrella_free_energy.txt', 'w') as outfile:
         for zeta, free_energy in zip(zetas, rel_free_energies):
             print(zeta, free_energy, file=outfile)
 
     ax.set_xlabel('Reaction coordinate / Å')
-    ax.set_ylabel('ΔG / kcal mol$^{-1}$')
+    ax.set_ylabel(f'ΔG / {convert_exponents(units)}')
 
     fig.tight_layout()
-    fig.savefig('free_energy.pdf')
+    fig.savefig('umbrella_free_energy.pdf')
     plt.close(fig)
     return None

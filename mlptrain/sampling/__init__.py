@@ -1,6 +1,9 @@
 from mlptrain.sampling.bias import Bias
+from mlptrain.sampling.plumed import PlumedBias
 from mlptrain.sampling.umbrella import UmbrellaSampling
-from mlptrain.sampling.reaction_coord import ReactionCoordinate, AverageDistance
+from mlptrain.sampling.metadynamics import Metadynamics
 
 __all__ = ['Bias',
-           'UmbrellaSampling']
+           'PlumedBias',
+           'UmbrellaSampling',
+           'Metadynamics']
