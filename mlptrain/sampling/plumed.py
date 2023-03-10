@@ -229,7 +229,7 @@ class _PlumedCV:
 
             location: (float) Value of the CV where the wall will be located
 
-            kappa: (float) The force constant of the wall (eV/Å)
+            kappa: (float) The force constant of the wall in eV/Å^(-exp) units
 
             exp: (float) The power of the wall
         """
@@ -260,7 +260,7 @@ class _PlumedCV:
 
             location: (float) Value of the CV where the wall will be located
 
-            kappa: (float) The force constant of the wall (eV/Å)
+            kappa: (float) The force constant of the wall in eV/Å^(-exp) units
 
             exp: (float) The power of the wall
         """
