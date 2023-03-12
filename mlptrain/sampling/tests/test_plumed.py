@@ -54,28 +54,27 @@ def test_plumed_cv_from_atom_groups():
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
 def test_plumed_cv_from_file():
 
-    cv1 = mlt.PlumedCustomCV('plumed_cv_custom.dat', units='Å')
+    cv1 = mlt.PlumedCustomCV('plumed_cv_custom.dat', component='s', units='Å')
 
-    assert cv1.name == 'cv1'
+    assert cv1.name == 'p1.s'
     assert cv1.units == 'Å'
-    assert cv1.setup == ['dof1: DISTANCE ATOMS=1,2',
-                         'dof2: DISTANCE ATOMS=3,4',
-                         'cv1: CUSTOM '
-                         'ARG=dof1,dof2 '
-                         'VAR=dof1,dof2 '
-                         'FUNC=dof1*dof2 '
-                         'PERIODIC=NO']
+    assert cv1.setup == ['p1: PATH '
+                         'REFERENCE=path.pdb '
+                         'TYPE=OPTIMAL '
+                         'LAMBDA=500.0']
 
-    cv1_component = mlt.PlumedCustomCV('plumed_cv_custom.dat', component='x')
+    with open('path.pdb', 'r') as f:
+        data1 = f.read()
 
-    assert cv1_component.name == 'cv1.x'
-    assert cv1_component.setup == ['dof1: DISTANCE ATOMS=1,2',
-                                   'dof2: DISTANCE ATOMS=3,4',
-                                   'cv1: CUSTOM '
-                                   'ARG=dof1,dof2 '
-                                   'VAR=dof1,dof2 '
-                                   'FUNC=dof1*dof2 '
-                                   'PERIODIC=NO']
+    assert cv1.files == [('path.pdb', data1)]
+
+    os.remove('path.pdb')
+    cv1.write_files()
+
+    with open('path.pdb', 'r') as f:
+        data2 = f.read()
+
+    assert data1 == data2
 
 
 def test_plumed_cv_walls():

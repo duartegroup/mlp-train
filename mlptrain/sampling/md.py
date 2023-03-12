@@ -275,6 +275,11 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
         if restart:
             plumed_calc.istep = n_previous_steps
 
+        if bias.cvs is not None:
+            for cv in bias.cvs:
+                if cv.files is not None:
+                    cv.write_files()
+
         ase_atoms.calc = plumed_calc
 
         dyn.run(steps=n_steps)

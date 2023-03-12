@@ -891,6 +891,10 @@ class Metadynamics:
             for line in reweight_setup:
                 f.write(f'{line}\n')
 
+        for cv in self.bias.cvs:
+            if cv.files is not None:
+                cv.write_files()
+
         driver_process = Popen(['plumed', 'driver',
                                 '--ixyz', 'block_analysis.xyz',
                                 '--plumed', 'reweight.dat',
