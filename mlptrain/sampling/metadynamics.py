@@ -918,7 +918,7 @@ class Metadynamics:
         # Taking nanstd() of a line of only np.nan values raises warnings
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            std_fes_grid = (1 / n_blocks) * np.nanstd(fes_grids, axis=0)
+            std_fes_grid = (1 / np.sqrt(n_blocks)) * np.nanstd(fes_grids, axis=0)
 
         return std_fes_grid
 
@@ -1067,10 +1067,10 @@ class Metadynamics:
         mean_fes = np.mean(fes_grids, axis=0)
 
         if block_analysis_error is None:
-            std_error = np.std(fes_grids, axis=0)
+            std_error = (1 / np.sqrt(len(fes_grids))) * np.std(fes_grids, axis=0)
 
         else:
-            std_error = 1 / np.sqrt(len(fes_grids)) * block_analysis_error
+            std_error = (1 / np.sqrt(len(fes_grids))) * block_analysis_error
 
         lower_bound = mean_fes - (1/2 * std_error)
         upper_bound = mean_fes + (1/2 * std_error)
@@ -1117,10 +1117,10 @@ class Metadynamics:
         mean_fes = np.mean(fes_grids, axis=0)
 
         if block_analysis_error is None:
-            std_error = np.std(fes_grids, axis=0)
+            std_error = (1 / np.sqrt(len(fes_grids))) * np.std(fes_grids, axis=0)
 
         else:
-            std_error = 1 / np.sqrt(len(fes_grids)) * block_analysis_error
+            std_error = (1 / np.sqrt(len(fes_grids))) * block_analysis_error
 
         fig, (ax_mean, ax_std_error) = plt.subplots(nrows=1, ncols=2,
                                                     figsize=(12, 5))
