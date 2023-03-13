@@ -297,12 +297,15 @@ class _PlumedCV:
         else:
             self.name = _names.pop()
 
+        self._check_name()
+
         return None
 
     def _from_atom_groups(self, name, atom_groups) -> None:
         """Generate DOFs from atom_groups"""
 
         self.name = name
+        self._check_name()
         self.dof_names, self.dof_units = [], []
 
         if isinstance(atom_groups, list) or isinstance(atom_groups, tuple):
@@ -330,6 +333,16 @@ class _PlumedCV:
 
         else:
             raise TypeError('Atom groups are in incorrect format')
+
+        return None
+
+    def _check_name(self) -> None:
+        """Checks if the supplied name is valid"""
+
+        _illegal_substrings = ['fes', 'colvar', 'HILLS']
+        if any(substr in self.name for substr in _illegal_substrings):
+            raise ValueError('Please do not use "fes", "colvar", "HILLS" in '
+                             'your CV names')
 
         return None
 
