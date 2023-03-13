@@ -769,7 +769,7 @@ class Metadynamics:
         blocksize_interval = 10
         max_blocksize = n_frames // min_n_blocks
 
-        if max_blocksize <= min_blocksize:
+        if max_blocksize < min_blocksize:
             raise ValueError('The simulation is too short to perform '
                              'block analysis')
 
@@ -1314,13 +1314,14 @@ class Metadynamics:
         fes_time = [deposit_time[i]
                     for i in range(stride - 1, len(deposit_time), stride)]
 
+        # sum_hills generates surfaces with the stride,
+        # but it also always computes the final FES
         remove_duplicate = fes_time[-1] == deposit_time[-1]
+        fes_time.append(deposit_time[-1])
 
         fes_time = convert_ase_time(np.array(fes_time), time_units)
         fes_time = np.round(fes_time, decimals=1)
 
-        # sum_hills generates surfaces with the stride,
-        # but it also always computes the final FES
         self._generate_fes_files(n_bins=n_bins,
                                  cvs_bounds=cvs_bounds,
                                  stride=stride,
@@ -1334,6 +1335,7 @@ class Metadynamics:
         # Remove the final FES if it has already been computed with the stride
         if remove_duplicate:
             os.remove(f'fes_{idx}_{len(fes_time)}.dat')
+            fes_time.pop()
 
         cv_grids, fes_grids = self._fes_files_to_grids(energy_units, n_bins)
 
