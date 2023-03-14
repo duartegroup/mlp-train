@@ -215,13 +215,13 @@ def test_block_analysis():
     assert os.path.exists('block_analysis')
 
     time_fs = ps * 1E3
-    total_n_frames = int(time_fs // dt) + 1
-    n_frames = (total_n_frames // interval) + 1
+    n_steps = int(time_fs / dt)
+    n_used_frames = n_steps // interval
 
     min_n_blocks = 10
     min_blocksize = 10
     blocksize_interval = 10
-    max_blocksize = n_frames // min_n_blocks
+    max_blocksize = n_used_frames // min_n_blocks
 
     for blocksize in range(min_blocksize, max_blocksize + 1, blocksize_interval):
         grid_name = f'block_analysis/mean_fes_blocksize{blocksize}.npy'

@@ -761,13 +761,16 @@ class Metadynamics:
                                                   path='plumed_files/'
                                                        'metadynamics')
 
-        total_n_frames = self._n_simulation_steps(dt, **kwargs) + 1
-        n_frames = (total_n_frames // interval) + 1
+        n_steps = self._n_simulation_steps(dt, **kwargs)
+
+        # The number of frames PLUMED driver takes into account
+        # n_used_frames = n_total_frames - 1
+        n_used_frames = n_steps // interval
 
         min_n_blocks = 10
         min_blocksize = 10
         blocksize_interval = 10
-        max_blocksize = n_frames // min_n_blocks
+        max_blocksize = n_used_frames // min_n_blocks
 
         if max_blocksize < min_blocksize:
             raise ValueError('The simulation is too short to perform '
@@ -889,7 +892,7 @@ class Metadynamics:
         else:
             raise ValueError('Simulation time not found')
 
-        n_steps = int(time_fs // dt)
+        n_steps = int(time_fs / dt)
 
         return n_steps
 
