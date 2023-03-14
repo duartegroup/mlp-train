@@ -658,7 +658,7 @@ class Metadynamics:
             pool.close()
             pool.join()
 
-        move_files([r'colvar_\w+_\d+\.dat'],
+        move_files([r'colvar_\w+_\d+\.dat', r'HILLS_\d+\.dat'],
                    dst_folder='plumed_files/multiple_biasfactors',
                    regex=True)
 
@@ -918,7 +918,7 @@ class Metadynamics:
 
             # σ_μ_A when using n_blocks
             std_mean_fes_grid = ((1 / np.sqrt(n_blocks))
-                                 * np.nanstd(fes_grids, axis=0))
+                                 * np.nanstd(fes_grids, axis=0, ddof=1))
 
         fes_grids = np.stack((mean_fes_grid, std_mean_fes_grid), axis=0)
         grid = np.concatenate((cv_grids, fes_grids), axis=0)
@@ -997,7 +997,11 @@ class Metadynamics:
 
         fig.tight_layout()
 
-        fig.savefig('block_analysis.pdf')
+        figname = 'block_analysis.pdf'
+        if os.path.exists(figname):
+            os.rename(figname, unique_name(figname))
+
+        fig.savefig(figname)
         plt.close(fig)
 
         return None
@@ -1138,20 +1142,23 @@ class Metadynamics:
 
         cv_grid = fes[0]
         fes_grids = fes[1:]
+        n_fes_grids = len(fes_grids)
 
         if blocksize is None:
-            n_runs = len(fes_grids)
             mean_fes = np.mean(fes_grids, axis=0)
-            std_mean_fes = (1 / np.sqrt(n_runs)) * np.std(fes_grids, axis=0)
+            std_mean_fes = ((1 / np.sqrt(n_fes_grids))
+                           * np.std(fes_grids, axis=0, ddof=1))
 
         else:
-            # No benefit from n_runs
+            # No benefit from n_fes_grids
             mean_fes = fes_grids[-2]
             std_mean_fes = fes_grids[-1]
 
-        confidence_interval = norm.interval(confidence_level,
-                                            loc=mean_fes,
-                                            scale=std_mean_fes)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            confidence_interval = norm.interval(confidence_level,
+                                                loc=mean_fes,
+                                                scale=std_mean_fes)
 
         lower_bound = confidence_interval[0]
         upper_bound = confidence_interval[1]
@@ -1159,10 +1166,10 @@ class Metadynamics:
         fig, ax = plt.subplots()
 
         ax.plot(cv_grid, mean_fes, label=r'$\mu_{G}$')
+        label = 'Confidence Interval' if n_fes_grids != 1 else None
         ax.fill_between(cv_grid, lower_bound, upper_bound,
                         alpha=0.5,
-                        label=r'$\sigma_{\mu_{G}}$')
-        ax.legend()
+                        label=label)
 
         cv = self.bias.cvs[0]
         if cv.units is not None:
@@ -1199,20 +1206,23 @@ class Metadynamics:
         cv1_grid = fes[0]
         cv2_grid = fes[1]
         fes_grids = fes[2:]
+        n_fes_grids = len(fes_grids)
 
         if blocksize is None:
-            n_runs = len(fes_grids)
             mean_fes = np.mean(fes_grids, axis=0)
-            std_mean_fes = (1 / np.sqrt(n_runs)) * np.std(fes_grids, axis=0)
+            std_mean_fes = ((1 / np.sqrt(n_fes_grids))
+                            * np.std(fes_grids, axis=0, ddof=1))
 
         else:
-            # No benefit from n_runs
+            # No benefit from n_fes_grids
             mean_fes = fes_grids[-2]
             std_mean_fes = fes_grids[-1]
 
-        confidence_interval = norm.interval(confidence_level,
-                                            loc=mean_fes,
-                                            scale=std_mean_fes)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            confidence_interval = norm.interval(confidence_level,
+                                                loc=mean_fes,
+                                                scale=std_mean_fes)
 
         interval_range = confidence_interval[1] - confidence_interval[0]
 
@@ -1333,9 +1343,10 @@ class Metadynamics:
         os.chdir('../fes_convergence')
 
         # Remove the final FES if it has already been computed with the stride
+        # (file enumeration using stride starts from zero)
         if remove_duplicate:
-            os.remove(f'fes_{idx}_{len(fes_time)}.dat')
-            fes_time.pop()
+            os.remove(f'fes_{idx}_{len(fes_time)-1}.dat')
+            fes_time = fes_time[:-1]
 
         cv_grids, fes_grids = self._fes_files_to_grids(energy_units, n_bins)
 
@@ -1409,7 +1420,8 @@ class Metadynamics:
         else:
             ax.set_xlabel(f'{plotted_cv.name}')
 
-        ax.set_ylabel(f'ΔG / {convert_exponents(energy_units)}')
+        ax.set_ylabel(r'$\Delta G$ / '
+                      f'{convert_exponents(energy_units)}')
 
         fig.tight_layout()
 
