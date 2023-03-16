@@ -3,8 +3,9 @@ import re
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Optional, List, Callable, Tuple
 from scipy.optimize import curve_fit
+from scipy.integrate import simpson
+from typing import Optional, List, Callable, Tuple
 from multiprocessing import Pool
 from copy import deepcopy
 from ase.io.trajectory import Trajectory as ASETrajectory
@@ -39,30 +40,67 @@ class _Window:
         self._bias = bias
         self._obs_zetas = obs_zetas
 
-        self.fitted_gaussian: Optional[_FittedGaussian] = None
+        self._gaussian_pdf:     Optional[_FittedGaussian] = None
+        self._gaussian_plotted: Optional[_FittedGaussian] = None
 
+        self.bin_edges:     Optional[np.ndarray] = None
         self.bias_energies: Optional[np.ndarray] = None
         self.hist:          Optional[np.ndarray] = None
 
         self.free_energy = 0.0
 
-    def bin(self,
-            zetas: np.ndarray) -> None:
-        """
-        Bin the observed reaction coordinates in this window into an a set of
-        bins, defined by the array of bin centres (zetas)
+    def bin(self) -> None:
+        """Bin the observed reaction coordinates in this window into an a set
+        of bins, defined by the array of bin centres"""
 
-        -----------------------------------------------------------------------
-        Arguments:
-            zetas: Discretized reaction coordinate
-        """
+        if self.bin_centres is None:
+            raise TypeError('Cannot bin with undefined bin centres')
 
-        bins = np.linspace(zetas[0], zetas[-1], num=len(zetas)+1)
-        self.hist, _ = np.histogram(self._obs_zetas, bins=bins)
+        self.hist, _ = np.histogram(self._obs_zetas, bins=self.bin_edges)
 
-        self.bias_energies = (self._bias.kappa/2) * (zetas - self._bias.ref)**2
+        self.bias_energies = ((self._bias.kappa/2)
+                              * (self.bin_centres - self._bias.ref)**2)
 
         return None
+
+    def set_bin_edges(self, outer_zeta_refs, n_bins) -> None:
+        """Compute and store an array with zeta values at bin edges"""
+
+        lmost_edge, rmost_edge = outer_zeta_refs
+        _bin_edges = np.linspace(lmost_edge, rmost_edge, num=n_bins+1)
+
+        self.bin_edges = _bin_edges
+        return None
+
+    @property
+    def bin_centres(self) -> Optional[np.ndarray]:
+        """Array of zeta values at bin centres"""
+
+        if self.bin_edges is None:
+            return None
+
+        _edges = self.bin_edges
+
+        return (_edges[1:] + _edges[:-1]) / 2
+
+    @property
+    def gaussian_pdf(self) -> '_FittedGaussian':
+        """Fitted gaussian as a probability density function"""
+
+        if self._gaussian_pdf is None:
+            self._fit_gaussian(normalised=True)
+
+        return self._gaussian_pdf
+
+    @property
+    def gaussian_plotted(self) -> '_FittedGaussian':
+        """Gaussian which was plotted during umbrella sampling simulation"""
+
+        if self._gaussian_plotted is None:
+            raise TypeError('No plotted gaussian is stored in the window, '
+                            'make sure to run umbrella sampling first')
+
+        return self._gaussian_plotted
 
     @property
     def n(self) -> int:
@@ -72,6 +110,24 @@ class _Window:
                              'window has not been binned')
 
         return int(np.sum(self.hist))
+
+    def dAu_dq(self, zetas, beta):
+        """PMF from a single window"""
+
+        if self.gaussian_pdf is None:
+            raise TypeError('Cannot estimate PMF if the window does not '
+                            'contain a fitted probability density function')
+
+        mean_zeta_b = self.gaussian_pdf.mean
+        std_zeta_b = self.gaussian_pdf.std
+        kappa = self._bias.kappa
+        zeta_ref = self.zeta_ref
+
+        # Equation 8.8.21 from Tuckerman, p. 344
+        _dAu_dq = ((1.0 / beta) * (zetas - mean_zeta_b) / (std_zeta_b**2)
+                   - kappa * (zetas - zeta_ref))
+
+        return _dAu_dq
 
     @property
     def zeta_ref(self) -> float:
@@ -128,15 +184,42 @@ class _Window:
 
         return None
 
-    def _fit_gaussian(self, hist, bin_centres):
-        """Fit a Gaussian to a histogram of data"""
+    def _fit_gaussian(self, normalised) -> None:
+        """Fit a gaussian to a histogram of data"""
+
+        gaussian = _FittedGaussian()
+
+        a_0, mu_0, sigma_0 = (np.max(self.hist),
+                              np.average(self._obs_zetas),
+                              float(np.std(self._obs_zetas)))
+
+        try:
+            gaussian.params, _ = curve_fit(gaussian.value,
+                                           self.bin_centres,
+                                           self.hist,
+                                           p0=[1.0, 1.0, 1.0],  # init guess
+                                           maxfev=10000)
+
+        except RuntimeError:
+            logger.warning('Could not fit gaussian to a histogram, using '
+                           'parameters obtained without fitting instead')
+
+            gaussian.params = a_0, mu_0, sigma_0
+
+        if normalised:
+            gaussian.params = 1, *gaussian.params[1:]
+
+        self._gaussian_pdf = gaussian
+        return None
+
+    def _plot_gaussian(self, hist, bin_centres) -> None:
+        """Fit a Gaussian to a histogram of data and plot the result"""
 
         gaussian = _FittedGaussian()
 
         try:
-            gaussian.params, _ = curve_fit(gaussian.value, bin_centres,
-                                           hist,
-                                           p0=[1.0, 1.0, 1.0],  # init guess
+            gaussian.params, _ = curve_fit(gaussian.value, bin_centres, hist,
+                                           p0=[1.0, 1.0, 1.0],
                                            maxfev=10000)
 
             if np.min(np.abs(bin_centres - gaussian.mean)) > 1.0:
@@ -153,13 +236,13 @@ class _Window:
 
         plt.plot(zetas, gaussian(zetas), c=color)
 
-        self.fitted_gaussian = gaussian
+        self._gaussian_plotted = gaussian
         return None
 
     def plot(self,
-             min_zeta:     float,
-             max_zeta:     float,
-             fit_gaussian: bool = True) -> None:
+             min_zeta:      float,
+             max_zeta:      float,
+             plot_gaussian: bool = True) -> None:
         """
         Plot this window along with a fitted Gaussian function if possible
 
@@ -169,7 +252,7 @@ class _Window:
 
             max_zeta:
 
-            fit_gaussian:
+            plot_gaussian:
         """
         hist, bin_edges = np.histogram(self._obs_zetas,
                                        density=False,
@@ -180,8 +263,8 @@ class _Window:
         bin_centres = (bin_edges[1:] + bin_edges[:-1]) / 2
         plt.plot(bin_centres, hist, alpha=0.1)
 
-        if fit_gaussian:
-            self._fit_gaussian(hist, bin_centres)
+        if plot_gaussian:
+            self._plot_gaussian(hist, bin_centres)
 
         plt.xlabel('Reaction coordinate / Å')
         plt.ylabel('Frequency')
@@ -377,7 +460,7 @@ class UmbrellaSampling:
                                  bias=bias)
                 window.plot(min_zeta=min(zeta_refs),
                             max_zeta=max(zeta_refs),
-                            fit_gaussian=True)
+                            plot_gaussian=True)
 
                 self.windows.append(window)
                 window_trajs.append(window_traj)
@@ -515,12 +598,14 @@ class UmbrellaSampling:
                                       and values of the free energy
         """
         beta = self.beta   # 1 / (k_B T)
-
-        # Discretized values of the reaction coordinate
-        zetas = np.linspace(self.zeta_refs[0], self.zeta_refs[-1], num=n_bins)
+        outer_zeta_refs = (self.zeta_refs[0], self.zeta_refs[-1])
 
         for window in self.windows:
-            window.bin(zetas=zetas)
+            window.set_bin_edges(outer_zeta_refs, n_bins=n_bins)
+            window.bin()
+
+        # Discretised reaction coordinate
+        zetas = np.linspace(self.zeta_refs[0], self.zeta_refs[-1], num=n_bins)
 
         p = np.ones_like(zetas) / len(zetas)  # P(ζ) uniform distribution
         p_prev = np.inf * np.ones_like(p)     # Start with P(ζ)_(-1) = ∞
@@ -549,6 +634,67 @@ class UmbrellaSampling:
         _plot_and_save_free_energy(free_energies=self.free_energies(p),
                                    zetas=zetas)
         return zetas, self.free_energies(p)
+
+    def umbrella_integration(self,
+                             n_bins: int = 100
+                             ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Perform umbrella integration on the umbrella windows to un-bias the
+        probability distribution. Such that the the PMF becomes
+
+        .. math::
+            dA/dq = Σ_i p_i(q) dA^u_i/ dq
+
+        where the sum runs over the windows. Also plot and save the resulting
+        free energy.
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            n_bins: Number of bins to use in the histogram (minus one) and
+                    the number of reaction coordinate values plotted and
+                    returned
+
+        Returns:
+
+            (np.ndarray, np.ndarray): Tuple containing the reaction coordinate
+                                      and values of the free energy
+        """
+        beta = self.beta   # 1 / (k_B T)
+        outer_zeta_refs = (self.zeta_refs[0], self.zeta_refs[-1])
+
+        for window in self.windows:
+            window.set_bin_edges(outer_zeta_refs, n_bins=n_bins)
+            window.bin()
+
+        # Discretised reaction coordinate
+        zetas = np.linspace(self.zeta_refs[0], self.zeta_refs[-1], num=n_bins)
+        zetas_spacing = zetas[1] - zetas[0]
+
+        dA_dq = np.zeros_like(zetas)
+        free_energies = np.zeros_like(zetas)
+        sum_a = 0
+
+        for i, window in enumerate(self.windows):
+            a_i = window.n * window.gaussian_pdf(zetas)
+            dA_dq += a_i * window.dAu_dq(zetas, beta=beta)
+            sum_a += a_i
+
+        # Normalise
+        dA_dq /= sum_a
+
+        for i, _ in enumerate(zetas):
+            if i == 0:
+                free_energies[i] = 0.0
+
+            else:
+                free_energies[i] = simpson(dA_dq[:i],
+                                           zetas[:i],
+                                           dx=zetas_spacing)
+
+        _plot_and_save_free_energy(free_energies=free_energies,
+                                   zetas=zetas)
+        return zetas, free_energies
 
     def save(self, folder_name: str = 'umbrella') -> None:
         """
@@ -660,6 +806,11 @@ class _FittedGaussian:
     def mean(self) -> float:
         """Mean of the Normal distribution, of which this is an approx."""
         return self.params[1]
+
+    @property
+    def std(self) -> float:
+        """Standard deviation of the Normal distribution"""
+        return self.params[2]
 
 
 def _plot_and_save_free_energy(free_energies,
