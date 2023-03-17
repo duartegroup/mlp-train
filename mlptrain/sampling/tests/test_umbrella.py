@@ -52,8 +52,8 @@ def test_run_umbrella():
     # Sampling with a high force constant should lead to fitted Gaussians
     # that closely match the reference (target) values
     for window in umbrella.windows:
-        assert window.fitted_gaussian is not None
-        assert np.isclose(window.fitted_gaussian.mean, window.zeta_ref, atol=0.1)
+        assert window.gaussian_plotted is not None
+        assert np.isclose(window.gaussian_plotted.mean, window.zeta_ref, atol=0.1)
 
     assert os.path.exists('trajectories')
     assert os.path.exists('trajectories/combined_trajectory.xyz')
