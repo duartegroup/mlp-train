@@ -275,6 +275,11 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
         if restart:
             plumed_calc.istep = n_previous_steps
 
+        if bias.cvs is not None:
+            for cv in bias.cvs:
+                if cv.files is not None:
+                    cv.write_files()
+
         ase_atoms.calc = plumed_calc
 
         dyn.run(steps=n_steps)
@@ -478,8 +483,6 @@ def _n_simulation_steps(dt: float,
     Arguments:
         dt: Timestep in fs
 
-        kwargs:
-
     Returns:
         (int): Number of simulation steps to perform
     """
@@ -503,7 +506,7 @@ def _n_simulation_steps(dt: float,
     return n_steps
 
 
-def _traj_saving_interval(dt:     float,
+def _traj_saving_interval(dt: float,
                           kwargs: dict
                           ) -> int:
     """Calculate the interval at which a trajectory is saved"""
@@ -561,7 +564,7 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
         setup.extend(cv.setup)
 
     # Metadynamics
-    if '_method' in kwargs and kwargs['_method'] == 'metadynamics':
+    if '_method' in kwargs and kwargs['_method'] is 'metadynamics':
         hills_filename = f'HILLS_{kwargs["_idx"]}.dat'
 
         if bias.biasfactor is not None:
@@ -570,11 +573,11 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
         else:
             biasfactor_setup = ''
 
-        if '_block_analysis' in kwargs and kwargs['_block_analysis'] is True:
-            block_analysis_setup = 'RESTART=YES '
+        if '_static_hills' in kwargs and kwargs['_static_hills'] is True:
+            static_hills_setup = 'RESTART=YES '
 
         else:
-            block_analysis_setup = ''
+            static_hills_setup = ''
 
         metad_setup = ['metad: METAD '
                        f'ARG={bias.cv_sequence} '
@@ -583,7 +586,7 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
                        f'SIGMA={bias.width_sequence} '
                        f'TEMP={temp} '
                        f'{biasfactor_setup}'
-                       f'{block_analysis_setup}'
+                       f'{static_hills_setup}'
                        f'FILE={hills_filename}']
         setup.extend(metad_setup)
 
@@ -610,7 +613,7 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
                        f'STRIDE={interval}']
         setup.extend(print_setup)
 
-    if '_block_analysis' in kwargs and kwargs['_block_analysis'] is True:
+    if '_remove_print' in kwargs and kwargs['_remove_print'] is True:
         for line in setup[::-1]:
             if line.startswith('PRINT'):
                 setup.pop()

@@ -1,6 +1,7 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Sequence, Optional, Union
+from typing import Sequence, List, Optional, Union
 from mlptrain.utils import convert_ase_time
 from mlptrain.log import logger
 
@@ -31,6 +32,7 @@ class PlumedBias:
         self.pace = self.width = self.height = self.biasfactor = None
 
         if file_name is not None:
+            self.cvs = None
             self._from_file(file_name)
 
         elif cvs is not None:
@@ -199,6 +201,7 @@ class _PlumedCV:
         self.setup = []
         self.name = self.units = self.dof_names = self.dof_units = None
         self.lower_wall = self.upper_wall = None
+        self.files = None
 
         if file_name is not None:
             self._from_file(file_name, component)
@@ -297,12 +300,66 @@ class _PlumedCV:
         else:
             self.name = _names.pop()
 
+        self._check_name()
+
+        filenames = self._find_files()
+        if len(filenames) > 0:
+            self._attach_files(filenames)
+
+        return None
+
+    def _find_files(self) -> List:
+        """Finds files in the CV initialisation"""
+
+        filenames = []
+        for line in self.setup:
+            line = line.split()
+
+            for element in line:
+                element = element.split('=')
+                name = element[-1]
+
+                if name.endswith('.dat') or name.endswith('.pdb'):
+                    filenames.append(name)
+
+        return filenames
+
+    def _attach_files(self, filenames) -> None:
+        """Attaches files found in the CV initialisation to the CV object"""
+
+        self.files = []
+
+        for filename in filenames:
+            if not os.path.exists(filename):
+                raise FileNotFoundError(f'File {filename}, which is '
+                                        f'required for defining the CV '
+                                        f'{self.name} was not found in the '
+                                        'current directory')
+
+            with open(filename, 'r') as f:
+                data = f.read()
+
+            self.files.append((filename, data))
+
+        return None
+
+    def write_files(self) -> None:
+        """Writes files attached to the CV to the current directory"""
+
+        if self.files is None:
+            raise TypeError(f'CV {self.name} has no attached files')
+
+        for filename, data in self.files:
+            with open(filename, 'w') as f:
+                f.write(data)
+
         return None
 
     def _from_atom_groups(self, name, atom_groups) -> None:
         """Generate DOFs from atom_groups"""
 
         self.name = name
+        self._check_name()
         self.dof_names, self.dof_units = [], []
 
         if isinstance(atom_groups, list) or isinstance(atom_groups, tuple):
@@ -325,11 +382,21 @@ class _PlumedCV:
                 self._atom_group_to_dof(0, atom_groups)
 
             else:
-                raise TypeError('Elements of atom_groups must all be sequences '
-                                'or all be integers')
+                raise TypeError('Elements of atom_groups must all be '
+                                'sequences or all be integers')
 
         else:
             raise TypeError('Atom groups are in incorrect format')
+
+        return None
+
+    def _check_name(self) -> None:
+        """Checks if the supplied name is valid"""
+
+        _illegal_substrings = ['fes', 'colvar', 'HILLS']
+        if any(substr in self.name for substr in _illegal_substrings):
+            raise ValueError('Please do not use "fes", "colvar", "HILLS" in '
+                             'your CV names')
 
         return None
 

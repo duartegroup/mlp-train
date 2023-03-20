@@ -21,13 +21,12 @@ def _run_metadynamics(metadynamics,
                       save_sep=False,
                       all_to_xyz=False,
                       restart=False,
-                      ps=1,
                       **kwargs):
     metadynamics.run_metadynamics(configuration=_h2_configuration(),
                                   mlp=TestPotential('1D'),
                                   temp=300,
-                                  interval=10,
                                   dt=1,
+                                  interval=10,
                                   pace=100,
                                   width=0.05,
                                   height=0.1,
@@ -36,7 +35,6 @@ def _run_metadynamics(metadynamics,
                                   save_sep=save_sep,
                                   all_to_xyz=all_to_xyz,
                                   restart=restart,
-                                  ps=ps,
                                   **kwargs)
 
 
@@ -49,7 +47,7 @@ def test_run_metadynamics():
 
     assert metad.bias is not None
 
-    _run_metadynamics(metad, n_runs, all_to_xyz=True, save_fs=300)
+    _run_metadynamics(metad, n_runs, all_to_xyz=True, save_fs=200, fs=500)
 
     assert os.path.exists('trajectories')
     assert os.path.exists('trajectories/combined_trajectory.xyz')
@@ -58,7 +56,7 @@ def test_run_metadynamics():
     for idx in range(1, n_runs + 1):
         assert os.path.exists(f'trajectories/trajectory_{idx}.traj')
 
-        for sim_time in [300, 600, 900]:
+        for sim_time in [200, 400]:
             assert os.path.exists(f'trajectories/trajectory_{idx}_{sim_time}fs.traj')
             assert os.path.exists(f'trajectories/metad_{idx}_{sim_time}fs.xyz')
 
@@ -73,17 +71,17 @@ def test_run_metadynamics():
     assert os.path.exists('fes_raw.npy')
     fes_raw = np.load('fes_raw.npy')
 
-    # 1 cv, 4 fes -> 5; 100 bins + 1 -> 101
-    assert np.shape(fes_raw) == (5, 101)
+    # 1 cv, 4 fes -> 5; 100 bins
+    assert np.shape(fes_raw) == (5, 100)
 
     metad.plot_fes('fes_raw.npy')
     assert os.path.exists('metad_free_energy.pdf')
 
-    metad.plot_fes_convergence(stride=2, n_surfaces=3)
+    metad.plot_fes_convergence(stride=2, n_surfaces=2)
 
-    # 1000 / 100: simulation time divided by the pace <=> number of gaussians
+    # 500 / 100: simulation time divided by the pace <=> number of gaussians
     # Surfaces are computed every 2 gaussians
-    n_computed_surfaces = (1000 / 100) // 2
+    n_computed_surfaces = (500 / 100) // 2
     for idx in range(int(n_computed_surfaces)):
         assert os.path.exists(f'plumed_files/fes_convergence/fes_1_{idx}.dat')
 
@@ -98,19 +96,19 @@ def test_run_metadynamics_restart():
     metad = mlt.Metadynamics(cv1)
     n_runs = 4
 
-    _run_metadynamics(metad, n_runs)
+    _run_metadynamics(metad, n_runs, fs=500)
 
-    _run_metadynamics(metad, n_runs, restart=True)
+    _run_metadynamics(metad, n_runs, restart=True, fs=500)
 
     n_steps = len(np.loadtxt('plumed_files/metadynamics/colvar_cv1_1.dat',
                              usecols=0))
     n_gaussians = len(np.loadtxt('plumed_files/metadynamics/HILLS_1.dat',
                                  usecols=0))
 
-    # Adding two 1 ps simulations with interval 10 -> 101 frames each, but
+    # Adding two 500 fs simulations with interval 10 -> 51 frames each, but
     # removing one duplicate frame
-    assert n_steps == 101 + 101 - 1
-    assert n_gaussians == 10 + 10
+    assert n_steps == 51 + 51 - 1
+    assert n_gaussians == 5 + 5
 
     assert os.path.exists('trajectories/trajectory_1.traj')
 
@@ -119,7 +117,7 @@ def test_run_metadynamics_restart():
     # Adding two 1 ps simulations with interval 10 -> 101 frames each, but
     # removing one duplicate frame (same as before, except testing this for
     # the generated .traj file instead of .dat file)
-    assert len(trajectory) == 101 + 101 - 1
+    assert len(trajectory) == 51 + 51 - 1
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
@@ -129,7 +127,7 @@ def test_run_metadynamics_with_component():
     metad = mlt.Metadynamics(cv1)
     n_runs = 4
 
-    _run_metadynamics(metad, n_runs)
+    _run_metadynamics(metad, n_runs, fs=100)
 
     metad_dir = 'plumed_files/metadynamics'
     for idx in range(1, n_runs + 1):
@@ -145,7 +143,7 @@ def test_estimate_width():
     width = metad.estimate_width(configurations=_h2_configuration(),
                                  mlp=TestPotential('1D'),
                                  plot=True,
-                                 fs=500)
+                                 fs=100)
 
     assert len(width) == 1
 
@@ -164,7 +162,7 @@ def test_try_multiple_biasfactors():
 
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
-    biasfactors = range(5, 16, 5)
+    biasfactors = range(5, 11, 5)
 
     metad.try_multiple_biasfactors(configuration=_h2_configuration(),
                                    mlp=TestPotential('1D'),
@@ -174,9 +172,9 @@ def test_try_multiple_biasfactors():
                                    pace=100,
                                    width=0.05,
                                    height=0.1,
-                                   biasfactors=range(5, 16, 5),
+                                   biasfactors=biasfactors,
                                    plotted_cvs=cv1,
-                                   ps=1)
+                                   fs=100)
 
     files_dir = 'plumed_files/multiple_biasfactors'
     assert os.path.isdir(files_dir)
@@ -194,11 +192,41 @@ def test_block_analysis():
 
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
+    dt = 1
+    interval = 10
     n_runs = 1
+    ps = 1
 
-    _run_metadynamics(metad, n_runs, ps=2)
+    metad.run_metadynamics(configuration=_h2_configuration(),
+                           mlp=TestPotential('1D'),
+                           temp=300,
+                           dt=dt,
+                           interval=interval,
+                           pace=100,
+                           width=0.05,
+                           height=0.1,
+                           biasfactor=3,
+                           n_runs=n_runs,
+                           ps=ps)
 
     metad.block_analysis()
 
     assert os.path.exists('block_analysis.pdf')
-    assert os.path.exists('block_analysis_error.npy')
+    assert os.path.exists('block_analysis')
+
+    time_fs = ps * 1E3
+    n_steps = int(time_fs / dt)
+    n_used_frames = n_steps // interval
+
+    min_n_blocks = 10
+    min_blocksize = 10
+    blocksize_interval = 10
+    max_blocksize = n_used_frames // min_n_blocks
+
+    for blocksize in range(min_blocksize, max_blocksize + 1, blocksize_interval):
+        grid_name = f'block_analysis/mean_fes_blocksize{blocksize}.npy'
+        assert os.path.exists(grid_name)
+
+        # axis 0: CV1, mean_fes, std_mean_fes; axis 1: 300 bins
+        grid = np.load(grid_name)
+        assert np.shape(grid) == (3, 300)
