@@ -1169,10 +1169,16 @@ class Metadynamics:
         fig, ax = plt.subplots()
 
         ax.plot(cv_grid, mean_fes, label=r'$\mu_{G}$')
-        label = 'Confidence Interval' if n_fes_grids != 1 else None
+
+        if blocksize is None and n_fes_grids == 1:
+            confidence_label = None
+
+        else:
+            confidence_label = 'Confidence Interval'
+
         ax.fill_between(cv_grid, lower_bound, upper_bound,
                         alpha=0.5,
-                        label=label)
+                        label=confidence_label)
 
         cv = self.bias.cvs[0]
         if cv.units is not None:
