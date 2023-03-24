@@ -567,12 +567,6 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
     if '_method' in kwargs and kwargs['_method'] is 'metadynamics':
         hills_filename = f'HILLS_{kwargs["_idx"]}.dat'
 
-        if bias.biasfactor is not None:
-            biasfactor_setup = f'BIASFACTOR={bias.biasfactor} '
-
-        else:
-            biasfactor_setup = ''
-
         if '_static_hills' in kwargs and kwargs['_static_hills'] is True:
             static_hills_setup = 'RESTART=YES '
 
@@ -585,7 +579,8 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
                        f'HEIGHT={bias.height} '
                        f'SIGMA={bias.width_sequence} '
                        f'TEMP={temp} '
-                       f'{biasfactor_setup}'
+                       f'{bias.biasfactor_setup}'
+                       f'{bias.metad_grid_setup}'
                        f'{static_hills_setup}'
                        f'FILE={hills_filename}']
         setup.extend(metad_setup)

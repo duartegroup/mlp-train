@@ -31,6 +31,9 @@ class PlumedBias:
         self.setup = None
         self.pace = self.width = self.height = self.biasfactor = None
 
+        for param_name in ['min', 'max', 'bin', 'wstride', 'wfile', 'rfile']:
+            setattr(self, f'metad_grid_{param_name}', None)
+
         if file_name is not None:
             self.cvs = None
             self._from_file(file_name)
@@ -66,16 +69,51 @@ class PlumedBias:
     def cv_sequence(self) -> str:
         """String containing names of collective variables separated
         by commas"""
+
         cv_names = (cv.name for cv in self.cvs)
         return ','.join(cv_names)
 
     @property
     def width_sequence(self) -> str:
         """String containing width values separated by commas"""
+
         if self.width is None:
             raise TypeError('Width is not initialised')
+
         else:
             return ','.join(str(width) for width in self.width)
+
+    @property
+    def metad_grid_setup(self) -> str:
+        """String specifying metadynamics grid parameters in PLUMED input
+        file"""
+
+        _metad_grid_setup = ''
+        _grid_params = ['min', 'max', 'bin', 'wstride', 'wfile', 'rfile']
+
+        for param_name in _grid_params:
+            param = getattr(self, f'metad_grid_{param_name}')
+
+            if isinstance(param, list) or isinstance(param, tuple):
+                param_str = ','.join(str(p) for p in param)
+
+            else:
+                param_str = str(param)
+
+            if param is not None:
+                _metad_grid_setup += f'GRID_{param_name.upper()}={param_str} '
+
+        return _metad_grid_setup
+
+    @property
+    def biasfactor_setup(self) -> str:
+        """String specifying biasfactor in PLUMED input file"""
+
+        if self.biasfactor is not None:
+            return f'BIASFACTOR={self.biasfactor} '
+
+        else:
+            return ''
 
     def _set_metad_params(self,
                           pace:        int,
@@ -84,7 +122,7 @@ class PlumedBias:
                           biasfactor:  Optional[float] = None
                           ) -> None:
         """
-        Define parameters used in well-tempered metadynamics.
+        Define parameters used in (well-tempered) metadynamics.
 
         -----------------------------------------------------------------------
         Arguments:
@@ -139,6 +177,62 @@ class PlumedBias:
 
         return None
 
+    def _set_metad_grid_params(self,
+                               min:      Union[Sequence[float], float],
+                               max:      Union[Sequence[float], float],
+                               bin:      Union[Sequence[float], float] = None,
+                               wstride:  Optional[int] = None,
+                               wfile:    Optional[str] = None,
+                               rfile:    Optional[str] = None
+                               ) -> None:
+        """Define grid parameters used in (well-tempered) metadynamics. Grid
+        bounds (min and max) must cover the whole configuration space the system
+        will explore during the simulation, otherwise PLUMED raises an error.
+
+        ------------------------------------------------------------------------
+        Arguments:
+
+            min: (float) Lower bound of the grid
+
+            max: (float) Upper bound of the grid
+
+            bin: (float) Number of bins to use for each collective variable,
+                         if not specified PLUMED automatically sets this to 1/5
+                         of the width (σ) value
+
+            wstride: (float) Number of steps specifying the period at which the
+                             grid is updated
+
+            wfile: (str) Name of the file to write the grid to
+
+            rfile: (str) Name of the file to read the grid from
+        """
+
+        _sequences = {'min': min, 'max': max, 'bin': bin}
+        if bin is None:
+            _sequences.pop('bin')
+
+        for param_name, params in _sequences.items():
+
+            if isinstance(params, list) or isinstance(params, tuple):
+
+                if len(params) == 0:
+                    raise TypeError('The supplied parameter sequence is empty')
+
+                else:
+                    setattr(self, f'metad_grid_{param_name}', params)
+
+            elif params is not None:
+                setattr(self, f'metad_grid_{param_name}', [params])
+
+        _single_params = {'wstride': wstride, 'wfile': wfile, 'rfile': rfile}
+
+        for param_name, param in _single_params.items():
+            if param is not None:
+                setattr(self, f'metad_grid_{param_name}', param)
+
+        return None
+
     def _from_file(self, file_name) -> None:
         """Method to extract PLUMED setup from a file"""
 
@@ -150,9 +244,43 @@ class PlumedBias:
                     continue
                 else:
                     line = line.strip()
-                    self.setup.extend([line])
+                    self.setup.append(line)
 
         return None
+
+    def generate_stripped_setup(self) -> List[str]:
+        """If the bias is initialised using a PLUMED input file, this method
+        removes all lines from the setup except the ones defining lower and
+        upper walls, and the collective variables to which the walls are
+        attached"""
+
+        if self.setup is None:
+            raise TypeError('Setup of the bias is not initialised, if you want '
+                            'to strip the setup make sure to use a bias which '
+                            'was initialised using a PLUMED input file')
+
+        walls_setup, cvs_having_walls_setup = [], []
+        cvs_having_walls = set()
+
+        for line in self.setup:
+
+            if line.startswith('LOWER WALLS') or line.startswith('UPPER WALLS'):
+                walls_setup.append(line)
+
+                line = line.split(' ')
+                for element in line:
+                    element = element.split('=')
+
+                    if element[0] == 'ARG':
+                        cvs_having_walls.add(element[-1])
+
+        for line in self.setup:
+            if any(line.startswith(cv) for cv in cvs_having_walls):
+                cvs_having_walls_setup.append(line)
+
+        stripped_setup = cvs_having_walls_setup + walls_setup
+
+        return stripped_setup
 
 
 class _PlumedCV:
@@ -217,6 +345,7 @@ class _PlumedCV:
     @property
     def dof_sequence(self) -> str:
         """String containing names of DOFs separated by commas"""
+
         return ','.join(self.dof_names)
 
     def attach_lower_wall(self,
