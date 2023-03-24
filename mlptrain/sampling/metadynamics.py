@@ -154,10 +154,20 @@ class Metadynamics:
                    dst_folder='width_estimation',
                    regex=True)
 
+        opt_widths = list(np.min(all_widths, axis=0))
+        opt_widths_strs = []
+        for cv, width in zip(self.bias.cvs, opt_widths):
+            if cv.units is not None:
+                opt_widths_strs.append(f'{cv.name} {width:.2f} {cv.units}')
+
+            else:
+                opt_widths_strs.append(f'{cv.name} {width:.2f}')
+
         finish = time.perf_counter()
         logger.info(f'Width estimation done in {(finish - start) / 60:.1f} m')
+        logger.info(f'Estimated widths: {", ".join(opt_widths_strs)}')
 
-        return list(np.min(all_widths, axis=0))
+        return opt_widths
 
     def _get_width_for_single(self, configuration, mlp, temp, dt, interval,
                               bias, plot, **kwargs) -> List:
@@ -750,6 +760,8 @@ class Metadynamics:
             {fs, ps, ns}: Simulation time in some units
         """
 
+        start = time.perf_counter()
+
         bias, configuration, mlp, temp, dt, interval, kwargs = \
             self._get_parameters_for_block_analysis(configuration, mlp, temp,
                                                     dt, interval, **kwargs)
@@ -809,6 +821,9 @@ class Metadynamics:
         os.remove(f'HILLS_{idx}.dat')
 
         self._plot_block_analysis(blocksizes, std_grids, energy_units)
+
+        finish = time.perf_counter()
+        logger.info(f'Block analysis done in {(finish - start) / 60:.1f} m')
 
         return None
 
