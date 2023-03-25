@@ -129,10 +129,6 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
     for iteration in range(max_active_iters):
 
         curr_n_train = mlp.n_train
-        bias_iteration = deepcopy(bias)
-
-        if bias is not None and iteration < bias_start_iter:
-            bias_iteration = _remove_bias_potential(bias_iteration)
 
         _add_active_configs(mlp,
                             init_config=(init_config if fix_init_config
@@ -146,7 +142,10 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                             fbond_energy=fbond_energy,
                             init_temp=init_active_temp,
                             extra_time=mlp.training_data.t_min(-n_configs_iter),
-                            bias=bias_iteration)
+                            bias=deepcopy(bias),
+                            inherit_metad_bias=inherit_metad_bias,
+                            bias_start_iter=bias_start_iter,
+                            iter=iteration)
 
         # Active learning finds no configurations,,
         if mlp.n_train == curr_n_train and iteration >= min_active_iters:
@@ -186,17 +185,24 @@ def _add_active_configs(mlp,
     logger.info('Searching for "active" configurations with '
                 f'{n_processes} processes using {n_cores_pp} cores / process')
 
+    if 'bias' in kwargs and kwargs['iter'] < kwargs['bias_start_iter']:
+        kwargs['bias'] = _remove_bias_potential(kwargs['bias'])
+
     configs = ConfigurationSet()
+    results = []
 
     with Pool(processes=n_processes) as pool:
 
-        results = [pool.apply_async(_gen_active_config,
-                                    args=(init_config.copy(),
-                                          mlp.copy(),
-                                          selection_method.copy(),
-                                          n_cores_pp),
-                                    kwds=deepcopy(kwargs))
-                   for _ in range(n_configs)]
+        for idx in range(n_configs):
+            kwargs['idx'] = idx + 1
+
+            result = pool.apply_async(_gen_active_config,
+                                      args=(init_config.copy(),
+                                            mlp.copy(),
+                                            selection_method.copy(),
+                                            n_cores_pp),
+                                      kwds=deepcopy(kwargs))
+            results.append(result)
 
         for result in results:
 
@@ -211,6 +217,12 @@ def _add_active_configs(mlp,
 
     if 'method_name' in kwargs and configs.has_a_none_energy:
         configs.single_point(method=kwargs.get('method_name'))
+
+    # TODO: Generate the averaged grid here: if inherit then compute the grid,
+    #  make the grid file, in next iteration each run of _gen_active_config can
+    #  check if this file is present and add it as rfile if it exists
+
+    # TODO: Probably have to move the grids somewhere or delete them later
 
     mlp.training_data += configs
     return None
@@ -228,33 +240,54 @@ def _gen_active_config(config:      'mlptrain.Configuration',
     Generate a configuration based on 'active learning', by running MLP-MD
     until a configuration that satisfies the selection_method is found.
     This function is recursively called until a configuration is generated or
-    max_time is exceeded
+    max_time is exceeded.
 
     --------------------------------------------------------------------------
-    Arguments
-        config:
+    Arguments:
 
-        mlp:
+        config: Starting configuration from which molecular dynamics is started
 
-        selector:
+        mlp: Machine learnt potential from the previous active learning
+             iteration
 
-        max_time: (float)
+        selector: Method used to choose whether to add a given configuration to
+                  the training set
 
-        method_name: (str)
+        max_time: (float) Upper time limit for recursive molecular dynamics
 
+        method_name: (str) Name of the method which we try to fit our MLP to
 
     Keyword Arguments:
+
         n_calls: (int) Number of times this function has been called
 
-        curr_time: (float)
-
+        curr_time: (float) Total time for which recursive molecular dynamics
+                           has been run
 
         extra_time: (float) Some extra time to run initially e.g. as the
                     MLP is already likely to get to e.g. 100 fs, so run
                     that initially
 
+        bias: Bias to add during the MD simulations, useful for exploring
+              under-explored regions in the dynamics
+
+        inherit_metad_bias: (bool) If True metadynamics bias is inherited from
+                            a previous iteration to the next during active
+                            learning
+
+        bias_start_iter: (int) Iteration index at which the bias starts to be
+                         applied. If the bias is PlumedBias, then UPPER_WALLS
+                         and LOWER_WALLS are still applied from iteration 0
+
+        iter: (int) Number of the current iteration
+
+        idx: (int) Index of the current simulation
+
     Returns:
-        (mlptrain.Configuration):
+
+        (mlptrain.Configuration): Configuration which is added to the training
+                                  dataset for the next iteration of active
+                                  learning
     """
     curr_time = 0. if 'curr_time' not in kwargs else kwargs.pop('curr_time')
     extra_time = 0. if 'extra_time' not in kwargs else kwargs.pop('extra_time')
@@ -267,6 +300,30 @@ def _gen_active_config(config:      'mlptrain.Configuration',
         logger.info(f'Running an extra {extra_time:.1f} fs of MD')
 
     md_time = 2 + n_calls**3 + float(extra_time)
+
+    # TODO: Make into a separate method, prob take kwargs and return kwargs
+    if (kwargs['inherit_metad_bias'] is True
+            and kwargs['iter'] >= kwargs['bias_start_iter']):
+
+        if kwargs['iter'] == kwargs['bias_start_iter']:
+            previous_grid_fname = None
+
+        else:
+            previous_grid_fname = f'bias_grid_{kwargs["iter"]-1}.dat'
+            copied_substrings = list(kwargs['copied_substrings'])
+            copied_substrings.append(previous_grid_fname)
+            kwargs['copied_substrings'] = copied_substrings
+
+        grid_fname = f'bias_grid_{kwargs["iter"]}_{kwargs["idx"]}.dat'
+        kwargs['kept_substrings'] = [grid_fname]
+
+        bias = kwargs['bias']
+        bias._set_metad_grid_params(grid_min=bias.metad_grid_min,
+                                    grid_max=bias.metad_grid_max,
+                                    grid_bin=bias.metad_grid_bin,
+                                    grid_wstride=bias.pace,
+                                    grid_wfile=grid_fname,
+                                    grid_rfile=previous_grid_fname)
 
     traj = run_mlp_md(config,
                       mlp=mlp,
