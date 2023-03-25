@@ -1,29 +1,33 @@
 from copy import deepcopy
-from typing import Optional
+from typing import Optional, Union
 from multiprocessing import Pool
 from mlptrain.config import Config
 from mlptrain.sampling.md import run_mlp_md
+from mlptrain.sampling.plumed import PlumedBias
 from mlptrain.training.selection import SelectionMethod, AbsDiffE
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.log import logger
 
 
-def train(mlp:               'mlptrain.potentials._base.MLPotential',
-          method_name:       str,
-          selection_method:  SelectionMethod = AbsDiffE(),
-          max_active_time:   float = 1000,
-          n_configs_iter:    int = 10,
-          temp:              float = 300.0,
-          max_e_threshold:   Optional[float] = None,
-          max_active_iters:  int = 50,
-          n_init_configs:    int = 10,
-          init_configs:      Optional['mlptrain.ConfigurationSet'] = None,
-          fix_init_config:   bool = False,
-          bbond_energy:      Optional[dict] = None,
-          fbond_energy:      Optional[dict] = None,
-          init_active_temp:  Optional[float] = None,
-          min_active_iters:  int = 1,
-          bias:              Optional['mlptrain.sampling.Bias'] = None
+def train(mlp:                 'mlptrain.potentials._base.MLPotential',
+          method_name:         str,
+          selection_method:    SelectionMethod = AbsDiffE(),
+          max_active_time:     float = 1000,
+          n_configs_iter:      int = 10,
+          temp:                float = 300.0,
+          max_e_threshold:     Optional[float] = None,
+          max_active_iters:    int = 50,
+          n_init_configs:      int = 10,
+          init_configs:        Optional['mlptrain.ConfigurationSet'] = None,
+          fix_init_config:     bool = False,
+          bbond_energy:        Optional[dict] = None,
+          fbond_energy:        Optional[dict] = None,
+          init_active_temp:    Optional[float] = None,
+          min_active_iters:    int = 1,
+          bias_start_iter:     int = 0,
+          inherit_metad_bias:  bool = False,
+          bias:                Union['mlptrain.sampling.Bias',
+                                     'mlptrain.sampling.PlumedBias'] = None
           ) -> None:
     """
     Train a system using active learning, by propagating dynamics using ML
@@ -90,6 +94,13 @@ def train(mlp:               'mlptrain.potentials._base.MLPotential',
 
         min_active_iters: (int) Minimum number of active iterations to
                              perform
+
+        bias_start_iter: (int) Iteration index at which the bias starts to be
+                         applied
+
+        inherit_metad_bias: (bool) If True metadynamics bias is inherited from
+                            a previous iteration to the next during active
+                            learning
 
         bias: Bias to add during the MD simulations, useful for exploring
               under-explored regions in the dynamics

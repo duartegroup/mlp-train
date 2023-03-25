@@ -277,7 +277,7 @@ class PlumedBias:
         _stripped_setup, _args = [], []
         for line in reversed(self.setup):
 
-            if line.startswith('UPPER WALLS') or line.startswith('LOWER WALLS'):
+            if line.startswith('UPPER_WALLS') or line.startswith('LOWER_WALLS'):
                 _stripped_setup.append(line)
                 _args.extend(self._find_args(line))
 

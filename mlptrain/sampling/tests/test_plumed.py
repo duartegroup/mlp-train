@@ -139,8 +139,8 @@ def test_plumed_bias_from_file():
                           'dof2: DISTANCE ATOMS=2,3',
                           'cv1: CUSTOM ARG=dof1,dof2 VAR=dof1,dof2 '
                           'FUNC=dof2-dof1 PERIODIC=NO',
-                          'LOWER WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
-                          'UPPER WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3',
+                          'LOWER_WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
+                          'UPPER_WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3',
                           'METAD ARG=cv1 PACE=100 HEIGHT=0.1 SIGMA=0.5 '
                           'BIASFACTOR=4 FILE=HILLS.dat',
                           'PRINT ARG=cv1 FILE=colvar.dat STRIDE=10']
@@ -151,8 +151,8 @@ def test_plumed_bias_from_file():
                           'dof2: DISTANCE ATOMS=2,3',
                           'cv1: CUSTOM ARG=dof1,dof2 VAR=dof1,dof2 '
                           'FUNC=dof2-dof1 PERIODIC=NO',
-                          'LOWER WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
-                          'UPPER WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3']
+                          'LOWER_WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
+                          'UPPER_WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3']
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
