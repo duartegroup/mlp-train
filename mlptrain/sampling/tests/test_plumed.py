@@ -105,16 +105,29 @@ def test_plumed_bias_from_cvs():
 
     bias = mlt.PlumedBias((cv1, cv2))
 
-    bias._set_metad_params(pace=10, width=0.2, height=0.5, biasfactor=2)
+    with pytest.raises(ValueError):
+        bias._set_metad_params(pace=10, width=(0.2, 0.3), height=0.5, biasfactor=0.5)
+
+    with pytest.raises(ValueError):
+        bias._set_metad_params(pace=10, width=0.2, height=0.5, biasfactor=2)
+
+    bias.initialise_for_metad_al(pace=10,
+                                 width=(0.2, 0.3),
+                                 height=0.5,
+                                 biasfactor=2,
+                                 grid_min=(0.5, 1.5),
+                                 grid_max=(0.6, 1.6))
 
     assert bias.cvs == (cv1, cv2)
     assert bias.pace == 10
-    assert bias.width == [0.2]
+    assert bias.width == (0.2, 0.3)
     assert bias.height == 0.5
     assert bias.biasfactor == 2
+    assert bias.metad_grid_min == (0.5, 1.5)
+    assert bias.metad_grid_max == (0.6, 1.6)
+    assert bias.metad_grid_bin is None
 
-    with pytest.raises(ValueError):
-        bias._set_metad_params(pace=10, width=0.2, height=0.5, biasfactor=0.5)
+    assert bias.metad_grid_setup == 'GRID_MIN=0.5,1.5 GRID_MAX=0.6,1.6 '
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
@@ -123,14 +136,23 @@ def test_plumed_bias_from_file():
     bias = mlt.PlumedBias(file_name='plumed_bias.dat')
 
     assert bias.setup == ['dof1: DISTANCE ATOMS=1,2',
-                          'METAD '
-                          'ARG=dof1 '
-                          'PACE=100 '
-                          'HEIGHT=0.1 '
-                          'SIGMA=0.5 '
-                          'BIASFACTOR=4 '
-                          'FILE=HILLS.dat',
-                          'PRINT ARG=dof1 FILE=colvar.dat STRIDE=10']
+                          'dof2: DISTANCE ATOMS=2,3',
+                          'cv1: CUSTOM ARG=dof1,dof2 VAR=dof1,dof2 '
+                          'FUNC=dof2-dof1 PERIODIC=NO',
+                          'LOWER WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
+                          'UPPER WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3',
+                          'METAD ARG=cv1 PACE=100 HEIGHT=0.1 SIGMA=0.5 '
+                          'BIASFACTOR=4 FILE=HILLS.dat',
+                          'PRINT ARG=cv1 FILE=colvar.dat STRIDE=10']
+
+    bias.strip_setup()
+
+    assert bias.setup == ['dof1: DISTANCE ATOMS=1,2',
+                          'dof2: DISTANCE ATOMS=2,3',
+                          'cv1: CUSTOM ARG=dof1,dof2 VAR=dof1,dof2 '
+                          'FUNC=dof2-dof1 PERIODIC=NO',
+                          'LOWER WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
+                          'UPPER WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3']
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))

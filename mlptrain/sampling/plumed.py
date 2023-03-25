@@ -7,8 +7,11 @@ from mlptrain.log import logger
 
 
 class PlumedBias:
-    """Class for storing collective variables and parameters used in biased
-    simulations"""
+    """
+    @DynamicAttrs
+    Class for storing collective variables and parameters used in biased
+    simulations
+    """
 
     def __init__(self,
                  cvs:       Union[Sequence['_PlumedCV'], '_PlumedCV'] = None,
@@ -94,13 +97,14 @@ class PlumedBias:
         for param_name in _grid_params:
             param = getattr(self, f'metad_grid_{param_name}')
 
-            if isinstance(param, list) or isinstance(param, tuple):
-                param_str = ','.join(str(p) for p in param)
-
-            else:
-                param_str = str(param)
-
             if param is not None:
+
+                if isinstance(param, list) or isinstance(param, tuple):
+                    param_str = ','.join(str(p) for p in param)
+
+                else:
+                    param_str = str(param)
+
                 _metad_grid_setup += f'GRID_{param_name.upper()}={param_str} '
 
         return _metad_grid_setup
@@ -163,6 +167,10 @@ class PlumedBias:
             else:
                 self.width = [width]
 
+        if len(self.width) != len(self.cvs):
+            raise ValueError('The number of supplied widths (σ) does not match '
+                             'the number of collective variables')
+
         if height <= 0:
             raise ValueError('Gaussian height (ω) must be positive')
 
@@ -178,39 +186,44 @@ class PlumedBias:
         return None
 
     def _set_metad_grid_params(self,
-                               min:      Union[Sequence[float], float],
-                               max:      Union[Sequence[float], float],
-                               bin:      Union[Sequence[float], float] = None,
-                               wstride:  Optional[int] = None,
-                               wfile:    Optional[str] = None,
-                               rfile:    Optional[str] = None
+                               grid_min:      Union[Sequence[float], float],
+                               grid_max:      Union[Sequence[float], float],
+                               grid_bin:   Union[Sequence[float], float] = None,
+                               grid_wstride:  Optional[int] = None,
+                               grid_wfile:    Optional[str] = None,
+                               grid_rfile:    Optional[str] = None
                                ) -> None:
-        """Define grid parameters used in (well-tempered) metadynamics. Grid
-        bounds (min and max) must cover the whole configuration space the system
-        will explore during the simulation, otherwise PLUMED raises an error.
+        """
+        Define grid parameters used in (well-tempered) metadynamics. Grid
+        bounds (min and max) must cover the whole configuration space that the
+        system will explore during the simulation, otherwise PLUMED will raise
+        an error.
 
         ------------------------------------------------------------------------
         Arguments:
 
-            min: (float) Lower bound of the grid
+            grid_min: (float) Lower bound of the grid
 
-            max: (float) Upper bound of the grid
+            grid_max: (float) Upper bound of the grid
 
-            bin: (float) Number of bins to use for each collective variable,
-                         if not specified PLUMED automatically sets this to 1/5
-                         of the width (σ) value
+            grid_bin: (float) Number of bins to use for each collective
+                              variable, if not specified PLUMED automatically
+                              sets this to 1/5 of the width (σ) value
 
-            wstride: (float) Number of steps specifying the period at which the
-                             grid is updated
+            grid_wstride: (float) Number of steps specifying the period at which
+                                  the grid is updated
 
-            wfile: (str) Name of the file to write the grid to
+            grid_wfile: (str) Name of the file to write the grid to
 
-            rfile: (str) Name of the file to read the grid from
+            grid_rfile: (str) Name of the file to read the grid from
         """
 
-        _sequences = {'min': min, 'max': max, 'bin': bin}
-        if bin is None:
-            _sequences.pop('bin')
+        _sequences = {'grid_min': grid_min,
+                      'grid_max': grid_max,
+                      'grid_bin': grid_bin}
+
+        if grid_bin is None:
+            _sequences.pop('grid_bin')
 
         for param_name, params in _sequences.items():
 
@@ -220,16 +233,18 @@ class PlumedBias:
                     raise TypeError('The supplied parameter sequence is empty')
 
                 else:
-                    setattr(self, f'metad_grid_{param_name}', params)
+                    setattr(self, f'metad_{param_name}', params)
 
             elif params is not None:
-                setattr(self, f'metad_grid_{param_name}', [params])
+                setattr(self, f'metad_{param_name}', [params])
 
-        _single_params = {'wstride': wstride, 'wfile': wfile, 'rfile': rfile}
+        _single_params = {'grid_wstride': grid_wstride,
+                          'grid_wfile': grid_wfile,
+                          'grid_rfile': grid_rfile}
 
         for param_name, param in _single_params.items():
             if param is not None:
-                setattr(self, f'metad_grid_{param_name}', param)
+                setattr(self, f'metad_{param_name}', param)
 
         return None
 
@@ -248,7 +263,7 @@ class PlumedBias:
 
         return None
 
-    def generate_stripped_setup(self) -> List[str]:
+    def strip_setup(self) -> None:
         """If the bias is initialised using a PLUMED input file, this method
         removes all lines from the setup except the ones defining lower and
         upper walls, and the collective variables to which the walls are
@@ -259,28 +274,83 @@ class PlumedBias:
                             'to strip the setup make sure to use a bias which '
                             'was initialised using a PLUMED input file')
 
-        walls_setup, cvs_having_walls_setup = [], []
-        cvs_having_walls = set()
+        _stripped_setup, _args = [], []
+        for line in reversed(self.setup):
 
-        for line in self.setup:
+            if line.startswith('UPPER WALLS') or line.startswith('LOWER WALLS'):
+                _stripped_setup.append(line)
+                _args.extend(self._find_args(line))
 
-            if line.startswith('LOWER WALLS') or line.startswith('UPPER WALLS'):
-                walls_setup.append(line)
+            if any(line.startswith(arg) for arg in _args):
+                _stripped_setup.append(line)
+                _args.extend(self._find_args(line))
 
-                line = line.split(' ')
-                for element in line:
-                    element = element.split('=')
+        # Reverse back to normal order
+        _stripped_setup = _stripped_setup[::-1]
 
-                    if element[0] == 'ARG':
-                        cvs_having_walls.add(element[-1])
+        # Remove duplicate lines
+        _stripped_setup = list(dict.fromkeys(_stripped_setup))
 
-        for line in self.setup:
-            if any(line.startswith(cv) for cv in cvs_having_walls):
-                cvs_having_walls_setup.append(line)
+        self.setup = _stripped_setup
 
-        stripped_setup = cvs_having_walls_setup + walls_setup
+        return None
 
-        return stripped_setup
+    @staticmethod
+    def _find_args(line) -> List:
+        """Find and return inputs to ARG parameter in a given line of a PLUMED
+        setup"""
+
+        _args = []
+        _line = line.split(' ')
+
+        for element in _line:
+            element = element.split('=')
+
+            if element[0] == 'ARG':
+                _args = element[-1].split(',')
+
+        return _args
+
+    def initialise_for_metad_al(self,
+                                pace:       int,
+                                width:      Union[Sequence[float], float],
+                                height:     float,
+                                biasfactor: Optional[float],
+                                grid_min: Union[Sequence[float], float] = None,
+                                grid_max: Union[Sequence[float], float] = None,
+                                grid_bin: Union[Sequence[float], float] = None,
+                                ) -> None:
+        """
+        Initialise PlumedBias for metadynamics active learning by setting the
+        required parameters.
+
+        ------------------------------------------------------------------------
+        Arguments:
+
+            pace: (int) τ_G/dt, interval at which a new gaussian is placed
+
+            width: (float) σ, standard deviation (parameter describing the
+                           width) of the placed gaussian
+
+            height: (float) ω, initial height of placed gaussians
+
+            biasfactor: (float) γ, describes how quickly gaussians shrink,
+                                larger values make gaussians to be placed
+                                less sensitive to the bias potential
+
+            grid_min: (float) Lower bound of the grid
+
+            grid_max: (float) Upper bound of the grid
+
+            grid_bin: (float) Number of bins to use for each collective
+                              variable, if not specified PLUMED automatically
+                              sets this to 1/5 of the width (σ) value
+        """
+
+        self._set_metad_params(pace, width, height, biasfactor)
+        self._set_metad_grid_params(grid_min, grid_max, grid_bin)
+
+        return None
 
 
 class _PlumedCV:

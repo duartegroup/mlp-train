@@ -609,9 +609,9 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
         setup.extend(print_setup)
 
     if '_remove_print' in kwargs and kwargs['_remove_print'] is True:
-        for line in setup[::-1]:
+        for line in setup:
             if line.startswith('PRINT'):
-                setup.pop()
+                setup.remove(line)
 
     if 'write_plumed_setup' in kwargs and kwargs['write_plumed_setup'] is True:
         with open('plumed_setup.dat', 'w') as f:
