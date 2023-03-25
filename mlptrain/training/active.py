@@ -279,10 +279,6 @@ def _gen_active_config(config:      'mlptrain.Configuration',
 
     traj.t0 = curr_time  # Increment the initial time (t0)
 
-    if 'bias' in kwargs and kwargs['bias'] is not None:
-        for frame in traj:
-            frame.energy.predicted -= kwargs['bias'](frame.ase_atoms)
-
     # Evaluate the selector on the final frame
     selector(traj.final_frame, mlp, method_name=method_name, n_cores=n_cores)
 

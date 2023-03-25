@@ -229,34 +229,32 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
                               restart_files=restart_files,
                               traj_name=traj_name)
 
-    ase_traj = _initialise_traj(ase_atoms=ase_atoms,
-                                restart_files=restart_files,
-                                traj_name=traj_name)
+    ase_traj = _initialise_traj(ase_atoms, restart_files, traj_name)
 
     n_previous_steps = interval * len(ase_traj)
     energies = [None for _ in range(len(ase_traj))]
 
-    if temp > 0:                                        # Default Langevin NVT
-        dyn = Langevin(ase_atoms, dt_ase,
-                       temperature_K=temp,
-                       friction=0.02)
-    else:                                               # Otherwise NVE
-        dyn = VelocityVerlet(ase_atoms, dt_ase)
+    calculator = _attach_calculator_with_bias(ase_atoms, mlp, bias, temp,
+                                              interval, dt_ase, restart,
+                                              n_previous_steps, **kwargs)
 
-    def append_energy():
-        energies.append(ase_atoms.get_potential_energy())
+    _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
+                  n_steps, energies, calculator, bias, **kwargs)
 
-    def save_trajectory():
-        _save_trajectory(ase_traj, traj_name, **kwargs)
+    traj = _convert_ase_traj(traj_name)
 
-    dyn.attach(append_energy, interval=interval)
-    dyn.attach(ase_traj.write, interval=interval)
+    for i, (frame, energy) in enumerate(zip(traj, energies)):
+        frame.update_attr_from(configuration)
+        frame.energy.predicted = energy
+        frame.time = dt * interval * i
 
-    if any(key in kwargs for key in ['save_fs', 'save_ps', 'save_ns']):
-        dyn.attach(save_trajectory,
-                   interval=_traj_saving_interval(dt, kwargs))
+    return traj
 
-    logger.info(f'Running {n_steps:.0f} steps with a timestep of {dt} fs')
+
+def _attach_calculator_with_bias(ase_atoms, mlp, bias, temp, interval, dt_ase,
+                                 restart, n_previous_steps, **kwargs):
+    """Sets up the calculator, attaches it to the ase_atoms together with a
+    bias, and returns the final calculator"""
 
     if isinstance(bias, PlumedBias):
         logger.info('Using PLUMED bias for MLP MD')
@@ -282,8 +280,7 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
 
         ase_atoms.calc = plumed_calc
 
-        dyn.run(steps=n_steps)
-        plumed_calc.plumed.finalize()
+        return plumed_calc
 
     elif isinstance(bias, Bias):
         logger.info('Using ASE bias for MLP MD')
@@ -291,27 +288,67 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
         ase_atoms.calc = mlp.ase_calculator
         ase_atoms.set_constraint(bias)
 
-        dyn.run(steps=n_steps)
+        return mlp.ase_calculator
 
     else:
         ase_atoms.calc = mlp.ase_calculator
 
-        dyn.run(steps=n_steps)
-
-    traj = _convert_ase_traj(traj_name)
-
-    for i, (frame, energy) in enumerate(zip(traj, energies)):
-        frame.update_attr_from(configuration)
-        frame.energy.predicted = energy
-        frame.time = dt * interval * i
-
-    return traj
+        return mlp.ase_calculator
 
 
-def _save_trajectory(ase_traj: 'ase.io.trajectory.Trajectory',
-                     traj_name: str,
-                     **kwargs
-                     ) -> None:
+def _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
+                  n_steps, energies, calculator, bias, **kwargs) -> None:
+    """Initialises dynamics object and runs dynamics"""
+
+    if temp > 0:                                        # Default Langevin NVT
+        dyn = Langevin(ase_atoms, dt_ase,
+                       temperature_K=temp,
+                       friction=0.02)
+    else:                                               # Otherwise NVE
+        dyn = VelocityVerlet(ase_atoms, dt_ase)
+
+    def append_unbiased_energy():
+        _append_unbiased_energy(ase_atoms, energies, calculator, bias)
+
+    def save_trajectory():
+        _save_trajectory(ase_traj, traj_name, **kwargs)
+
+    dyn.attach(append_unbiased_energy, interval=interval)
+    dyn.attach(ase_traj.write, interval=interval)
+
+    if any(key in kwargs for key in ['save_fs', 'save_ps', 'save_ns']):
+        dyn.attach(save_trajectory,
+                   interval=_traj_saving_interval(dt, kwargs))
+
+    logger.info(f'Running {n_steps:.0f} steps with a timestep of {dt} fs')
+    dyn.run(steps=n_steps)
+
+    # The calling process waits until PLUMED process has finished
+    if isinstance(bias, PlumedBias):
+        calculator.plumed.finalize()
+
+    return None
+
+
+def _append_unbiased_energy(ase_atoms, energies, calculator, bias) -> None:
+    """Appends unbiased energy (biased MLP energy - bias energy) to the
+    trajectory"""
+
+    if isinstance(bias, Bias):
+        biased_energy = ase_atoms.get_potential_energy()
+        energy = biased_energy - bias(ase_atoms)
+
+    elif isinstance(bias, PlumedBias):
+        energy = calculator.calc.get_potential_energy(ase_atoms)
+
+    else:
+        energy = ase_atoms.get_potential_energy()
+
+    energies.append(energy)
+    return None
+
+
+def _save_trajectory(ase_traj, traj_name, **kwargs) -> None:
     """Saves the trajectory with a unique name based on the current simulation
     time"""
 
