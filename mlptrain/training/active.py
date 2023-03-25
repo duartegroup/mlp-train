@@ -2,8 +2,8 @@ from copy import deepcopy
 from typing import Optional, Union
 from multiprocessing import Pool
 from mlptrain.config import Config
+from mlptrain.sampling import Bias, PlumedBias
 from mlptrain.sampling.md import run_mlp_md
-from mlptrain.sampling.plumed import PlumedBias
 from mlptrain.training.selection import SelectionMethod, AbsDiffE
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.log import logger
@@ -96,7 +96,8 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                              perform
 
         bias_start_iter: (int) Iteration index at which the bias starts to be
-                         applied
+                         applied. If the bias is PlumedBias, then UPPER_WALLS
+                         and LOWER_WALLS are still applied from iteration 0
 
         inherit_metad_bias: (bool) If True metadynamics bias is inherited from
                             a previous iteration to the next during active
@@ -105,6 +106,10 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
         bias: Bias to add during the MD simulations, useful for exploring
               under-explored regions in the dynamics
     """
+
+    if inherit_metad_bias:
+        _check_bias_for_metad_bias_inheritance(bias)
+
     if init_configs is None:
         init_config = mlp.system.configuration
         _gen_and_set_init_training_configs(mlp,
@@ -124,6 +129,10 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
     for iteration in range(max_active_iters):
 
         curr_n_train = mlp.n_train
+        bias_iteration = deepcopy(bias)
+
+        if bias is not None and iteration < bias_start_iter:
+            bias_iteration = _remove_bias_potential(bias_iteration)
 
         _add_active_configs(mlp,
                             init_config=(init_config if fix_init_config
@@ -137,7 +146,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                             fbond_energy=fbond_energy,
                             init_temp=init_active_temp,
                             extra_time=mlp.training_data.t_min(-n_configs_iter),
-                            bias=bias)
+                            bias=bias_iteration)
 
         # Active learning finds no configurations,,
         if mlp.n_train == curr_n_train and iteration >= min_active_iters:
@@ -379,3 +388,40 @@ def _gen_and_set_init_training_configs(mlp, method_name, num) -> None:
     init_configs.single_point(method_name)
     mlp.training_data += init_configs
     return None
+
+
+def _check_bias_for_metad_bias_inheritance(bias) -> None:
+    """Checks if the bias is suitable to inherit metadynamics bias during
+    active learning"""
+
+    if not isinstance(bias, PlumedBias):
+        raise TypeError('Metadynamics bias can only be inherited when '
+                        'using PlumedBias')
+
+    if bias.setup is not None:
+        raise ValueError('Metadynamics bias cannot be inherited using '
+                         'PlumedBias from a file')
+
+    _required_parameters = ['pace', 'height', 'width',
+                            'metad_grid_min', 'metad_grid_max']
+
+    if any(getattr(bias, p) is None for p in _required_parameters):
+        raise TypeError('Not all PlumedBias parameters required for '
+                        'inheriting metadynamics bias are set, use '
+                        'initialise_for_metad_al() method to set all '
+                        'the required parameters')
+
+    return None
+
+
+def _remove_bias_potential(bias) -> Union['mlptrain.sampling.PlumedBias', None]:
+    """Removes bias potential from a bias, except LOWER_WALLS and UPPER_WALLS
+    when the bias is PlumedBias"""
+
+    if isinstance(bias, PlumedBias):
+        bias.strip()
+
+    else:
+        bias = None
+
+    return bias

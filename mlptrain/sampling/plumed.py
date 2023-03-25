@@ -2,6 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Sequence, List, Optional, Union
+from copy import deepcopy
 from mlptrain.utils import convert_ase_time
 from mlptrain.log import logger
 
@@ -263,7 +264,65 @@ class PlumedBias:
 
         return None
 
-    def strip_setup(self) -> None:
+    def initialise_for_metad_al(self,
+                                pace:       int,
+                                width:      Union[Sequence[float], float],
+                                height:     float,
+                                biasfactor: Optional[float],
+                                grid_min: Union[Sequence[float], float] = None,
+                                grid_max: Union[Sequence[float], float] = None,
+                                grid_bin: Union[Sequence[float], float] = None,
+                                ) -> None:
+        """
+        Initialise PlumedBias for metadynamics active learning by setting the
+        required parameters.
+
+        ------------------------------------------------------------------------
+        Arguments:
+
+            pace: (int) τ_G/dt, interval at which a new gaussian is placed
+
+            width: (float) σ, standard deviation (parameter describing the
+                           width) of the placed gaussian
+
+            height: (float) ω, initial height of placed gaussians
+
+            biasfactor: (float) γ, describes how quickly gaussians shrink,
+                                larger values make gaussians to be placed
+                                less sensitive to the bias potential
+
+            grid_min: (float) Lower bound of the grid
+
+            grid_max: (float) Upper bound of the grid
+
+            grid_bin: (float) Number of bins to use for each collective
+                              variable, if not specified PLUMED automatically
+                              sets this to 1/5 of the width (σ) value
+        """
+
+        self._set_metad_params(pace, width, height, biasfactor)
+        self._set_metad_grid_params(grid_min, grid_max, grid_bin)
+
+        return None
+
+    def strip(self) -> None:
+        """Change the bias such that it would only contain the definitions of
+        collective variables and their associated upper and lower walls"""
+
+        if self.setup is not None:
+            self._strip_setup()
+
+        else:
+            # Setting all attributes to None, except cvs which carry walls
+            _attributes = deepcopy(self.__dict__)
+            _attributes.pop('cvs')
+
+            for param_name in _attributes.keys():
+                setattr(self, param_name, None)
+
+        return None
+
+    def _strip_setup(self) -> None:
         """If the bias is initialised using a PLUMED input file, this method
         removes all lines from the setup except the ones defining lower and
         upper walls, and the collective variables to which the walls are
@@ -310,47 +369,6 @@ class PlumedBias:
                 _args = element[-1].split(',')
 
         return _args
-
-    def initialise_for_metad_al(self,
-                                pace:       int,
-                                width:      Union[Sequence[float], float],
-                                height:     float,
-                                biasfactor: Optional[float],
-                                grid_min: Union[Sequence[float], float] = None,
-                                grid_max: Union[Sequence[float], float] = None,
-                                grid_bin: Union[Sequence[float], float] = None,
-                                ) -> None:
-        """
-        Initialise PlumedBias for metadynamics active learning by setting the
-        required parameters.
-
-        ------------------------------------------------------------------------
-        Arguments:
-
-            pace: (int) τ_G/dt, interval at which a new gaussian is placed
-
-            width: (float) σ, standard deviation (parameter describing the
-                           width) of the placed gaussian
-
-            height: (float) ω, initial height of placed gaussians
-
-            biasfactor: (float) γ, describes how quickly gaussians shrink,
-                                larger values make gaussians to be placed
-                                less sensitive to the bias potential
-
-            grid_min: (float) Lower bound of the grid
-
-            grid_max: (float) Upper bound of the grid
-
-            grid_bin: (float) Number of bins to use for each collective
-                              variable, if not specified PLUMED automatically
-                              sets this to 1/5 of the width (σ) value
-        """
-
-        self._set_metad_params(pace, width, height, biasfactor)
-        self._set_metad_grid_params(grid_min, grid_max, grid_bin)
-
-        return None
 
 
 class _PlumedCV:

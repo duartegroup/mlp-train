@@ -129,6 +129,15 @@ def test_plumed_bias_from_cvs():
 
     assert bias.metad_grid_setup == 'GRID_MIN=0.5,1.5 GRID_MAX=0.6,1.6 '
 
+    bias.strip()
+
+    for attribute, value in bias.__dict__.items():
+        if attribute == 'cvs':
+            assert value is not None
+
+        else:
+            assert value is None
+
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
 def test_plumed_bias_from_file():
@@ -145,7 +154,7 @@ def test_plumed_bias_from_file():
                           'BIASFACTOR=4 FILE=HILLS.dat',
                           'PRINT ARG=cv1 FILE=colvar.dat STRIDE=10']
 
-    bias.strip_setup()
+    bias.strip()
 
     assert bias.setup == ['dof1: DISTANCE ATOMS=1,2',
                           'dof2: DISTANCE ATOMS=2,3',
