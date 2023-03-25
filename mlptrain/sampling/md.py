@@ -559,12 +559,12 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
 
     setup.extend(units_setup)
 
-    # Defining DOFs and CVs
+    # Defining DOFs and CVs (including upper and lower walls)
     for cv in bias.cvs:
         setup.extend(cv.setup)
 
     # Metadynamics
-    if '_method' in kwargs and kwargs['_method'] is 'metadynamics':
+    if bias.metadynamics:
         hills_filename = f'HILLS_{kwargs["_idx"]}.dat'
 
         if '_static_hills' in kwargs and kwargs['_static_hills'] is True:

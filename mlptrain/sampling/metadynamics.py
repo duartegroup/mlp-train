@@ -429,7 +429,6 @@ class Metadynamics:
             restart_files = None
 
         kwargs['n_cores'] = 1
-        kwargs['_method'] = 'metadynamics'
 
         traj = run_mlp_md(configuration=configuration,
                           mlp=mlp,
@@ -871,7 +870,6 @@ class Metadynamics:
 
         copied_substrings = [f'HILLS_{idx}.dat', '.xml', '.json', '.pth']
         kept_substrings = ['plumed_setup.dat']
-        kwargs['_method'] = 'metadynamics'
         kwargs['_idx'] = idx
         kwargs['_static_hills'] = True
         kwargs['_remove_print'] = True

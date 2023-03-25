@@ -483,7 +483,6 @@ class UmbrellaSampling:
                     f'and κ = {self.kappa:.3f} eV / Å^2')
 
         kwargs['n_cores'] = 1
-        kwargs['_method'] = 'umbrella'
 
         traj = run_mlp_md(configuration=frame,
                           mlp=mlp,

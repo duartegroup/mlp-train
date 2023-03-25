@@ -78,6 +78,14 @@ class PlumedBias:
         return ','.join(cv_names)
 
     @property
+    def metadynamics(self) -> bool:
+        """True if all parameters required for metadynamics are set"""
+
+        _required_parameters = ['pace', 'width', 'height']
+
+        return all(getattr(self, p) is not None for p in _required_parameters)
+
+    @property
     def width_sequence(self) -> str:
         """String containing width values separated by commas"""
 
@@ -189,7 +197,7 @@ class PlumedBias:
     def _set_metad_grid_params(self,
                                grid_min:      Union[Sequence[float], float],
                                grid_max:      Union[Sequence[float], float],
-                               grid_bin:   Union[Sequence[float], float] = None,
+                               grid_bin:      Union[Sequence[float], float] = None,
                                grid_wstride:  Optional[int] = None,
                                grid_wfile:    Optional[str] = None,
                                grid_rfile:    Optional[str] = None
