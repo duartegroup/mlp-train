@@ -1,4 +1,7 @@
+import os
+import io
 import shutil
+import numpy as np
 from copy import deepcopy
 from typing import Optional, Union, Dict
 from multiprocessing import Pool
@@ -146,7 +149,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                             bias=deepcopy(bias),
                             inherit_metad_bias=inherit_metad_bias,
                             bias_start_iter=bias_start_iter,
-                            iter=iteration)
+                            iteration=iteration)
 
         # Active learning finds no configurations,,
         if mlp.n_train == curr_n_train and iteration >= min_active_iters:
@@ -162,6 +165,9 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
             mlp.training_data.remove_none_energy()
 
         mlp.train()
+
+    if inherit_metad_bias:
+        _remove_last_inherited_metad_bias_file(max_active_iters, bias)
 
     return None
 
@@ -186,7 +192,7 @@ def _add_active_configs(mlp,
     logger.info('Searching for "active" configurations with '
                 f'{n_processes} processes using {n_cores_pp} cores / process')
 
-    if 'bias' in kwargs and kwargs['iter'] < kwargs['bias_start_iter']:
+    if 'bias' in kwargs and kwargs['iteration'] < kwargs['bias_start_iter']:
         kwargs['bias'] = _remove_bias_potential(kwargs['bias'])
 
     configs = ConfigurationSet()
@@ -219,11 +225,10 @@ def _add_active_configs(mlp,
     if 'method_name' in kwargs and configs.has_a_none_energy:
         configs.single_point(method=kwargs.get('method_name'))
 
-    # TODO: Generate the averaged grid here: if inherit then compute the grid,
-    #  make the grid file, in next iteration each run of _gen_active_config can
-    #  check if this file is present and add it as rfile if it exists
+    if (kwargs['inherit_metad_bias'] is True
+            and kwargs['iteration'] >= kwargs['bias_start_iter']):
 
-    # TODO: Probably have to move the grids somewhere or delete them later
+        _generate_inheritable_metad_bias(n_configs, kwargs)
 
     mlp.training_data += configs
     return None
@@ -280,7 +285,7 @@ def _gen_active_config(config:      'mlptrain.Configuration',
                          applied. If the bias is PlumedBias, then UPPER_WALLS
                          and LOWER_WALLS are still applied from iteration 0
 
-        iter: (int) Number of the current iteration
+        iteration: (int) Index of the current active learning iteration
 
         idx: (int) Index of the current simulation
 
@@ -303,7 +308,7 @@ def _gen_active_config(config:      'mlptrain.Configuration',
     md_time = 2 + n_calls**3 + float(extra_time)
 
     if (kwargs['inherit_metad_bias'] is True
-            and kwargs['iter'] >= kwargs['bias_start_iter']):
+            and kwargs['iteration'] >= kwargs['bias_start_iter']):
 
         kwargs = _modify_kwargs_for_metad_bias_inheritance(kwargs)
 
@@ -470,17 +475,17 @@ def _modify_kwargs_for_metad_bias_inheritance(kwargs) -> Dict:
 
     if bias.metad_grid_min is not None and bias.metad_grid_max is not None:
 
-        if kwargs['iter'] == kwargs['bias_start_iter']:
+        if kwargs['iteration'] == kwargs['bias_start_iter']:
             previous_grid_fname = None
 
         else:
-            previous_grid_fname = f'bias_grid_{kwargs["iter"]-1}.dat'
+            previous_grid_fname = f'bias_grid_{kwargs["iteration"]-1}.dat'
 
             copied_substrings = list(kwargs['copied_substrings'])
             copied_substrings.append(previous_grid_fname)
             kwargs['copied_substrings'] = copied_substrings
 
-        grid_fname = f'bias_grid_{kwargs["iter"]}_{kwargs["idx"]}.dat'
+        grid_fname = f'bias_grid_{kwargs["iteration"]}_{kwargs["idx"]}.dat'
         kwargs['kept_substrings'] = [grid_fname]
 
         bias._set_metad_grid_params(grid_min=bias.metad_grid_min,
@@ -492,10 +497,10 @@ def _modify_kwargs_for_metad_bias_inheritance(kwargs) -> Dict:
 
     # Using HILLS instead of grids
     else:
-        hills_fname = f'HILLS_{kwargs["iter"]}_{kwargs["idx"]}.dat'
+        hills_fname = f'HILLS_{kwargs["iteration"]}_{kwargs["idx"]}.dat'
 
-        if kwargs['iter'] > kwargs['bias_start_iter']:
-            previous_hills_fname = f'HILLS_{kwargs["iter"]-1}'
+        if kwargs['iteration'] > kwargs['bias_start_iter']:
+            previous_hills_fname = f'HILLS_{kwargs["iteration"]-1}'
             shutil.copyfile(src=previous_hills_fname, dst=hills_fname)
 
             copied_substrings = list(kwargs['copied_substrings'])
@@ -504,4 +509,153 @@ def _modify_kwargs_for_metad_bias_inheritance(kwargs) -> Dict:
 
         kwargs['kept_substrings'] = hills_fname
 
+    if kwargs['iteration'] > kwargs['bias_start_iter']:
+        kwargs['load_metad_bias'] = True
+
     return kwargs
+
+
+def _generate_inheritable_metad_bias(n_configs, kwargs) -> None:
+    """Generates files containing metadynamics bias to be inherited in the next
+    active learning iteration"""
+
+    bias = kwargs['bias']
+    iteration = kwargs['iteration']
+    bias_start_iter = kwargs['bias_start_iter']
+
+    grid_files = [f'bias_grid_{iteration}_{idx}.dat' for idx in range(n_configs)]
+    using_grids = all(os.path.exists(fname) for fname in grid_files)
+
+    hills_files = [f'HILLS_{iteration}_{idx}.dat' for idx in range(n_configs)]
+    using_hills = all(os.path.exists(fname) for fname in hills_files)
+
+    if using_grids:
+        _generate_inheritable_metad_bias_grid(n_configs, grid_files, bias,
+                                              iteration, bias_start_iter)
+
+    if using_hills:
+        _generate_inheritable_metad_bias_hills(n_configs, hills_files,
+                                               iteration, bias_start_iter)
+
+    return None
+
+
+def _generate_inheritable_metad_bias_grid(n_configs, grid_files, bias,
+                                          iteration, bias_start_iter) -> None:
+    """Generates bias_grid_{iteration}.dat file containing metadynamics bias to
+    be inherited in the next active learning iteration {iteration+1}"""
+
+    if iteration > bias_start_iter:
+        os.remove(f'bias_grid_{iteration-1}.dat')
+
+    # Extract the header
+    with open(f'bias_grid_{iteration}_0.dat', 'r') as f:
+
+        header = ''
+        for line in f:
+
+            if line.startswith('#!'):
+                header += line
+
+            else:
+                break
+
+    # cv1 cv2 ... metad.bias der_cv1 der_cv2 ...
+    cvs_cols = range(0, bias.n_cvs)
+    cvs = np.loadtxt(f'bias_grid_{iteration}_0.dat', usecols=cvs_cols, ndmin=2)
+
+    # data is bias and derivatives, which is going to be averaged over files
+    data_cols = range(bias.n_cvs, 2 * bias.n_cvs + 1)
+    n_cols = len(data_cols)
+    n_rows = len(cvs)
+    data = np.zeros((n_rows, n_cols))
+
+    for fname in grid_files:
+        data += np.loadtxt(fname, usecols=data_cols)
+        os.remove(fname)
+
+    mean_data = data / n_configs
+    final_array = np.concatenate((cvs, mean_data), axis=1)
+
+    with open(f'bias_grid_{iteration}.dat', 'w') as f:
+
+        for line in header:
+            f.write(line)
+
+        # Save str representation of the array in memory
+        bytes_io = io.BytesIO()
+        np.savetxt(fname=bytes_io, X=final_array, fmt='    %.9f')
+        f.write(bytes_io.getvalue().decode())
+
+    return None
+
+
+def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
+                                           bias_start_iter) -> None:
+    """Generates HILLS_{iteration}.dat file containing metadynamics bias to be
+    inherited in the next active learning iteration {iteration+1}"""
+
+    if iteration > bias_start_iter:
+
+        shutil.move(src=f'HILLS_{iteration-1}.dat',
+                    dst=f'HILLS_{iteration}.dat')
+
+        # Remove inherited bias from files containing new bias
+        for fname in hills_files:
+            with open(fname, 'r') as f:
+                f_lines = f.readlines()
+
+            first_header_indices = [0, 1, 2]
+            second_header_first_index = 0
+            for i, line in enumerate(f_lines):
+                if line.startswith('#!') and i not in first_header_indices:
+                    second_header_first_index = i
+                    break
+
+            with open(fname, 'w') as f:
+                for line in f_lines[second_header_first_index:]:
+                    f.write(line)
+
+    for fname in hills_files:
+        with open(fname, 'r') as f:
+            f_lines = f.readlines()
+
+        has_biasf = f_lines[0].split()[-1] == 'biasf'
+        height_column_index = -2 if has_biasf else -1
+
+        # Remove the header (indices 0, 1, 2)
+        for _ in range(3):
+            f_lines.pop(0)
+
+        with open(f'HILLS_{iteration}.dat', 'a') as final_hills_file:
+            for line in f_lines:
+                line_list = line.split()
+                height = float(line_list[height_column_index])
+                line_list[height_column_index] = str(height / n_configs)
+
+                separator = '   '
+                line = separator.join(line_list)
+
+                final_hills_file.write(f'{line}\n')
+
+        os.remove(fname)
+
+    return None
+
+
+def _remove_last_inherited_metad_bias_file(max_active_iters, bias) -> None:
+    """Removes the last inherited metadynamics bias file"""
+
+    for iteration in range(max_active_iters):
+
+        if bias.metad_grid_min is not None and bias.metad_grid_max is not None:
+            fname = f'bias_grid_{iteration}.dat'
+
+        else:
+            fname = f'HILLS_{iteration}.dat'
+
+        if os.path.exists(fname):
+            os.remove(fname)
+            break
+
+    return None

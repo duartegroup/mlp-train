@@ -177,8 +177,8 @@ class PlumedBias:
                 self.width = [width]
 
         if len(self.width) != len(self.cvs):
-            raise ValueError('The number of supplied widths (σ) does not match '
-                             'the number of collective variables')
+            raise ValueError('The number of supplied widths (σ) does not '
+                             'match the number of collective variables')
 
         if height <= 0:
             raise ValueError('Gaussian height (ω) must be positive')
@@ -219,8 +219,8 @@ class PlumedBias:
                               variable, if not specified PLUMED automatically
                               sets this to 1/5 of the width (σ) value
 
-            grid_wstride: (float) Number of steps specifying the period at which
-                                  the grid is updated
+            grid_wstride: (float) Number of steps specifying the period at
+                                  which the grid is updated
 
             grid_wfile: (str) Name of the file to write the grid to
 
@@ -305,7 +305,8 @@ class PlumedBias:
 
             grid_bin: (float) Number of bins to use for each collective
                               variable, if not specified PLUMED automatically
-                              sets this to 1/5 of the width (σ) value
+                              sets bin width to 1/5 of the gaussian width (σ)
+                              value
         """
 
         self._set_metad_params(pace, width, height, biasfactor)
@@ -337,9 +338,9 @@ class PlumedBias:
         attached"""
 
         if self.setup is None:
-            raise TypeError('Setup of the bias is not initialised, if you want '
-                            'to strip the setup make sure to use a bias which '
-                            'was initialised using a PLUMED input file')
+            raise TypeError('Setup of the bias is not initialised, if you '
+                            'want to strip the setup make sure to use a bias '
+                            'which was initialised using a PLUMED input file')
 
         _stripped_setup, _args = [], []
         for line in reversed(self.setup):
@@ -617,6 +618,9 @@ class _PlumedCV:
 
     def _check_name(self) -> None:
         """Checks if the supplied name is valid"""
+
+        if ' ' in self.name:
+            raise ValueError('Spaces in CV names are not allowed')
 
         _illegal_substrings = ['fes', 'colvar', 'HILLS']
         if any(substr in self.name for substr in _illegal_substrings):

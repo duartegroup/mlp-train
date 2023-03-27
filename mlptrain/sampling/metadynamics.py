@@ -871,7 +871,7 @@ class Metadynamics:
         copied_substrings = [f'HILLS_{idx}.dat', '.xml', '.json', '.pth']
         kept_substrings = ['plumed_setup.dat']
         kwargs['idx'] = idx
-        kwargs['static_hills'] = True
+        kwargs['load_metad_bias'] = True
         kwargs['remove_print'] = True
         kwargs['write_plumed_setup'] = True
 
@@ -1163,7 +1163,7 @@ class Metadynamics:
         if blocksize is None:
             mean_fes = np.mean(fes_grids, axis=0)
             std_mean_fes = ((1 / np.sqrt(n_fes_grids))
-                           * np.std(fes_grids, axis=0, ddof=1))
+                            * np.std(fes_grids, axis=0, ddof=1))
 
         else:
             # No benefit from n_fes_grids

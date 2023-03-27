@@ -608,11 +608,11 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
 
         hills_filename = _hills_filename(kwargs)
 
-        if 'static_hills' in kwargs and kwargs['static_hills'] is True:
-            static_hills_setup = 'RESTART=YES '
+        if 'load_metad_bias' in kwargs and kwargs['load_metad_bias'] is True:
+            load_metad_bias_setup = 'RESTART=YES '
 
         else:
-            static_hills_setup = ''
+            load_metad_bias_setup = ''
 
         metad_setup = ['metad: METAD '
                        f'ARG={bias.cv_sequence} '
@@ -622,7 +622,7 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
                        f'TEMP={temp} '
                        f'{bias.biasfactor_setup}'
                        f'{bias.metad_grid_setup}'
-                       f'{static_hills_setup}'
+                       f'{load_metad_bias_setup}'
                        f'FILE={hills_filename}']
         setup.extend(metad_setup)
 
@@ -661,14 +661,15 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
 
     return setup
 
+
 def _hills_filename(kwargs) -> str:
     """Return the name of the file where a list of deposited gaussians will be
     stored"""
 
     filename = 'HILLS'
 
-    if 'iter' in kwargs and kwargs['iter'] is not None:
-        filename += f'_{kwargs["iter"]}'
+    if 'iteration' in kwargs and kwargs['iteration'] is not None:
+        filename += f'_{kwargs["iteration"]}'
 
     if 'idx' in kwargs and kwargs['idx'] is not None:
         filename += f'_{kwargs["idx"]}'
