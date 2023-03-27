@@ -129,7 +129,7 @@ class Metadynamics:
             for idx, configuration in enumerate(configuration_set):
 
                 kwargs_single = deepcopy(kwargs)
-                kwargs_single['_idx'] = idx + 1
+                kwargs_single['idx'] = idx + 1
 
                 width_process = pool.apply_async(func=self._get_width_for_single,
                                                  args=(configuration,
@@ -173,7 +173,7 @@ class Metadynamics:
                               bias, plot, **kwargs) -> List:
         """Estimates optimal widths (σ) for a single configuration"""
 
-        logger.info(f'Running MD simulation number {kwargs["_idx"]}')
+        logger.info(f'Running MD simulation number {kwargs["idx"]}')
 
         kwargs['n_cores'] = 1
 
@@ -189,7 +189,7 @@ class Metadynamics:
         widths = []
 
         for cv in self.bias.cvs:
-            colvar_filename = f'colvar_{cv.name}_{kwargs["_idx"]}.dat'
+            colvar_filename = f'colvar_{cv.name}_{kwargs["idx"]}.dat'
 
             cv_array = np.loadtxt(colvar_filename, usecols=1)
 
@@ -199,7 +199,7 @@ class Metadynamics:
             if plot is True:
                 plot_cv_versus_time(filename=colvar_filename,
                                     cv_units=cv.units,
-                                    label=f'config{kwargs["_idx"]}')
+                                    label=f'config{kwargs["idx"]}')
 
         return widths
 
@@ -321,7 +321,7 @@ class Metadynamics:
 
                 # Without copy kwargs is overwritten at every iteration
                 kwargs_single = deepcopy(kwargs)
-                kwargs_single['_idx'] = idx + 1
+                kwargs_single['idx'] = idx + 1
 
                 metad_process = pool.apply_async(func=self._run_single_metad,
                                                  args=(configuration,
@@ -406,24 +406,24 @@ class Metadynamics:
 
         if restart:
             logger.info(f'Restarting Metadynamics simulation number '
-                        f'{kwargs["_idx"]}')
+                        f'{kwargs["idx"]}')
 
             restart_files = []
 
             for cv in self.bias.cvs:
-                restart_files.append(f'colvar_{cv.name}_{kwargs["_idx"]}.dat')
+                restart_files.append(f'colvar_{cv.name}_{kwargs["idx"]}.dat')
 
-            restart_files.append(f'HILLS_{kwargs["_idx"]}.dat')
-            restart_files.append(f'trajectory_{kwargs["_idx"]}.traj')
+            restart_files.append(f'HILLS_{kwargs["idx"]}.dat')
+            restart_files.append(f'trajectory_{kwargs["idx"]}.traj')
 
         else:
             if bias.biasfactor is None:
                 logger.info('Running Metadynamics simulation '
-                            f'number {kwargs["_idx"]}')
+                            f'number {kwargs["idx"]}')
 
             else:
                 logger.info('Running Well-tempered Metadynamics simulation '
-                            f'number {kwargs["_idx"]} '
+                            f'number {kwargs["idx"]} '
                             f'with a biasfactor {bias.biasfactor}')
 
             restart_files = None
@@ -652,7 +652,7 @@ class Metadynamics:
                 bias.biasfactor = biasfactor
 
                 kwargs_single = deepcopy(kwargs)
-                kwargs_single['_idx'] = idx + 1
+                kwargs_single['idx'] = idx + 1
 
                 pool.apply_async(func=self._try_single_biasfactor,
                                  args=(configuration,
@@ -695,7 +695,7 @@ class Metadynamics:
                                kept_substrings=['.dat'],
                                **kwargs)
 
-        filenames = [f'colvar_{cv.name}_{kwargs["_idx"]}.dat'
+        filenames = [f'colvar_{cv.name}_{kwargs["idx"]}.dat'
                      for cv in plotted_cvs]
 
         for filename, cv in zip(filenames, plotted_cvs):
@@ -870,9 +870,9 @@ class Metadynamics:
 
         copied_substrings = [f'HILLS_{idx}.dat', '.xml', '.json', '.pth']
         kept_substrings = ['plumed_setup.dat']
-        kwargs['_idx'] = idx
-        kwargs['_static_hills'] = True
-        kwargs['_remove_print'] = True
+        kwargs['idx'] = idx
+        kwargs['static_hills'] = True
+        kwargs['remove_print'] = True
         kwargs['write_plumed_setup'] = True
 
         traj = run_mlp_md(configuration=configuration,

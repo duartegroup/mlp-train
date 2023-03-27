@@ -82,12 +82,12 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
 
         {save_fs, save_ps, save_ns}: Trajectory saving interval in some units
 
-        {write_plumed_setup}: If True saves the PLUMED input file as
-                              plumed_setup.dat
+        write_plumed_setup: If True saves the PLUMED input file as
+                            plumed_setup.dat
 
     Returns:
 
-        (mlptrain.ConfigurationSet):
+        (mlptrain.Trajectory):
     """
 
     restart = restart_files is not None
@@ -193,9 +193,12 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
 
         {save_fs, save_ps, save_ns}: Trajectory saving interval in some units
 
+        write_plumed_setup: If True saves the PLUMED input file as
+                            plumed_setup.dat
+
     Returns:
 
-        (mlptrain.ConfigurationSet):
+        (mlptrain.Trajectory):
     """
 
     restart = restart_files is not None
@@ -383,8 +386,8 @@ def _get_traj_name(restart_files: Optional[List[str]] = None,
     (or on to which the new frames will be appended in the case of restart)"""
 
     if restart_files is None:
-        if '_idx' in kwargs:
-            traj_name = f'trajectory_{kwargs["_idx"]}.traj'
+        if 'idx' in kwargs:
+            traj_name = f'trajectory_{kwargs["idx"]}.traj'
         else:
             traj_name = f'trajectory.traj'
 
@@ -602,9 +605,10 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
 
     # Metadynamics
     if bias.metadynamics:
-        hills_filename = f'HILLS_{kwargs["_idx"]}.dat'
 
-        if '_static_hills' in kwargs and kwargs['_static_hills'] is True:
+        hills_filename = _hills_filename(kwargs)
+
+        if 'static_hills' in kwargs and kwargs['static_hills'] is True:
             static_hills_setup = 'RESTART=YES '
 
         else:
@@ -633,8 +637,8 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
 
         name_without_dot = '_'.join(cv.name.split('.'))
 
-        if '_idx' in kwargs:
-            colvar_filename = f'colvar_{name_without_dot}_{kwargs["_idx"]}.dat'
+        if 'idx' in kwargs:
+            colvar_filename = f'colvar_{name_without_dot}_{kwargs["idx"]}.dat'
 
         else:
             colvar_filename = f'colvar_{name_without_dot}.dat'
@@ -645,7 +649,7 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
                        f'STRIDE={interval}']
         setup.extend(print_setup)
 
-    if '_remove_print' in kwargs and kwargs['_remove_print'] is True:
+    if 'remove_print' in kwargs and kwargs['remove_print'] is True:
         for line in setup:
             if line.startswith('PRINT'):
                 setup.remove(line)
@@ -656,3 +660,18 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
                 f.write(f'{line}\n')
 
     return setup
+
+def _hills_filename(kwargs) -> str:
+    """Return the name of the file where a list of deposited gaussians will be
+    stored"""
+
+    filename = 'HILLS'
+
+    if 'iter' in kwargs and kwargs['iter'] is not None:
+        filename += f'_{kwargs["iter"]}'
+
+    if 'idx' in kwargs and kwargs['idx'] is not None:
+        filename += f'_{kwargs["idx"]}'
+
+    filename += '.dat'
+    return filename

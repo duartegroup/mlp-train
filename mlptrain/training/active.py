@@ -1,8 +1,9 @@
+import shutil
 from copy import deepcopy
-from typing import Optional, Union
+from typing import Optional, Union, Dict
 from multiprocessing import Pool
 from mlptrain.config import Config
-from mlptrain.sampling import Bias, PlumedBias
+from mlptrain.sampling import PlumedBias
 from mlptrain.sampling.md import run_mlp_md
 from mlptrain.training.selection import SelectionMethod, AbsDiffE
 from mlptrain.configurations import ConfigurationSet
@@ -194,7 +195,7 @@ def _add_active_configs(mlp,
     with Pool(processes=n_processes) as pool:
 
         for idx in range(n_configs):
-            kwargs['idx'] = idx + 1
+            kwargs['idx'] = idx
 
             result = pool.apply_async(_gen_active_config,
                                       args=(init_config.copy(),
@@ -301,29 +302,10 @@ def _gen_active_config(config:      'mlptrain.Configuration',
 
     md_time = 2 + n_calls**3 + float(extra_time)
 
-    # TODO: Make into a separate method, prob take kwargs and return kwargs
     if (kwargs['inherit_metad_bias'] is True
             and kwargs['iter'] >= kwargs['bias_start_iter']):
 
-        if kwargs['iter'] == kwargs['bias_start_iter']:
-            previous_grid_fname = None
-
-        else:
-            previous_grid_fname = f'bias_grid_{kwargs["iter"]-1}.dat'
-            copied_substrings = list(kwargs['copied_substrings'])
-            copied_substrings.append(previous_grid_fname)
-            kwargs['copied_substrings'] = copied_substrings
-
-        grid_fname = f'bias_grid_{kwargs["iter"]}_{kwargs["idx"]}.dat'
-        kwargs['kept_substrings'] = [grid_fname]
-
-        bias = kwargs['bias']
-        bias._set_metad_grid_params(grid_min=bias.metad_grid_min,
-                                    grid_max=bias.metad_grid_max,
-                                    grid_bin=bias.metad_grid_bin,
-                                    grid_wstride=bias.pace,
-                                    grid_wfile=grid_fname,
-                                    grid_rfile=previous_grid_fname)
+        kwargs = _modify_kwargs_for_metad_bias_inheritance(kwargs)
 
     traj = run_mlp_md(config,
                       mlp=mlp,
@@ -358,7 +340,7 @@ def _gen_active_config(config:      'mlptrain.Configuration',
                 return frame
 
         logger.error('Failed to backtrack to a suitable configuration')
-        return frame
+        return None
 
     if curr_time + md_time > max_time:
         logger.info(f'Reached the maximum time {max_time} fs, returning None')
@@ -478,3 +460,48 @@ def _remove_bias_potential(bias) -> Union['mlptrain.sampling.PlumedBias', None]:
         bias = None
 
     return bias
+
+
+def _modify_kwargs_for_metad_bias_inheritance(kwargs) -> Dict:
+    """Modifies keyword arguments to enable metadynamics bias inheritance for
+    active learning"""
+
+    bias = kwargs['bias']
+
+    if bias.metad_grid_min is not None and bias.metad_grid_max is not None:
+
+        if kwargs['iter'] == kwargs['bias_start_iter']:
+            previous_grid_fname = None
+
+        else:
+            previous_grid_fname = f'bias_grid_{kwargs["iter"]-1}.dat'
+
+            copied_substrings = list(kwargs['copied_substrings'])
+            copied_substrings.append(previous_grid_fname)
+            kwargs['copied_substrings'] = copied_substrings
+
+        grid_fname = f'bias_grid_{kwargs["iter"]}_{kwargs["idx"]}.dat'
+        kwargs['kept_substrings'] = [grid_fname]
+
+        bias._set_metad_grid_params(grid_min=bias.metad_grid_min,
+                                    grid_max=bias.metad_grid_max,
+                                    grid_bin=bias.metad_grid_bin,
+                                    grid_wstride=bias.pace,
+                                    grid_wfile=grid_fname,
+                                    grid_rfile=previous_grid_fname)
+
+    # Using HILLS instead of grids
+    else:
+        hills_fname = f'HILLS_{kwargs["iter"]}_{kwargs["idx"]}.dat'
+
+        if kwargs['iter'] > kwargs['bias_start_iter']:
+            previous_hills_fname = f'HILLS_{kwargs["iter"]-1}'
+            shutil.copyfile(src=previous_hills_fname, dst=hills_fname)
+
+            copied_substrings = list(kwargs['copied_substrings'])
+            copied_substrings.append(hills_fname)
+            kwargs['copied_substrings'] = copied_substrings
+
+        kwargs['kept_substrings'] = hills_fname
+
+    return kwargs
