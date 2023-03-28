@@ -82,7 +82,9 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
 
         {save_fs, save_ps, save_ns}: Trajectory saving interval in some units
 
-        write_plumed_setup: If True saves the PLUMED input file as
+        constraints: (List) List of ASE constraints to use in the dynamics
+
+        write_plumed_setup: (bool) If True saves the PLUMED input file as
                             plumed_setup.dat
 
     Returns:
@@ -193,7 +195,9 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
 
         {save_fs, save_ps, save_ns}: Trajectory saving interval in some units
 
-        write_plumed_setup: If True saves the PLUMED input file as
+        constraints: (List) List of ASE constraints to use in the dynamics
+
+        write_plumed_setup: (bool) If True saves the PLUMED input file as
                             plumed_setup.dat
 
     Returns:
@@ -257,7 +261,7 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
 def _attach_calculator_with_bias(ase_atoms, mlp, bias, temp, interval, dt_ase,
                                  restart, n_previous_steps, **kwargs):
     """Sets up the calculator, attaches it to the ase_atoms together with a
-    bias, and returns the final calculator"""
+    bias and constraints, and returns the final calculator"""
 
     if isinstance(bias, PlumedBias):
         logger.info('Using PLUMED bias for MLP MD')
@@ -283,18 +287,30 @@ def _attach_calculator_with_bias(ase_atoms, mlp, bias, temp, interval, dt_ase,
 
         ase_atoms.calc = plumed_calc
 
+        if 'constraints' in kwargs and kwargs['constraints'] is not None:
+            ase_atoms.set_constraint(kwargs['constraints'])
+
         return plumed_calc
 
     elif isinstance(bias, Bias):
         logger.info('Using ASE bias for MLP MD')
 
         ase_atoms.calc = mlp.ase_calculator
-        ase_atoms.set_constraint(bias)
+
+        if 'constraints' in kwargs and kwargs['constraints'] is not None:
+            kwargs['constraints'].append(bias)
+            ase_atoms.set_constraint(kwargs['constraints'])
+
+        else:
+            ase_atoms.set_constraint(bias)
 
         return mlp.ase_calculator
 
     else:
         ase_atoms.calc = mlp.ase_calculator
+
+        if 'constraints' in kwargs and kwargs['constraints'] is not None:
+            ase_atoms.set_constraint(kwargs['constraints'])
 
         return mlp.ase_calculator
 
@@ -335,7 +351,8 @@ def _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
 
 def _append_unbiased_energy(ase_atoms, energies, calculator, bias) -> None:
     """Appends unbiased energy (biased MLP energy - bias energy) to the
-    trajectory"""
+    trajectory. The energy is not unbiased relative to additional ASE
+    constraints (e.g. ase.constraints.ExternalForce)"""
 
     if isinstance(bias, Bias):
         biased_energy = ase_atoms.get_potential_energy()
@@ -411,6 +428,8 @@ def _convert_ase_traj(traj_name: str) -> 'mlptrain.Trajectory':
     for atoms in ase_traj:
         config = Configuration()
         config.atoms = [ade.Atom(label) for label in atoms.symbols]
+        cell = atoms.cell[:]
+        config.box = Box([cell[0][0], cell[1][1], cell[2][2]])
 
         # Set the atom_pair_list of every atom in the configuration
         for i, position in enumerate(atoms.get_positions()):

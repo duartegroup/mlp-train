@@ -3,7 +3,7 @@ import io
 import shutil
 import numpy as np
 from copy import deepcopy
-from typing import Optional, Union, Dict
+from typing import Optional, Union, Dict, List
 from multiprocessing import Pool
 from ase import units as ase_units
 from mlptrain.config import Config
@@ -31,6 +31,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
           min_active_iters:    int = 1,
           bias_start_iter:     int = 0,
           inherit_metad_bias:  bool = False,
+          constraints:         Optional[List] = None,
           bias:                Union['mlptrain.sampling.Bias',
                                      'mlptrain.sampling.PlumedBias'] = None
           ) -> None:
@@ -108,6 +109,9 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                             a previous iteration to the next during active
                             learning
 
+        constraints: (List) List of ASE contraints to use in the dynamics
+                            during active learning
+
         bias: Bias to add during the MD simulations, useful for exploring
               under-explored regions in the dynamics
     """
@@ -146,6 +150,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                             fbond_energy=fbond_energy,
                             init_temp=init_active_temp,
                             extra_time=mlp.training_data.t_min(-n_configs_iter),
+                            constraints=constraints,
                             bias=deepcopy(bias),
                             inherit_metad_bias=inherit_metad_bias,
                             bias_start_iter=bias_start_iter,
@@ -342,6 +347,9 @@ def _gen_active_config(config:      'mlptrain.Configuration',
             selector(frame, mlp, method_name=method_name, n_cores=n_cores)
 
             if selector.select:
+                if traj.final_frame.energy.true is None:
+                    traj.final_frame.single_point(method_name)
+
                 return frame
 
         logger.error('Failed to backtrack to a suitable configuration')
