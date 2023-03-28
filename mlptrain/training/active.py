@@ -198,6 +198,8 @@ def _add_active_configs(mlp,
                 f'{n_processes} processes using {n_cores_pp} cores / process')
 
     if 'bias' in kwargs and kwargs['iteration'] < kwargs['bias_start_iter']:
+        logger.info(f'Iteration {kwargs["iteration"]}: the bias potential '
+                    'is not applied')
         kwargs['bias'] = _remove_bias_potential(kwargs['bias'])
 
     configs = ConfigurationSet()
@@ -572,6 +574,8 @@ def _generate_inheritable_metad_bias_grid(n_configs, grid_files, bias,
     """Generates bias_grid_{iteration}.dat file containing metadynamics bias to
     be inherited in the next active learning iteration {iteration+1}"""
 
+    logger.info('Generating metadynamics bias grid file to inherit from')
+
     if iteration > bias_start_iter:
         os.remove(f'bias_grid_{iteration-1}.dat')
 
@@ -621,6 +625,8 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
                                            bias_start_iter) -> None:
     """Generates HILLS_{iteration}.dat file containing metadynamics bias to be
     inherited in the next active learning iteration {iteration+1}"""
+
+    logger.info('Generating metadynamics bias HILLS file to inherit from')
 
     if iteration > bias_start_iter:
 
