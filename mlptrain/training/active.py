@@ -5,6 +5,7 @@ import numpy as np
 from copy import deepcopy
 from typing import Optional, Union, Dict
 from multiprocessing import Pool
+from ase import units as ase_units
 from mlptrain.config import Config
 from mlptrain.sampling import PlumedBias
 from mlptrain.sampling.md import run_mlp_md
@@ -111,8 +112,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
               under-explored regions in the dynamics
     """
 
-    if inherit_metad_bias:
-        _check_bias_for_metad_bias_inheritance(bias)
+    _check_bias(bias, temp, inherit_metad_bias)
 
     if init_configs is None:
         init_config = mlp.system.configuration
@@ -430,6 +430,34 @@ def _gen_and_set_init_training_configs(mlp, method_name, num) -> None:
     return None
 
 
+def _check_bias(bias, temp, inherit_metad_bias) -> None:
+    """Checks if the bias is suitable for running active learning with the
+    requested parameters"""
+
+    _check_bias_parameters(bias, temp)
+
+    if inherit_metad_bias:
+        _check_bias_for_metad_bias_inheritance(bias)
+
+    return None
+
+
+def _check_bias_parameters(bias, temp) -> None:
+    """Checks if all the required parameters of the bias are set (currently
+    only checks PlumedBias initialised not from a file)"""
+
+    if isinstance(bias, PlumedBias):
+
+        if bias.setup is None and bias.metadynamics is True:
+
+            if bias.width == 0:
+                logger.info('Setting the height for metadynamics active '
+                            'learning to 0.5*k_B*T')
+                bias.width = 0.5 * ase_units.kB * temp
+
+    return None
+
+
 def _check_bias_for_metad_bias_inheritance(bias) -> None:
     """Checks if the bias is suitable to inherit metadynamics bias during
     active learning"""
@@ -441,15 +469,6 @@ def _check_bias_for_metad_bias_inheritance(bias) -> None:
     if bias.setup is not None:
         raise ValueError('Metadynamics bias cannot be inherited using '
                          'PlumedBias from a file')
-
-    _required_parameters = ['pace', 'height', 'width',
-                            'metad_grid_min', 'metad_grid_max']
-
-    if any(getattr(bias, p) is None for p in _required_parameters):
-        raise TypeError('Not all PlumedBias parameters required for '
-                        'inheriting metadynamics bias are set, use '
-                        'initialise_for_metad_al() method to set all '
-                        'the required parameters')
 
     return None
 

@@ -240,7 +240,7 @@ class Metadynamics:
 
             pace: (int) τ_G/dt, interval at which a new gaussian is placed
 
-            height: (float) ω, initial height of placed gaussians
+            height: (float) ω, initial height of placed gaussians (in eV)
 
             width: (List[float] | float | None) σ, standard deviation
                    (parameter describing the width) of placed gaussians,
@@ -577,7 +577,7 @@ class Metadynamics:
 
             pace: (int) τ_G/dt, interval at which a new gaussian is placed
 
-            height: (float) ω, initial height of placed gaussians
+            height: (float) ω, initial height of placed gaussians (in eV)
 
             width: (List[float] | float | None) σ, standard deviation
                    (parameter describing the width) of placed gaussians,

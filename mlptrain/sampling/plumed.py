@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import Sequence, List, Optional, Union
 from copy import deepcopy
+from ase import units as ase_units
 from mlptrain.utils import convert_ase_time
 from mlptrain.log import logger
 
@@ -79,11 +80,11 @@ class PlumedBias:
 
     @property
     def metadynamics(self) -> bool:
-        """True if all parameters required for metadynamics are set"""
+        """True if any parameters required for metadynamics are set"""
 
-        _required_parameters = ['pace', 'width', 'height']
+        _metad_parameters = ['pace', 'width', 'height']
 
-        return all(getattr(self, p) is not None for p in _required_parameters)
+        return any(getattr(self, p) is not None for p in _metad_parameters)
 
     @property
     def width_sequence(self) -> str:
@@ -145,7 +146,7 @@ class PlumedBias:
             width: (float) σ, standard deviation (parameter describing the
                            width) of the placed gaussian
 
-            height: (float) ω, initial height of placed gaussians
+            height: (float) ω, initial height of placed gaussians (in eV)
 
             biasfactor: (float) γ, describes how quickly gaussians shrink,
                                 larger values make gaussians to be placed
@@ -273,10 +274,10 @@ class PlumedBias:
         return None
 
     def initialise_for_metad_al(self,
-                                pace:       int,
                                 width:      Union[Sequence[float], float],
-                                height:     float,
-                                biasfactor: Optional[float],
+                                pace:       int = 20,
+                                height:     Optional[float] = None,
+                                biasfactor: Optional[float] = None,
                                 grid_min: Union[Sequence[float], float] = None,
                                 grid_max: Union[Sequence[float], float] = None,
                                 grid_bin: Union[Sequence[float], float] = None,
@@ -288,12 +289,15 @@ class PlumedBias:
         ------------------------------------------------------------------------
         Arguments:
 
-            pace: (int) τ_G/dt, interval at which a new gaussian is placed
-
             width: (float) σ, standard deviation (parameter describing the
                            width) of the placed gaussian
 
-            height: (float) ω, initial height of placed gaussians
+            pace: (int) τ_G/dt, interval at which a new gaussian is placed
+
+            height: (float) ω, initial height of placed gaussians (in eV).
+                            If not supplied will be set to 0.5*k_B*T, where
+                            T is the temperature at which metadynamics active
+                            learning is performed
 
             biasfactor: (float) γ, describes how quickly gaussians shrink,
                                 larger values make gaussians to be placed
@@ -308,6 +312,12 @@ class PlumedBias:
                               sets bin width to 1/5 of the gaussian width (σ)
                               value
         """
+
+        # Setting height to dummy height (otherwise _set_metad_params() method
+        # complains), the true value is set in the al_train() method
+        if height is None:
+            dummy_height = 0
+            height = dummy_height
 
         self._set_metad_params(pace, width, height, biasfactor)
         self._set_metad_grid_params(grid_min, grid_max, grid_bin)
