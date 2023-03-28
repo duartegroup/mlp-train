@@ -316,7 +316,7 @@ class PlumedBias:
         # Setting height to dummy height (otherwise _set_metad_params() method
         # complains), the true value is set in the al_train() method
         if height is None:
-            dummy_height = 0
+            dummy_height = 1
             height = dummy_height
 
         self._set_metad_params(pace, width, height, biasfactor)
