@@ -341,9 +341,6 @@ class Metadynamics:
         # Move .traj files into 'trajectories' folder and compute .xyz files
         self._move_and_save_files(metad_trajs, save_sep, all_to_xyz, restart)
 
-        if restart:
-            self._remove_duplicate_frames()
-
         finish_metad = time.perf_counter()
         logger.info('Metadynamics done in '
                     f'{(finish_metad - start_metad) / 60:.1f} m')
@@ -483,40 +480,6 @@ class Metadynamics:
                     ase_write(f'metad_{idx}_{sim_time}.xyz', ase_traj)
 
         os.chdir('..')
-
-        return None
-
-    @staticmethod
-    def _remove_duplicate_frames() -> None:
-        """Removes a duplicate frame from colvar files after restarting
-        metadynamics"""
-
-        os.chdir('plumed_files/metadynamics')
-
-        for filename in os.listdir():
-            if filename.startswith('colvar'):
-
-                with open(filename, 'r') as f:
-                    lines = f.readlines()
-
-                duplicate_index = None
-                for i, line in enumerate(lines):
-                    if line.startswith('#!') and i != 0:
-
-                        # First frame before redundant header is a duplicate
-                        duplicate_index = i - 1
-                        break
-
-                if duplicate_index is None:
-                    raise TypeError('Duplicate frame was not found')
-
-                lines.pop(duplicate_index)
-
-                with open(filename, 'w') as f:
-                    for line in lines:
-                        f.write(line)
-
-        os.chdir('../..')
 
         return None
 

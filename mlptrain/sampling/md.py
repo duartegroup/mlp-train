@@ -117,12 +117,13 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
             raise ValueError('Restaring a simulation requires a .traj file '
                              'from the previous simulation')
 
-        if (isinstance(bias, PlumedBias) and
-                not any(file.endswith('.dat') for file in restart_files)):
-
-            raise ValueError('Restarting a PLUMED simulation requires a '
-                             'colvar.dat (and in the case of metadynamics also '
-                             'a HILLS.dat) file from the previous simulation')
+        # TODO: Remove
+        # if (isinstance(bias, PlumedBias) and
+        #         not any(file.endswith('.dat') for file in restart_files)):
+        #
+        #     raise ValueError('Restarting a PLUMED simulation requires a '
+        #                      'colvar.dat (and in the case of metadynamics also '
+        #                      'a HILLS.dat) file from the previous simulation')
 
         copied_substrings_list.extend(restart_files)
         kept_substrings_list.extend(restart_files)
@@ -249,6 +250,10 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
     _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
                   n_steps, energies, calculator, bias, **kwargs)
 
+    # Duplicate frames removed only if PLUMED bias is initialised not from file
+    if restart and isinstance(bias, PlumedBias) and bias.setup is None:
+        _remove_colvar_duplicate_frames(bias, **kwargs)
+
     traj = _convert_ase_traj(traj_name, bias, **kwargs)
 
     for i, (frame, energy) in enumerate(zip(traj, energies)):
@@ -261,8 +266,8 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
 
 def _attach_calculator_with_bias(ase_atoms, mlp, bias, temp, interval, dt_ase,
                                  restart, n_previous_steps, **kwargs):
-    """Sets up the calculator, attaches it to the ase_atoms together with a
-    bias and constraints, and returns the final calculator"""
+    """Set up the calculator, attach it to the ase_atoms together with bias
+    and constraints, and return the final calculator"""
 
     if isinstance(bias, PlumedBias):
         logger.info('Using PLUMED bias for MLP MD')
@@ -320,7 +325,7 @@ def _attach_calculator_with_bias(ase_atoms, mlp, bias, temp, interval, dt_ase,
 
 def _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
                   n_steps, energies, calculator, bias, **kwargs) -> None:
-    """Initialises dynamics object and runs dynamics"""
+    """Initialise dynamics object and run dynamics"""
 
     if temp > 0:                                        # Default Langevin NVT
         dyn = Langevin(ase_atoms, dt_ase,
@@ -353,7 +358,7 @@ def _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
 
 
 def _append_unbiased_energy(ase_atoms, energies, calculator, bias) -> None:
-    """Appends unbiased energy (biased MLP energy - bias energy) to the
+    """Append unbiased energy (biased MLP energy - bias energy) to the
     trajectory"""
 
     if isinstance(bias, PlumedBias):
@@ -367,7 +372,7 @@ def _append_unbiased_energy(ase_atoms, energies, calculator, bias) -> None:
 
 
 def _save_trajectory(ase_traj, traj_name, **kwargs) -> None:
-    """Saves the trajectory with a unique name based on the current simulation
+    """Save the trajectory with a unique name based on the current simulation
     time"""
 
     # Prevents initial trajectory save at time == 0
@@ -397,7 +402,7 @@ def _save_trajectory(ase_traj, traj_name, **kwargs) -> None:
 def _get_traj_name(restart_files: Optional[List[str]] = None,
                    **kwargs
                    ) -> str:
-    """Returns the name of the trajectory which is going to be created
+    """Return the name of the trajectory which is going to be created
     (or on to which the new frames will be appended in the case of restart)"""
 
     if restart_files is None:
@@ -443,7 +448,7 @@ def _convert_ase_traj(traj_name, bias, **kwargs) -> 'mlptrain.Trajectory':
 
 
 def _attach_plumed_coordinates(mlt_traj, bias, **kwargs) -> None:
-    """Attaches PLUMED collective variable values to configurations in the
+    """Attach PLUMED collective variable values to configurations in the
     trajectory if all colvar files have been printed"""
 
     colvar_filenames = [_colvar_filename(cv, kwargs) for cv in bias.cvs]
@@ -555,7 +560,8 @@ def _initialise_traj(ase_atoms:      'ase.atoms.Atoms',
 def _n_simulation_steps(dt: float,
                         kwargs: dict
                         ) -> int:
-    """Calculate the number of simulation steps from a set of keyword
+    """
+    Calculate the number of simulation steps from a set of keyword
     arguments e.g. kwargs = {'fs': 100}
 
     ---------------------------------------------------------------------------
@@ -723,3 +729,34 @@ def _hills_filename(kwargs) -> str:
 
     filename += '.dat'
     return filename
+
+
+def _remove_colvar_duplicate_frames(bias, **kwargs) -> None:
+    """Remove duplicate frames from generated colvar files when using PLUMED
+    bias"""
+
+    colvar_filenames = [_colvar_filename(cv, kwargs) for cv in bias.cvs]
+
+    for filename in colvar_filenames:
+
+        with open(filename, 'r') as f:
+            lines = f.readlines()
+
+        duplicate_index = None
+        for i, line in enumerate(lines):
+            if line.startswith('#!') and i != 0:
+
+                # First frame before redundant header is a duplicate
+                duplicate_index = i - 1
+                break
+
+        if duplicate_index is None:
+            raise TypeError(f'Duplicate frame in {filename} was not found')
+
+        lines.pop(duplicate_index)
+
+        with open(filename, 'w') as f:
+            for line in lines:
+                f.write(line)
+
+    return None
