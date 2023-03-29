@@ -58,7 +58,7 @@ class Metadynamics:
     @property
     def n_cvs(self) -> int:
         """Number of collective variables used in metadynamics"""
-        return len(self.bias.cvs)
+        return self.bias.n_cvs
 
     @property
     def kbt(self) -> float:

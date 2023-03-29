@@ -460,10 +460,11 @@ def _check_bias_parameters(bias, temp) -> None:
 
         if bias.setup is None and bias.metadynamics is True:
 
-            if bias.width == 0:
+            # 1E9 == dummy height value
+            if bias.height == 1E9:
                 logger.info('Setting the height for metadynamics active '
                             'learning to 0.5*k_B*T')
-                bias.width = 0.5 * ase_units.kB * temp
+                bias.height = 0.5 * ase_units.kB * temp
 
     return None
 
@@ -509,10 +510,8 @@ def _modify_kwargs_for_metad_bias_inheritance(kwargs) -> Dict:
 
         else:
             previous_grid_fname = f'bias_grid_{kwargs["iteration"]-1}.dat'
-
-            copied_substrings = list(kwargs['copied_substrings'])
-            copied_substrings.append(previous_grid_fname)
-            kwargs['copied_substrings'] = copied_substrings
+            kwargs['copied_substrings'] = ['.xml', '.json', '.pth',
+                                           previous_grid_fname]
 
         grid_fname = f'bias_grid_{kwargs["iteration"]}_{kwargs["idx"]}.dat'
         kwargs['kept_substrings'] = [grid_fname]
@@ -529,14 +528,14 @@ def _modify_kwargs_for_metad_bias_inheritance(kwargs) -> Dict:
         hills_fname = f'HILLS_{kwargs["iteration"]}_{kwargs["idx"]}.dat'
 
         if kwargs['iteration'] > kwargs['bias_start_iter']:
-            previous_hills_fname = f'HILLS_{kwargs["iteration"]-1}'
+            previous_hills_fname = f'HILLS_{kwargs["iteration"]-1}.dat'
+
+            # Overwrites hills_fname when it is present during recursive MD
             shutil.copyfile(src=previous_hills_fname, dst=hills_fname)
 
-            copied_substrings = list(kwargs['copied_substrings'])
-            copied_substrings.append(hills_fname)
-            kwargs['copied_substrings'] = copied_substrings
+            kwargs['copied_substrings'] = ['.xml', '.json', '.pth', hills_fname]
 
-        kwargs['kept_substrings'] = hills_fname
+        kwargs['kept_substrings'] = [hills_fname]
 
     if kwargs['iteration'] > kwargs['bias_start_iter']:
         kwargs['load_metad_bias'] = True
@@ -604,6 +603,7 @@ def _generate_inheritable_metad_bias_grid(n_configs, grid_files, bias,
     for fname in grid_files:
         data += np.loadtxt(fname, usecols=data_cols)
         os.remove(fname)
+        os.remove(f'bck.last.{fname}')
 
     mean_data = data / n_configs
     final_array = np.concatenate((cvs, mean_data), axis=1)
@@ -635,8 +635,12 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
 
         # Remove inherited bias from files containing new bias
         for fname in hills_files:
+
             with open(fname, 'r') as f:
                 f_lines = f.readlines()
+
+            if len(f_lines) == 0:
+                continue
 
             first_header_indices = [0, 1, 2]
             second_header_first_index = 0
@@ -649,22 +653,33 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
                 for line in f_lines[second_header_first_index:]:
                     f.write(line)
 
-    for fname in hills_files:
+    for i, fname in enumerate(hills_files):
+
         with open(fname, 'r') as f:
             f_lines = f.readlines()
+
+        if len(f_lines) == 0:
+            os.remove(fname)
+            continue
 
         has_biasf = f_lines[0].split()[-1] == 'biasf'
         height_column_index = -2 if has_biasf else -1
 
-        # Remove the header (indices 0, 1, 2)
-        for _ in range(3):
-            f_lines.pop(0)
-
         with open(f'HILLS_{iteration}.dat', 'a') as final_hills_file:
+
+            # Attach the header to the final file if it's empty
+            if iteration == 0 and i == 0:
+                for line in f_lines[:3]:
+                    final_hills_file.write(line)
+
+            # Remove headers from contributing files
+            for _ in range(3):
+                f_lines.pop(0)
+
             for line in f_lines:
                 line_list = line.split()
                 height = float(line_list[height_column_index])
-                line_list[height_column_index] = str(height / n_configs)
+                line_list[height_column_index] = f'{height / n_configs:.9f}'
 
                 separator = '   '
                 line = separator.join(line_list)

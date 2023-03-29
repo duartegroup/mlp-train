@@ -71,6 +71,11 @@ class PlumedBias:
                             'or a file containing PLUMED-type input')
 
     @property
+    def n_cvs(self) -> int:
+        """Number of collective variables attached to the bias"""
+        return len(self.cvs)
+
+    @property
     def cv_sequence(self) -> str:
         """String containing names of collective variables separated
         by commas"""
@@ -177,7 +182,7 @@ class PlumedBias:
             else:
                 self.width = [width]
 
-        if len(self.width) != len(self.cvs):
+        if len(self.width) != self.n_cvs:
             raise ValueError('The number of supplied widths (σ) does not '
                              'match the number of collective variables')
 
@@ -316,7 +321,7 @@ class PlumedBias:
         # Setting height to dummy height (otherwise _set_metad_params() method
         # complains), the true value is set in the al_train() method
         if height is None:
-            dummy_height = 1
+            dummy_height = 1E9
             height = dummy_height
 
         self._set_metad_params(pace, width, height, biasfactor)

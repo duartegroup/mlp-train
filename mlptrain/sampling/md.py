@@ -2,6 +2,7 @@ import os
 import shutil
 import numpy as np
 import autode as ade
+from copy import deepcopy
 from typing import Optional, Sequence, List
 from numpy.random import RandomState
 from mlptrain.configurations import Configuration, Trajectory
@@ -29,7 +30,7 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
                bias:               Optional = None,
                restart_files:      Optional[List[str]] = None,
                copied_substrings:  Sequence[str] = ('.xml', '.json', '.pth'),
-               kept_substrings:    Sequence[str] = None,
+               kept_substrings:    Optional[Sequence[str]] = None,
                **kwargs
                ) -> 'mlptrain.Trajectory':
     """
@@ -298,8 +299,10 @@ def _attach_calculator_with_bias(ase_atoms, mlp, bias, temp, interval, dt_ase,
         ase_atoms.calc = mlp.ase_calculator
 
         if 'constraints' in kwargs and kwargs['constraints'] is not None:
-            kwargs['constraints'].append(bias)
-            ase_atoms.set_constraint(kwargs['constraints'])
+            constraints_with_bias = deepcopy(kwargs['constraints'])
+            constraints_with_bias.append(bias)
+
+            ase_atoms.set_constraint(constraints_with_bias)
 
         else:
             ase_atoms.set_constraint(bias)
@@ -351,18 +354,13 @@ def _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
 
 def _append_unbiased_energy(ase_atoms, energies, calculator, bias) -> None:
     """Appends unbiased energy (biased MLP energy - bias energy) to the
-    trajectory. The energy is not unbiased relative to additional ASE
-    constraints (e.g. ase.constraints.ExternalForce)"""
+    trajectory"""
 
-    if isinstance(bias, Bias):
-        biased_energy = ase_atoms.get_potential_energy()
-        energy = biased_energy - bias(ase_atoms)
-
-    elif isinstance(bias, PlumedBias):
+    if isinstance(bias, PlumedBias):
         energy = calculator.calc.get_potential_energy(ase_atoms)
 
     else:
-        energy = ase_atoms.get_potential_energy()
+        energy = calculator.get_potential_energy(ase_atoms)
 
     energies.append(energy)
     return None
