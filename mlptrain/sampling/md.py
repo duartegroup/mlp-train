@@ -249,7 +249,7 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
     _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
                   n_steps, energies, calculator, bias, **kwargs)
 
-    traj = _convert_ase_traj(traj_name)
+    traj = _convert_ase_traj(traj_name, bias, **kwargs)
 
     for i, (frame, energy) in enumerate(zip(traj, energies)):
         frame.update_attr_from(configuration)
@@ -416,7 +416,7 @@ def _get_traj_name(restart_files: Optional[List[str]] = None,
                 return traj_name
 
 
-def _convert_ase_traj(traj_name: str) -> 'mlptrain.Trajectory':
+def _convert_ase_traj(traj_name, bias, **kwargs) -> 'mlptrain.Trajectory':
     """Convert an ASE trajectory into an mlptrain Trajectory"""
 
     ase_traj = ASETrajectory(traj_name, 'r')
@@ -426,6 +426,7 @@ def _convert_ase_traj(traj_name: str) -> 'mlptrain.Trajectory':
     for atoms in ase_traj:
         config = Configuration()
         config.atoms = [ade.Atom(label) for label in atoms.symbols]
+
         cell = atoms.cell[:]
         config.box = Box([cell[0][0], cell[1][1], cell[2][2]])
 
@@ -435,7 +436,28 @@ def _convert_ase_traj(traj_name: str) -> 'mlptrain.Trajectory':
 
         mlt_traj.append(config)
 
+    if isinstance(bias, PlumedBias) and bias.setup is None:
+        _attach_plumed_coordinates(mlt_traj, bias, **kwargs)
+
     return mlt_traj
+
+
+def _attach_plumed_coordinates(mlt_traj, bias, **kwargs) -> None:
+    """Attaches PLUMED collective variable values to configurations in the
+    trajectory if all colvar files have been printed"""
+
+    colvar_filenames = [_colvar_filename(cv, kwargs) for cv in bias.cvs]
+
+    if all(os.path.exists(fname) for fname in colvar_filenames):
+
+        all_cvs_coordinates = np.zeros((len(mlt_traj), bias.n_cvs))
+        for j, fname in enumerate(colvar_filenames):
+            all_cvs_coordinates[:, j] = np.loadtxt(fname, usecols=1)
+
+        for i, config in enumerate(mlt_traj):
+            config.plumed_coordinates = all_cvs_coordinates[i, :]
+
+    return None
 
 
 def _set_momenta_and_geometry(ase_atoms:      'ase.atoms.Atoms',
@@ -652,17 +674,9 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
         else:
             args = cv.name
 
-        name_without_dot = '_'.join(cv.name.split('.'))
-
-        if 'idx' in kwargs:
-            colvar_filename = f'colvar_{name_without_dot}_{kwargs["idx"]}.dat'
-
-        else:
-            colvar_filename = f'colvar_{name_without_dot}.dat'
-
         print_setup = ['PRINT '
                        f'ARG={args} '
-                       f'FILE={colvar_filename} '
+                       f'FILE={_colvar_filename(cv, kwargs)} '
                        f'STRIDE={interval}']
         setup.extend(print_setup)
 
@@ -679,9 +693,25 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
     return setup
 
 
+def _colvar_filename(cv, kwargs) -> str:
+    """Return the name of the file where the trajectory in terms of collective
+    variable values will be written"""
+
+    # Remove the dot if component CV is used
+    name_without_dot = '_'.join(cv.name.split('.'))
+
+    if 'idx' in kwargs:
+        colvar_filename = f'colvar_{name_without_dot}_{kwargs["idx"]}.dat'
+
+    else:
+        colvar_filename = f'colvar_{name_without_dot}.dat'
+
+    return colvar_filename
+
+
 def _hills_filename(kwargs) -> str:
     """Return the name of the file where a list of deposited gaussians will be
-    stored"""
+    written"""
 
     filename = 'HILLS'
 

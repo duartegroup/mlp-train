@@ -360,6 +360,26 @@ class ConfigurationSet(list):
         return np.array([np.asarray(c.coordinates, dtype=float) for c in self])
 
     @property
+    def _plumed_coordinates(self) -> Optional[np.ndarray]:
+        """
+        PLUMED collective variable values in this set
+
+        -----------------------------------------------------------------------
+        Returns:
+            (np.ndarray): PLUMED collective variable tensor (n, n_cvs)
+        """
+
+        all_plumed_coordinates = []
+        for config in self:
+            if config.plumed_coordinates is None:
+                logger.error(f'Plumed coordinates not defined - returning None')
+                return None
+
+            all_plumed_coordinates.append(config.plumed_coordinates)
+
+        return np.array(all_plumed_coordinates)
+
+    @property
     def _atomic_numbers(self) -> np.ndarray:
         """
         Atomic numbers of atoms in all the configurations in this set
@@ -368,6 +388,7 @@ class ConfigurationSet(list):
         Returns:
             (np.ndarray): Atomic numbers matrix (n, n_atoms)
         """
+
         return np.array([[atom.atomic_number for atom in c.atoms] for c in self])
 
     @property
@@ -411,6 +432,7 @@ class ConfigurationSet(list):
 
         np.savez(filename,
                  R=self._coordinates,
+                 R_plumed=self._plumed_coordinates,
                  E_true=self.true_energies,
                  E_predicted=self.predicted_energies,
                  F_true=self.true_forces,
@@ -436,6 +458,11 @@ class ConfigurationSet(list):
                                    charge=int(data['C'][i]),
                                    mult=int(data['M'][i]),
                                    box=None if box.has_zero_volume else box)
+
+            # TODO: PLUMED coords load
+
+            if data['R_plumed'].ndim > 0:
+                config.plumed_coordinates = data['R_plumed'][i]
 
             if data['E_true'].ndim > 0:
                 config.energy.true = data['E_true'][i]

@@ -39,6 +39,8 @@ class Configuration(AtomCollection):
         self.energy = Energy()
         self.forces = Forces()
 
+        self.plumed_coordinates = None
+
         self.time: Optional[float] = None   # Time in a trajectory
         self.n_ref_evals = 0                # Number of reference evaluations
 

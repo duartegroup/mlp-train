@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import mlptrain as mlt
 from ase.io.trajectory import Trajectory as ASETrajectory
 from .test_potential import TestPotential
@@ -88,3 +89,25 @@ def test_md_save():
 
     # 200 ps / 10 interval == 20 frames; + 1 starting frame
     assert len(traj_200fs) == 20 + 1
+
+
+@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+def test_md_plumed_coordinates():
+
+    cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
+    bias = mlt.PlumedBias(cvs=cv1)
+
+    traj = mlt.md.run_mlp_md(configuration=_h2o_configuration(),
+                             mlp=TestPotential('1D'),
+                             temp=300,
+                             dt=1,
+                             interval=10,
+                             bias=bias,
+                             kept_substrings=['colvar_cv1.dat'],
+                             ps=1)
+
+    plumed_coordinates = np.loadtxt('colvar_cv1.dat', usecols=1)
+
+    for i, config in enumerate(traj):
+        assert np.shape(config.plumed_coordinates) == (1,)
+        assert config.plumed_coordinates[0] == plumed_coordinates[i]
