@@ -369,15 +369,24 @@ class ConfigurationSet(list):
             (np.ndarray): PLUMED collective variable tensor (n, n_cvs)
         """
 
-        all_plumed_coordinates = []
+        n_cvs = 0
+        all_coordinates = []
+
         for config in self:
-            if config.plumed_coordinates is None:
-                logger.error(f'Plumed coordinates not defined - returning None')
-                return None
+            all_coordinates.append(config.plumed_coordinates)
 
-            all_plumed_coordinates.append(config.plumed_coordinates)
+            if config.plumed_coordinates is not None:
+                n_cvs = len(config.plumed_coordinates)
 
-        return np.array(all_plumed_coordinates)
+        if n_cvs == 0:
+            logger.info(f'PLUMED coordinates not defined - returning None')
+            return None
+
+        for i, coords in enumerate(all_coordinates):
+            if coords is None:
+                all_coordinates[i] = np.array([np.nan for _ in range(n_cvs)])
+
+        return np.array(all_coordinates)
 
     @property
     def _atomic_numbers(self) -> np.ndarray:
@@ -458,8 +467,6 @@ class ConfigurationSet(list):
                                    charge=int(data['C'][i]),
                                    mult=int(data['M'][i]),
                                    box=None if box.has_zero_volume else box)
-
-            # TODO: PLUMED coords load
 
             if data['R_plumed'].ndim > 0:
                 config.plumed_coordinates = data['R_plumed'][i]

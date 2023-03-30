@@ -653,7 +653,7 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
                 for line in f_lines[second_header_first_index:]:
                     f.write(line)
 
-    for i, fname in enumerate(hills_files):
+    for idx, fname in enumerate(hills_files):
 
         with open(fname, 'r') as f:
             f_lines = f.readlines()
@@ -668,7 +668,7 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
         with open(f'HILLS_{iteration}.dat', 'a') as final_hills_file:
 
             # Attach the header to the final file if it's empty
-            if iteration == 0 and i == 0:
+            if os.path.getsize(f'HILLS_{iteration}.dat') == 0:
                 for line in f_lines[:3]:
                     final_hills_file.write(line)
 

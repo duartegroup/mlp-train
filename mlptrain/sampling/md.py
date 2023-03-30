@@ -117,14 +117,6 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
             raise ValueError('Restaring a simulation requires a .traj file '
                              'from the previous simulation')
 
-        # TODO: Remove
-        # if (isinstance(bias, PlumedBias) and
-        #         not any(file.endswith('.dat') for file in restart_files)):
-        #
-        #     raise ValueError('Restarting a PLUMED simulation requires a '
-        #                      'colvar.dat (and in the case of metadynamics also '
-        #                      'a HILLS.dat) file from the previous simulation')
-
         copied_substrings_list.extend(restart_files)
         kept_substrings_list.extend(restart_files)
 
