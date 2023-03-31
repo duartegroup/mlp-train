@@ -654,8 +654,14 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
                     break
 
             with open(fname, 'w') as f:
-                for line in f_lines[second_header_first_index:]:
-                    f.write(line)
+
+                # No new gaussians deposited
+                if second_header_first_index == 0:
+                    pass
+
+                else:
+                    for line in f_lines[second_header_first_index:]:
+                        f.write(line)
 
     for idx, fname in enumerate(hills_files):
 
