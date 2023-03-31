@@ -693,6 +693,8 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
     # Printing trajectory in terms of DOFs and CVs
     for cv in bias.cvs:
 
+        colvar_filename = _colvar_filename(cv, kwargs)
+
         if cv.dof_names is not None:
             args = f'{cv.name},{cv.dof_sequence}'
 
@@ -701,7 +703,7 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List:
 
         print_setup = ['PRINT '
                        f'ARG={args} '
-                       f'FILE={_colvar_filename(cv, kwargs)} '
+                       f'FILE={colvar_filename} '
                        f'STRIDE={interval}']
         setup.extend(print_setup)
 
