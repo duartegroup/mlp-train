@@ -561,9 +561,13 @@ def _generate_inheritable_metad_bias(n_configs, kwargs) -> None:
         _generate_inheritable_metad_bias_grid(n_configs, grid_files, bias,
                                               iteration, bias_start_iter)
 
-    if using_hills:
+    elif using_hills:
         _generate_inheritable_metad_bias_hills(n_configs, hills_files,
                                                iteration, bias_start_iter)
+
+    else:
+        logger.error('All files required for generating inheritable '
+                     'metadynamics bias could not be found')
 
     return None
 
