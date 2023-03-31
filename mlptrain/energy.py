@@ -6,7 +6,8 @@ class Energy:
 
     def __init__(self,
                  predicted: Optional[float] = None,
-                 true:      Optional[float] = None):
+                 true:      Optional[float] = None,
+                 bias:      Optional[float] = None):
         """
         Energy
 
@@ -14,10 +15,12 @@ class Energy:
         Arguments:
             predicted:
             true:
+            bias:
         """
 
         self.predicted = predicted
         self.true = true
+        self.bias = bias
 
     @property
     def delta(self) -> float:

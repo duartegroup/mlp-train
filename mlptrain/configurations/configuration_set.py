@@ -71,6 +71,11 @@ class ConfigurationSet(list):
         return self._forces('predicted')
 
     @property
+    def bias_energies(self) -> List[Optional[float]]:
+        """Bias energies from ASE and PLUMED biases"""
+        return [c.energy.bias for c in self]
+
+    @property
     def lowest_energy(self) -> 'mlptrain.Configuration':
         """
         Determine the lowest energy configuration in this set based on the
@@ -444,6 +449,7 @@ class ConfigurationSet(list):
                  R_plumed=self._plumed_coordinates,
                  E_true=self.true_energies,
                  E_predicted=self.predicted_energies,
+                 E_bias=self.bias_energies,
                  F_true=self.true_forces,
                  F_predicted=self.predicted_forces,
                  Z=self._atomic_numbers,
@@ -476,6 +482,9 @@ class ConfigurationSet(list):
 
             if data['E_predicted'].ndim > 0:
                 config.energy.predicted = data['E_predicted'][i]
+
+            if data['E_bias'].ndim > 0:
+                config.energy.bias = data['E_bias'][i]
 
             if data['F_true'].ndim > 0:
                 config.forces.true = data['F_true'][i]

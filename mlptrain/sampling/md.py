@@ -234,13 +234,16 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
 
     n_previous_steps = interval * len(ase_traj)
     energies = [None for _ in range(len(ase_traj))]
+    biased_energies = deepcopy(energies)
+    bias_energies = deepcopy(energies)
 
     calculator = _attach_calculator_with_bias(ase_atoms, mlp, bias, temp,
                                               interval, dt_ase, restart,
                                               n_previous_steps, **kwargs)
 
     _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
-                  n_steps, energies, calculator, bias, **kwargs)
+                  n_steps, energies, biased_energies, calculator, bias,
+                  **kwargs)
 
     # Duplicate frames removed only if PLUMED bias is initialised not from file
     if restart and isinstance(bias, PlumedBias) and bias.setup is None:
@@ -248,9 +251,15 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
 
     traj = _convert_ase_traj(traj_name, bias, **kwargs)
 
-    for i, (frame, energy) in enumerate(zip(traj, energies)):
+    for energy, biased_energy in zip(energies, biased_energies):
+        if energy is not None and biased_energy is not None:
+            bias_energy = biased_energy - energy
+            bias_energies.append(bias_energy)
+
+    for i, (frame, energy, bias_energy) in enumerate(zip(traj, energies, bias_energies)):
         frame.update_attr_from(configuration)
         frame.energy.predicted = energy
+        frame.energy.bias = bias_energy
         frame.time = dt * interval * i
 
     return traj
@@ -316,7 +325,8 @@ def _attach_calculator_with_bias(ase_atoms, mlp, bias, temp, interval, dt_ase,
 
 
 def _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
-                  n_steps, energies, calculator, bias, **kwargs) -> None:
+                  n_steps, energies, biased_energies, calculator, bias,
+                  **kwargs) -> None:
     """Initialise dynamics object and run dynamics"""
 
     if temp > 0:                                        # Default Langevin NVT
@@ -329,10 +339,14 @@ def _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
     def append_unbiased_energy():
         _append_unbiased_energy(ase_atoms, energies, calculator, bias)
 
+    def append_biased_energy():
+        _append_biased_energy(ase_atoms, biased_energies, bias)
+
     def save_trajectory():
         _save_trajectory(ase_traj, traj_name, **kwargs)
 
     dyn.attach(append_unbiased_energy, interval=interval)
+    dyn.attach(append_biased_energy, interval=interval)
     dyn.attach(ase_traj.write, interval=interval)
 
     if any(key in kwargs for key in ['save_fs', 'save_ps', 'save_ns']):
@@ -360,6 +374,19 @@ def _append_unbiased_energy(ase_atoms, energies, calculator, bias) -> None:
         energy = calculator.get_potential_energy(ase_atoms)
 
     energies.append(energy)
+    return None
+
+
+def _append_biased_energy(ase_atoms, biased_energies, bias) -> None:
+    """Append bias energy to the trajectory"""
+
+    biased_energy = ase_atoms.get_potential_energy()
+
+    # Plumed calculator when get_potential_energy() is called returns an array
+    if isinstance(bias, PlumedBias):
+        biased_energy = biased_energy[0]
+
+    biased_energies.append(biased_energy)
     return None
 
 
