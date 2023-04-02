@@ -80,12 +80,12 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
         init_configs: (gt.ConfigurationSet) A set of configurations from
                       which to start the active learning from
 
-
         fix_init_config: (bool) Always start from the same initial
                          configuration for the active learning loop, if
-                         False then the minimum energy structure is used.
-                         Useful for TS learning, where dynamics should be
-                         propagated from a saddle point not the minimum
+                         False then the structure with lowest biased energy
+                         (true energy + bias energy) is used. Useful for
+                         TS learning, where dynamics should be propagated
+                         from a saddle point not the minimum
 
         bbond_energy: (dict | None) Additional energy to add to a breaking
                       bond. e.g. bbond_energy={(0, 1), 0.1} Adds 0.1 eV
@@ -139,8 +139,8 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
         curr_n_train = mlp.n_train
 
         _add_active_configs(mlp,
-                            init_config=(init_config if fix_init_config
-                                         else mlp.training_data.lowest_energy),
+                            init_config=(init_config if fix_init_config else
+                                         mlp.training_data.lowest_biased_energy),
                             selection_method=selection_method,
                             n_configs=n_configs_iter,
                             method_name=method_name,

@@ -91,6 +91,28 @@ class ConfigurationSet(list):
         energies = [e if e is not None else np.inf for e in self.true_energies]
         return self[np.argmin(energies)]
 
+    def lowest_biased_energy(self) -> 'mlptrain.Configuration':
+        """
+        Determine the lowest biased energy configuration in this set based on
+        the true and bias energies. If not evaluated then returns the first
+        configuration
+
+        -----------------------------------------------------------------------
+        Returns:
+            (mlptrain.Configuration):
+        """
+        if len(self) == 0:
+            raise ValueError('No lowest biased energy configuration in an '
+                             'empty set')
+
+        true_energy = np.array([e if e is not None else np.inf
+                                for e in self.true_energies])
+        bias_energy = np.array([e if e is not None else 0
+                                for e in self.bias_energies])
+
+        biased_energy = true_energy + bias_energy
+        return self[np.argmin(biased_energy)]
+
     @property
     def has_a_none_energy(self) -> bool:
         """
