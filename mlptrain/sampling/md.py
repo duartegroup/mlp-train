@@ -474,12 +474,15 @@ def _attach_plumed_coordinates(mlt_traj, bias, **kwargs) -> None:
 
     if all(os.path.exists(fname) for fname in colvar_filenames):
 
-        all_cvs_coordinates = np.zeros((len(mlt_traj), bias.n_cvs))
-        for j, fname in enumerate(colvar_filenames):
-            all_cvs_coordinates[:, j] = np.loadtxt(fname, usecols=1)
+        for config in mlt_traj:
+            config.plumed_coordinates = np.zeros(bias.n_cvs)
 
-        for i, config in enumerate(mlt_traj):
-            config.plumed_coordinates = all_cvs_coordinates[i, :]
+        for i, cv in enumerate(bias.cvs):
+            colvar_fname = colvar_filenames[i]
+            cv_values = np.loadtxt(colvar_fname, usecols=1)
+
+            for j, config in enumerate(mlt_traj):
+                config.plumed_coordinates[i] = cv_values[j]
 
     return None
 
@@ -632,7 +635,7 @@ def _traj_saving_interval(dt: float,
     return saving_interval
 
 
-def _plumed_setup(bias, temp, interval, **kwargs) -> List:
+def _plumed_setup(bias, temp, interval, **kwargs) -> List[str]:
     """Generate a list which represents the PLUMED input file"""
 
     setup = []

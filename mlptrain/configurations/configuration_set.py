@@ -76,6 +76,11 @@ class ConfigurationSet(list):
         return [c.energy.bias for c in self]
 
     @property
+    def inherited_bias_energies(self) -> List[Optional[float]]:
+        """Inherited metadynamics bias during active learning"""
+        return [c.energy.inherited_bias for c in self]
+
+    @property
     def lowest_energy(self) -> 'mlptrain.Configuration':
         """
         Determine the lowest energy configuration in this set based on the
@@ -91,13 +96,19 @@ class ConfigurationSet(list):
         energies = [e if e is not None else np.inf for e in self.true_energies]
         return self[np.argmin(energies)]
 
-    def lowest_biased_energy(self) -> 'mlptrain.Configuration':
+    def lowest_biased_energy(self, inherited) -> 'mlptrain.Configuration':
         """
         Determine the lowest biased energy configuration in this set based on
         the true and bias energies. If not evaluated then returns the first
         configuration
 
         -----------------------------------------------------------------------
+        Arguments:
+
+            inherited: (bool) If True then inherited bias energies are used
+                              instead of bias energies
+
+        ---------------
         Returns:
             (mlptrain.Configuration):
         """
@@ -107,8 +118,14 @@ class ConfigurationSet(list):
 
         true_energy = np.array([e if e is not None else np.inf
                                 for e in self.true_energies])
-        bias_energy = np.array([e if e is not None else 0
-                                for e in self.bias_energies])
+
+        if inherited:
+            bias_energy = np.array([e if e is not None else 0
+                                    for e in self.inherited_bias_energies])
+
+        else:
+            bias_energy = np.array([e if e is not None else 0
+                                    for e in self.bias_energies])
 
         biased_energy = true_energy + bias_energy
         return self[np.argmin(biased_energy)]
@@ -387,7 +404,7 @@ class ConfigurationSet(list):
         return np.array([np.asarray(c.coordinates, dtype=float) for c in self])
 
     @property
-    def _plumed_coordinates(self) -> Optional[np.ndarray]:
+    def plumed_coordinates(self) -> Optional[np.ndarray]:
         """
         PLUMED collective variable values in this set
 
@@ -468,10 +485,11 @@ class ConfigurationSet(list):
 
         np.savez(filename,
                  R=self._coordinates,
-                 R_plumed=self._plumed_coordinates,
+                 R_plumed=self.plumed_coordinates,
                  E_true=self.true_energies,
                  E_predicted=self.predicted_energies,
                  E_bias=self.bias_energies,
+                 E_inherited_bias=self.inherited_bias_energies,
                  F_true=self.true_forces,
                  F_predicted=self.predicted_forces,
                  Z=self._atomic_numbers,
@@ -507,6 +525,9 @@ class ConfigurationSet(list):
 
             if data['E_bias'].ndim > 0:
                 config.energy.bias = data['E_bias'][i]
+
+            if data['E_inherited_bias'].ndim > 0:
+                config.energy.inherited_bias = data['E_inherited_bias'][i]
 
             if data['F_true'].ndim > 0:
                 config.forces.true = data['F_true'][i]

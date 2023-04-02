@@ -44,26 +44,8 @@ class PlumedBias:
             self._from_file(file_name)
 
         elif cvs is not None:
-
-            # e.g. cvs == [cv1, cv2]; (cv1, cv2)
-            if isinstance(cvs, list) or isinstance(cvs, tuple):
-
-                if len(cvs) == 0:
-                    raise TypeError('The provided collective variable '
-                                    'sequence is empty')
-
-                elif all(issubclass(cv.__class__, _PlumedCV) for cv in cvs):
-                    self.cvs = cvs
-
-                else:
-                    raise TypeError('Supplied CVs are in incorrect format')
-
-            # e.g. cvs == cv1
-            elif issubclass(cvs.__class__, _PlumedCV):
-                self.cvs = [cvs]
-
-            else:
-                raise TypeError('Supplied CVs are in incorrect format')
+            cvs = self._check_cvs(cvs)
+            self.cvs = cvs
 
         else:
             raise TypeError('PLUMED bias instantiation requires '
@@ -286,6 +268,7 @@ class PlumedBias:
                                 grid_min: Union[Sequence[float], float] = None,
                                 grid_max: Union[Sequence[float], float] = None,
                                 grid_bin: Union[Sequence[float], float] = None,
+                                cvs:      Optional = None
                                 ) -> None:
         """
         Initialise PlumedBias for metadynamics active learning by setting the
@@ -316,6 +299,11 @@ class PlumedBias:
                               variable, if not specified PLUMED automatically
                               sets bin width to 1/5 of the gaussian width (σ)
                               value
+
+            cvs: (mlptrain._PlumedCV) Sequence of PLUMED collective variables
+                                      which will be biased. If this variable
+                                      is not set all CVs attached to self
+                                      will be biased
         """
 
         # Setting height to dummy height (otherwise _set_metad_params() method
@@ -337,7 +325,8 @@ class PlumedBias:
             self._strip_setup()
 
         else:
-            # Setting all attributes to None, except cvs which carry walls
+            # Setting all attributes to None, except cvs (which might have
+            # walls attached)
             _attributes = deepcopy(self.__dict__)
             _attributes.pop('cvs')
 
@@ -393,6 +382,33 @@ class PlumedBias:
                 _args = element[-1].split(',')
 
         return _args
+
+    @staticmethod
+    def _check_cvs(cvs) -> List['_PlumedCV']:
+        """Check if the supplied collective variables are in the correct
+        format"""
+
+        # e.g. cvs == [cv1, cv2]; (cv1, cv2)
+        if isinstance(cvs, list) or isinstance(cvs, tuple):
+
+            if len(cvs) == 0:
+                raise TypeError('The provided collective variable '
+                                'sequence is empty')
+
+            elif all(issubclass(cv.__class__, _PlumedCV) for cv in cvs):
+                pass
+
+            else:
+                raise TypeError('Supplied CVs are in incorrect format')
+
+        # e.g. cvs == cv1
+        elif issubclass(cvs.__class__, _PlumedCV):
+            cvs = [cvs]
+
+        else:
+            raise TypeError('Supplied CVs are in incorrect format')
+
+        return cvs
 
 
 class _PlumedCV:
