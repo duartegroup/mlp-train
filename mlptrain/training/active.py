@@ -121,16 +121,18 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
 
     if init_configs is None:
         init_config = mlp.system.configuration
-        _gen_and_set_init_training_configs(mlp,
-                                           method_name=method_name,
-                                           num=n_init_configs)
+        init_configs = _gen_and_set_init_training_configs(mlp,
+                                                          method_name=method_name,
+                                                          num=n_init_configs)
+
     else:
         init_config = init_configs[0]
         _set_init_training_configs(mlp, init_configs,
                                    method_name=method_name)
 
     if isinstance(bias, PlumedBias):
-        _attach_plumed_coords_to_init_configs(init_configs, bias)
+        _attach_plumed_coords_to_init_configs(init_configs=init_configs,
+                                              bias=bias)
 
     if mlp.requires_atomic_energies:
         mlp.set_atomic_energies(method_name=method_name)
@@ -402,7 +404,8 @@ def _set_init_training_configs(mlp, init_configs, method_name) -> None:
     return None
 
 
-def _gen_and_set_init_training_configs(mlp, method_name, num) -> None:
+def _gen_and_set_init_training_configs(mlp, method_name, num
+                                       ) -> 'mlptrain.ConfigurationSet':
     """
     Generate a set of initial configurations for a system, if init_configs
     is undefined. Otherwise ensure all the true energies and forces are defined
@@ -450,7 +453,8 @@ def _gen_and_set_init_training_configs(mlp, method_name, num) -> None:
     logger.info(f'Added {num} configurations with min dist = {dist:.3f} Å')
     init_configs.single_point(method_name)
     mlp.training_data += init_configs
-    return None
+
+    return init_configs
 
 
 def _attach_plumed_coords_to_init_configs(init_configs, bias) -> None:
