@@ -471,7 +471,7 @@ def _attach_plumed_coords_to_init_configs(init_configs, bias) -> None:
                             f'FILE=colvar_{cv.name}_driver.dat '
                             'STRIDE=1')
 
-    with open('driver_setup', 'w') as f:
+    with open('driver_setup.dat', 'w') as f:
         for line in driver_setup:
             f.write(f'{line}\n')
 
