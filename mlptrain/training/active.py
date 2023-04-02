@@ -142,15 +142,15 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
 
         curr_n_train = mlp.n_train
 
-        init_config_iter = _update_init_config(init_config, mlp,
-                                               fix_init_config,
-                                               inherit_metad_bias)
-
         if inherit_metad_bias and iteration >= bias_start_iter:
             _attach_inherited_bias_energies(configurations=mlp.training_data,
                                             iteration=iteration,
                                             bias_start_iter=bias_start_iter,
                                             bias=bias)
+
+        init_config_iter = _update_init_config(init_config, mlp,
+                                               fix_init_config,
+                                               inherit_metad_bias)
 
         _add_active_configs(mlp,
                             init_config=init_config_iter,
