@@ -570,7 +570,7 @@ class _PlumedCV:
         return ','.join(self.dof_names)
 
     def attach_lower_wall(self,
-                          location:  float,
+                          location:  Union[float, str],
                           kappa:     float,
                           exp:       float = 2
                           ) -> None:
@@ -580,7 +580,8 @@ class _PlumedCV:
         -----------------------------------------------------------------------
         Arguments:
 
-            location: (float) Value of the CV where the wall will be located
+            location: (float | str) Value of the CV where the wall will be
+                                    located
 
             kappa: (float) The force constant of the wall in eV/Å^(-exp) units
 
@@ -601,7 +602,7 @@ class _PlumedCV:
         return None
 
     def attach_upper_wall(self,
-                          location:  float,
+                          location:  Union[float, str],
                           kappa:     float,
                           exp:       float = 2
                           ) -> None:
@@ -611,7 +612,8 @@ class _PlumedCV:
         -----------------------------------------------------------------------
         Arguments:
 
-            location: (float) Value of the CV where the wall will be located
+            location: (float | str) Value of the CV where the wall will be
+                                    located
 
             kappa: (float) The force constant of the wall in eV/Å^(-exp) units
 
