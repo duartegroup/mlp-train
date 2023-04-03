@@ -792,7 +792,7 @@ def _attach_inherited_bias_energies(configurations, iteration,
 
         cvs_cols = range(0, bias.n_metad_cvs)
         cvs_grid = np.loadtxt(f'bias_grid_{iteration-1}.dat',
-                              usecols=cvs_cols)
+                              usecols=cvs_cols, ndmin=2)
         bias_grid = np.loadtxt(f'bias_grid_{iteration-1}.dat',
                                usecols=bias.n_metad_cvs)
 
@@ -862,9 +862,6 @@ def _generate_grid_from_hills(configurations, iteration, bias) -> None:
     bin_widths = [(width / 5) for width in bias.width]
     n_bins = [int((max_params[i] - min_params[i]) / bin_widths[i])
               for i in range(bias.n_metad_cvs)]
-    logger.info(f'min params: {min_params}')
-    logger.info(f'max params: {max_params}')
-    logger.info(f'bins: {n_bins}')
 
     bin_sequence = ','.join(str(bins) for bins in n_bins)
     min_sequence = ','.join(str(param) for param in min_params)
