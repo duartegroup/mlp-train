@@ -121,9 +121,9 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
 
     if init_configs is None:
         init_config = mlp.system.configuration
-        init_configs = _gen_and_set_init_training_configs(mlp,
-                                                          method_name=method_name,
-                                                          num=n_init_configs)
+        _gen_and_set_init_training_configs(mlp,
+                                           method_name=method_name,
+                                           num=n_init_configs)
 
     else:
         init_config = init_configs[0]
@@ -131,7 +131,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                                    method_name=method_name)
 
     if isinstance(bias, PlumedBias):
-        _attach_plumed_coords_to_init_configs(init_configs=init_configs,
+        _attach_plumed_coords_to_init_configs(init_configs=mlp.training_data,
                                               bias=bias)
 
     if mlp.requires_atomic_energies:
@@ -404,8 +404,7 @@ def _set_init_training_configs(mlp, init_configs, method_name) -> None:
     return None
 
 
-def _gen_and_set_init_training_configs(mlp, method_name, num
-                                       ) -> 'mlptrain.ConfigurationSet':
+def _gen_and_set_init_training_configs(mlp, method_name, num) -> None:
     """
     Generate a set of initial configurations for a system, if init_configs
     is undefined. Otherwise ensure all the true energies and forces are defined
@@ -453,20 +452,21 @@ def _gen_and_set_init_training_configs(mlp, method_name, num
     logger.info(f'Added {num} configurations with min dist = {dist:.3f} Å')
     init_configs.single_point(method_name)
     mlp.training_data += init_configs
-
-    return init_configs
+    return None
 
 
 def _attach_plumed_coords_to_init_configs(init_configs, bias) -> None:
     """Attaches PLUMED collective variable values to the configurations
     in the initial training set"""
 
-    init_configs.save('_init_configs.xyz')
+    open('init_configs_driver.xyz', 'w').close()
+    for config in init_configs:
+        config.save_xyz('init_configs_driver.xyz', append=True)
 
     driver_setup = [f'UNITS LENGTH=A']
     for cv in bias.cvs:
         driver_setup.extend(cv.setup)
-        driver_setup.append(f'PRINT '
+        driver_setup.append('PRINT '
                             f'ARG={cv.name} '
                             f'FILE=colvar_{cv.name}_driver.dat '
                             'STRIDE=1')
@@ -476,10 +476,13 @@ def _attach_plumed_coords_to_init_configs(init_configs, bias) -> None:
             f.write(f'{line}\n')
 
     driver_process = Popen(['plumed', 'driver',
-                            '--ixyz', '_init_configs.xyz',
+                            '--ixyz', 'init_configs_driver.xyz',
                             '--plumed', 'driver_setup.dat',
                             '--length-units', 'A'])
     driver_process.wait()
+
+    os.remove('init_configs_driver.xyz')
+    os.remove('driver_setup.dat')
 
     for config in init_configs:
         config.plumed_coordinates = np.zeros(bias.n_cvs)
@@ -487,6 +490,7 @@ def _attach_plumed_coords_to_init_configs(init_configs, bias) -> None:
     for i, cv in enumerate(bias.cvs):
         colvar_fname = f'colvar_{cv.name}_driver.dat'
         cv_values = np.loadtxt(colvar_fname, usecols=1)
+        os.remove(colvar_fname)
 
         for j, config in enumerate(init_configs):
             config.plumed_coordinates[i] = cv_values[j]
