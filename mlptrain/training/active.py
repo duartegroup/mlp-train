@@ -666,11 +666,11 @@ def _generate_inheritable_metad_bias_grid(n_configs, grid_files, bias,
                 break
 
     # cv1 cv2 ... metad.bias der_cv1 der_cv2 ...
-    cvs_cols = range(0, bias.n_cvs)
+    cvs_cols = range(0, bias.n_metad_cvs)
     cvs = np.loadtxt(f'bias_grid_{iteration}_0.dat', usecols=cvs_cols, ndmin=2)
 
     # data is bias and derivatives, which is going to be averaged over files
-    data_cols = range(bias.n_cvs, 2 * bias.n_cvs + 1)
+    data_cols = range(bias.n_metad_cvs, 2 * bias.n_metad_cvs + 1)
     n_cols = len(data_cols)
     n_rows = len(cvs)
     data = np.zeros((n_rows, n_cols))
@@ -790,12 +790,14 @@ def _attach_inherited_bias_energies(configurations, iteration,
         if inheritance_using_hills:
             _generate_grid_from_hills(configurations, iteration, bias)
 
-        cvs_and_bias_cols = range(0, bias.n_cvs + 1)
-        cvs_and_bias = np.loadtxt(f'bias_grid_{iteration-1}.dat',
-                                  usecols=cvs_and_bias_cols)
+        cvs_cols = range(0, bias.n_metad_cvs)
+        cvs_grid = np.loadtxt(f'bias_grid_{iteration-1}.dat',
+                              usecols=cvs_cols)
+        bias_grid = np.loadtxt(f'bias_grid_{iteration-1}.dat',
+                               usecols=bias.n_metad_cvs)
 
         if inheritance_using_hills:
-            cvs_and_bias[:, -1] = -cvs_and_bias[:, -1]
+            bias_grid = -bias_grid
 
         header = []
         with open(f'bias_grid_{iteration-1}.dat', 'r') as f:
@@ -806,21 +808,23 @@ def _attach_inherited_bias_energies(configurations, iteration,
                     break
 
         n_bins = []
-        for cv in bias.cvs:
+        for cv in bias.metad_cvs:
             for line in header:
                 if line.startswith(f'#! SET nbins_{cv.name}'):
                     n_bins.append(int(line.split()[-1]))
+
+        metad_cv_idxs = [bias.cvs.index(cv) for cv in bias.metad_cvs]
 
         for config in configurations:
 
             start_idxs = [0]
             block_width = np.prod(n_bins)
-            for i, cv in enumerate(bias.cvs):
+            for i, cv in enumerate(bias.metad_cvs):
 
                 end_idx = start_idxs[i] + block_width
 
-                idx = np.searchsorted(a=cvs_and_bias[start_idxs[i]:end_idx, i],
-                                      v=config.plumed_coordinates[i],
+                idx = np.searchsorted(a=cvs_grid[start_idxs[i]:end_idx, i],
+                                      v=config.plumed_coordinates[metad_cv_idxs[i]],
                                       side='right')
                 start_idx = start_idxs[i] + idx
                 start_idxs.append(start_idx)
@@ -833,7 +837,7 @@ def _attach_inherited_bias_energies(configurations, iteration,
                                      f'configurations in the training set. '
                                      f'Please use a larger grid')
 
-            config.energy.inherited_bias = cvs_and_bias[start_idxs[-1], bias.n_cvs]
+            config.energy.inherited_bias = bias_grid[start_idxs[-1]]
 
         if inheritance_using_hills:
             os.remove(f'bias_grid_{iteration-1}.dat')
@@ -846,7 +850,7 @@ def _generate_grid_from_hills(configurations, iteration, bias) -> None:
 
     min_params, max_params = [], []
 
-    for j in range(bias.n_cvs):
+    for j in range(bias.n_metad_cvs):
         min_value = np.min(configurations.plumed_coordinates[:, j])
         max_value = np.max(configurations.plumed_coordinates[:, j])
 
@@ -857,7 +861,7 @@ def _generate_grid_from_hills(configurations, iteration, bias) -> None:
 
     bin_widths = [(width / 5) for width in bias.width]
     n_bins = [int((max_params[i] - min_params[i]) / bin_widths[i])
-              for i in range(bias.n_cvs)]
+              for i in range(bias.n_metad_cvs)]
     logger.info(f'min params: {min_params}')
     logger.info(f'max params: {max_params}')
     logger.info(f'bins: {n_bins}')

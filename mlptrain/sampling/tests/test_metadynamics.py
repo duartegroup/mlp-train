@@ -3,7 +3,7 @@ import numpy as np
 import mlptrain as mlt
 from ase.io.trajectory import Trajectory as ASETrajectory
 from .test_potential import TestPotential
-from .molecules import _h2
+from .molecules import _h2, _h2o
 from .utils import work_in_zipped_dir
 mlt.Config.n_cores = 2
 here = os.path.abspath(os.path.dirname(__file__))
@@ -16,13 +16,25 @@ def _h2_configuration():
     return config
 
 
+def _h2o_configuration():
+    system = mlt.System(_h2o(), box=[50, 50, 50])
+    config = system.random_configuration()
+
+    return config
+
+
 def _run_metadynamics(metadynamics,
                       n_runs,
+                      configuration=None,
                       save_sep=False,
                       all_to_xyz=False,
                       restart=False,
                       **kwargs):
-    metadynamics.run_metadynamics(configuration=_h2_configuration(),
+
+    if configuration is None:
+        configuration = _h2_configuration()
+
+    metadynamics.run_metadynamics(configuration=configuration,
                                   mlp=TestPotential('1D'),
                                   temp=300,
                                   dt=1,
@@ -132,6 +144,47 @@ def test_run_metadynamics_with_component():
     metad_dir = 'plumed_files/metadynamics'
     for idx in range(1, n_runs + 1):
         assert os.path.exists(os.path.join(metad_dir, f'colvar_cv1_x_{idx}.dat'))
+
+
+@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+def test_run_metadynamics_with_additional_cvs():
+
+    cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
+    cv2 = mlt.PlumedAverageCV('cv2', (2, 1))
+    cv2.attach_upper_wall(location=3.0, kappa=150.0)
+
+    bias = mlt.PlumedBias(cvs=(cv1, cv2))
+
+    metad = mlt.Metadynamics(cvs=cv1, bias=bias)
+
+    assert metad.bias == bias
+    assert metad.n_cvs == 1
+
+    n_runs = 1
+    _run_metadynamics(metad,
+                      configuration=_h2o_configuration(),
+                      n_runs=n_runs,
+                      write_plumed_setup=True,
+                      fs=100)
+
+    with open('plumed_files/metadynamics/plumed_setup.dat', 'r') as f:
+        plumed_setup = [line.strip() for line in f]
+
+    # Not including the units
+    assert plumed_setup[1:] == ['cv1_dist1: DISTANCE ATOMS=1,2',
+                                'cv1: CUSTOM ARG=cv1_dist1 VAR=cv1_dist1 '
+                                f'FUNC={1/1}*(cv1_dist1) PERIODIC=NO',
+                                'cv2_dist1: DISTANCE ATOMS=3,2',
+                                'cv2: CUSTOM ARG=cv2_dist1 VAR=cv2_dist1 '
+                                f'FUNC={1/1}*(cv2_dist1) PERIODIC=NO',
+                                'UPPER_WALLS ARG=cv2 AT=3.0 KAPPA=150.0 EXP=2',
+                                'metad: METAD ARG=cv1 PACE=100 HEIGHT=0.1 '
+                                'SIGMA=0.05 TEMP=300 BIASFACTOR=3 '
+                                'FILE=HILLS_1.dat',
+                                'PRINT ARG=cv1,cv1_dist1 '
+                                'FILE=colvar_cv1_1.dat STRIDE=10',
+                                'PRINT ARG=cv2,cv2_dist1 '
+                                'FILE=colvar_cv2_1.dat STRIDE=10']
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))

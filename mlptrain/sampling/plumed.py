@@ -35,6 +35,7 @@ class PlumedBias:
 
         self.setup = None
         self.pace = self.width = self.height = self.biasfactor = None
+        self.metad_cvs = None
 
         for param_name in ['min', 'max', 'bin', 'wstride', 'wfile', 'rfile']:
             setattr(self, f'metad_grid_{param_name}', None)
@@ -63,12 +64,25 @@ class PlumedBias:
         return len(self.cvs)
 
     @property
+    def n_metad_cvs(self) -> int:
+        """Number of collective variables attached to the bias that will be
+        used in metadynamics"""
+        return len(self.metad_cvs)
+
+    @property
     def cv_sequence(self) -> str:
-        """String containing names of collective variables separated
+        """String containing names of all collective variables separated
         by commas"""
 
         cv_names = (cv.name for cv in self.cvs)
         return ','.join(cv_names)
+
+    @property
+    def metad_cv_sequence(self) -> str:
+        """String containing names of collective variables used in metadynamics
+        separated by commas"""
+        metad_cv_names = (cv.name for cv in self.metad_cvs)
+        return ','.join(metad_cv_names)
 
     @property
     def metadynamics(self) -> bool:
@@ -122,10 +136,17 @@ class PlumedBias:
             return ''
 
     def _set_metad_params(self,
-                          pace:        int,
-                          width:       Union[Sequence[float], float],
-                          height:      float,
-                          biasfactor:  Optional[float] = None
+                          pace:          int,
+                          width:         Union[Sequence[float], float],
+                          height:        float,
+                          biasfactor:    Optional[float] = None,
+                          cvs:           Optional = None,
+                          grid_min:      Union[Sequence[float], float] = None,
+                          grid_max:      Union[Sequence[float], float] = None,
+                          grid_bin:      Union[Sequence[float], float] = None,
+                          grid_wstride:  Optional[int] = None,
+                          grid_wfile:    Optional[str] = None,
+                          grid_rfile:    Optional[str] = None
                           ) -> None:
         """
         Define parameters used in (well-tempered) metadynamics.
@@ -143,7 +164,30 @@ class PlumedBias:
             biasfactor: (float) γ, describes how quickly gaussians shrink,
                                 larger values make gaussians to be placed
                                 less sensitive to the bias potential
+
+            cvs: (mlptrain._PlumedCV) Sequence of PLUMED collective variables
+                                      which will be biased. If this variable
+                                      is not set all CVs attached to self
+                                      will be biased
+
+            grid_min: (float) Lower bound of the grid
+
+            grid_max: (float) Upper bound of the grid
+
+            grid_bin: (float) Number of bins to use for each collective
+                              variable, if not specified PLUMED automatically
+                              sets the width of the bin to 1/5 of the
+                              width (σ) value
+
+            grid_wstride: (float) Number of steps specifying the period at
+                                  which the grid is updated
+
+            grid_wfile: (str) Name of the file to write the grid to
+
+            grid_rfile: (str) Name of the file to read the grid from
         """
+
+        self._set_metad_cvs(cvs)
 
         if not isinstance(pace, int) or pace <= 0:
             raise ValueError('Pace (τ_G/dt) must be a positive integer')
@@ -169,7 +213,7 @@ class PlumedBias:
             else:
                 self.width = [width]
 
-        if len(self.width) != self.n_cvs:
+        if len(self.width) != self.n_metad_cvs:
             raise ValueError('The number of supplied widths (σ) does not '
                              'match the number of collective variables')
 
@@ -185,12 +229,50 @@ class PlumedBias:
         else:
             self.biasfactor = biasfactor
 
+        self._set_metad_grid_params(grid_min, grid_max, grid_bin, grid_wstride,
+                                    grid_wfile, grid_rfile)
+
+        return None
+
+    def _set_metad_cvs(self,
+                       cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'] = None
+                       ) -> None:
+        """
+        Attach PLUMED collective variables to PlumedBias which will be used in
+        metadynamics.
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            cvs: (mlptrain._PlumedCV) Sequence of PLUMED collective variables
+                                      which will be biased. If this variable
+                                      is not set all CVs attached to self
+                                      will be biased
+
+        """
+
+        if cvs is not None:
+            cvs = self._check_cvs_format(cvs)
+
+            for cv in cvs:
+                if cv not in self.cvs:
+                    raise ValueError('Supplied CVs must be a subset of CVs '
+                                     'already attached to the PlumedBias')
+
+            self.metad_cvs = cvs
+
+        elif self.metad_cvs is not None:
+            pass
+
+        else:
+            self.metad_cvs = self.cvs
+
         return None
 
     def _set_metad_grid_params(self,
-                               grid_min:      Union[Sequence[float], float],
-                               grid_max:      Union[Sequence[float], float],
-                               grid_bin:      Union[Sequence[float], float] = None,
+                               grid_min:  Union[Sequence[float], float] = None,
+                               grid_max:  Union[Sequence[float], float] = None,
+                               grid_bin:  Union[Sequence[float], float] = None,
                                grid_wstride:  Optional[int] = None,
                                grid_wfile:    Optional[str] = None,
                                grid_rfile:    Optional[str] = None
@@ -210,7 +292,8 @@ class PlumedBias:
 
             grid_bin: (float) Number of bins to use for each collective
                               variable, if not specified PLUMED automatically
-                              sets this to 1/5 of the width (σ) value
+                              sets the width of the bin to 1/5 of the
+                              width (σ) value
 
             grid_wstride: (float) Number of steps specifying the period at
                                   which the grid is updated
@@ -232,12 +315,17 @@ class PlumedBias:
             if isinstance(params, list) or isinstance(params, tuple):
 
                 if len(params) == 0:
-                    raise TypeError('The supplied parameter sequence is empty')
+                    raise ValueError('The supplied parameter sequence is empty')
+
+                elif len(params) != self.n_metad_cvs:
+                    raise ValueError('The length of the parameter sequence '
+                                     'does not match the number of CVs used '
+                                     'in metadynamics')
 
                 else:
                     setattr(self, f'metad_{param_name}', params)
 
-            elif params is not None:
+            elif params is not None and self.n_metad_cvs == 1:
                 setattr(self, f'metad_{param_name}', [params])
 
         _single_params = {'grid_wstride': grid_wstride,
@@ -313,15 +401,12 @@ class PlumedBias:
 
         # Setting height to dummy height (otherwise _set_metad_params() method
         # complains), the true value is set in the al_train() method
-
-        # TODO: Check that cvs are the subset of current cvs
-
         if height is None:
             dummy_height = 1E9
             height = dummy_height
 
-        self._set_metad_params(pace, width, height, biasfactor)
-        self._set_metad_grid_params(grid_min, grid_max, grid_bin)
+        self._set_metad_params(pace, width, height, biasfactor, cvs, grid_min,
+                               grid_max, grid_bin)
 
         return None
 

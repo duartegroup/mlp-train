@@ -40,6 +40,7 @@ class Metadynamics:
     def __init__(self,
                  cvs:   Union[Sequence['mlptrain._PlumedCV'],
                                        'mlptrain._PlumedCV'],
+                 bias:  Optional['mlptrain.PlumedBias'] = None,
                  temp:  Optional[float] = None):
         """
         Molecular dynamics using metadynamics bias. Used for calculating free
@@ -51,14 +52,28 @@ class Metadynamics:
 
             cvs: Sequence of PLUMED collective variables
         """
-        self.bias = PlumedBias(cvs)
+
+        if bias is not None:
+
+            if bias.from_file:
+                raise ValueError('Cannot initialise Metadynamics using PlumedBias '
+                                 'initialised from a file')
+
+            else:
+                self.bias = bias
+
+        else:
+            self.bias = PlumedBias(cvs)
+
+        self.bias._set_metad_cvs(cvs)
+
         self.temp = temp
         self._previous_run_parameters = {}
 
     @property
     def n_cvs(self) -> int:
         """Number of collective variables used in metadynamics"""
-        return self.bias.n_cvs
+        return self.bias.n_metad_cvs
 
     @property
     def kbt(self) -> float:
@@ -156,7 +171,7 @@ class Metadynamics:
 
         opt_widths = list(np.min(all_widths, axis=0))
         opt_widths_strs = []
-        for cv, width in zip(self.bias.cvs, opt_widths):
+        for cv, width in zip(self.bias.metad_cvs, opt_widths):
             if cv.units is not None:
                 opt_widths_strs.append(f'{cv.name} {width:.2f} {cv.units}')
 
@@ -188,7 +203,7 @@ class Metadynamics:
 
         widths = []
 
-        for cv in self.bias.cvs:
+        for cv in self.bias.metad_cvs:
             colvar_filename = f'colvar_{cv.name}_{kwargs["idx"]}.dat'
 
             cv_array = np.loadtxt(colvar_filename, usecols=1)
@@ -584,15 +599,16 @@ class Metadynamics:
         # Dummy bias which stores CVs, useful for checking CVs input
         if plotted_cvs is not None:
             cvs_holder = PlumedBias(plotted_cvs)
+            cvs_holder._set_metad_cvs(plotted_cvs)
 
         else:
             cvs_holder = self.bias
 
-        if len(cvs_holder.cvs) > 2:
+        if cvs_holder.n_cvs > 2:
             raise NotImplementedError('Plotting using more than two CVs is not '
                                       'implemented')
 
-        if not all(cv in self.bias.cvs for cv in cvs_holder.cvs):
+        if not all(cv in self.bias.metad_cvs for cv in cvs_holder.metad_cvs):
             raise ValueError('At least one of the supplied CVs are not within '
                              'the set of CVs used to define the Metadynamics '
                              'object')
@@ -918,7 +934,7 @@ class Metadynamics:
                           f'TEMP={temp} '
                           'ARG=metad.bias',
                           'hist: HISTOGRAM '
-                          f'ARG={self.bias.cv_sequence} '
+                          f'ARG={self.bias.metad_cv_sequence} '
                           f'STRIDE=1 '
                           f'CLEAR={blocksize} '
                           f'GRID_MIN={min_param_seq} '
@@ -1156,7 +1172,7 @@ class Metadynamics:
                         alpha=0.5,
                         label=confidence_label)
 
-        cv = self.bias.cvs[0]
+        cv = self.bias.metad_cvs[0]
         if cv.units is not None:
             ax.set_xlabel(f'{cv.name} / {cv.units}')
 
@@ -1232,8 +1248,8 @@ class Metadynamics:
         std_error_cbar.set_label(label='Confidence Interval / '
                                        f'{convert_exponents(energy_units)}')
 
-        cv1 = self.bias.cvs[0]
-        cv2 = self.bias.cvs[1]
+        cv1 = self.bias.metad_cvs[0]
+        cv2 = self.bias.metad_cvs[1]
         for ax in (ax_mean, ax_std_error):
 
             if cv1.units is not None:
@@ -1386,7 +1402,7 @@ class Metadynamics:
         """Plots multiple 1D free energy surfaces as a function of simulation
         time"""
 
-        plotted_cv = self.bias.cvs[0]
+        plotted_cv = self.bias.metad_cvs[0]
 
         if n_surfaces > len(fes_grids):
             raise ValueError('The number of surfaces requested to plot is '
@@ -1583,7 +1599,7 @@ class Metadynamics:
 
             min_params, max_params = [], []
 
-            for cv in self.bias.cvs:
+            for cv in self.bias.metad_cvs:
                 min_values, max_values = [], []
 
                 for filename in os.listdir():

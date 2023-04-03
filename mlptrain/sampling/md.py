@@ -682,7 +682,7 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List[str]:
             load_metad_bias_setup = ''
 
         metad_setup = ['metad: METAD '
-                       f'ARG={bias.cv_sequence} '
+                       f'ARG={bias.metad_cv_sequence} '
                        f'PACE={bias.pace} '
                        f'HEIGHT={bias.height} '
                        f'SIGMA={bias.width_sequence} '
