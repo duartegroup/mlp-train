@@ -793,6 +793,8 @@ def _attach_inherited_bias_energies(configurations, iteration,
         cvs_cols = range(0, bias.n_metad_cvs)
         cvs_grid = np.loadtxt(f'bias_grid_{iteration-1}.dat',
                               usecols=cvs_cols, ndmin=2)
+        cvs_grid = np.flip(cvs_grid, axis=1)
+
         bias_grid = np.loadtxt(f'bias_grid_{iteration-1}.dat',
                                usecols=bias.n_metad_cvs)
 
@@ -812,8 +814,10 @@ def _attach_inherited_bias_energies(configurations, iteration,
             for line in header:
                 if line.startswith(f'#! SET nbins_{cv.name}'):
                     n_bins.append(int(line.split()[-1]))
+        n_bins.reverse()
 
         metad_cv_idxs = [bias.cvs.index(cv) for cv in bias.metad_cvs]
+        metad_cv_idxs.reverse()
 
         for config in configurations:
 
