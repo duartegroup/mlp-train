@@ -44,13 +44,18 @@ class PlumedBias:
             self._from_file(file_name)
 
         elif cvs is not None:
-            cvs = self._check_cvs(cvs)
+            cvs = self._check_cvs_format(cvs)
             self.cvs = cvs
 
         else:
             raise TypeError('PLUMED bias instantiation requires '
                             'a list of collective variables (CVs) '
                             'or a file containing PLUMED-type input')
+
+    @property
+    def from_file(self) -> bool:
+        """Whether the bias is initialised using PLUMED input file"""
+        return self.setup is not None
 
     @property
     def n_cvs(self) -> int:
@@ -265,10 +270,10 @@ class PlumedBias:
                                 pace:       int = 20,
                                 height:     Optional[float] = None,
                                 biasfactor: Optional[float] = None,
+                                cvs:        Optional = None,
                                 grid_min: Union[Sequence[float], float] = None,
                                 grid_max: Union[Sequence[float], float] = None,
-                                grid_bin: Union[Sequence[float], float] = None,
-                                cvs:      Optional = None
+                                grid_bin: Union[Sequence[float], float] = None
                                 ) -> None:
         """
         Initialise PlumedBias for metadynamics active learning by setting the
@@ -291,6 +296,11 @@ class PlumedBias:
                                 larger values make gaussians to be placed
                                 less sensitive to the bias potential
 
+            cvs: (mlptrain._PlumedCV) Sequence of PLUMED collective variables
+                                      which will be biased. If this variable
+                                      is not set all CVs attached to self
+                                      will be biased
+
             grid_min: (float) Lower bound of the grid
 
             grid_max: (float) Upper bound of the grid
@@ -299,15 +309,13 @@ class PlumedBias:
                               variable, if not specified PLUMED automatically
                               sets bin width to 1/5 of the gaussian width (σ)
                               value
-
-            cvs: (mlptrain._PlumedCV) Sequence of PLUMED collective variables
-                                      which will be biased. If this variable
-                                      is not set all CVs attached to self
-                                      will be biased
         """
 
         # Setting height to dummy height (otherwise _set_metad_params() method
         # complains), the true value is set in the al_train() method
+
+        # TODO: Check that cvs are the subset of current cvs
+
         if height is None:
             dummy_height = 1E9
             height = dummy_height
@@ -321,7 +329,7 @@ class PlumedBias:
         """Change the bias such that it would only contain the definitions of
         collective variables and their associated upper and lower walls"""
 
-        if self.setup is not None:
+        if self.from_file:
             self._strip_setup()
 
         else:
@@ -384,7 +392,7 @@ class PlumedBias:
         return _args
 
     @staticmethod
-    def _check_cvs(cvs) -> List['_PlumedCV']:
+    def _check_cvs_format(cvs) -> List['_PlumedCV']:
         """Check if the supplied collective variables are in the correct
         format"""
 

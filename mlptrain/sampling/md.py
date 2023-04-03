@@ -246,7 +246,7 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
                   **kwargs)
 
     # Duplicate frames removed only if PLUMED bias is initialised not from file
-    if restart and isinstance(bias, PlumedBias) and bias.setup is None:
+    if restart and isinstance(bias, PlumedBias) and not bias.from_file:
         _remove_colvar_duplicate_frames(bias, **kwargs)
 
     traj = _convert_ase_traj(traj_name, bias, **kwargs)
@@ -460,7 +460,7 @@ def _convert_ase_traj(traj_name, bias, **kwargs) -> 'mlptrain.Trajectory':
 
         mlt_traj.append(config)
 
-    if isinstance(bias, PlumedBias) and bias.setup is None:
+    if isinstance(bias, PlumedBias) and not bias.from_file:
         _attach_plumed_coordinates(mlt_traj, bias, **kwargs)
 
     return mlt_traj
@@ -648,7 +648,7 @@ def _plumed_setup(bias, temp, interval, **kwargs) -> List[str]:
                    f'TIME={time_conversion} '
                    f'ENERGY={energy_conversion}']
 
-    if bias.setup is not None:
+    if bias.from_file:
         setup = bias.setup
 
         if 'UNITS' in setup[0]:

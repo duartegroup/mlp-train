@@ -130,7 +130,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
         _set_init_training_configs(mlp, init_configs,
                                    method_name=method_name)
 
-    if isinstance(bias, PlumedBias):
+    if isinstance(bias, PlumedBias) and not bias.from_file:
         _attach_plumed_coords_to_init_configs(init_configs=mlp.training_data,
                                               bias=bias)
 
@@ -459,6 +459,8 @@ def _attach_plumed_coords_to_init_configs(init_configs, bias) -> None:
     """Attaches PLUMED collective variable values to the configurations
     in the initial training set"""
 
+    logger.info('Attaching PLUMED CV values to the initial training set')
+
     open('init_configs_driver.xyz', 'w').close()
     for config in init_configs:
         config.save_xyz('init_configs_driver.xyz', append=True)
@@ -527,7 +529,7 @@ def _check_bias_parameters(bias, temp) -> None:
 
     if isinstance(bias, PlumedBias):
 
-        if bias.setup is None and bias.metadynamics is True:
+        if bias.from_file is False and bias.metadynamics is True:
 
             # 1E9 == dummy height value
             if bias.height == 1E9:
@@ -546,7 +548,7 @@ def _check_bias_for_metad_bias_inheritance(bias) -> None:
         raise TypeError('Metadynamics bias can only be inherited when '
                         'using PlumedBias')
 
-    if bias.setup is not None:
+    if bias.from_file:
         raise ValueError('Metadynamics bias cannot be inherited using '
                          'PlumedBias from a file')
 
@@ -775,6 +777,9 @@ def _attach_inherited_bias_energies(configurations, iteration,
     """Attaches inherited metadynamics bias energies from the previous active
     learning iteration to the configurations"""
 
+    logger.info('Attaching inherited bias energies to the whole training '
+                'data set')
+
     if iteration == bias_start_iter:
         for config in configurations:
             config.energy.inherited_bias = 0
@@ -808,9 +813,9 @@ def _attach_inherited_bias_energies(configurations, iteration,
 
         for config in configurations:
 
-            start_idxs = []
+            start_idxs = [0]
             block_width = np.prod(n_bins)
-            for i, cv in enumerate(bias.n_cvs):
+            for i, cv in enumerate(bias.cvs):
 
                 end_idx = start_idxs[i] + block_width
 
@@ -851,14 +856,18 @@ def _generate_grid_from_hills(configurations, iteration, bias) -> None:
         max_params.append(max_value + difference * extension_coefficient)
 
     bin_widths = [(width / 5) for width in bias.width]
-    n_bins = [(max_params[i] - min_params[i]) // bin_widths[i] for i in bias.n_cvs]
-    bin_sequence = ','.join(str(bins) for bins in n_bins)
+    n_bins = [int((max_params[i] - min_params[i]) / bin_widths[i])
+              for i in range(bias.n_cvs)]
+    logger.info(f'min params: {min_params}')
+    logger.info(f'max params: {max_params}')
+    logger.info(f'bins: {n_bins}')
 
+    bin_sequence = ','.join(str(bins) for bins in n_bins)
     min_sequence = ','.join(str(param) for param in min_params)
     max_sequence = ','.join(str(param) for param in max_params)
 
     sum_hills_process = Popen(['plumed', 'sum_hills', '--negbias',
-                               '--hills', f'HILLS_{iteration-1}',
+                               '--hills', f'HILLS_{iteration-1}.dat',
                                '--outfile', f'bias_grid_{iteration-1}.dat',
                                '--bin', bin_sequence,
                                '--min', min_sequence,
