@@ -299,7 +299,11 @@ def _attach_calculator_and_constraints(ase_atoms, mlp, bias, temp, interval,
     else:
         ase_atoms.calc = mlp.ase_calculator
 
-    constraints = deepcopy(kwargs.get('constraints', []))
+    if 'constraints' in kwargs and kwargs['constraints'] is not None:
+        constraints = deepcopy(kwargs['constraints'])
+    else:
+        constraints = []
+
     if bias is not None:
         constraints.append(bias)
 

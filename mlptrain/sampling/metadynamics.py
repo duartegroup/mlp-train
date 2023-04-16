@@ -224,7 +224,7 @@ class Metadynamics:
                          temp:          float,
                          interval:      int,
                          dt:            float,
-                         pace:          int = 500,
+                         pace:          int = 100,
                          height:        Optional[float] = None,
                          width:         Optional = None,
                          biasfactor:    Optional[float] = None,
