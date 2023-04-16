@@ -148,7 +148,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
     # Run the active learning loop, running iterative GAP-MD
     for iteration in range(max_active_iters):
 
-        curr_n_train = mlp.n_train
+        previous_n_train = mlp.n_train
 
         if inherit_metad_bias and iteration >= bias_start_iter:
             _attach_inherited_bias_energies(configurations=mlp.training_data,
@@ -178,9 +178,9 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                             iteration=iteration)
 
         # Active learning finds no configurations,,
-        if mlp.n_train == curr_n_train and iteration >= min_active_iters:
+        if mlp.n_train == previous_n_train and iteration >= min_active_iters:
             logger.info('No AL configurations found. Final dataset size '
-                        f'= {curr_n_train} Active learning = DONE')
+                        f'= {previous_n_train} Active learning = DONE')
             break
 
         # If required, remove high-lying energy configurations from the data
@@ -190,7 +190,8 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
         if mlp.training_data.has_a_none_energy:
             mlp.training_data.remove_none_energy()
 
-        mlp.train()
+        if mlp.n_train != previous_n_train:
+            mlp.train()
 
     if inherit_metad_bias:
         _remove_last_inherited_metad_bias_file(max_active_iters, bias)
