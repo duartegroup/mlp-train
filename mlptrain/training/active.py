@@ -191,6 +191,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
             mlp.training_data.remove_none_energy()
 
         if mlp.n_train != previous_n_train:
+            logger.info('No AL configurations found. Skipping training')
             mlp.train()
 
     if inherit_metad_bias:
