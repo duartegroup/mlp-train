@@ -437,7 +437,7 @@ class PlumedBias(ASEConstraint):
             pace: (int) τ_G/dt, interval at which a new gaussian is placed
 
             height: (float) ω, initial height of placed gaussians (in eV).
-                            If not supplied will be set to 0.5*k_B*T, where
+                            If not supplied will be set to 5*k_B*T, where
                             T is the temperature at which metadynamics active
                             learning is performed
 
