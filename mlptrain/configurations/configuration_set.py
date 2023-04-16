@@ -77,7 +77,10 @@ class ConfigurationSet(list):
 
     @property
     def inherited_bias_energies(self) -> List[Optional[float]]:
-        """Inherited metadynamics bias during active learning"""
+        """If active learning is performed using inheritable metadynamics bias,
+        at any given active learning iteration this property is equal to the
+        value of metadynamics bias inherited from the previous active learning
+        iteration"""
         return [c.energy.inherited_bias for c in self]
 
     @property
@@ -96,19 +99,14 @@ class ConfigurationSet(list):
         energies = [e if e is not None else np.inf for e in self.true_energies]
         return self[np.argmin(energies)]
 
-    def lowest_biased_energy(self, inherited) -> 'mlptrain.Configuration':
+    @property
+    def lowest_biased_energy(self) -> 'mlptrain.Configuration':
         """
-        Determine the lowest biased energy configuration in this set based on
-        the true and bias energies. If not evaluated then returns the first
+        Determine the configuration with the lowest biased energy (true energy
+        + bias energy) in this set. If not evaluated then returns the first
         configuration
 
         -----------------------------------------------------------------------
-        Arguments:
-
-            inherited: (bool) If True then inherited bias energies are used
-                              instead of bias energies
-
-        ---------------
         Returns:
             (mlptrain.Configuration):
         """
@@ -119,16 +117,35 @@ class ConfigurationSet(list):
         true_energy = np.array([e if e is not None else np.inf
                                 for e in self.true_energies])
 
-        if inherited:
-            bias_energy = np.array([e if e is not None else 0
-                                    for e in self.inherited_bias_energies])
-
-        else:
-            bias_energy = np.array([e if e is not None else 0
-                                    for e in self.bias_energies])
+        bias_energy = np.array([e if e is not None else 0
+                                for e in self.bias_energies])
 
         biased_energy = true_energy + bias_energy
         return self[np.argmin(biased_energy)]
+
+    @property
+    def lowest_inherited_biased_energy(self) -> 'mlptrain.Configuration':
+        """
+        Determine the configuration with the lowest inherited biased energy
+        (true energy + inherited bias energy) in this set. If not evaluated
+        then returns the first configuration
+
+        -----------------------------------------------------------------------
+        Returns:
+            (mlptrain.Configuration):
+        """
+        if len(self) == 0:
+            raise ValueError('No lowest biased energy configuration in an '
+                             'empty set')
+
+        true_energy = np.array([e if e is not None else np.inf
+                                for e in self.true_energies])
+
+        inherited_bias_energy = np.array([e if e is not None else 0
+                                          for e in self.inherited_bias_energies])
+
+        inherited_biased_energy = true_energy + inherited_bias_energy
+        return self[np.argmin(inherited_biased_energy)]
 
     @property
     def has_a_none_energy(self) -> bool:
@@ -399,7 +416,8 @@ class ConfigurationSet(list):
 
         -----------------------------------------------------------------------
         Returns:
-            (np.ndarray): Coordinates tensor (n, n_atoms, 3)
+            (np.ndarray): Coordinates tensor (n, n_atoms, 3),
+                          where n is len(self)
         """
         return np.array([np.asarray(c.coordinates, dtype=float) for c in self])
 
@@ -410,21 +428,29 @@ class ConfigurationSet(list):
 
         -----------------------------------------------------------------------
         Returns:
-            (np.ndarray): PLUMED collective variable tensor (n, n_cvs)
+            (np.ndarray): PLUMED collective variable matrix (n, n_cvs),
+                          where n is len(self)
         """
 
-        n_cvs = 0
+        n_cvs_set = set()
         all_coordinates = []
 
         for config in self:
             all_coordinates.append(config.plumed_coordinates)
 
             if config.plumed_coordinates is not None:
-                n_cvs = len(config.plumed_coordinates)
+                n_cvs_set.add(len(config.plumed_coordinates))
 
-        if n_cvs == 0:
+        if len(n_cvs_set) == 0:
             logger.info(f'PLUMED coordinates not defined - returning None')
             return None
+
+        elif len(n_cvs_set) != 1:
+            logger.info(f'Number of CVs differ between configurations - '
+                        f'returning None')
+            return None
+
+        n_cvs = n_cvs_set.pop()
 
         for i, coords in enumerate(all_coordinates):
             if coords is None:

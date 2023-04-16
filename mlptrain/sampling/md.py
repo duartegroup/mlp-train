@@ -7,7 +7,7 @@ from typing import Optional, Sequence, List
 from numpy.random import RandomState
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
-from mlptrain.sampling import Bias, PlumedBias
+from mlptrain.sampling.plumed import PlumedBias, PlumedCalculator
 from mlptrain.log import logger
 from mlptrain.box import Box
 from mlptrain.utils import work_in_tmp_dir
@@ -64,7 +64,7 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
         fbond_energy: (dict | None) As bbond_energy but in the direction to
                          form a bond
 
-        bias: (mlptrain.Bias | mlptrain.PlumedBias) ASE or PLUMED constraint
+        bias: (mlptrain.Bias | mlptrain.PlumedBias) mlp-train constrain
               to use in the dynamics
 
         restart_files: List of files which are needed for restarting the
@@ -84,6 +84,7 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
         {save_fs, save_ps, save_ns}: Trajectory saving interval in some units
 
         constraints: (List) List of ASE constraints to use in the dynamics
+                            e.g. [ase.constraints.Hookean(a1, a2, k, rt)]
 
         write_plumed_setup: (bool) If True saves the PLUMED input file as
                             plumed_setup.dat
@@ -177,7 +178,7 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
         fbond_energy: (dict | None) As bbond_energy but in the direction to
                          form a bond
 
-        bias: (mlptrain.Bias | mlptrain.PlumedBias) ASE or PLUMED constraint
+        bias: (mlptrain.Bias | mlptrain.PlumedBias) mlp-train constrain
               to use in the dynamics
 
         restart_files: List of files which are needed for restarting the
@@ -190,6 +191,7 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
         {save_fs, save_ps, save_ns}: Trajectory saving interval in some units
 
         constraints: (List) List of ASE constraints to use in the dynamics
+                            e.g. [ase.constraints.Hookean(a1, a2, k, rt)]
 
         write_plumed_setup: (bool) If True saves the PLUMED input file as
                             plumed_setup.dat
@@ -230,20 +232,21 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
                               restart_files=restart_files,
                               traj_name=traj_name)
 
-    ase_traj = _initialise_traj(ase_atoms, restart_files, traj_name)
+    ase_traj = _initialise_traj(ase_atoms, restart, traj_name)
 
-    n_previous_steps = interval * len(ase_traj)
+    # If MD is restarted, energies of frames from the previous trajectory
+    # are not loaded. Setting them to None
     energies = [None for _ in range(len(ase_traj))]
     biased_energies = deepcopy(energies)
     bias_energies = deepcopy(energies)
 
-    calculator = _attach_calculator_with_bias(ase_atoms, mlp, bias, temp,
-                                              interval, dt_ase, restart,
-                                              n_previous_steps, **kwargs)
+    n_previous_steps = interval * len(ase_traj)
+    _attach_calculator_and_constraints(ase_atoms, mlp, bias, temp,
+                                       interval, dt_ase, restart,
+                                       n_previous_steps, **kwargs)
 
     _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
-                  n_steps, energies, biased_energies, calculator, bias,
-                  **kwargs)
+                  n_steps, energies, biased_energies, **kwargs)
 
     # Duplicate frames removed only if PLUMED bias is initialised not from file
     if restart and isinstance(bias, PlumedBias) and not bias.from_file:
@@ -265,24 +268,23 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
     return traj
 
 
-def _attach_calculator_with_bias(ase_atoms, mlp, bias, temp, interval, dt_ase,
-                                 restart, n_previous_steps, **kwargs):
-    """Set up the calculator, attach it to the ase_atoms together with bias
-    and constraints, and return the final calculator"""
+def _attach_calculator_and_constraints(ase_atoms, mlp, bias, temp, interval,
+                                       dt_ase, restart, n_previous_steps,
+                                       **kwargs) -> None:
+    """Set up the calculator and attach it to the ase_atoms together with bias
+    and constraints"""
 
     if isinstance(bias, PlumedBias):
         logger.info('Using PLUMED bias for MLP MD')
 
-        from ase.calculators.plumed import Plumed
-
         setup = _plumed_setup(bias, temp, interval, **kwargs)
 
-        plumed_calc = Plumed(calc=mlp.ase_calculator,
-                             input=setup,
-                             timestep=dt_ase,
-                             atoms=ase_atoms,
-                             kT=temp*ase_units.kB,
-                             restart=restart)
+        plumed_calc = PlumedCalculator(calc=mlp.ase_calculator,
+                                       input=setup,
+                                       timestep=dt_ase,
+                                       atoms=ase_atoms,
+                                       kT=temp*ase_units.kB,
+                                       restart=restart)
 
         if restart:
             plumed_calc.istep = n_previous_steps
@@ -294,39 +296,20 @@ def _attach_calculator_with_bias(ase_atoms, mlp, bias, temp, interval, dt_ase,
 
         ase_atoms.calc = plumed_calc
 
-        if 'constraints' in kwargs and kwargs['constraints'] is not None:
-            ase_atoms.set_constraint(kwargs['constraints'])
-
-        return plumed_calc
-
-    elif isinstance(bias, Bias):
-        logger.info('Using ASE bias for MLP MD')
-
-        ase_atoms.calc = mlp.ase_calculator
-
-        if 'constraints' in kwargs and kwargs['constraints'] is not None:
-            constraints_with_bias = deepcopy(kwargs['constraints'])
-            constraints_with_bias.append(bias)
-
-            ase_atoms.set_constraint(constraints_with_bias)
-
-        else:
-            ase_atoms.set_constraint(bias)
-
-        return mlp.ase_calculator
-
     else:
         ase_atoms.calc = mlp.ase_calculator
 
-        if 'constraints' in kwargs and kwargs['constraints'] is not None:
-            ase_atoms.set_constraint(kwargs['constraints'])
+    constraints = deepcopy(kwargs.get('constraints', []))
+    if bias is not None:
+        constraints.append(bias)
 
-        return mlp.ase_calculator
+    ase_atoms.set_constraint(constraints)
+
+    return None
 
 
 def _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
-                  n_steps, energies, biased_energies, calculator, bias,
-                  **kwargs) -> None:
+                  n_steps, energies, biased_energies, **kwargs) -> None:
     """Initialise dynamics object and run dynamics"""
 
     if temp > 0:                                        # Default Langevin NVT
@@ -337,10 +320,10 @@ def _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
         dyn = VelocityVerlet(ase_atoms, dt_ase)
 
     def append_unbiased_energy():
-        _append_unbiased_energy(ase_atoms, energies, calculator, bias)
+        energies.append(ase_atoms.calc.get_potential_energy(ase_atoms))
 
     def append_biased_energy():
-        _append_biased_energy(ase_atoms, biased_energies, bias)
+        biased_energies.append(ase_atoms.get_potential_energy())
 
     def save_trajectory():
         _save_trajectory(ase_traj, traj_name, **kwargs)
@@ -356,37 +339,10 @@ def _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
     logger.info(f'Running {n_steps:.0f} steps with a timestep of {dt} fs')
     dyn.run(steps=n_steps)
 
-    # The calling process waits until PLUMED process has finished
-    if isinstance(bias, PlumedBias):
-        calculator.plumed.finalize()
+    if isinstance(ase_atoms.calc, PlumedCalculator):
+        # The calling process waits until PLUMED process has finished
+        ase_atoms.calc.plumed.finalize()
 
-    return None
-
-
-def _append_unbiased_energy(ase_atoms, energies, calculator, bias) -> None:
-    """Append unbiased energy (biased MLP energy - bias energy) to the
-    trajectory"""
-
-    if isinstance(bias, PlumedBias):
-        energy = calculator.calc.get_potential_energy(ase_atoms)
-
-    else:
-        energy = calculator.get_potential_energy(ase_atoms)
-
-    energies.append(energy)
-    return None
-
-
-def _append_biased_energy(ase_atoms, biased_energies, bias) -> None:
-    """Append bias energy to the trajectory"""
-
-    biased_energy = ase_atoms.get_potential_energy()
-
-    # Plumed calculator when get_potential_energy() is called returns an array
-    if isinstance(bias, PlumedBias):
-        biased_energy = biased_energy[0]
-
-    biased_energies.append(biased_energy)
     return None
 
 
@@ -557,12 +513,12 @@ def _set_momenta_and_geometry(ase_atoms:      'ase.atoms.Atoms',
 
 
 def _initialise_traj(ase_atoms:      'ase.atoms.Atoms',
-                     restart_files:  List[str],
+                     restart:        bool,
                      traj_name:      str
                      ) -> 'ase.io.trajectory.Trajectory':
     """Initialise ASE trajectory object"""
 
-    if restart_files is None:
+    if not restart:
         traj = ASETrajectory(traj_name, 'w', ase_atoms)
 
     else:

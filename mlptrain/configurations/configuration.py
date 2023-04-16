@@ -39,7 +39,8 @@ class Configuration(AtomCollection):
         self.energy = Energy()
         self.forces = Forces()
 
-        self.plumed_coordinates = None
+        # Collective variable values (obtained using PLUMED)
+        self.plumed_coordinates: Optional[np.ndarray] = None
 
         self.time: Optional[float] = None   # Time in a trajectory
         self.n_ref_evals = 0                # Number of reference evaluations

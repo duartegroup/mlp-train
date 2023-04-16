@@ -82,16 +82,22 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                       which to start the active learning from
 
         fix_init_config: (bool) Always start from the same initial
-                         configuration for the active learning loop, if
-                         False then the structure with lowest biased energy
-                         (true energy + bias energy) is used. Useful for
-                         TS learning, where dynamics should be propagated
-                         from a saddle point not the minimum
+                         configuration for the active learning loop.
+                         If False then:
+                            1. The structure with the lowest energy (true
+                         energy) is used
+                            2. If constraints and/or biases are attached, then
+                         the structure with the lowest biased energy (true
+                         energy + bias energy) is used
+                            3. If using the option to inherit metadynamics
+                         bias, then the structure with the lowest inherited
+                         biased energy (true energy + inherited bias energy)
+                         is used.
 
         bbond_energy: (dict | None) Additional energy to add to a breaking
                       bond. e.g. bbond_energy={(0, 1), 0.1} Adds 0.1 eV
                       to the 'bond' between atoms 0 and 1 as velocities
-                     shared between the atoms in the breaking bond direction
+                      shared between the atoms in the breaking bond direction
 
         fbond_energy: (dict | None) As bbond_energy but in the direction to
                       form a bond
@@ -507,8 +513,11 @@ def _update_init_config(init_config, mlp, fix_init_config, inherit_metad_bias
     if fix_init_config:
         return init_config
 
+    elif inherit_metad_bias is not None:
+        return mlp.training_data.lowest_inherited_biased_energy
+
     else:
-        return mlp.training_data.lowest_biased_energy(inherited=inherit_metad_bias)
+        return mlp.training_data.lowest_biased_energy
 
 
 def _check_bias(bias, temp, inherit_metad_bias) -> None:

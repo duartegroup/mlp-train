@@ -1,14 +1,66 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Sequence, List, Optional, Union
+from typing import Sequence, List, Tuple, Optional, Union
 from copy import deepcopy
-from ase import units as ase_units
+from ase.calculators.plumed import Plumed
+from ase.calculators.calculator import Calculator, all_changes
+from ase.parallel import broadcast
+from ase.parallel import world
+from mlptrain.sampling._base import ASEConstraint
 from mlptrain.utils import convert_ase_time
 from mlptrain.log import logger
 
 
-class PlumedBias:
+class PlumedCalculator(Plumed):
+    """
+    Modified ASE calculator, instead of returning biased energies and forces,
+    this calculator computes unbiased energies and forces, and computes PLUMED
+    energy and force biases separately.
+    """
+    implemented_properties = ['energy', 'forces', 'energy_bias', 'forces_bias']
+
+    def compute_energy_and_forces(self, pos, istep) -> Tuple:
+        """Compute unbiased energies and forces, and PLUMED energy and force
+        biases separately"""
+
+        unbiased_energy = self.calc.get_potential_energy(self.atoms)
+        unbiased_forces = self.calc.get_forces(self.atoms)
+
+        if world.rank == 0:
+            ener_forc = self.compute_bias(pos, istep, unbiased_energy)
+        else:
+            ener_forc = None
+
+        energy_bias, forces_bias = broadcast(ener_forc)
+        energy = unbiased_energy
+        forces = unbiased_forces
+
+        return energy, forces, energy_bias[0], forces_bias
+
+    def calculate(self,
+                  atoms=None,
+                  properties=['energy', 'forces', 'energy_bias', 'forces_bias'],
+                  system_changes=all_changes
+                  ) -> None:
+        """Compute the properties and attach them to the results"""
+
+        Calculator.calculate(self, atoms, properties, system_changes)
+
+        comp = self.compute_energy_and_forces(self.atoms.get_positions(),
+                                              self.istep)
+
+        energy, forces, energy_bias, forces_bias = comp
+        self.istep += 1
+        self.results['energy'] = energy
+        self.results['forces'] = forces
+        self.results['energy_bias'] = energy_bias
+        self.results['forces_bias'] = forces_bias
+
+        return None
+
+
+class PlumedBias(ASEConstraint):
     """
     @DynamicAttrs
     Class for storing collective variables and parameters used in biased
@@ -33,9 +85,15 @@ class PlumedBias:
             file_name: (str) Complete PLUMED input file
         """
 
-        self.setup = None
-        self.pace = self.width = self.height = self.biasfactor = None
-        self.metad_cvs = None
+        self.setup:  Optional[List[str]] = None
+
+        self.pace:        Optional[int] = None
+        self.width:       Optional[Union[Sequence[float], float]] = None
+        self.height:      Optional[float] = None
+        self.biasfactor:  Optional[float] = None
+
+        self.metad_cvs:          Optional[List['_PlumedCV']] = None
+        # self.plumed_calculator:  Optional['PlumedCalculator'] = None
 
         for param_name in ['min', 'max', 'bin', 'wstride', 'wfile', 'rfile']:
             setattr(self, f'metad_grid_{param_name}', None)
@@ -52,6 +110,9 @@ class PlumedBias:
             raise TypeError('PLUMED bias instantiation requires '
                             'a list of collective variables (CVs) '
                             'or a file containing PLUMED-type input')
+
+    # def __deepcopy__(self, memo=None):
+    #     return self
 
     @property
     def from_file(self) -> bool:
@@ -502,6 +563,27 @@ class PlumedBias:
             raise TypeError('Supplied CVs are in incorrect format')
 
         return cvs
+
+    def adjust_potential_energy(self, atoms) -> float:
+        """Adjust the energy of the system by adding PLUMED bias"""
+
+        # energy_bias = self.plumed_calculator.get_property(name='energy_bias',
+        #                                                   atoms=atoms)
+        energy_bias = atoms.calc.get_property('energy_bias', atoms)
+        return energy_bias
+
+    def adjust_forces(self, atoms, forces) -> None:
+        """Adjust the forces of the system by adding PLUMED forces"""
+
+        # forces_bias = self.plumed_calculator.get_property(name='forces_bias',
+        #                                                   atoms=atoms)
+        forces_bias = atoms.calc.get_property('forces_bias', atoms)
+        forces += forces_bias
+        return None
+
+    def adjust_positions(self, atoms, newpositions) -> None:
+        """Method required for ASE but not used in mlp-train"""
+        return None
 
 
 class _PlumedCV:
