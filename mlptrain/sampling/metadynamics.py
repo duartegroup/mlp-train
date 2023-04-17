@@ -987,7 +987,7 @@ class Metadynamics:
         ax.plot(blocksizes, mean_stds, color='k')
 
         ax.set_xlabel('Block Size')
-        ax.set_ylabel(r'$\left\langle\sigma_{\mu_{A}}\right\rangle$ / '
+        ax.set_ylabel(r'$\left\langle\sigma_{\mu_{G}}\right\rangle$ / '
                       f'{convert_exponents(energy_units)}')
 
         fig.tight_layout()
@@ -1160,16 +1160,16 @@ class Metadynamics:
 
         fig, ax = plt.subplots()
 
-        ax.plot(cv_grid, mean_fes, label=r'$\mu_{G}$')
+        ax.plot(cv_grid, mean_fes, label='Free energy')
 
         if blocksize is None and n_fes_grids == 1:
             confidence_label = None
 
         else:
-            confidence_label = 'Confidence Interval'
+            confidence_label = 'Confidence interval'
 
         ax.fill_between(cv_grid, lower_bound, upper_bound,
-                        alpha=0.5,
+                        alpha=0.3,
                         label=confidence_label)
 
         cv = self.bias.metad_cvs[0]
@@ -1245,7 +1245,7 @@ class Metadynamics:
         ax_std_error.contour = (cv1_grid, cv2_grid, interval_range, 20)
 
         std_error_cbar = fig.colorbar(std_error_contourf, ax=ax_std_error)
-        std_error_cbar.set_label(label='Confidence Interval / '
+        std_error_cbar.set_label(label='Confidence interval / '
                                        f'{convert_exponents(energy_units)}')
 
         cv1 = self.bias.metad_cvs[0]
