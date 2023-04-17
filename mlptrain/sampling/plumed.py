@@ -111,9 +111,6 @@ class PlumedBias(ASEConstraint):
                             'a list of collective variables (CVs) '
                             'or a file containing PLUMED-type input')
 
-    # def __deepcopy__(self, memo=None):
-    #     return self
-
     @property
     def from_file(self) -> bool:
         """Whether the bias is initialised using PLUMED input file"""
@@ -567,16 +564,12 @@ class PlumedBias(ASEConstraint):
     def adjust_potential_energy(self, atoms) -> float:
         """Adjust the energy of the system by adding PLUMED bias"""
 
-        # energy_bias = self.plumed_calculator.get_property(name='energy_bias',
-        #                                                   atoms=atoms)
         energy_bias = atoms.calc.get_property('energy_bias', atoms)
         return energy_bias
 
     def adjust_forces(self, atoms, forces) -> None:
         """Adjust the forces of the system by adding PLUMED forces"""
 
-        # forces_bias = self.plumed_calculator.get_property(name='forces_bias',
-        #                                                   atoms=atoms)
         forces_bias = atoms.calc.get_property('forces_bias', atoms)
         forces += forces_bias
         return None
