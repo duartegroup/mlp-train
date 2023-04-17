@@ -52,6 +52,7 @@ class ACE(MLPotential):
 
         for filename in (f'{self.name}_data.xyz', f'{self.name}.jl'):
             os.remove(filename)
+
         return None
 
     @property

@@ -428,8 +428,8 @@ class UmbrellaSampling:
 
                 # Without copy kwargs is overwritten at every iteration
                 kwargs_single = deepcopy(kwargs)
-                kwargs_single['_idx'] = idx + 1
-                kwargs_single['_ref'] = ref
+                kwargs_single['idx'] = idx + 1
+                kwargs_single['ref'] = ref
 
                 bias = Bias(self.zeta_func, kappa=self.kappa, reference=ref)
 
@@ -478,12 +478,11 @@ class UmbrellaSampling:
                                **kwargs):
         """Runs an individual umbrella sampling window"""
 
-        logger.info(f'Running US window {kwargs["_idx"]} with '
-                    f'ζ_ref={kwargs["_ref"]:.2f} Å '
+        logger.info(f'Running US window {kwargs["idx"]} with '
+                    f'ζ_ref={kwargs["ref"]:.2f} Å '
                     f'and κ = {self.kappa:.3f} eV / Å^2')
 
         kwargs['n_cores'] = 1
-        kwargs['_method'] = 'umbrella'
 
         traj = run_mlp_md(configuration=frame,
                           mlp=mlp,

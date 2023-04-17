@@ -5,8 +5,10 @@ class Energy:
     """Energy in units of eV"""
 
     def __init__(self,
-                 predicted: Optional[float] = None,
-                 true:      Optional[float] = None):
+                 predicted:      Optional[float] = None,
+                 true:           Optional[float] = None,
+                 bias:           Optional[float] = None,
+                 inherited_bias: Optional[float] = None):
         """
         Energy
 
@@ -14,10 +16,13 @@ class Energy:
         Arguments:
             predicted:
             true:
+            bias:
         """
 
         self.predicted = predicted
         self.true = true
+        self.bias = bias
+        self.inherited_bias = inherited_bias
 
     @property
     def delta(self) -> float:

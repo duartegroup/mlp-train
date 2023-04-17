@@ -1,14 +1,71 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Sequence, List, Optional, Union
+from typing import Sequence, List, Tuple, Optional, Union
+from copy import deepcopy
+from ase.calculators.plumed import Plumed
+from ase.calculators.calculator import Calculator, all_changes
+from ase.parallel import broadcast
+from ase.parallel import world
+from mlptrain.sampling._base import ASEConstraint
 from mlptrain.utils import convert_ase_time
 from mlptrain.log import logger
 
 
-class PlumedBias:
-    """Class for storing collective variables and parameters used in biased
-    simulations"""
+class PlumedCalculator(Plumed):
+    """
+    Modified ASE calculator, instead of returning biased energies and forces,
+    this calculator computes unbiased energies and forces, and computes PLUMED
+    energy and force biases separately.
+    """
+    implemented_properties = ['energy', 'forces', 'energy_bias', 'forces_bias']
+
+    def compute_energy_and_forces(self, pos, istep) -> Tuple:
+        """Compute unbiased energies and forces, and PLUMED energy and force
+        biases separately"""
+
+        unbiased_energy = self.calc.get_potential_energy(self.atoms)
+        unbiased_forces = self.calc.get_forces(self.atoms)
+
+        if world.rank == 0:
+            ener_forc = self.compute_bias(pos, istep, unbiased_energy)
+        else:
+            ener_forc = None
+
+        energy_bias, forces_bias = broadcast(ener_forc)
+        energy = unbiased_energy
+        forces = unbiased_forces
+
+        return energy, forces, energy_bias[0], forces_bias
+
+    def calculate(self,
+                  atoms=None,
+                  properties=['energy', 'forces', 'energy_bias', 'forces_bias'],
+                  system_changes=all_changes
+                  ) -> None:
+        """Compute the properties and attach them to the results"""
+
+        Calculator.calculate(self, atoms, properties, system_changes)
+
+        comp = self.compute_energy_and_forces(self.atoms.get_positions(),
+                                              self.istep)
+
+        energy, forces, energy_bias, forces_bias = comp
+        self.istep += 1
+        self.results['energy'] = energy
+        self.results['forces'] = forces
+        self.results['energy_bias'] = energy_bias
+        self.results['forces_bias'] = forces_bias
+
+        return None
+
+
+class PlumedBias(ASEConstraint):
+    """
+    @DynamicAttrs
+    Class for storing collective variables and parameters used in biased
+    simulations
+    """
 
     def __init__(self,
                  cvs:       Union[Sequence['_PlumedCV'], '_PlumedCV'] = None,
@@ -28,34 +85,26 @@ class PlumedBias:
             file_name: (str) Complete PLUMED input file
         """
 
-        self.setup = None
-        self.pace = self.width = self.height = self.biasfactor = None
+        self.setup:  Optional[List[str]] = None
+
+        self.pace:        Optional[int] = None
+        self.width:       Optional[Union[Sequence[float], float]] = None
+        self.height:      Optional[float] = None
+        self.biasfactor:  Optional[float] = None
+
+        self.metad_cvs:          Optional[List['_PlumedCV']] = None
+        # self.plumed_calculator:  Optional['PlumedCalculator'] = None
+
+        for param_name in ['min', 'max', 'bin', 'wstride', 'wfile', 'rfile']:
+            setattr(self, f'metad_grid_{param_name}', None)
 
         if file_name is not None:
             self.cvs = None
             self._from_file(file_name)
 
         elif cvs is not None:
-
-            # e.g. cvs == [cv1, cv2]; (cv1, cv2)
-            if isinstance(cvs, list) or isinstance(cvs, tuple):
-
-                if len(cvs) == 0:
-                    raise TypeError('The provided collective variable '
-                                    'sequence is empty')
-
-                elif all(issubclass(cv.__class__, _PlumedCV) for cv in cvs):
-                    self.cvs = cvs
-
-                else:
-                    raise TypeError('Supplied CVs are in incorrect format')
-
-            # e.g. cvs == cv1
-            elif issubclass(cvs.__class__, _PlumedCV):
-                self.cvs = [cvs]
-
-            else:
-                raise TypeError('Supplied CVs are in incorrect format')
+            cvs = self._check_cvs_format(cvs)
+            self.cvs = cvs
 
         else:
             raise TypeError('PLUMED bias instantiation requires '
@@ -63,28 +112,102 @@ class PlumedBias:
                             'or a file containing PLUMED-type input')
 
     @property
+    def from_file(self) -> bool:
+        """Whether the bias is initialised using PLUMED input file"""
+        return self.setup is not None
+
+    @property
+    def n_cvs(self) -> int:
+        """Number of collective variables attached to the bias"""
+        return len(self.cvs)
+
+    @property
+    def n_metad_cvs(self) -> int:
+        """Number of collective variables attached to the bias that will be
+        used in metadynamics"""
+        return len(self.metad_cvs)
+
+    @property
     def cv_sequence(self) -> str:
-        """String containing names of collective variables separated
+        """String containing names of all collective variables separated
         by commas"""
+
         cv_names = (cv.name for cv in self.cvs)
         return ','.join(cv_names)
 
     @property
+    def metad_cv_sequence(self) -> str:
+        """String containing names of collective variables used in metadynamics
+        separated by commas"""
+        metad_cv_names = (cv.name for cv in self.metad_cvs)
+        return ','.join(metad_cv_names)
+
+    @property
+    def metadynamics(self) -> bool:
+        """True if any parameters required for metadynamics are set"""
+
+        _metad_parameters = ['pace', 'width', 'height']
+
+        return any(getattr(self, p) is not None for p in _metad_parameters)
+
+    @property
     def width_sequence(self) -> str:
         """String containing width values separated by commas"""
+
         if self.width is None:
             raise TypeError('Width is not initialised')
+
         else:
             return ','.join(str(width) for width in self.width)
 
+    @property
+    def metad_grid_setup(self) -> str:
+        """String specifying metadynamics grid parameters in PLUMED input
+        file"""
+
+        _metad_grid_setup = ''
+        _grid_params = ['min', 'max', 'bin', 'wstride', 'wfile', 'rfile']
+
+        for param_name in _grid_params:
+            param = getattr(self, f'metad_grid_{param_name}')
+
+            if param is not None:
+
+                if isinstance(param, list) or isinstance(param, tuple):
+                    param_str = ','.join(str(p) for p in param)
+
+                else:
+                    param_str = str(param)
+
+                _metad_grid_setup += f'GRID_{param_name.upper()}={param_str} '
+
+        return _metad_grid_setup
+
+    @property
+    def biasfactor_setup(self) -> str:
+        """String specifying biasfactor in PLUMED input file"""
+
+        if self.biasfactor is not None:
+            return f'BIASFACTOR={self.biasfactor} '
+
+        else:
+            return ''
+
     def _set_metad_params(self,
-                          pace:        int,
-                          width:       Union[Sequence[float], float],
-                          height:      float,
-                          biasfactor:  Optional[float] = None
+                          pace:          int,
+                          width:         Union[Sequence[float], float],
+                          height:        float,
+                          biasfactor:    Optional[float] = None,
+                          cvs:           Optional = None,
+                          grid_min:      Union[Sequence[float], float] = None,
+                          grid_max:      Union[Sequence[float], float] = None,
+                          grid_bin:      Union[Sequence[float], float] = None,
+                          grid_wstride:  Optional[int] = None,
+                          grid_wfile:    Optional[str] = None,
+                          grid_rfile:    Optional[str] = None
                           ) -> None:
         """
-        Define parameters used in well-tempered metadynamics.
+        Define parameters used in (well-tempered) metadynamics.
 
         -----------------------------------------------------------------------
         Arguments:
@@ -94,12 +217,35 @@ class PlumedBias:
             width: (float) σ, standard deviation (parameter describing the
                            width) of the placed gaussian
 
-            height: (float) ω, initial height of placed gaussians
+            height: (float) ω, initial height of placed gaussians (in eV)
 
             biasfactor: (float) γ, describes how quickly gaussians shrink,
                                 larger values make gaussians to be placed
                                 less sensitive to the bias potential
+
+            cvs: (mlptrain._PlumedCV) Sequence of PLUMED collective variables
+                                      which will be biased. If this variable
+                                      is not set all CVs attached to self
+                                      will be biased
+
+            grid_min: (float) Lower bound of the grid
+
+            grid_max: (float) Upper bound of the grid
+
+            grid_bin: (float) Number of bins to use for each collective
+                              variable, if not specified PLUMED automatically
+                              sets the width of the bin to 1/5 of the
+                              width (σ) value
+
+            grid_wstride: (float) Number of steps specifying the period at
+                                  which the grid is updated
+
+            grid_wfile: (str) Name of the file to write the grid to
+
+            grid_rfile: (str) Name of the file to read the grid from
         """
+
+        self._set_metad_cvs(cvs)
 
         if not isinstance(pace, int) or pace <= 0:
             raise ValueError('Pace (τ_G/dt) must be a positive integer')
@@ -125,6 +271,10 @@ class PlumedBias:
             else:
                 self.width = [width]
 
+        if len(self.width) != self.n_metad_cvs:
+            raise ValueError('The number of supplied widths (σ) does not '
+                             'match the number of collective variables')
+
         if height <= 0:
             raise ValueError('Gaussian height (ω) must be positive')
 
@@ -136,6 +286,113 @@ class PlumedBias:
 
         else:
             self.biasfactor = biasfactor
+
+        self._set_metad_grid_params(grid_min, grid_max, grid_bin, grid_wstride,
+                                    grid_wfile, grid_rfile)
+
+        return None
+
+    def _set_metad_cvs(self,
+                       cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'] = None
+                       ) -> None:
+        """
+        Attach PLUMED collective variables to PlumedBias which will be used in
+        metadynamics.
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            cvs: (mlptrain._PlumedCV) Sequence of PLUMED collective variables
+                                      which will be biased. If this variable
+                                      is not set all CVs attached to self
+                                      will be biased
+
+        """
+
+        if cvs is not None:
+            cvs = self._check_cvs_format(cvs)
+
+            for cv in cvs:
+                if cv not in self.cvs:
+                    raise ValueError('Supplied CVs must be a subset of CVs '
+                                     'already attached to the PlumedBias')
+
+            self.metad_cvs = cvs
+
+        elif self.metad_cvs is not None:
+            pass
+
+        else:
+            self.metad_cvs = self.cvs
+
+        return None
+
+    def _set_metad_grid_params(self,
+                               grid_min:  Union[Sequence[float], float] = None,
+                               grid_max:  Union[Sequence[float], float] = None,
+                               grid_bin:  Union[Sequence[float], float] = None,
+                               grid_wstride:  Optional[int] = None,
+                               grid_wfile:    Optional[str] = None,
+                               grid_rfile:    Optional[str] = None
+                               ) -> None:
+        """
+        Define grid parameters used in (well-tempered) metadynamics. Grid
+        bounds (min and max) must cover the whole configuration space that the
+        system will explore during the simulation, otherwise PLUMED will raise
+        an error.
+
+        ------------------------------------------------------------------------
+        Arguments:
+
+            grid_min: (float) Lower bound of the grid
+
+            grid_max: (float) Upper bound of the grid
+
+            grid_bin: (float) Number of bins to use for each collective
+                              variable, if not specified PLUMED automatically
+                              sets the width of the bin to 1/5 of the
+                              width (σ) value
+
+            grid_wstride: (float) Number of steps specifying the period at
+                                  which the grid is updated
+
+            grid_wfile: (str) Name of the file to write the grid to
+
+            grid_rfile: (str) Name of the file to read the grid from
+        """
+
+        _sequences = {'grid_min': grid_min,
+                      'grid_max': grid_max,
+                      'grid_bin': grid_bin}
+
+        if grid_bin is None:
+            _sequences.pop('grid_bin')
+
+        for param_name, params in _sequences.items():
+
+            if isinstance(params, list) or isinstance(params, tuple):
+
+                if len(params) == 0:
+                    raise ValueError('The supplied parameter sequence is empty')
+
+                elif len(params) != self.n_metad_cvs:
+                    raise ValueError('The length of the parameter sequence '
+                                     'does not match the number of CVs used '
+                                     'in metadynamics')
+
+                else:
+                    setattr(self, f'metad_{param_name}', params)
+
+            elif params is not None and self.n_metad_cvs == 1:
+                setattr(self, f'metad_{param_name}', [params])
+
+        _single_params = {'grid_wstride': grid_wstride,
+                          'grid_wfile': grid_wfile,
+                          'grid_rfile': grid_rfile}
+
+        for param_name, param in _single_params.items():
+            if param is not None:
+                setattr(self, f'metad_{param_name}', param)
 
         return None
 
@@ -150,8 +407,175 @@ class PlumedBias:
                     continue
                 else:
                     line = line.strip()
-                    self.setup.extend([line])
+                    self.setup.append(line)
 
+        return None
+
+    def initialise_for_metad_al(self,
+                                width:      Union[Sequence[float], float],
+                                pace:       int = 20,
+                                height:     Optional[float] = None,
+                                biasfactor: Optional[float] = None,
+                                cvs:        Optional = None,
+                                grid_min: Union[Sequence[float], float] = None,
+                                grid_max: Union[Sequence[float], float] = None,
+                                grid_bin: Union[Sequence[float], float] = None
+                                ) -> None:
+        """
+        Initialise PlumedBias for metadynamics active learning by setting the
+        required parameters.
+
+        ------------------------------------------------------------------------
+        Arguments:
+
+            width: (float) σ, standard deviation (parameter describing the
+                           width) of the placed gaussian
+
+            pace: (int) τ_G/dt, interval at which a new gaussian is placed
+
+            height: (float) ω, initial height of placed gaussians (in eV).
+                            If not supplied will be set to 5*k_B*T, where
+                            T is the temperature at which metadynamics active
+                            learning is performed
+
+            biasfactor: (float) γ, describes how quickly gaussians shrink,
+                                larger values make gaussians to be placed
+                                less sensitive to the bias potential
+
+            cvs: (mlptrain._PlumedCV) Sequence of PLUMED collective variables
+                                      which will be biased. If this variable
+                                      is not set, all CVs attached to self
+                                      will be biased
+
+            grid_min: (float) Lower bound of the grid
+
+            grid_max: (float) Upper bound of the grid
+
+            grid_bin: (float) Number of bins to use for each collective
+                              variable, if not specified PLUMED automatically
+                              sets bin width to 1/5 of the gaussian width (σ)
+                              value
+        """
+
+        # Setting height to dummy height (otherwise _set_metad_params() method
+        # complains), the true value is set in the al_train() method
+        if height is None:
+            dummy_height = 1E9
+            height = dummy_height
+
+        self._set_metad_params(pace, width, height, biasfactor, cvs, grid_min,
+                               grid_max, grid_bin)
+
+        return None
+
+    def strip(self) -> None:
+        """Change the bias such that it would only contain the definitions of
+        collective variables and their associated upper and lower walls"""
+
+        if self.from_file:
+            self._strip_setup()
+
+        else:
+            # Setting all attributes to None, except cvs (which might have
+            # walls attached)
+            _attributes = deepcopy(self.__dict__)
+            _attributes.pop('cvs')
+
+            for param_name in _attributes.keys():
+                setattr(self, param_name, None)
+
+        return None
+
+    def _strip_setup(self) -> None:
+        """If the bias is initialised using a PLUMED input file, this method
+        removes all lines from the setup except the ones defining lower and
+        upper walls, and the collective variables to which the walls are
+        attached"""
+
+        if self.setup is None:
+            raise TypeError('Setup of the bias is not initialised, if you '
+                            'want to strip the setup make sure to use a bias '
+                            'which was initialised using a PLUMED input file')
+
+        _stripped_setup, _args = [], []
+        for line in reversed(self.setup):
+
+            if line.startswith('UPPER_WALLS') or line.startswith('LOWER_WALLS'):
+                _stripped_setup.append(line)
+                _args.extend(self._find_args(line))
+
+            if any(line.startswith(arg) for arg in _args):
+                _stripped_setup.append(line)
+                _args.extend(self._find_args(line))
+
+        # Reverse back to normal order
+        _stripped_setup = _stripped_setup[::-1]
+
+        # Remove duplicate lines
+        _stripped_setup = list(dict.fromkeys(_stripped_setup))
+
+        self.setup = _stripped_setup
+
+        return None
+
+    @staticmethod
+    def _find_args(line) -> List:
+        """Find and return inputs to ARG parameter in a given line of a PLUMED
+        setup"""
+
+        _args = []
+        _line = line.split(' ')
+
+        for element in _line:
+            element = element.split('=')
+
+            if element[0] == 'ARG':
+                _args = element[-1].split(',')
+
+        return _args
+
+    @staticmethod
+    def _check_cvs_format(cvs) -> List['_PlumedCV']:
+        """Check if the supplied collective variables are in the correct
+        format"""
+
+        # e.g. cvs == [cv1, cv2]; (cv1, cv2)
+        if isinstance(cvs, list) or isinstance(cvs, tuple):
+
+            if len(cvs) == 0:
+                raise TypeError('The provided collective variable '
+                                'sequence is empty')
+
+            elif all(issubclass(cv.__class__, _PlumedCV) for cv in cvs):
+                pass
+
+            else:
+                raise TypeError('Supplied CVs are in incorrect format')
+
+        # e.g. cvs == cv1
+        elif issubclass(cvs.__class__, _PlumedCV):
+            cvs = [cvs]
+
+        else:
+            raise TypeError('Supplied CVs are in incorrect format')
+
+        return cvs
+
+    def adjust_potential_energy(self, atoms) -> float:
+        """Adjust the energy of the system by adding PLUMED bias"""
+
+        energy_bias = atoms.calc.get_property('energy_bias', atoms)
+        return energy_bias
+
+    def adjust_forces(self, atoms, forces) -> None:
+        """Adjust the forces of the system by adding PLUMED forces"""
+
+        forces_bias = atoms.calc.get_property('forces_bias', atoms)
+        forces += forces_bias
+        return None
+
+    def adjust_positions(self, atoms, newpositions) -> None:
+        """Method required for ASE but not used in mlp-train"""
         return None
 
 
@@ -217,10 +641,11 @@ class _PlumedCV:
     @property
     def dof_sequence(self) -> str:
         """String containing names of DOFs separated by commas"""
+
         return ','.join(self.dof_names)
 
     def attach_lower_wall(self,
-                          location:  float,
+                          location:  Union[float, str],
                           kappa:     float,
                           exp:       float = 2
                           ) -> None:
@@ -230,7 +655,8 @@ class _PlumedCV:
         -----------------------------------------------------------------------
         Arguments:
 
-            location: (float) Value of the CV where the wall will be located
+            location: (float | str) Value of the CV where the wall will be
+                                    located
 
             kappa: (float) The force constant of the wall in eV/Å^(-exp) units
 
@@ -251,7 +677,7 @@ class _PlumedCV:
         return None
 
     def attach_upper_wall(self,
-                          location:  float,
+                          location:  Union[float, str],
                           kappa:     float,
                           exp:       float = 2
                           ) -> None:
@@ -261,7 +687,8 @@ class _PlumedCV:
         -----------------------------------------------------------------------
         Arguments:
 
-            location: (float) Value of the CV where the wall will be located
+            location: (float | str) Value of the CV where the wall will be
+                                    located
 
             kappa: (float) The force constant of the wall in eV/Å^(-exp) units
 
@@ -392,6 +819,9 @@ class _PlumedCV:
 
     def _check_name(self) -> None:
         """Checks if the supplied name is valid"""
+
+        if ' ' in self.name:
+            raise ValueError('Spaces in CV names are not allowed')
 
         _illegal_substrings = ['fes', 'colvar', 'HILLS']
         if any(substr in self.name for substr in _illegal_substrings):

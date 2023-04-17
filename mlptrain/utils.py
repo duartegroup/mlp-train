@@ -44,22 +44,25 @@ def work_in_tmp_dir(kept_substrings:   Optional[Sequence[str]] = None,
 
             # Move directories and execute
             os.chdir(tmpdir_path)
-            out = func(*args, **kwargs)
 
-            if kept_substrings is not None:
+            try:
+                out = func(*args, **kwargs)
 
-                for filename in os.listdir(tmpdir_path):
-                    if _name_contains_substring(name=filename,
-                                                substrings=kept_substrings,
-                                                regex=False):
+            finally:
+                if kept_substrings is not None:
 
-                        shutil.copy(src=os.path.join(tmpdir_path, filename),
-                                    dst=os.path.join(here_path, filename))
+                    for filename in os.listdir(tmpdir_path):
+                        if _name_contains_substring(name=filename,
+                                                    substrings=kept_substrings,
+                                                    regex=False):
 
-            os.chdir(here_path)
+                            shutil.copy(src=os.path.join(tmpdir_path, filename),
+                                        dst=os.path.join(here_path, filename))
 
-            # Remove the temporary dir with all files and return the output
-            shutil.rmtree(tmpdir_path)
+                os.chdir(here_path)
+
+                # Remove the temporary dir with all files and return the output
+                shutil.rmtree(tmpdir_path)
 
             return out
 

@@ -40,6 +40,7 @@ class Metadynamics:
     def __init__(self,
                  cvs:   Union[Sequence['mlptrain._PlumedCV'],
                                        'mlptrain._PlumedCV'],
+                 bias:  Optional['mlptrain.PlumedBias'] = None,
                  temp:  Optional[float] = None):
         """
         Molecular dynamics using metadynamics bias. Used for calculating free
@@ -51,14 +52,28 @@ class Metadynamics:
 
             cvs: Sequence of PLUMED collective variables
         """
-        self.bias = PlumedBias(cvs)
+
+        if bias is not None:
+
+            if bias.from_file:
+                raise ValueError('Cannot initialise Metadynamics using PlumedBias '
+                                 'initialised from a file')
+
+            else:
+                self.bias = bias
+
+        else:
+            self.bias = PlumedBias(cvs)
+
+        self.bias._set_metad_cvs(cvs)
+
         self.temp = temp
         self._previous_run_parameters = {}
 
     @property
     def n_cvs(self) -> int:
         """Number of collective variables used in metadynamics"""
-        return len(self.bias.cvs)
+        return self.bias.n_metad_cvs
 
     @property
     def kbt(self) -> float:
@@ -129,7 +144,7 @@ class Metadynamics:
             for idx, configuration in enumerate(configuration_set):
 
                 kwargs_single = deepcopy(kwargs)
-                kwargs_single['_idx'] = idx + 1
+                kwargs_single['idx'] = idx + 1
 
                 width_process = pool.apply_async(func=self._get_width_for_single,
                                                  args=(configuration,
@@ -154,16 +169,26 @@ class Metadynamics:
                    dst_folder='width_estimation',
                    regex=True)
 
+        opt_widths = list(np.min(all_widths, axis=0))
+        opt_widths_strs = []
+        for cv, width in zip(self.bias.metad_cvs, opt_widths):
+            if cv.units is not None:
+                opt_widths_strs.append(f'{cv.name} {width:.2f} {cv.units}')
+
+            else:
+                opt_widths_strs.append(f'{cv.name} {width:.2f}')
+
         finish = time.perf_counter()
         logger.info(f'Width estimation done in {(finish - start) / 60:.1f} m')
+        logger.info(f'Estimated widths: {", ".join(opt_widths_strs)}')
 
-        return list(np.min(all_widths, axis=0))
+        return opt_widths
 
     def _get_width_for_single(self, configuration, mlp, temp, dt, interval,
                               bias, plot, **kwargs) -> List:
         """Estimates optimal widths (σ) for a single configuration"""
 
-        logger.info(f'Running MD simulation number {kwargs["_idx"]}')
+        logger.info(f'Running MD simulation number {kwargs["idx"]}')
 
         kwargs['n_cores'] = 1
 
@@ -178,8 +203,8 @@ class Metadynamics:
 
         widths = []
 
-        for cv in self.bias.cvs:
-            colvar_filename = f'colvar_{cv.name}_{kwargs["_idx"]}.dat'
+        for cv in self.bias.metad_cvs:
+            colvar_filename = f'colvar_{cv.name}_{kwargs["idx"]}.dat'
 
             cv_array = np.loadtxt(colvar_filename, usecols=1)
 
@@ -189,7 +214,7 @@ class Metadynamics:
             if plot is True:
                 plot_cv_versus_time(filename=colvar_filename,
                                     cv_units=cv.units,
-                                    label=f'config{kwargs["_idx"]}')
+                                    label=f'config{kwargs["idx"]}')
 
         return widths
 
@@ -199,7 +224,7 @@ class Metadynamics:
                          temp:          float,
                          interval:      int,
                          dt:            float,
-                         pace:          int = 500,
+                         pace:          int = 100,
                          height:        Optional[float] = None,
                          width:         Optional = None,
                          biasfactor:    Optional[float] = None,
@@ -230,7 +255,7 @@ class Metadynamics:
 
             pace: (int) τ_G/dt, interval at which a new gaussian is placed
 
-            height: (float) ω, initial height of placed gaussians
+            height: (float) ω, initial height of placed gaussians (in eV)
 
             width: (List[float] | float | None) σ, standard deviation
                    (parameter describing the width) of placed gaussians,
@@ -311,7 +336,7 @@ class Metadynamics:
 
                 # Without copy kwargs is overwritten at every iteration
                 kwargs_single = deepcopy(kwargs)
-                kwargs_single['_idx'] = idx + 1
+                kwargs_single['idx'] = idx + 1
 
                 metad_process = pool.apply_async(func=self._run_single_metad,
                                                  args=(configuration,
@@ -330,9 +355,6 @@ class Metadynamics:
 
         # Move .traj files into 'trajectories' folder and compute .xyz files
         self._move_and_save_files(metad_trajs, save_sep, all_to_xyz, restart)
-
-        if restart:
-            self._remove_duplicate_frames()
 
         finish_metad = time.perf_counter()
         logger.info('Metadynamics done in '
@@ -396,30 +418,29 @@ class Metadynamics:
 
         if restart:
             logger.info(f'Restarting Metadynamics simulation number '
-                        f'{kwargs["_idx"]}')
+                        f'{kwargs["idx"]}')
 
             restart_files = []
 
             for cv in self.bias.cvs:
-                restart_files.append(f'colvar_{cv.name}_{kwargs["_idx"]}.dat')
+                restart_files.append(f'colvar_{cv.name}_{kwargs["idx"]}.dat')
 
-            restart_files.append(f'HILLS_{kwargs["_idx"]}.dat')
-            restart_files.append(f'trajectory_{kwargs["_idx"]}.traj')
+            restart_files.append(f'HILLS_{kwargs["idx"]}.dat')
+            restart_files.append(f'trajectory_{kwargs["idx"]}.traj')
 
         else:
             if bias.biasfactor is None:
                 logger.info('Running Metadynamics simulation '
-                            f'number {kwargs["_idx"]}')
+                            f'number {kwargs["idx"]}')
 
             else:
                 logger.info('Running Well-tempered Metadynamics simulation '
-                            f'number {kwargs["_idx"]} '
+                            f'number {kwargs["idx"]} '
                             f'with a biasfactor {bias.biasfactor}')
 
             restart_files = None
 
         kwargs['n_cores'] = 1
-        kwargs['_method'] = 'metadynamics'
 
         traj = run_mlp_md(configuration=configuration,
                           mlp=mlp,
@@ -474,40 +495,6 @@ class Metadynamics:
                     ase_write(f'metad_{idx}_{sim_time}.xyz', ase_traj)
 
         os.chdir('..')
-
-        return None
-
-    @staticmethod
-    def _remove_duplicate_frames() -> None:
-        """Removes a duplicate frame from colvar files after restarting
-        metadynamics"""
-
-        os.chdir('plumed_files/metadynamics')
-
-        for filename in os.listdir():
-            if filename.startswith('colvar'):
-
-                with open(filename, 'r') as f:
-                    lines = f.readlines()
-
-                duplicate_index = None
-                for i, line in enumerate(lines):
-                    if line.startswith('#!') and i != 0:
-
-                        # First frame before redundant header is a duplicate
-                        duplicate_index = i - 1
-                        break
-
-                if duplicate_index is None:
-                    raise TypeError('Duplicate frame was not found')
-
-                lines.pop(duplicate_index)
-
-                with open(filename, 'w') as f:
-                    for line in lines:
-                        f.write(line)
-
-        os.chdir('../..')
 
         return None
 
@@ -568,7 +555,7 @@ class Metadynamics:
 
             pace: (int) τ_G/dt, interval at which a new gaussian is placed
 
-            height: (float) ω, initial height of placed gaussians
+            height: (float) ω, initial height of placed gaussians (in eV)
 
             width: (List[float] | float | None) σ, standard deviation
                    (parameter describing the width) of placed gaussians,
@@ -612,15 +599,16 @@ class Metadynamics:
         # Dummy bias which stores CVs, useful for checking CVs input
         if plotted_cvs is not None:
             cvs_holder = PlumedBias(plotted_cvs)
+            cvs_holder._set_metad_cvs(plotted_cvs)
 
         else:
             cvs_holder = self.bias
 
-        if len(cvs_holder.cvs) > 2:
+        if cvs_holder.n_cvs > 2:
             raise NotImplementedError('Plotting using more than two CVs is not '
                                       'implemented')
 
-        if not all(cv in self.bias.cvs for cv in cvs_holder.cvs):
+        if not all(cv in self.bias.metad_cvs for cv in cvs_holder.metad_cvs):
             raise ValueError('At least one of the supplied CVs are not within '
                              'the set of CVs used to define the Metadynamics '
                              'object')
@@ -643,7 +631,7 @@ class Metadynamics:
                 bias.biasfactor = biasfactor
 
                 kwargs_single = deepcopy(kwargs)
-                kwargs_single['_idx'] = idx + 1
+                kwargs_single['idx'] = idx + 1
 
                 pool.apply_async(func=self._try_single_biasfactor,
                                  args=(configuration,
@@ -686,7 +674,7 @@ class Metadynamics:
                                kept_substrings=['.dat'],
                                **kwargs)
 
-        filenames = [f'colvar_{cv.name}_{kwargs["_idx"]}.dat'
+        filenames = [f'colvar_{cv.name}_{kwargs["idx"]}.dat'
                      for cv in plotted_cvs]
 
         for filename, cv in zip(filenames, plotted_cvs):
@@ -750,6 +738,8 @@ class Metadynamics:
             {fs, ps, ns}: Simulation time in some units
         """
 
+        start = time.perf_counter()
+
         bias, configuration, mlp, temp, dt, interval, kwargs = \
             self._get_parameters_for_block_analysis(configuration, mlp, temp,
                                                     dt, interval, **kwargs)
@@ -810,6 +800,9 @@ class Metadynamics:
 
         self._plot_block_analysis(blocksizes, std_grids, energy_units)
 
+        finish = time.perf_counter()
+        logger.info(f'Block analysis done in {(finish - start) / 60:.1f} m')
+
         return None
 
     def _get_parameters_for_block_analysis(self, configuration, mlp, temp, dt,
@@ -856,10 +849,9 @@ class Metadynamics:
 
         copied_substrings = [f'HILLS_{idx}.dat', '.xml', '.json', '.pth']
         kept_substrings = ['plumed_setup.dat']
-        kwargs['_method'] = 'metadynamics'
-        kwargs['_idx'] = idx
-        kwargs['_static_hills'] = True
-        kwargs['_remove_print'] = True
+        kwargs['idx'] = idx
+        kwargs['load_metad_bias'] = True
+        kwargs['remove_print'] = True
         kwargs['write_plumed_setup'] = True
 
         traj = run_mlp_md(configuration=configuration,
@@ -942,7 +934,7 @@ class Metadynamics:
                           f'TEMP={temp} '
                           'ARG=metad.bias',
                           'hist: HISTOGRAM '
-                          f'ARG={self.bias.cv_sequence} '
+                          f'ARG={self.bias.metad_cv_sequence} '
                           f'STRIDE=1 '
                           f'CLEAR={blocksize} '
                           f'GRID_MIN={min_param_seq} '
@@ -995,7 +987,7 @@ class Metadynamics:
         ax.plot(blocksizes, mean_stds, color='k')
 
         ax.set_xlabel('Block Size')
-        ax.set_ylabel(r'$\left\langle\sigma_{\mu_{A}}\right\rangle$ / '
+        ax.set_ylabel(r'$\left\langle\sigma_{\mu_{G}}\right\rangle$ / '
                       f'{convert_exponents(energy_units)}')
 
         fig.tight_layout()
@@ -1150,7 +1142,7 @@ class Metadynamics:
         if blocksize is None:
             mean_fes = np.mean(fes_grids, axis=0)
             std_mean_fes = ((1 / np.sqrt(n_fes_grids))
-                           * np.std(fes_grids, axis=0, ddof=1))
+                            * np.std(fes_grids, axis=0, ddof=1))
 
         else:
             # No benefit from n_fes_grids
@@ -1168,19 +1160,19 @@ class Metadynamics:
 
         fig, ax = plt.subplots()
 
-        ax.plot(cv_grid, mean_fes, label=r'$\mu_{G}$')
+        ax.plot(cv_grid, mean_fes, label='Free energy')
 
         if blocksize is None and n_fes_grids == 1:
             confidence_label = None
 
         else:
-            confidence_label = 'Confidence Interval'
+            confidence_label = 'Confidence interval'
 
         ax.fill_between(cv_grid, lower_bound, upper_bound,
-                        alpha=0.5,
+                        alpha=0.3,
                         label=confidence_label)
 
-        cv = self.bias.cvs[0]
+        cv = self.bias.metad_cvs[0]
         if cv.units is not None:
             ax.set_xlabel(f'{cv.name} / {cv.units}')
 
@@ -1253,11 +1245,11 @@ class Metadynamics:
         ax_std_error.contour = (cv1_grid, cv2_grid, interval_range, 20)
 
         std_error_cbar = fig.colorbar(std_error_contourf, ax=ax_std_error)
-        std_error_cbar.set_label(label='Confidence Interval / '
+        std_error_cbar.set_label(label='Confidence interval / '
                                        f'{convert_exponents(energy_units)}')
 
-        cv1 = self.bias.cvs[0]
-        cv2 = self.bias.cvs[1]
+        cv1 = self.bias.metad_cvs[0]
+        cv2 = self.bias.metad_cvs[1]
         for ax in (ax_mean, ax_std_error):
 
             if cv1.units is not None:
@@ -1410,7 +1402,7 @@ class Metadynamics:
         """Plots multiple 1D free energy surfaces as a function of simulation
         time"""
 
-        plotted_cv = self.bias.cvs[0]
+        plotted_cv = self.bias.metad_cvs[0]
 
         if n_surfaces > len(fes_grids):
             raise ValueError('The number of surfaces requested to plot is '
@@ -1607,7 +1599,7 @@ class Metadynamics:
 
             min_params, max_params = [], []
 
-            for cv in self.bias.cvs:
+            for cv in self.bias.metad_cvs:
                 min_values, max_values = [], []
 
                 for filename in os.listdir():

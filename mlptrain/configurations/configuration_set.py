@@ -71,6 +71,19 @@ class ConfigurationSet(list):
         return self._forces('predicted')
 
     @property
+    def bias_energies(self) -> List[Optional[float]]:
+        """Bias energies from ASE and PLUMED biases"""
+        return [c.energy.bias for c in self]
+
+    @property
+    def inherited_bias_energies(self) -> List[Optional[float]]:
+        """If active learning is performed using inheritable metadynamics bias,
+        at any given active learning iteration this property is equal to the
+        value of metadynamics bias inherited from the previous active learning
+        iteration"""
+        return [c.energy.inherited_bias for c in self]
+
+    @property
     def lowest_energy(self) -> 'mlptrain.Configuration':
         """
         Determine the lowest energy configuration in this set based on the
@@ -85,6 +98,54 @@ class ConfigurationSet(list):
 
         energies = [e if e is not None else np.inf for e in self.true_energies]
         return self[np.argmin(energies)]
+
+    @property
+    def lowest_biased_energy(self) -> 'mlptrain.Configuration':
+        """
+        Determine the configuration with the lowest biased energy (true energy
+        + bias energy) in this set. If not evaluated then returns the first
+        configuration
+
+        -----------------------------------------------------------------------
+        Returns:
+            (mlptrain.Configuration):
+        """
+        if len(self) == 0:
+            raise ValueError('No lowest biased energy configuration in an '
+                             'empty set')
+
+        true_energy = np.array([e if e is not None else np.inf
+                                for e in self.true_energies])
+
+        bias_energy = np.array([e if e is not None else 0
+                                for e in self.bias_energies])
+
+        biased_energy = true_energy + bias_energy
+        return self[np.argmin(biased_energy)]
+
+    @property
+    def lowest_inherited_biased_energy(self) -> 'mlptrain.Configuration':
+        """
+        Determine the configuration with the lowest inherited biased energy
+        (true energy + inherited bias energy) in this set. If not evaluated
+        then returns the first configuration
+
+        -----------------------------------------------------------------------
+        Returns:
+            (mlptrain.Configuration):
+        """
+        if len(self) == 0:
+            raise ValueError('No lowest biased energy configuration in an '
+                             'empty set')
+
+        true_energy = np.array([e if e is not None else np.inf
+                                for e in self.true_energies])
+
+        inherited_bias_energy = np.array([e if e is not None else 0
+                                          for e in self.inherited_bias_energies])
+
+        inherited_biased_energy = true_energy + inherited_bias_energy
+        return self[np.argmin(inherited_biased_energy)]
 
     @property
     def has_a_none_energy(self) -> bool:
@@ -355,9 +416,47 @@ class ConfigurationSet(list):
 
         -----------------------------------------------------------------------
         Returns:
-            (np.ndarray): Coordinates tensor (n, n_atoms, 3)
+            (np.ndarray): Coordinates tensor (n, n_atoms, 3),
+                          where n is len(self)
         """
         return np.array([np.asarray(c.coordinates, dtype=float) for c in self])
+
+    @property
+    def plumed_coordinates(self) -> Optional[np.ndarray]:
+        """
+        PLUMED collective variable values in this set
+
+        -----------------------------------------------------------------------
+        Returns:
+            (np.ndarray): PLUMED collective variable matrix (n, n_cvs),
+                          where n is len(self)
+        """
+
+        n_cvs_set = set()
+        all_coordinates = []
+
+        for config in self:
+            all_coordinates.append(config.plumed_coordinates)
+
+            if config.plumed_coordinates is not None:
+                n_cvs_set.add(len(config.plumed_coordinates))
+
+        if len(n_cvs_set) == 0:
+            logger.info(f'PLUMED coordinates not defined - returning None')
+            return None
+
+        elif len(n_cvs_set) != 1:
+            logger.info(f'Number of CVs differ between configurations - '
+                        f'returning None')
+            return None
+
+        n_cvs = n_cvs_set.pop()
+
+        for i, coords in enumerate(all_coordinates):
+            if coords is None:
+                all_coordinates[i] = np.array([np.nan for _ in range(n_cvs)])
+
+        return np.array(all_coordinates)
 
     @property
     def _atomic_numbers(self) -> np.ndarray:
@@ -368,6 +467,7 @@ class ConfigurationSet(list):
         Returns:
             (np.ndarray): Atomic numbers matrix (n, n_atoms)
         """
+
         return np.array([[atom.atomic_number for atom in c.atoms] for c in self])
 
     @property
@@ -411,8 +511,11 @@ class ConfigurationSet(list):
 
         np.savez(filename,
                  R=self._coordinates,
+                 R_plumed=self.plumed_coordinates,
                  E_true=self.true_energies,
                  E_predicted=self.predicted_energies,
+                 E_bias=self.bias_energies,
+                 E_inherited_bias=self.inherited_bias_energies,
                  F_true=self.true_forces,
                  F_predicted=self.predicted_forces,
                  Z=self._atomic_numbers,
@@ -437,11 +540,20 @@ class ConfigurationSet(list):
                                    mult=int(data['M'][i]),
                                    box=None if box.has_zero_volume else box)
 
+            if data['R_plumed'].ndim > 0:
+                config.plumed_coordinates = data['R_plumed'][i]
+
             if data['E_true'].ndim > 0:
                 config.energy.true = data['E_true'][i]
 
             if data['E_predicted'].ndim > 0:
                 config.energy.predicted = data['E_predicted'][i]
+
+            if data['E_bias'].ndim > 0:
+                config.energy.bias = data['E_bias'][i]
+
+            if data['E_inherited_bias'].ndim > 0:
+                config.energy.inherited_bias = data['E_inherited_bias'][i]
 
             if data['F_true'].ndim > 0:
                 config.forces.true = data['F_true'][i]

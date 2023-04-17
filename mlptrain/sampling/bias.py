@@ -59,5 +59,5 @@ class Bias(ASEConstraint, Function):
         return None
 
     def adjust_positions(self, atoms, newpositions):
-        """Method required for ASE but not used in ml-train"""
+        """Method required for ASE but not used in mlp-train"""
         return None
