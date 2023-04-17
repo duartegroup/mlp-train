@@ -447,7 +447,7 @@ class PlumedBias(ASEConstraint):
 
             cvs: (mlptrain._PlumedCV) Sequence of PLUMED collective variables
                                       which will be biased. If this variable
-                                      is not set all CVs attached to self
+                                      is not set, all CVs attached to self
                                       will be biased
 
             grid_min: (float) Lower bound of the grid
