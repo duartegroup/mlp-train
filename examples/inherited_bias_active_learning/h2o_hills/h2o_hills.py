@@ -5,12 +5,10 @@ mlt.Config.n_cores = 10
 if __name__ == '__main__':
 
     # Initialise the system to train
-
     h2o_system = mlt.System(mlt.Molecule('h2o.xyz'), box=None)
 
     # Define collective variables and attach upper walls
     # to restrain the system from exploding
-
     cv1 = mlt.PlumedAverageCV(name='cv1', atom_groups=((0, 1), (0, 2)))
     cv1.attach_upper_wall(location=5, kappa=10000)
 
@@ -29,7 +27,6 @@ if __name__ == '__main__':
 
     # Other metadynamics parameters can also be set by the method,
     # see initialise_for_metad_al() documentation for more info.
-
     bias = mlt.PlumedBias(cvs=(cv1, cv2))
     bias.initialise_for_metad_al(width=(0.05, 0.10), biasfactor=100)
 
@@ -37,7 +34,6 @@ if __name__ == '__main__':
     # Inheritance can be set to False, the same initialisation works.
     # Metadynamics bias starts being applied at iteration 2, at iterations 0
     # and 1 the training is performed using unbiased MD with the attached walls
-
     ace = mlt.potentials.ACE('water', system=h2o_system)
     ace.al_train(method_name='xtb',
                  temp=300,
