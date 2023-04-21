@@ -848,9 +848,9 @@ def _attach_inherited_bias_energies(configurations, iteration,
 
                 if start_idx == end_idx:
                     raise IndexError(f'CV {cv.name} value lies at the edge or '
-                                     f'outside of the grid for one of the '
-                                     f'configurations in the training set. '
-                                     f'Please use a larger grid')
+                                     f'outside of the grid for at least one '
+                                     f'of the configurations in the training '
+                                     f'set.')
 
             config.energy.inherited_bias = bias_grid[start_idxs[-1]]
 
@@ -864,8 +864,9 @@ def _generate_grid_from_hills(configurations, iteration, bias) -> None:
     """Generates bias_grid_{iteration-1}.dat from HILLS_{iteration-1}.dat"""
 
     min_params, max_params = [], []
+    metad_cv_idxs = [bias.cvs.index(cv) for cv in bias.metad_cvs]
 
-    for j in range(bias.n_metad_cvs):
+    for j in metad_cv_idxs:
         min_value = np.min(configurations.plumed_coordinates[:, j])
         max_value = np.max(configurations.plumed_coordinates[:, j])
 
