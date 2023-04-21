@@ -507,8 +507,8 @@ class UmbrellaSampling:
         os.chdir('trajectories')
 
         if save_sep:
-            for idx, metad_traj in enumerate(window_trajs, start=1):
-                metad_traj.save(filename=f'window_{idx}.xyz')
+            for idx, traj in enumerate(window_trajs, start=1):
+                traj.save(filename=f'window_{idx}.xyz')
 
         else:
             combined_traj = ConfigurationSet()
