@@ -714,6 +714,9 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
 
     logger.info('Generating metadynamics bias HILLS file to inherit from')
 
+    if iteration == bias_start_iter:
+        open(f'HILLS_{iteration}.dat', 'w').close()
+
     if iteration > bias_start_iter:
 
         shutil.move(src=f'HILLS_{iteration-1}.dat',
@@ -799,7 +802,14 @@ def _attach_inherited_bias_energies(configurations, iteration,
         inheritance_using_hills = os.path.exists(f'HILLS_{iteration-1}.dat')
 
         if inheritance_using_hills:
-            _generate_grid_from_hills(configurations, iteration, bias)
+            if os.path.getsize(f'HILLS_{iteration-1}.dat') == 0:
+                for config in configurations:
+                    config.energy.inherited_bias = 0
+
+                return None
+
+            else:
+                _generate_grid_from_hills(configurations, iteration, bias)
 
         cvs_cols = range(0, bias.n_metad_cvs)
         cvs_grid = np.loadtxt(f'bias_grid_{iteration-1}.dat',
