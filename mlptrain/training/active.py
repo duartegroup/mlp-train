@@ -178,10 +178,16 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                             iteration=iteration)
 
         # Active learning finds no configurations,,
-        if mlp.n_train == previous_n_train and iteration >= min_active_iters:
-            logger.info('No AL configurations found. Final dataset size '
-                        f'= {previous_n_train} Active learning = DONE')
-            break
+        if mlp.n_train == previous_n_train:
+
+            if iteration >= min_active_iters:
+                logger.info('No AL configurations found. Final dataset size '
+                            f'= {previous_n_train} Active learning = DONE')
+                break
+
+            else:
+                logger.info('No AL configurations found. Skipping training')
+                continue
 
         # If required, remove high-lying energy configurations from the data
         if max_e_threshold is not None:
@@ -190,9 +196,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
         if mlp.training_data.has_a_none_energy:
             mlp.training_data.remove_none_energy()
 
-        if mlp.n_train != previous_n_train:
-            logger.info('No AL configurations found. Skipping training')
-            mlp.train()
+        mlp.train()
 
     if inherit_metad_bias:
         _remove_last_inherited_metad_bias_file(max_active_iters, bias)
