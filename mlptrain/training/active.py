@@ -619,7 +619,8 @@ def _modify_kwargs_for_metad_bias_inheritance(kwargs) -> Dict:
             # Overwrites hills_fname when it is present during recursive MD
             shutil.copyfile(src=previous_hills_fname, dst=hills_fname)
 
-            kwargs['copied_substrings'] = ['.xml', '.json', '.pth', hills_fname]
+            kwargs['copied_substrings'] = ['.xml', '.json', '.pth',
+                                           hills_fname]
 
         kwargs['kept_substrings'] = [hills_fname]
 
@@ -745,7 +746,8 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
             with open(fname, 'w') as f:
 
                 # No new gaussians deposited
-                if second_header_first_index == 0:
+                if (second_header_first_index == 0
+                        and os.path.getsize(f'HILLS_{iteration}.dat') != 0):
                     pass
 
                 else:
@@ -761,9 +763,7 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
             os.remove(fname)
             continue
 
-        has_biasf = f_lines[0].split()[-1] == 'biasf'
-        height_column_index = -2 if has_biasf else -1
-
+        height_column_index = -2
         with open(f'HILLS_{iteration}.dat', 'a') as final_hills_file:
 
             # Attach the header to the final file if it's empty
