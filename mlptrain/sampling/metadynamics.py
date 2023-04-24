@@ -789,14 +789,10 @@ class Metadynamics:
                        interval:       Optional[int] = None,
                        ) -> None:
         """
-        TODO: modify
-        Performs block analysis on the most recent metadynamics run. Plots the
-        block analysis and saves mean FES grids with a range of block sizes
-        which, if the block analysis converged, can be used for plotting the
-        FES using plot_fes() method.
-
         Performs block averaging analysis on the sliced trajectory of the most
-        recent metadynamics run.
+        recent metadynamics run. Plots the block analysis and saves mean FES
+        grids with a range of block sizes, which, if the block analysis
+        converged, can be used for plotting the FES using plot_fes() method.
 
         -----------------------------------------------------------------------
         Arguments:
