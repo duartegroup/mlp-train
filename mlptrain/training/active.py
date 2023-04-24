@@ -546,8 +546,7 @@ def _check_bias_parameters(bias, temp) -> None:
 
         if bias.from_file is False and bias.metadynamics is True:
 
-            # 1E9 == dummy height value
-            if bias.height == 1E9:
+            if bias.height == 0:
                 logger.info('Setting the height for metadynamics active '
                             'learning to 5*k_B*T')
                 bias.height = 5 * ase_units.kB * temp

@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import Sequence, List, Tuple, Optional, Union
 from copy import deepcopy
+from ase import units as ase_units
 from ase.calculators.plumed import Plumed
 from ase.calculators.calculator import Calculator, all_changes
 from ase.parallel import broadcast
@@ -275,8 +276,8 @@ class PlumedBias(ASEConstraint):
             raise ValueError('The number of supplied widths (σ) does not '
                              'match the number of collective variables')
 
-        if height <= 0:
-            raise ValueError('Gaussian height (ω) must be positive')
+        if height < 0:
+            raise ValueError('Gaussian height (ω) must be non-negative float')
 
         else:
             self.height = height
@@ -457,11 +458,8 @@ class PlumedBias(ASEConstraint):
                               value
         """
 
-        # Setting height to dummy height (otherwise _set_metad_params() method
-        # complains), the true value is set in the al_train() method
         if height is None:
-            dummy_height = 1E9
-            height = dummy_height
+            height = 0
 
         self._set_metad_params(pace, width, height, biasfactor, cvs, grid_min,
                                grid_max, grid_bin)
@@ -1141,3 +1139,137 @@ def plot_cv1_and_cv2(filenames:   Sequence[str],
     plt.close(fig)
 
     return None
+
+
+def plumed_setup(bias:     'mlptrain.PlumedBias',
+                 temp:     float,
+                 interval: int,
+                 **kwargs) -> List[str]:
+    """
+    Generate a list which represents the PLUMED input file
+
+    ---------------------------------------------------------------------------
+    Arguments:
+
+        bias: PLUMED bias object
+
+        temp: (float) Temperature of a simulation
+
+        interval: (int) Interval between saving the geometry
+    """
+
+    setup = []
+
+    # Converting PLUMED units to ASE units
+    time_conversion = 1 / (ase_units.fs * 1000)
+    energy_conversion = ase_units.mol / ase_units.kJ
+    units_setup = ['UNITS '
+                   'LENGTH=A '
+                   f'TIME={time_conversion} '
+                   f'ENERGY={energy_conversion}']
+
+    if bias.from_file:
+        setup = bias.setup
+
+        if 'UNITS' in setup[0]:
+            logger.info('Setting PLUMED units to ASE units')
+            setup[0] = units_setup[0]
+
+            return setup
+
+        else:
+            logger.warning('Unit conversion not found in PLUMED input file, '
+                           'adding conversion from PLUMED units to ASE units')
+            setup.insert(0, units_setup[0])
+
+            return setup
+
+    setup.extend(units_setup)
+
+    # Defining DOFs and CVs (including upper and lower walls)
+    for cv in bias.cvs:
+        setup.extend(cv.setup)
+
+    # Metadynamics
+    if bias.metadynamics:
+
+        hills_filename = get_hills_filename(kwargs)
+
+        if 'load_metad_bias' in kwargs and kwargs['load_metad_bias'] is True:
+            load_metad_bias_setup = 'RESTART=YES '
+
+        else:
+            load_metad_bias_setup = ''
+
+        metad_setup = ['metad: METAD '
+                       f'ARG={bias.metad_cv_sequence} '
+                       f'PACE={bias.pace} '
+                       f'HEIGHT={bias.height} '
+                       f'SIGMA={bias.width_sequence} '
+                       f'TEMP={temp} '
+                       f'{bias.biasfactor_setup}'
+                       f'{bias.metad_grid_setup}'
+                       f'{load_metad_bias_setup}'
+                       f'FILE={hills_filename}']
+        setup.extend(metad_setup)
+
+    # Printing trajectory in terms of DOFs and CVs
+    for cv in bias.cvs:
+
+        colvar_filename = get_colvar_filename(cv, kwargs)
+
+        if cv.dof_names is not None:
+            args = f'{cv.name},{cv.dof_sequence}'
+
+        else:
+            args = cv.name
+
+        print_setup = ['PRINT '
+                       f'ARG={args} '
+                       f'FILE={colvar_filename} '
+                       f'STRIDE={interval}']
+        setup.extend(print_setup)
+
+    if 'remove_print' in kwargs and kwargs['remove_print'] is True:
+        for line in setup:
+            if line.startswith('PRINT'):
+                setup.remove(line)
+
+    if 'write_plumed_setup' in kwargs and kwargs['write_plumed_setup'] is True:
+        with open('plumed_setup.dat', 'w') as f:
+            for line in setup:
+                f.write(f'{line}\n')
+
+    return setup
+
+
+def get_colvar_filename(cv, kwargs) -> str:
+    """Return the name of the file where the trajectory in terms of collective
+    variable values would be written"""
+
+    # Remove the dot if component CV is used
+    name_without_dot = '_'.join(cv.name.split('.'))
+
+    if 'idx' in kwargs:
+        colvar_filename = f'colvar_{name_without_dot}_{kwargs["idx"]}.dat'
+
+    else:
+        colvar_filename = f'colvar_{name_without_dot}.dat'
+
+    return colvar_filename
+
+
+def get_hills_filename(kwargs) -> str:
+    """Return the name of the file where a list of deposited gaussians would be
+    written"""
+
+    filename = 'HILLS'
+
+    if 'iteration' in kwargs and kwargs['iteration'] is not None:
+        filename += f'_{kwargs["iteration"]}'
+
+    if 'idx' in kwargs and kwargs['idx'] is not None:
+        filename += f'_{kwargs["idx"]}'
+
+    filename += '.dat'
+    return filename

@@ -254,7 +254,8 @@ def test_block_analysis():
     dt = 1
     interval = 10
     n_runs = 1
-    ps = 1
+    ps = 2
+    start_time = 0.5
 
     metad.run_metadynamics(configuration=_h2_configuration(),
                            mlp=TestPotential('1D'),
@@ -268,13 +269,13 @@ def test_block_analysis():
                            n_runs=n_runs,
                            ps=ps)
 
-    metad.block_analysis()
+    metad.block_analysis(start_time=start_time)
 
     assert os.path.exists('block_analysis.pdf')
     assert os.path.exists('block_analysis')
 
-    time_fs = ps * 1E3
-    n_steps = int(time_fs / dt)
+    start_time_fs = start_time * 1E3
+    n_steps = int(start_time_fs / dt)
     n_used_frames = n_steps // interval
 
     min_n_blocks = 10
