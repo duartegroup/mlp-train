@@ -7,7 +7,12 @@ from typing import Optional, Sequence, List
 from numpy.random import RandomState
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
-from mlptrain.sampling.plumed import PlumedBias, PlumedCalculator
+from mlptrain.sampling.plumed import (
+    PlumedBias,
+    PlumedCalculator,
+    plumed_setup,
+    get_colvar_filename
+)
 from mlptrain.log import logger
 from mlptrain.box import Box
 from mlptrain.utils import work_in_tmp_dir
@@ -277,7 +282,7 @@ def _attach_calculator_and_constraints(ase_atoms, mlp, bias, temp, interval,
     if isinstance(bias, PlumedBias):
         logger.info('Using PLUMED bias for MLP MD')
 
-        setup = _plumed_setup(bias, temp, interval, **kwargs)
+        setup = plumed_setup(bias, temp, interval, **kwargs)
 
         plumed_calc = PlumedCalculator(calc=mlp.ase_calculator,
                                        input=setup,
@@ -430,7 +435,7 @@ def _attach_plumed_coordinates(mlt_traj, bias, **kwargs) -> None:
     """Attach PLUMED collective variable values to configurations in the
     trajectory if all colvar files have been printed"""
 
-    colvar_filenames = [_colvar_filename(cv, kwargs) for cv in bias.cvs]
+    colvar_filenames = [get_colvar_filename(cv, kwargs) for cv in bias.cvs]
 
     if all(os.path.exists(fname) for fname in colvar_filenames):
 
@@ -595,131 +600,13 @@ def _traj_saving_interval(dt: float,
     return saving_interval
 
 
-def _plumed_setup(bias, temp, interval, **kwargs) -> List[str]:
-    """Generate a list which represents the PLUMED input file"""
-
-    setup = []
-
-    # Converting PLUMED units to ASE units
-    time_conversion = 1 / (ase_units.fs * 1000)
-    energy_conversion = ase_units.mol / ase_units.kJ
-    units_setup = ['UNITS '
-                   'LENGTH=A '
-                   f'TIME={time_conversion} '
-                   f'ENERGY={energy_conversion}']
-
-    if bias.from_file:
-        setup = bias.setup
-
-        if 'UNITS' in setup[0]:
-            logger.info('Setting PLUMED units to ASE units')
-            setup[0] = units_setup[0]
-
-            return setup
-
-        else:
-            logger.warning('Unit conversion not found in PLUMED input file, '
-                           'adding a conversion from PLUMED units to ASE units')
-            setup.insert(0, units_setup[0])
-
-            return setup
-
-    setup.extend(units_setup)
-
-    # Defining DOFs and CVs (including upper and lower walls)
-    for cv in bias.cvs:
-        setup.extend(cv.setup)
-
-    # Metadynamics
-    if bias.metadynamics:
-
-        hills_filename = _hills_filename(kwargs)
-
-        if 'load_metad_bias' in kwargs and kwargs['load_metad_bias'] is True:
-            load_metad_bias_setup = 'RESTART=YES '
-
-        else:
-            load_metad_bias_setup = ''
-
-        metad_setup = ['metad: METAD '
-                       f'ARG={bias.metad_cv_sequence} '
-                       f'PACE={bias.pace} '
-                       f'HEIGHT={bias.height} '
-                       f'SIGMA={bias.width_sequence} '
-                       f'TEMP={temp} '
-                       f'{bias.biasfactor_setup}'
-                       f'{bias.metad_grid_setup}'
-                       f'{load_metad_bias_setup}'
-                       f'FILE={hills_filename}']
-        setup.extend(metad_setup)
-
-    # Printing trajectory in terms of DOFs and CVs
-    for cv in bias.cvs:
-
-        colvar_filename = _colvar_filename(cv, kwargs)
-
-        if cv.dof_names is not None:
-            args = f'{cv.name},{cv.dof_sequence}'
-
-        else:
-            args = cv.name
-
-        print_setup = ['PRINT '
-                       f'ARG={args} '
-                       f'FILE={colvar_filename} '
-                       f'STRIDE={interval}']
-        setup.extend(print_setup)
-
-    if 'remove_print' in kwargs and kwargs['remove_print'] is True:
-        for line in setup:
-            if line.startswith('PRINT'):
-                setup.remove(line)
-
-    if 'write_plumed_setup' in kwargs and kwargs['write_plumed_setup'] is True:
-        with open('plumed_setup.dat', 'w') as f:
-            for line in setup:
-                f.write(f'{line}\n')
-
-    return setup
-
-
-def _colvar_filename(cv, kwargs) -> str:
-    """Return the name of the file where the trajectory in terms of collective
-    variable values will be written"""
-
-    # Remove the dot if component CV is used
-    name_without_dot = '_'.join(cv.name.split('.'))
-
-    if 'idx' in kwargs:
-        colvar_filename = f'colvar_{name_without_dot}_{kwargs["idx"]}.dat'
-
-    else:
-        colvar_filename = f'colvar_{name_without_dot}.dat'
-
-    return colvar_filename
-
-
-def _hills_filename(kwargs) -> str:
-    """Return the name of the file where a list of deposited gaussians will be
-    written"""
-
-    filename = 'HILLS'
-
-    if 'iteration' in kwargs and kwargs['iteration'] is not None:
-        filename += f'_{kwargs["iteration"]}'
-
-    if 'idx' in kwargs and kwargs['idx'] is not None:
-        filename += f'_{kwargs["idx"]}'
-
-    filename += '.dat'
-    return filename
 
 
 def _remove_colvar_duplicate_frames(bias, **kwargs) -> None:
     """Remove duplicate frames from generated colvar files when using PLUMED
     bias"""
 
-    colvar_filenames = [_colvar_filename(cv, kwargs) for cv in bias.cvs]
+    colvar_filenames = [get_colvar_filename(cv, kwargs) for cv in bias.cvs]
 
     for filename in colvar_filenames:
 

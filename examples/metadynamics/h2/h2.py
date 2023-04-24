@@ -72,6 +72,11 @@ if __name__ == '__main__':
     # to estimate the convergence of the production simulation
     metad.plot_fes_convergence(stride=10, n_surfaces=5)
 
-    # Block analysis method also generates a set of free energy surfaces with
-    # different block sizes which can be used in plot_fes() method
-    metad.block_analysis()
+    # Block averaging analysis method also generates a set of free energy
+    # surfaces with different block sizes which can be used in plot_fes()
+    # method.
+
+    # To use block averaging analysis, an appropriate start time should be
+    # used (most of the bias should be deposited before start time for block
+    # averaging analysis to be trusted).
+    metad.block_analysis(start_time=5)

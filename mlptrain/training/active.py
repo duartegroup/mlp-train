@@ -178,10 +178,16 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                             iteration=iteration)
 
         # Active learning finds no configurations,,
-        if mlp.n_train == previous_n_train and iteration >= min_active_iters:
-            logger.info('No AL configurations found. Final dataset size '
-                        f'= {previous_n_train} Active learning = DONE')
-            break
+        if mlp.n_train == previous_n_train:
+
+            if iteration >= min_active_iters:
+                logger.info('No AL configurations found. Final dataset size '
+                            f'= {previous_n_train} Active learning = DONE')
+                break
+
+            else:
+                logger.info('No AL configurations found. Skipping training')
+                continue
 
         # If required, remove high-lying energy configurations from the data
         if max_e_threshold is not None:
@@ -190,9 +196,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
         if mlp.training_data.has_a_none_energy:
             mlp.training_data.remove_none_energy()
 
-        if mlp.n_train != previous_n_train:
-            logger.info('No AL configurations found. Skipping training')
-            mlp.train()
+        mlp.train()
 
     if inherit_metad_bias:
         _remove_last_inherited_metad_bias_file(max_active_iters, bias)
@@ -542,8 +546,7 @@ def _check_bias_parameters(bias, temp) -> None:
 
         if bias.from_file is False and bias.metadynamics is True:
 
-            # 1E9 == dummy height value
-            if bias.height == 1E9:
+            if bias.height == 0:
                 logger.info('Setting the height for metadynamics active '
                             'learning to 5*k_B*T')
                 bias.height = 5 * ase_units.kB * temp
@@ -615,7 +618,8 @@ def _modify_kwargs_for_metad_bias_inheritance(kwargs) -> Dict:
             # Overwrites hills_fname when it is present during recursive MD
             shutil.copyfile(src=previous_hills_fname, dst=hills_fname)
 
-            kwargs['copied_substrings'] = ['.xml', '.json', '.pth', hills_fname]
+            kwargs['copied_substrings'] = ['.xml', '.json', '.pth',
+                                           hills_fname]
 
         kwargs['kept_substrings'] = [hills_fname]
 
@@ -714,6 +718,9 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
 
     logger.info('Generating metadynamics bias HILLS file to inherit from')
 
+    if iteration == bias_start_iter:
+        open(f'HILLS_{iteration}.dat', 'w').close()
+
     if iteration > bias_start_iter:
 
         shutil.move(src=f'HILLS_{iteration-1}.dat',
@@ -738,7 +745,8 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
             with open(fname, 'w') as f:
 
                 # No new gaussians deposited
-                if second_header_first_index == 0:
+                if (second_header_first_index == 0
+                        and os.path.getsize(f'HILLS_{iteration}.dat') != 0):
                     pass
 
                 else:
@@ -754,9 +762,7 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
             os.remove(fname)
             continue
 
-        has_biasf = f_lines[0].split()[-1] == 'biasf'
-        height_column_index = -2 if has_biasf else -1
-
+        height_column_index = -2
         with open(f'HILLS_{iteration}.dat', 'a') as final_hills_file:
 
             # Attach the header to the final file if it's empty
@@ -799,7 +805,14 @@ def _attach_inherited_bias_energies(configurations, iteration,
         inheritance_using_hills = os.path.exists(f'HILLS_{iteration-1}.dat')
 
         if inheritance_using_hills:
-            _generate_grid_from_hills(configurations, iteration, bias)
+            if os.path.getsize(f'HILLS_{iteration-1}.dat') == 0:
+                for config in configurations:
+                    config.energy.inherited_bias = 0
+
+                return None
+
+            else:
+                _generate_grid_from_hills(configurations, iteration, bias)
 
         cvs_cols = range(0, bias.n_metad_cvs)
         cvs_grid = np.loadtxt(f'bias_grid_{iteration-1}.dat',
@@ -848,9 +861,9 @@ def _attach_inherited_bias_energies(configurations, iteration,
 
                 if start_idx == end_idx:
                     raise IndexError(f'CV {cv.name} value lies at the edge or '
-                                     f'outside of the grid for one of the '
-                                     f'configurations in the training set. '
-                                     f'Please use a larger grid')
+                                     f'outside of the grid for at least one '
+                                     f'of the configurations in the training '
+                                     f'set.')
 
             config.energy.inherited_bias = bias_grid[start_idxs[-1]]
 
@@ -864,8 +877,9 @@ def _generate_grid_from_hills(configurations, iteration, bias) -> None:
     """Generates bias_grid_{iteration-1}.dat from HILLS_{iteration-1}.dat"""
 
     min_params, max_params = [], []
+    metad_cv_idxs = [bias.cvs.index(cv) for cv in bias.metad_cvs]
 
-    for j in range(bias.n_metad_cvs):
+    for j in metad_cv_idxs:
         min_value = np.min(configurations.plumed_coordinates[:, j])
         max_value = np.max(configurations.plumed_coordinates[:, j])
 

@@ -6,6 +6,7 @@ import warnings
 import numpy as np
 import multiprocessing as mp
 import matplotlib.pyplot as plt
+import autode as ade
 from typing import Optional, Sequence, Union, Tuple, List
 from multiprocessing import Pool
 from subprocess import Popen
@@ -14,10 +15,11 @@ from scipy.stats import norm
 from ase import units as ase_units
 from ase.io import write as ase_write
 from ase.io.trajectory import Trajectory as ASETrajectory
-from mlptrain.configurations import ConfigurationSet
+from mlptrain.configurations import Configuration, ConfigurationSet
 from mlptrain.sampling.md import run_mlp_md
 from mlptrain.sampling.plumed import (
     PlumedBias,
+    plumed_setup,
     plot_cv_versus_time,
     plot_cv1_and_cv2
 )
@@ -29,7 +31,7 @@ from mlptrain.utils import (
     move_files,
     convert_ase_time,
     convert_ase_energy,
-    convert_exponents,
+    convert_exponents
 )
 
 
@@ -56,8 +58,8 @@ class Metadynamics:
         if bias is not None:
 
             if bias.from_file:
-                raise ValueError('Cannot initialise Metadynamics using PlumedBias '
-                                 'initialised from a file')
+                raise ValueError('Cannot initialise Metadynamics using '
+                                 'PlumedBias initialised from a file')
 
             else:
                 self.bias = bias
@@ -355,6 +357,7 @@ class Metadynamics:
 
         # Move .traj files into 'trajectories' folder and compute .xyz files
         self._move_and_save_files(metad_trajs, save_sep, all_to_xyz, restart)
+        self.plot_gaussian_heights()
 
         finish_metad = time.perf_counter()
         logger.info('Metadynamics done in '
@@ -517,6 +520,91 @@ class Metadynamics:
 
         return None
 
+    def plot_gaussian_heights(self,
+                              energy_units: str = 'kcal mol-1',
+                              time_units:   str = 'ps',
+                              path:         str = 'plumed_files/metadynamics'
+                              ) -> None:
+        """
+        Plots the height of deposited gaussians as a function of time (using
+        HILLS_{idx}.dat files).
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            energy_units: (str) Energy units to be used in plotting, available
+                                units: 'eV', 'kcal mol-1', 'kJ mol-1'
+
+            time_units: (str) Time units to be used in plotting, available
+                              units: 'fs', 'ps', 'ns'
+
+            path: (str) Directory where HILLS_{idx}.dat files are located
+        """
+
+        if not os.path.exists(path):
+            raise FileNotFoundError('Directory with metadynamics files not '
+                                    'found. Make sure to run metadynamics '
+                                    'before using this method')
+
+        initial_path = os.getcwd()
+        os.chdir(path)
+
+        idx = 1
+        while os.path.exists(f'HILLS_{idx}.dat'):
+            self._plot_gaussian_heights_single(idx=idx,
+                                               energy_units=energy_units,
+                                               time_units=time_units)
+            idx += 1
+
+        os.chdir(initial_path)
+        move_files([r'gaussian_heights_\d+.pdf'],
+                   src_folder=path,
+                   dst_folder='gaussian_heights',
+                   regex=True)
+
+        return None
+
+    @staticmethod
+    def _plot_gaussian_heights_single(idx:          int,
+                                      energy_units: str = 'kcal mol-1',
+                                      time_units:   str = 'ps'
+                                      ) -> None:
+        """
+        Plots the height of deposited gaussians as a function of time for a
+        single metadynamics run.
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            idx: (int) Index specifying metadynamics run number
+
+            energy_units: (str) Energy units to be used in plotting, available
+                                units: 'eV', 'kcal mol-1', 'kJ mol-1'
+
+            time_units: (str) Time units to be used in plotting, available
+                              units: 'fs', 'ps', 'ns'
+        """
+
+        filename = f'HILLS_{idx}.dat'
+
+        times = np.loadtxt(filename, usecols=0)
+        times = convert_ase_time(time_array=times, units=time_units)
+
+        heights = np.loadtxt(filename, usecols=-2)
+        heights = convert_ase_energy(energy_array=heights, units=energy_units)
+
+        fig, ax = plt.subplots()
+        ax.plot(times, heights)
+
+        ax.set_xlabel(f'Time / {time_units}')
+        ax.set_ylabel(f'Gaussian height / {convert_exponents(energy_units)}')
+
+        fig.tight_layout()
+        fig.savefig(f'gaussian_heights_{idx}.pdf')
+        plt.close(fig)
+
+        return None
+
     def try_multiple_biasfactors(self,
                                  configuration: 'mlptrain.Configuration',
                                  mlp:  'mlptrain.potentials._base.MLPotential',
@@ -605,8 +693,8 @@ class Metadynamics:
             cvs_holder = self.bias
 
         if cvs_holder.n_cvs > 2:
-            raise NotImplementedError('Plotting using more than two CVs is not '
-                                      'implemented')
+            raise NotImplementedError('Plotting using more than two CVs is '
+                                      'not implemented')
 
         if not all(cv in self.bias.metad_cvs for cv in cvs_holder.metad_cvs):
             raise ValueError('At least one of the supplied CVs are not within '
@@ -690,25 +778,30 @@ class Metadynamics:
         return None
 
     def block_analysis(self,
+                       start_time:     float,
+                       idx:            int = 1,
                        energy_units:   str = 'kcal mol-1',
                        n_bins:         int = 300,
                        cvs_bounds:     Optional[Sequence] = None,
-                       idx:            int = 1,
-                       configuration:  Optional = None,
-                       mlp:            Optional = None,
                        temp:           Optional[float] = None,
                        dt:             Optional[float] = None,
                        interval:       Optional[int] = None,
-                       **kwargs
                        ) -> None:
         """
-        Performs block analysis on the most recent metadynamics run. Plots the
-        block analysis and saves mean FES grids with a range of block sizes
-        which, if the block analysis converged, can be used for plotting the
-        FES using plot_fes() method.
+        Performs block averaging analysis on the sliced trajectory of the most
+        recent metadynamics run. Plots the block analysis and saves mean FES
+        grids with a range of block sizes, which, if the block analysis
+        converged, can be used for plotting the FES using plot_fes() method.
 
         -----------------------------------------------------------------------
         Arguments:
+
+            start_time: (float) Start time of the sliced trajectory which is
+                                going to be used for block averaging analysis
+                                (in ps)
+
+            idx: (int) Index specifying which metadynamics run (from n_runs)
+                       to use for block analysis
 
             energy_units: (str) Energy units to be used in plotting, available
                                 units: 'eV', 'kcal mol-1', 'kJ mol-1'
@@ -718,13 +811,6 @@ class Metadynamics:
             cvs_bounds: Specifies the range between which to compute the free
                         energy for each collective variable,
                         e.g. [(0.8, 1.5), (80, 120)]
-
-            idx: (int) Index specifying which metadynamics run (from n_runs)
-                       to use for block analysis
-
-            configuration: Configuration from which the simulation is started
-
-            mlp: Machine learnt potential
 
             temp: (float) Temperature in K to initialise velocities and to run
                           NVT MD. Must be positive
@@ -740,22 +826,32 @@ class Metadynamics:
 
         start = time.perf_counter()
 
-        bias, configuration, mlp, temp, dt, interval, kwargs = \
-            self._get_parameters_for_block_analysis(configuration, mlp, temp,
-                                                    dt, interval, **kwargs)
+        bias, temp, dt, interval = self._block_analysis_params(temp, dt, interval)
 
-        self._run_md_on_static_hills(idx, configuration, mlp, temp, dt, bias,
-                                     interval, **kwargs)
+        full_traj = ASETrajectory(f'trajectories/trajectory_{idx}.traj', 'r')
+        start_frame_index = int((start_time * 1E3) / (dt * interval))
+        sliced_traj = full_traj[start_frame_index:]
+
+        self._save_sliced_xyz(sliced_traj)
+        shutil.copyfile(src=f'plumed_files/metadynamics/HILLS_{idx}.dat',
+                        dst=f'HILLS_{idx}.dat')
+
+        # Writes plumed_setup.dat
+        plumed_setup(bias=bias,
+                     temp=temp,
+                     interval=interval,
+                     idx=idx,
+                     load_metad_bias=True,
+                     remove_print=True,
+                     write_plumed_setup=True)
 
         min_max_params = self._get_min_max_params(cvs_bounds=cvs_bounds,
                                                   path='plumed_files/'
                                                        'metadynamics')
 
-        n_steps = self._n_simulation_steps(dt, **kwargs)
-
         # The number of frames PLUMED driver takes into account
         # n_used_frames = n_total_frames - 1
-        n_used_frames = n_steps // interval
+        n_used_frames = len(sliced_traj) - 1
 
         min_n_blocks = 10
         min_blocksize = 10
@@ -795,7 +891,7 @@ class Metadynamics:
                    regex=True)
 
         os.remove('plumed_setup.dat')
-        os.remove('traj_static_hills.xyz')
+        os.remove('sliced_traj.xyz')
         os.remove(f'HILLS_{idx}.dat')
 
         self._plot_block_analysis(blocksizes, std_grids, energy_units)
@@ -805,90 +901,51 @@ class Metadynamics:
 
         return None
 
-    def _get_parameters_for_block_analysis(self, configuration, mlp, temp, dt,
-                                           interval, **kwargs) -> Tuple:
+    def _block_analysis_params(self, temp, dt, interval) -> Tuple:
         """Reads parameters from the previous metadynamics simulation. If
-        previous parameters are not set the method reads parameters which were
+        previous parameters are not set, the method reads parameters which were
         supplied to the block_analysis() method"""
 
         # Bias with dummy width and height values, and very large pace
         bias = deepcopy(self.bias)
         bias._set_metad_params(pace=int(1E9),
                                width=[1 for _ in range(self.n_cvs)],
-                               height=1)
+                               height=0)
 
-        _parameters = [configuration, mlp, temp, dt, interval]
-        _keys = ['ps', 'fs', 'ns']
+        _parameters = [temp, dt, interval]
 
         if len(self._previous_run_parameters) != 0:
-            configuration = self._previous_run_parameters['configuration']
-            mlp = self._previous_run_parameters['mlp']
             temp = self._previous_run_parameters['temp']
             dt = self._previous_run_parameters['dt']
             interval = self._previous_run_parameters['interval']
-            kwargs = self._previous_run_parameters['sim_time_dict']
 
-        elif (any(param is None for param in _parameters)
-              or all(key not in kwargs for key in _keys)):
+        elif any(param is None for param in _parameters):
 
             raise TypeError('Metadynamics object does not have all the '
                             'required parameters to run block analysis. '
                             'Please provide parameters from the previous '
                             'metadynamics run')
 
-        return bias, configuration, mlp, temp, dt, interval, kwargs
+        return bias, temp, dt, interval
 
     @staticmethod
-    def _run_md_on_static_hills(idx, configuration, mlp, temp, dt, bias,
-                                interval, **kwargs) -> None:
-        """Run MD on the biased potential from previous metadynamics
-        simulation, save the trajectory and save the PLUMED input file"""
+    def _save_sliced_xyz(sliced_traj):
+        """Saves sliced trajectory as .xyz file"""
 
-        shutil.copyfile(src=f'plumed_files/metadynamics/HILLS_{idx}.dat',
-                        dst=f'HILLS_{idx}.dat')
+        _mlt_configuration_set = ConfigurationSet()
+        for atoms in sliced_traj:
+            config = Configuration()
+            config.atoms = [ade.Atom(label) for label in atoms.symbols]
 
-        copied_substrings = [f'HILLS_{idx}.dat', '.xml', '.json', '.pth']
-        kept_substrings = ['plumed_setup.dat']
-        kwargs['idx'] = idx
-        kwargs['load_metad_bias'] = True
-        kwargs['remove_print'] = True
-        kwargs['write_plumed_setup'] = True
+            for i, position in enumerate(atoms.get_positions()):
+                config.atoms[i].coord = position
 
-        traj = run_mlp_md(configuration=configuration,
-                          mlp=mlp,
-                          temp=temp,
-                          dt=dt,
-                          interval=interval,
-                          bias=bias,
-                          copied_substrings=copied_substrings,
-                          kept_substrings=kept_substrings,
-                          **kwargs)
+            _mlt_configuration_set.append(config)
 
-        traj.save('traj_static_hills.xyz')
-
+        _mlt_configuration_set.save('sliced_traj.xyz')
         return None
 
-    @staticmethod
-    def _n_simulation_steps(dt, **kwargs) -> int:
-        """Returns the number of steps taken in previous simulation"""
-
-        if 'ps' in kwargs:
-            time_fs = 1E3 * kwargs['ps']
-
-        elif 'fs' in kwargs:
-            time_fs = kwargs['fs']
-
-        elif 'ns' in kwargs:
-            time_fs = 1E6 * kwargs['ns']
-
-        else:
-            raise ValueError('Simulation time not found')
-
-        n_steps = int(time_fs / dt)
-
-        return n_steps
-
-    @work_in_tmp_dir(copied_substrings=['traj_static_hills.xyz',
+    @work_in_tmp_dir(copied_substrings=['sliced_traj.xyz',
                                         'plumed_setup.dat',
                                         'HILLS'])
     def _compute_grids_for_blocksize(self, blocksize, temp, energy_units,
@@ -957,7 +1014,7 @@ class Metadynamics:
                 cv.write_files()
 
         driver_process = Popen(['plumed', 'driver',
-                                '--ixyz', 'traj_static_hills.xyz',
+                                '--ixyz', 'sliced_traj.xyz',
                                 '--plumed', 'reweight.dat',
                                 '--length-units', 'A'])
         driver_process.wait()
@@ -1299,7 +1356,8 @@ class Metadynamics:
                               the last computed surface), must not exceed the
                               number of computed surfaces
 
-            time_units: (str) Time units to be used in plotting
+            time_units: (str) Time units to be used in plotting, available
+                              units: 'fs', 'ps', 'ns'
 
             energy_units: (str) Energy units to be used in plotting, available
                                 units: 'eV', 'kcal mol-1', 'kJ mol-1'

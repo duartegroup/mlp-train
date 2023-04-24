@@ -69,11 +69,17 @@ def test_run_metadynamics():
         assert os.path.exists(f'trajectories/trajectory_{idx}.traj')
 
         for sim_time in [200, 400]:
-            assert os.path.exists(f'trajectories/trajectory_{idx}_{sim_time}fs.traj')
-            assert os.path.exists(f'trajectories/metad_{idx}_{sim_time}fs.xyz')
+            assert os.path.exists(f'trajectories/'
+                                  f'trajectory_{idx}_{sim_time}fs.traj')
+            assert os.path.exists(f'trajectories/'
+                                  f'metad_{idx}_{sim_time}fs.xyz')
 
-        assert os.path.exists(os.path.join(metad_dir, f'colvar_cv1_{idx}.dat'))
-        assert os.path.exists(os.path.join(metad_dir, f'HILLS_{idx}.dat'))
+        assert os.path.exists(os.path.join(metad_dir,
+                                           f'colvar_cv1_{idx}.dat'))
+        assert os.path.exists(os.path.join(metad_dir,
+                                           f'HILLS_{idx}.dat'))
+
+        assert os.path.exists(f'gaussian_heights/gaussian_heights_{idx}.pdf')
 
     metad.compute_fes(n_bins=100)
 
@@ -248,7 +254,8 @@ def test_block_analysis():
     dt = 1
     interval = 10
     n_runs = 1
-    ps = 1
+    ps = 2
+    start_time = 0.5
 
     metad.run_metadynamics(configuration=_h2_configuration(),
                            mlp=TestPotential('1D'),
@@ -262,13 +269,13 @@ def test_block_analysis():
                            n_runs=n_runs,
                            ps=ps)
 
-    metad.block_analysis()
+    metad.block_analysis(start_time=start_time)
 
     assert os.path.exists('block_analysis.pdf')
     assert os.path.exists('block_analysis')
 
-    time_fs = ps * 1E3
-    n_steps = int(time_fs / dt)
+    start_time_fs = start_time * 1E3
+    n_steps = int(start_time_fs / dt)
     n_used_frames = n_steps // interval
 
     min_n_blocks = 10
