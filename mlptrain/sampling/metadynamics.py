@@ -58,8 +58,8 @@ class Metadynamics:
         if bias is not None:
 
             if bias.from_file:
-                raise ValueError('Cannot initialise Metadynamics using PlumedBias '
-                                 'initialised from a file')
+                raise ValueError('Cannot initialise Metadynamics using '
+                                 'PlumedBias initialised from a file')
 
             else:
                 self.bias = bias
@@ -556,7 +556,6 @@ class Metadynamics:
                                                time_units=time_units)
             idx += 1
 
-
         os.chdir(initial_path)
         move_files([r'gaussian_heights_\d+.pdf'],
                    src_folder=path,
@@ -598,7 +597,7 @@ class Metadynamics:
         ax.plot(times, heights)
 
         ax.set_xlabel(f'Time / {time_units}')
-        ax.set_ylabel(f'Gaussian heights / {convert_exponents(energy_units)}')
+        ax.set_ylabel(f'Gaussian height / {convert_exponents(energy_units)}')
 
         fig.tight_layout()
         fig.savefig(f'gaussian_heights_{idx}.pdf')
@@ -694,8 +693,8 @@ class Metadynamics:
             cvs_holder = self.bias
 
         if cvs_holder.n_cvs > 2:
-            raise NotImplementedError('Plotting using more than two CVs is not '
-                                      'implemented')
+            raise NotImplementedError('Plotting using more than two CVs is '
+                                      'not implemented')
 
         if not all(cv in self.bias.metad_cvs for cv in cvs_holder.metad_cvs):
             raise ValueError('At least one of the supplied CVs are not within '
@@ -827,8 +826,7 @@ class Metadynamics:
 
         start = time.perf_counter()
 
-        bias, temp, dt, interval = \
-            self._get_params_for_block_analysis(temp, dt, interval)
+        bias, temp, dt, interval = self._block_analysis_params(temp, dt, interval)
 
         full_traj = ASETrajectory(f'trajectories/trajectory_{idx}.traj', 'r')
         start_frame_index = int((start_time * 1E3) / (dt * interval))
@@ -903,7 +901,7 @@ class Metadynamics:
 
         return None
 
-    def _get_params_for_block_analysis(self, temp, dt, interval) -> Tuple:
+    def _block_analysis_params(self, temp, dt, interval) -> Tuple:
         """Reads parameters from the previous metadynamics simulation. If
         previous parameters are not set, the method reads parameters which were
         supplied to the block_analysis() method"""
@@ -930,7 +928,8 @@ class Metadynamics:
 
         return bias, temp, dt, interval
 
-    def _save_sliced_xyz(self, sliced_traj):
+    @staticmethod
+    def _save_sliced_xyz(sliced_traj):
         """Saves sliced trajectory as .xyz file"""
 
         _mlt_configuration_set = ConfigurationSet()
