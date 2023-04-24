@@ -69,11 +69,17 @@ def test_run_metadynamics():
         assert os.path.exists(f'trajectories/trajectory_{idx}.traj')
 
         for sim_time in [200, 400]:
-            assert os.path.exists(f'trajectories/trajectory_{idx}_{sim_time}fs.traj')
-            assert os.path.exists(f'trajectories/metad_{idx}_{sim_time}fs.xyz')
+            assert os.path.exists(f'trajectories/'
+                                  f'trajectory_{idx}_{sim_time}fs.traj')
+            assert os.path.exists(f'trajectories/'
+                                  f'metad_{idx}_{sim_time}fs.xyz')
 
-        assert os.path.exists(os.path.join(metad_dir, f'colvar_cv1_{idx}.dat'))
-        assert os.path.exists(os.path.join(metad_dir, f'HILLS_{idx}.dat'))
+        assert os.path.exists(os.path.join(metad_dir,
+                                           f'colvar_cv1_{idx}.dat'))
+        assert os.path.exists(os.path.join(metad_dir,
+                                           f'HILLS_{idx}.dat'))
+        assert os.path.exists(os.path.join(metad_dir,
+                                           f'gaussian_heights_{idx}.pdf'))
 
     metad.compute_fes(n_bins=100)
 

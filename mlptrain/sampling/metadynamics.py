@@ -355,6 +355,7 @@ class Metadynamics:
 
         # Move .traj files into 'trajectories' folder and compute .xyz files
         self._move_and_save_files(metad_trajs, save_sep, all_to_xyz, restart)
+        self.plot_gaussian_heights()
 
         finish_metad = time.perf_counter()
         logger.info('Metadynamics done in '
@@ -514,6 +515,86 @@ class Metadynamics:
                 sim_time_dict[key] = kwargs[key]
 
         self._previous_run_parameters['sim_time_dict'] = sim_time_dict
+
+        return None
+
+    def plot_gaussian_heights(self,
+                              energy_units: str = 'kcal mol-1',
+                              time_units:   str = 'ps',
+                              path:         str = 'plumed_files/metadynamics'
+                              ) -> None:
+        """
+        Plots the height of deposited gaussians as a function of time (using
+        HILLS_{idx}.dat files).
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            energy_units: (str) Energy units to be used in plotting, available
+                                units: 'eV', 'kcal mol-1', 'kJ mol-1'
+
+            time_units: (str) Time units to be used in plotting, available
+                              units: 'fs', 'ps', 'ns'
+
+            path: (str) Directory where HILLS_{idx}.dat files are located
+        """
+
+        if not os.path.exists(path):
+            raise FileNotFoundError('Directory with metadynamics files not '
+                                    'found. Make sure to run metadynamics '
+                                    'before using this method')
+
+        initial_path = os.getcwd()
+        os.chdir(path)
+
+        idx = 1
+        while os.path.exists(f'HILLS_{idx}.dat'):
+            self._plot_gaussian_heights_single(idx=idx,
+                                               energy_units=energy_units,
+                                               time_units=time_units)
+            idx += 1
+
+        os.chdir(initial_path)
+        return None
+
+    @staticmethod
+    def _plot_gaussian_heights_single(idx:          int,
+                                      energy_units: str = 'kcal mol-1',
+                                      time_units:   str = 'ps'
+                                      ) -> None:
+        """
+        Plots the height of deposited gaussians as a function of time for a
+        single metadynamics run.
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            idx: (int) Index specifying metadynamics run number
+
+            energy_units: (str) Energy units to be used in plotting, available
+                                units: 'eV', 'kcal mol-1', 'kJ mol-1'
+
+            time_units: (str) Time units to be used in plotting, available
+                              units: 'fs', 'ps', 'ns'
+        """
+
+        filename = f'HILLS_{idx}.dat'
+
+        times = np.loadtxt(filename, usecols=0)
+        times = convert_ase_time(time_array=times, units=time_units)
+
+        heights = np.loadtxt(filename, usecols=-2)
+        heights = convert_ase_energy(energy_array=heights, units=energy_units)
+
+        fig, ax = plt.subplots()
+        ax.plot(times, heights)
+
+        ax.set_xlabel(f'Time / {time_units}')
+        ax.set_ylabel(f'Gaussian heights / {convert_exponents(energy_units)}')
+
+        fig.tight_layout()
+        fig.savefig(f'gaussian_heights_{idx}.pdf')
+        plt.close(fig)
 
         return None
 
@@ -1299,7 +1380,8 @@ class Metadynamics:
                               the last computed surface), must not exceed the
                               number of computed surfaces
 
-            time_units: (str) Time units to be used in plotting
+            time_units: (str) Time units to be used in plotting, available
+                              units: 'fs', 'ps', 'ns'
 
             energy_units: (str) Energy units to be used in plotting, available
                                 units: 'eV', 'kcal mol-1', 'kJ mol-1'
