@@ -78,8 +78,8 @@ def test_run_metadynamics():
                                            f'colvar_cv1_{idx}.dat'))
         assert os.path.exists(os.path.join(metad_dir,
                                            f'HILLS_{idx}.dat'))
-        assert os.path.exists(os.path.join(metad_dir,
-                                           f'gaussian_heights_{idx}.pdf'))
+
+        assert os.path.exists(f'gaussian_heights/gaussian_heights_{idx}.pdf')
 
     metad.compute_fes(n_bins=100)
 

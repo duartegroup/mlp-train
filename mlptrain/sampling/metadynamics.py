@@ -556,7 +556,13 @@ class Metadynamics:
                                                time_units=time_units)
             idx += 1
 
+
         os.chdir(initial_path)
+        move_files([r'gaussian_heights_\d+.pdf'],
+                   src_folder=path,
+                   dst_folder='gaussian_heights',
+                   regex=True)
+
         return None
 
     @staticmethod
