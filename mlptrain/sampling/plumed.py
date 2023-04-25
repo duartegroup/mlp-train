@@ -933,6 +933,7 @@ class PlumedDifferenceCV(_PlumedCV):
         PLUMED collective variable as a difference between two degrees of
         freedom (distances, angles, torsions),
 
+        TODO: change the behaviour to be consistent with mlt.DifferenceDistance
         e.g. [(0, 1), (1, 2)] gives ζ = r_12 - r_01
 
         -----------------------------------------------------------------------
