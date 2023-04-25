@@ -1,24 +1,26 @@
-import numpy as np
-from time import time
-from copy import deepcopy
-from mlptrain.box import Box
-from mlptrain.log import logger
-from mlptrain.config import Config
-from mlptrain.potentials._base import MLPotential
-from mlptrain.config import Config
-import ast
+# logging?
 import logging
+# dataclasses?
+import dataclasses
+
 import os
-from typing import Optional
+import ast
+import time
+import torch
 import torch.nn.functional
+import numpy as np
+from copy import deepcopy
+from typing import Optional
+from prettytable import PrettyTable
 from e3nn import o3
 from torch.optim.swa_utils import SWALR, AveragedModel
 from torch_ema import ExponentialMovingAverage
-from mlptrain.config import Config
 from ase.data import chemical_symbols
-import dataclasses
-from prettytable import PrettyTable
-import torch
+from mlptrain.potentials._base import MLPotential
+from mlptrain.config import Config
+from mlptrain.box import Box
+from mlptrain.log import logger
+
 
 class MACE(MLPotential):
 
