@@ -498,6 +498,7 @@ class PlumedBias(ASEConstraint):
         _stripped_setup, _args = [], []
         for line in reversed(self.setup):
 
+            # TODO: fix
             if line.startswith('UPPER_WALLS') or line.startswith('LOWER_WALLS'):
                 _stripped_setup.append(line)
                 _args.extend(self._find_args(line))
@@ -715,7 +716,7 @@ class _PlumedCV:
                     continue
                 else:
                     line = line.strip()
-                    self.setup.extend([line])
+                    self.setup.append(line)
 
         _names = [line.split(':')[0] for line in self.setup]
 

@@ -50,6 +50,7 @@ class Metadynamics:
         configurations for active learning.
 
         -----------------------------------------------------------------------
+        TODO: docs
         Arguments:
 
             cvs: Sequence of PLUMED collective variables
