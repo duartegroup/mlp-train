@@ -28,6 +28,8 @@ class _ConfigClass:
                    'config_type_weights': '{"Default":1.0}',
                    'model': 'MACE',
                    'loss': 'weighted',
+                   'energy_weight': 1.0,
+                   'forces_weight': 5.0,
                    'hidden_irreps': '128x0e + 128x1o',
                    'batch_size': 10,
                    'r_max': 5,
