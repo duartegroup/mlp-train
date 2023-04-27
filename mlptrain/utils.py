@@ -4,7 +4,7 @@ import shutil
 import numpy as np
 from tempfile import mkdtemp
 from functools import wraps
-from typing import Optional, List, Sequence
+from typing import Optional, List, Sequence, Union
 from ase import units as ase_units
 
 
@@ -230,15 +230,16 @@ def convert_exponents(string: str) -> str:
     return re.sub(exponent_pattern, _modified_exponent, string)
 
 
-def convert_ase_time(time_array: np.ndarray,
-                     units: str) -> np.ndarray:
+def convert_ase_time(time_array: Union[np.ndarray, float],
+                     units:      str
+                     ) -> np.ndarray:
     """
     Converts ASE time units to different time units.
 
     ---------------------------------------------------------------------------
     Arguments:
 
-        time_array: (np.ndarray) Numpy array containing time in ase units
+        time_array: Array or a single number containing time in ase units
 
         units: (str) Name of the units to convert to
 
@@ -265,15 +266,16 @@ def convert_ase_time(time_array: np.ndarray,
     return time_array
 
 
-def convert_ase_energy(energy_array: np.ndarray,
-                       units: str) -> np.ndarray:
+def convert_ase_energy(energy_array: Union[np.ndarray, float],
+                       units:        str
+                       ) -> np.ndarray:
     """
     Converts ASE energy units to different energy units.
 
     ---------------------------------------------------------------------------
     Arguments:
 
-        energy_array: (np.ndarray) Numpy array containing energy in ase units
+        energy_array: Array or a single number containing energy in ase units
 
         units: Name of the units to convert to
 
