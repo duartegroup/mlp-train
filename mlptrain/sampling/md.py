@@ -283,6 +283,7 @@ def _attach_calculator_and_constraints(ase_atoms, mlp, bias, temp, interval,
         logger.info('Using PLUMED bias for MLP MD')
 
         setup = plumed_setup(bias, temp, interval, **kwargs)
+        bias.write_cv_files()
 
         plumed_calc = PlumedCalculator(calc=mlp.ase_calculator,
                                        input=setup,
@@ -293,11 +294,6 @@ def _attach_calculator_and_constraints(ase_atoms, mlp, bias, temp, interval,
 
         if restart:
             plumed_calc.istep = n_previous_steps
-
-        if bias.cvs is not None:
-            for cv in bias.cvs:
-                if cv.files is not None:
-                    cv.write_files()
 
         ase_atoms.calc = plumed_calc
 
@@ -435,7 +431,7 @@ def _attach_plumed_coordinates(mlt_traj, bias, **kwargs) -> None:
     """Attach PLUMED collective variable values to configurations in the
     trajectory if all colvar files have been printed"""
 
-    colvar_filenames = [get_colvar_filename(cv, kwargs) for cv in bias.cvs]
+    colvar_filenames = [get_colvar_filename(cv, **kwargs) for cv in bias.cvs]
 
     if all(os.path.exists(fname) for fname in colvar_filenames):
 
@@ -600,13 +596,11 @@ def _traj_saving_interval(dt: float,
     return saving_interval
 
 
-
-
 def _remove_colvar_duplicate_frames(bias, **kwargs) -> None:
     """Remove duplicate frames from generated colvar files when using PLUMED
     bias"""
 
-    colvar_filenames = [get_colvar_filename(cv, kwargs) for cv in bias.cvs]
+    colvar_filenames = [get_colvar_filename(cv, **kwargs) for cv in bias.cvs]
 
     for filename in colvar_filenames:
 

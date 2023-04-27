@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Sequence, List, Tuple, Optional, Union
+from typing import Sequence, List, Tuple, Dict, Optional, Union
 from copy import deepcopy
 from ase import units as ase_units
 from ase.calculators.plumed import Plumed
@@ -70,7 +70,7 @@ class PlumedBias(ASEConstraint):
 
     def __init__(self,
                  cvs:       Union[Sequence['_PlumedCV'], '_PlumedCV'] = None,
-                 file_name: str = None):
+                 filename:  str = None):
         """
         Class for storing collective variables and parameters used in biased
         simulations, parameters are not initialised with the object and have
@@ -83,25 +83,25 @@ class PlumedBias(ASEConstraint):
 
             cvs: Sequence of PLUMED collective variables
 
-            file_name: (str) Complete PLUMED input file
+            filename: (str) Complete PLUMED input file
         """
 
-        self.setup:  Optional[List[str]] = None
+        self.setup:     Optional[List[str]] = None
+        self.cv_files:  Optional[Tuple[str, str]] = None
 
         self.pace:        Optional[int] = None
         self.width:       Optional[Union[Sequence[float], float]] = None
         self.height:      Optional[float] = None
         self.biasfactor:  Optional[float] = None
 
-        self.metad_cvs:          Optional[List['_PlumedCV']] = None
-        # self.plumed_calculator:  Optional['PlumedCalculator'] = None
+        self.metad_cvs:  Optional[List['_PlumedCV']] = None
 
         for param_name in ['min', 'max', 'bin', 'wstride', 'wfile', 'rfile']:
             setattr(self, f'metad_grid_{param_name}', None)
 
-        if file_name is not None:
+        if filename is not None:
             self.cvs = None
-            self._from_file(file_name)
+            self._from_file(filename)
 
         elif cvs is not None:
             cvs = self._check_cvs_format(cvs)
@@ -374,7 +374,8 @@ class PlumedBias(ASEConstraint):
             if isinstance(params, list) or isinstance(params, tuple):
 
                 if len(params) == 0:
-                    raise ValueError('The supplied parameter sequence is empty')
+                    raise ValueError('The supplied parameter sequence '
+                                     'is empty')
 
                 elif len(params) != self.n_metad_cvs:
                     raise ValueError('The length of the parameter sequence '
@@ -397,18 +398,56 @@ class PlumedBias(ASEConstraint):
 
         return None
 
-    def _from_file(self, file_name) -> None:
+    def _from_file(self, filename: str) -> None:
         """Method to extract PLUMED setup from a file"""
 
         self.setup = []
 
-        with open(file_name, 'r') as f:
+        with open(filename, 'r') as f:
             for line in f:
                 if line[0] == '#' or line == '\n':
                     continue
                 else:
                     line = line.strip()
                     self.setup.append(line)
+
+        cv_filenames = _find_files(self.setup)
+        if len(cv_filenames) > 0:
+            self._attach_cv_files(cv_filenames)
+
+        return None
+
+    def _attach_cv_files(self, cv_filenames: List[str]) -> None:
+        """Attach files required for CVs from the PlumedBias setup"""
+
+        self.cv_files = []
+
+        for filename in cv_filenames:
+            if not os.path.exists(filename):
+                raise FileNotFoundError(f'File {filename}, which is '
+                                        f'required for defining one of the '
+                                        f'CVs was not found in the '
+                                        'current directory')
+
+            with open(filename, 'r') as f:
+                data = f.read()
+
+            self.cv_files.append((filename, data))
+
+        return None
+
+    def write_cv_files(self) -> None:
+        """Write files attached to the CVs to the current directory"""
+
+        if self.from_file:
+            if self.cv_files is not None:
+                for filename, data in self.cv_files:
+                    with open(filename, 'w') as f:
+                        f.write(data)
+
+        else:
+            for cv in self.cvs:
+                cv.write_files()
 
         return None
 
@@ -485,10 +524,9 @@ class PlumedBias(ASEConstraint):
         return None
 
     def _strip_setup(self) -> None:
-        """If the bias is initialised using a PLUMED input file, this method
-        removes all lines from the setup except the ones defining lower and
-        upper walls, and the collective variables to which the walls are
-        attached"""
+        """If the bias is initialised using a PLUMED input file, remove all
+        lines from the setup except the ones defining lower and upper walls,
+        and the collective variables to which the walls are attached"""
 
         if self.setup is None:
             raise TypeError('Setup of the bias is not initialised, if you '
@@ -498,13 +536,13 @@ class PlumedBias(ASEConstraint):
         _stripped_setup, _args = [], []
         for line in reversed(self.setup):
 
-            if self._contains_walls(line):
+            if _defines_wall(line):
                 _stripped_setup.append(line)
-                _args.extend(self._find_args(line))
+                _args.extend(_find_args(line))
 
             if any(line.startswith(arg) for arg in _args):
                 _stripped_setup.append(line)
-                _args.extend(self._find_args(line))
+                _args.extend(_find_args(line))
 
         # Reverse back to normal order
         _stripped_setup = _stripped_setup[::-1]
@@ -515,32 +553,6 @@ class PlumedBias(ASEConstraint):
         self.setup = _stripped_setup
 
         return None
-
-    @staticmethod
-    def _contains_walls(line) -> bool:
-        """Check if a line in the setup contains UPPER_WALLS or LOWER_WALLS"""
-
-        for el in line.split():
-            if el == 'UPPER_WALLS' or el == 'LOWER_WALLS':
-                return True
-
-        return False
-
-    @staticmethod
-    def _find_args(line) -> List:
-        """Find and return inputs to ARG parameter in a given line of a PLUMED
-        setup"""
-
-        _args = []
-        _line = line.split(' ')
-
-        for element in _line:
-            element = element.split('=')
-
-            if element[0] == 'ARG':
-                _args = element[-1].split(',')
-
-        return _args
 
     @staticmethod
     def _check_cvs_format(cvs) -> List['_PlumedCV']:
@@ -594,7 +606,7 @@ class _PlumedCV:
     def __init__(self,
                  name:         str = None,
                  atom_groups:  Sequence = None,
-                 file_name:    str = None,
+                 filename:     str = None,
                  component:    Optional[str] = None):
         """
         This class contains methods to initialise PLUMED collective variables
@@ -622,21 +634,27 @@ class _PlumedCV:
                           e.g. [(0, 1), (2, 3)];
                                [0, 1, 2]
 
-            file_name: (str) Name of the PLUMED file used to generate a CV
-                             from that file
+            filename: (str) Name of the PLUMED file used to generate a CV
+                            from that file
 
             component: (str) Name of a component of the last CV in the supplied
                              PLUMED input file to use as a collective variable,
                              e.g. 'spath' for PATH collective variable.
         """
 
-        self.setup = []
-        self.name = self.units = self.dof_names = self.dof_units = None
-        self.lower_wall = self.upper_wall = None
-        self.files = None
+        self.setup:  List = []
+        self.files:  Optional[Tuple[str, str]] = None
 
-        if file_name is not None:
-            self._from_file(file_name, component)
+        self.name:       Optional[str] = None
+        self.units:      Optional[str] = None
+        self.dof_names:  Optional[List[str]] = None
+        self.dof_units:  Optional[List[str]] = None
+
+        self.lower_wall:  Optional[Dict] = None
+        self.upper_wall:  Optional[Dict] = None
+
+        if filename is not None:
+            self._from_file(filename, component)
 
         elif atom_groups is not None:
             self._from_atom_groups(name, atom_groups)
@@ -658,7 +676,7 @@ class _PlumedCV:
                           exp:       float = 2
                           ) -> None:
         """
-        Attaches lower wall bias to the collective variable.
+        Attache lower wall bias to the collective variable.
 
         -----------------------------------------------------------------------
         Arguments:
@@ -690,7 +708,7 @@ class _PlumedCV:
                           exp:       float = 2
                           ) -> None:
         """
-        Attaches upper wall bias to the collective variable.
+        Attache upper wall bias to the collective variable.
 
         -----------------------------------------------------------------------
         Arguments:
@@ -716,10 +734,10 @@ class _PlumedCV:
 
         return None
 
-    def _from_file(self, file_name, component) -> None:
+    def _from_file(self, filename: str, component: str) -> None:
         """Generate DOFs and a CV from a file"""
 
-        with open(file_name, 'r') as f:
+        with open(filename, 'r') as f:
             for line in f:
                 if line[0] == '#' or line == '\n':
                     continue
@@ -737,30 +755,14 @@ class _PlumedCV:
 
         self._check_name()
 
-        filenames = self._find_files()
+        filenames = _find_files(self.setup)
         if len(filenames) > 0:
             self._attach_files(filenames)
 
         return None
 
-    def _find_files(self) -> List:
-        """Finds files in the CV initialisation"""
-
-        filenames = []
-        for line in self.setup:
-            line = line.split()
-
-            for element in line:
-                element = element.split('=')
-                name = element[-1]
-
-                if name.endswith('.dat') or name.endswith('.pdb'):
-                    filenames.append(name)
-
-        return filenames
-
-    def _attach_files(self, filenames) -> None:
-        """Attaches files found in the CV initialisation to the CV object"""
+    def _attach_files(self, filenames: List[str]) -> None:
+        """Attache files found in the CV initialisation to the CV object"""
 
         self.files = []
 
@@ -779,18 +781,16 @@ class _PlumedCV:
         return None
 
     def write_files(self) -> None:
-        """Writes files attached to the CV to the current directory"""
+        """Write files attached to the CV to the current directory"""
 
-        if self.files is None:
-            raise TypeError(f'CV {self.name} has no attached files')
-
-        for filename, data in self.files:
-            with open(filename, 'w') as f:
-                f.write(data)
+        if self.files is not None:
+            for filename, data in self.files:
+                with open(filename, 'w') as f:
+                    f.write(data)
 
         return None
 
-    def _from_atom_groups(self, name, atom_groups) -> None:
+    def _from_atom_groups(self, name: str, atom_groups: Sequence) -> None:
         """Generate DOFs from atom_groups"""
 
         self.name = name
@@ -826,7 +826,7 @@ class _PlumedCV:
         return None
 
     def _check_name(self) -> None:
-        """Checks if the supplied name is valid"""
+        """Check if the supplied name is valid"""
 
         if ' ' in self.name:
             raise ValueError('Spaces in CV names are not allowed')
@@ -838,7 +838,7 @@ class _PlumedCV:
 
         return None
 
-    def _atom_group_to_dof(self, idx, atom_group) -> None:
+    def _atom_group_to_dof(self, idx: int, atom_group: Sequence) -> None:
         """Check the atom group and generate a DOF"""
 
         # PLUMED atom enumeration starts from 1
@@ -876,7 +876,7 @@ class _PlumedCV:
 
         return None
 
-    def _set_units(self, units=None) -> None:
+    def _set_units(self, units: Optional[str] = None) -> None:
         """Set units of the collective variable as a string"""
 
         if self.dof_units is not None:
@@ -975,7 +975,7 @@ class PlumedCustomCV(_PlumedCV):
     """Class used to initialise a PLUMED collective variable from a file"""
 
     def __init__(self,
-                 file_name:  str,
+                 filename:   str,
                  component:  Optional[str] = None,
                  units:      Optional[str] = None):
         """
@@ -991,18 +991,76 @@ class PlumedCustomCV(_PlumedCV):
         -----------------------------------------------------------------------
         Arguments:
 
-            file_name: (str) Name of the PLUMED file used to generate a CV
-                             from that file
+            filename: (str) Name of the PLUMED file used to generate a CV
+                            from that file
 
             component: (str) Name of a component of the last CV in the supplied
                              PLUMED input file to use as a collective variable
 
             units: (str) Units of the collective variable, used in plots
         """
-        super().__init__(file_name=file_name,
+        super().__init__(filename=filename,
                          component=component)
 
         self.units = units
+
+
+def _defines_wall(line: str) -> bool:
+    """Check if a line in a setup defines UPPER_WALLS or LOWER_WALLS"""
+
+    elements = line.split()
+    for element in [elements[0], elements[1]]:
+        if element == 'UPPER_WALLS' or element == 'LOWER_WALLS':
+            return True
+
+    return False
+
+
+def _defines_cv(line: str) -> bool:
+    """Check if a line in a setup defines a CV"""
+
+    elements = line.split()
+    for element in [elements[0], elements[1]]:
+        if any(cv == element for cv in CVS):
+            return True
+
+    return False
+
+
+def _find_files(setup: List[str]) -> List:
+    """Find and return filenames required for PLUMED collective variables
+    during a simulation"""
+
+    filenames = []
+    for line in setup:
+
+        if _defines_cv(line):
+            line = line.split()
+
+            for element in line:
+                element = element.split('=')
+                name = element[-1]
+
+                if name.endswith('.dat') or name.endswith('.pdb'):
+                    filenames.append(name)
+
+    return filenames
+
+
+def _find_args(line: str) -> List:
+    """Find and return inputs to ARG parameter in a given line of a PLUMED
+    setup"""
+
+    _args = []
+    _line = line.split(' ')
+
+    for element in _line:
+        element = element.split('=')
+
+        if element[0] == 'ARG':
+            _args = element[-1].split(',')
+
+    return _args
 
 
 def plot_cv_versus_time(filename:    str,
@@ -1013,8 +1071,8 @@ def plot_cv_versus_time(filename:    str,
                         label:       Optional[str] = None,
                         ) -> None:
     """
-    Plots a collective variable as a function of time from a given colvar file.
-    Only plots the first collective variable in the colvar file.
+    Plot a collective variable as a function of time from a given colvar file.
+    Only plot the first collective variable in the colvar file.
 
     ---------------------------------------------------------------------------
     Arguments:
@@ -1082,7 +1140,7 @@ def plot_cv1_and_cv2(filenames:   Sequence[str],
                      label:       Optional[str] = None
                      ) -> None:
     """
-    Plots the trajectory of the system by tracking two collective variables
+    Plot the trajectory of the system by tracking two collective variables
     using two colvar files. The function only works for two collective
     variables.
 
@@ -1203,7 +1261,7 @@ def plumed_setup(bias:     'mlptrain.PlumedBias',
     # Metadynamics
     if bias.metadynamics:
 
-        hills_filename = get_hills_filename(kwargs)
+        hills_filename = get_hills_filename(**kwargs)
 
         if 'load_metad_bias' in kwargs and kwargs['load_metad_bias'] is True:
             load_metad_bias_setup = 'RESTART=YES '
@@ -1226,7 +1284,7 @@ def plumed_setup(bias:     'mlptrain.PlumedBias',
     # Printing trajectory in terms of DOFs and CVs
     for cv in bias.cvs:
 
-        colvar_filename = get_colvar_filename(cv, kwargs)
+        colvar_filename = get_colvar_filename(cv, **kwargs)
 
         if cv.dof_names is not None:
             args = f'{cv.name},{cv.dof_sequence}'
@@ -1256,7 +1314,8 @@ def plumed_setup(bias:     'mlptrain.PlumedBias',
     return setup
 
 
-def get_colvar_filename(cv, kwargs) -> str:
+def get_colvar_filename(cv: '_PlumedCV',
+                        **kwargs) -> str:
     """Return the name of the file where the trajectory in terms of collective
     variable values would be written"""
 
@@ -1272,7 +1331,7 @@ def get_colvar_filename(cv, kwargs) -> str:
     return colvar_filename
 
 
-def get_hills_filename(kwargs) -> str:
+def get_hills_filename(**kwargs) -> str:
     """Return the name of the file where a list of deposited gaussians would be
     written"""
 
@@ -1286,3 +1345,12 @@ def get_hills_filename(kwargs) -> str:
 
     filename += '.dat'
     return filename
+
+
+CVS = ['ADAPTIVE_PATH', 'ALPHABETA', 'ALPHARMSD', 'ANGLE', 'ANTIBETARMSD',
+       'CELL', 'CONSTANT', 'CONTACTMAP', 'COORDINATION', 'DHENERGY', 'DIHCOR',
+       'DIMER', 'DIPOLE', 'DISTANCE', 'DISTANCE_FROM_CONTOUR', 'EEFSOLV',
+       'ENERGY', 'ERMSD', 'EXTRACV', 'FAKE', 'GHBFIX', 'GPROPERTYMAP',
+       'GYRATION', 'PARABETARMSD', 'PATH', 'PATHMSD', 'PCAVARS', 'POSITION',
+       'PROJECTION_ON_AXIS', 'PROPERTYMAP', 'PUCKERING', 'TEMPLATE', 'TORSION',
+       'VOLUME']
