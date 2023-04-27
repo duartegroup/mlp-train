@@ -498,8 +498,7 @@ class PlumedBias(ASEConstraint):
         _stripped_setup, _args = [], []
         for line in reversed(self.setup):
 
-            # TODO: fix
-            if line.startswith('UPPER_WALLS') or line.startswith('LOWER_WALLS'):
+            if self._contains_walls(line):
                 _stripped_setup.append(line)
                 _args.extend(self._find_args(line))
 
@@ -516,6 +515,16 @@ class PlumedBias(ASEConstraint):
         self.setup = _stripped_setup
 
         return None
+
+    @staticmethod
+    def _contains_walls(line) -> bool:
+        """Check if a line in the setup contains UPPER_WALLS or LOWER_WALLS"""
+
+        for el in line.split():
+            if el == 'UPPER_WALLS' or el == 'LOWER_WALLS':
+                return True
+
+        return False
 
     @staticmethod
     def _find_args(line) -> List:

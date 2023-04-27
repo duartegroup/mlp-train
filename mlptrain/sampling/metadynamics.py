@@ -50,10 +50,15 @@ class Metadynamics:
         configurations for active learning.
 
         -----------------------------------------------------------------------
-        TODO: docs
         Arguments:
 
             cvs: Sequence of PLUMED collective variables
+
+            bias: PLUMED bias which can be supplied if additional collective
+                  variables are required,
+                  e.g. Metadynamics(cvs=cv1, bias=PlumedBias(cvs=(cv1, cv2)),
+                  where cv1 will be biased using metadynamics, and cv2 might
+                  be an additional CV with WALLS to constrain the system
         """
 
         if bias is not None:
