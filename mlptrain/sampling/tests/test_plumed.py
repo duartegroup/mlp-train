@@ -17,7 +17,7 @@ def test_plumed_cv_from_atom_groups():
                          'cv1: CUSTOM '
                          'ARG=cv1_dist1,cv1_dist2 '
                          'VAR=cv1_dist1,cv1_dist2 '
-                         'FUNC=cv1_dist2-cv1_dist1 '
+                         'FUNC=cv1_dist1-cv1_dist2 '
                          'PERIODIC=NO']
 
     cv2 = mlt.PlumedAverageCV('cv2', (0, 1, 2))
@@ -89,7 +89,7 @@ def test_plumed_cv_walls():
                          'cv1: CUSTOM '
                          'ARG=cv1_dist1,cv1_dist2 '
                          'VAR=cv1_dist1,cv1_dist2 '
-                         'FUNC=cv1_dist2-cv1_dist1 '
+                         'FUNC=cv1_dist1-cv1_dist2 '
                          'PERIODIC=NO',
                          'LOWER_WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
                          'UPPER_WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3']

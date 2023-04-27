@@ -942,8 +942,7 @@ class PlumedDifferenceCV(_PlumedCV):
         PLUMED collective variable as a difference between two degrees of
         freedom (distances, angles, torsions),
 
-        TODO: change the behaviour to be consistent with mlt.DifferenceDistance
-        e.g. [(0, 1), (1, 2)] gives ζ = r_12 - r_01
+        e.g. [(0, 2), (0, 1)] gives ζ = r_02 - r_01
 
         -----------------------------------------------------------------------
         Arguments:
@@ -963,7 +962,7 @@ class PlumedDifferenceCV(_PlumedCV):
             raise ValueError('DifferenceCV must comprise exactly two '
                              'groups of atoms')
 
-        func = f'{self.dof_names[-1]}-{self.dof_names[0]}'
+        func = f'{self.dof_names[0]}-{self.dof_names[-1]}'
 
         self.setup.extend([f'{self.name}: '
                            f'CUSTOM ARG={self.dof_sequence} '
@@ -1245,6 +1244,9 @@ def plumed_setup(bias:     'mlptrain.PlumedBias',
         for line in setup:
             if line.startswith('PRINT'):
                 setup.remove(line)
+
+    # Remove duplicate lines
+    setup = list(dict.fromkeys(setup))
 
     if 'write_plumed_setup' in kwargs and kwargs['write_plumed_setup'] is True:
         with open('plumed_setup.dat', 'w') as f:
