@@ -1,4 +1,5 @@
 # The installation only works for Linux systems
+# Make sure to be in the scripts directory before running this script
 echo "Installing everything to an new conda environment called: mace"
 
 # ----------------------------------------------------
