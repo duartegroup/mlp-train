@@ -176,7 +176,7 @@ class MACE(MLPotential):
                     checkpoint_handler=self.checkpoint_handler,
                     eval_interval=self.args.eval_interval,
                     start_epoch=self.start_epoch,
-                    max_num_epochs= self.max_num_epochs,
+                    max_num_epochs=self.max_num_epochs,
                     logger=metrics_logger,
                     patience=self.args.patience,
                     output_args=self.output_args,
@@ -312,7 +312,7 @@ class MACE(MLPotential):
 
         if self._train_configs is None:
             _, self._train_configs = data.load_from_xyz(
-                file_path=self.args.train_path,
+                file_path=self.args.train_file,
                 config_type_weights=self.config_type_weights,
                 energy_key=self.args.energy_key,
                 forces_key=self.args.forces_key,
@@ -449,7 +449,7 @@ class MACE(MLPotential):
                 else:
                     mean, std = modules.scaling_classes[self.args.scaling](
                         self.train_loader,
-                        self.atomic_energies)
+                        self.atomic_energies_array)
 
                 self._model = modules.ScaleShiftMACE(
                     **model_config,
@@ -465,7 +465,7 @@ class MACE(MLPotential):
 
                 mean, std = modules.scaling_classes[self.args.scaling](
                     self.train_loader,
-                    self.atomic_energies)
+                    self.atomic_energies_array)
 
                 self._model = modules.ScaleShiftMACE(
                     **model_config,
@@ -481,7 +481,7 @@ class MACE(MLPotential):
 
                 mean, std = modules.scaling_classes[self.args.scaling](
                     self.train_loader,
-                    self.atomic_energies)
+                    self.atomic_energies_array)
 
                 self._model = modules.ScaleShiftBOTNet(
                     **model_config,
