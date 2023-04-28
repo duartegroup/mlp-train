@@ -485,6 +485,9 @@ def _attach_plumed_coords_to_init_configs(init_configs, bias) -> None:
                             f'FILE=colvar_{cv.name}_driver.dat '
                             'STRIDE=1')
 
+    # Remove duplicate lines
+    driver_setup = list(dict.fromkeys(driver_setup))
+
     with open('driver_setup.dat', 'w') as f:
         for line in driver_setup:
             f.write(f'{line}\n')
