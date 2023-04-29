@@ -34,7 +34,7 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
                bbond_energy:       Optional[dict] = None,
                bias:               Optional = None,
                restart_files:      Optional[List[str]] = None,
-               copied_substrings:  Sequence[str] = ('.xml', '.json', '.pth'),
+               copied_substrings:  Sequence[str] = ('.xml', '.json', '.pth', '.model'),
                kept_substrings:    Optional[Sequence[str]] = None,
                **kwargs
                ) -> 'mlptrain.Trajectory':

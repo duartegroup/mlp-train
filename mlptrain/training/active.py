@@ -595,7 +595,7 @@ def _modify_kwargs_for_metad_bias_inheritance(kwargs) -> Dict:
 
         else:
             previous_grid_fname = f'bias_grid_{kwargs["iteration"]-1}.dat'
-            kwargs['copied_substrings'] = ['.xml', '.json', '.pth',
+            kwargs['copied_substrings'] = ['.xml', '.json', '.pth', '.model',
                                            previous_grid_fname]
 
         grid_fname = f'bias_grid_{kwargs["iteration"]}_{kwargs["idx"]}.dat'
@@ -618,7 +618,7 @@ def _modify_kwargs_for_metad_bias_inheritance(kwargs) -> Dict:
             # Overwrites hills_fname when it is present during recursive MD
             shutil.copyfile(src=previous_hills_fname, dst=hills_fname)
 
-            kwargs['copied_substrings'] = ['.xml', '.json', '.pth',
+            kwargs['copied_substrings'] = ['.xml', '.json', '.pth', '.model',
                                            hills_fname]
 
         kwargs['kept_substrings'] = [hills_fname]
