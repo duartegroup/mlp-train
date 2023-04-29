@@ -1280,7 +1280,6 @@ class Metadynamics:
                             * np.std(fes_grids, axis=0, ddof=1))
 
         else:
-            # No benefit from n_fes_grids
             mean_fes = fes_grids[-2]
             std_mean_fes = fes_grids[-1]
 
@@ -1303,7 +1302,9 @@ class Metadynamics:
 
         mean_contourf = ax_mean.contourf(cv1_grid, cv2_grid, mean_fes, 256,
                                          cmap=mod_jet_cmap)
-        ax_mean.contour = (cv1_grid, cv2_grid, mean_fes, 20)
+        ax_mean.contour(cv1_grid, cv2_grid, mean_fes, 20,
+                        colors='k',
+                        alpha=0.2)
 
         mean_cbar = fig.colorbar(mean_contourf, ax=ax_mean)
         mean_cbar.set_label(label=r'$\Delta G$ / '
@@ -1312,7 +1313,9 @@ class Metadynamics:
         std_error_contourf = ax_std_error.contourf(cv1_grid, cv2_grid,
                                                    interval_range, 256,
                                                    cmap='Blues')
-        ax_std_error.contour = (cv1_grid, cv2_grid, interval_range, 20)
+        ax_std_error.contour(cv1_grid, cv2_grid, mean_fes, 20,
+                             colors='k',
+                             alpha=0.2)
 
         std_error_cbar = fig.colorbar(std_error_contourf, ax=ax_std_error)
         std_error_cbar.set_label(label='Confidence interval / '
