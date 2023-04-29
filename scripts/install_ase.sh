@@ -2,10 +2,6 @@
 # containing mlp-train and other packages required for the chosen machine
 # learning potential before running this script.
 
-echo "* Installing py-plumed *"
-conda install -c conda-forge py-plumed
-
-# ----------------------------------------------------
 echo "* Installing ASE package from the master branch *"
 wget https://github.com/rosswhitfield/ase/archive/refs/heads/master.zip
 unzip master.zip && rm master.zip

@@ -7,3 +7,4 @@ coloredlogs
 dscribe
 matplotlib-base
 pytest
+py-plumed
