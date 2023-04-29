@@ -229,8 +229,6 @@ class MACE(MLPotential):
         model_path = os.path.join(self.args.checkpoints_dir, self.filename)
 
         if Config.mace_params['save_cpu']:
-            # TODO: test if works this way
-            # model = self.model.to('cpu')
             self.model.to('cpu')
 
         logging.info(f'Saving the model {self.filename} '
@@ -416,7 +414,6 @@ class MACE(MLPotential):
     @property
     def output_args(self) -> Dict:
         """Dictionary containing required outputs"""
-        # TODO: not in Hanwen branch, might delete
         return {"energy": True,
                 "forces": True,
                 "virials": False,
@@ -681,90 +678,3 @@ class MACE(MLPotential):
                 self._ema = None
 
         return self._ema
-
-    # TODO: another overwritten function (this one seems to be the same except
-    #  some table types are removed) (will try to remove the method)
-    # def create_error_table( self, table_type, all_collections, z_table, r_max, valid_batch_size, model, loss_fn, device):
-    #     table = PrettyTable()
-    #     if table_type == "TotalRMSE":
-    #         table.field_names = [
-    #         "config_type",
-    #         "RMSE E / meV",
-    #         "RMSE F / meV / A",
-    #         "relative F RMSE %",
-    #         ]
-    #     elif table_type == "PerAtomRMSE":
-    #         table.field_names = [
-    #         "config_type",
-    #         "RMSE E / meV / atom",
-    #         "RMSE F / meV / A",
-    #         "relative F RMSE %",
-    #         ]
-    #     elif table_type == "TotalMAE":
-    #         table.field_names = [
-    #         "config_type",
-    #         "MAE E / meV",
-    #         "MAE F / meV / A",
-    #         "relative F MAE %",
-    #         ]
-    #     elif table_type == "PerAtomMAE":
-    #         table.field_names = [
-    #         "config_type",
-    #         "MAE E / meV / atom",
-    #         "MAE F / meV / A",
-    #         "relative F MAE %",
-    #         ]
-    #     for name, subset in all_collections:
-    #         # TODO: stuff imported in _train_file()
-    #         data_loader = torch_geometric.dataloader.DataLoader(
-    #         dataset=[
-    #             data.AtomicData.from_config(config, z_table=z_table, cutoff=r_max)
-    #             for config in subset
-    #         ],
-    #         batch_size=valid_batch_size,
-    #         shuffle=False,
-    #         drop_last=False,
-    #         )
-    #
-    #         logging.info(f"Evaluating {name} ...")
-    #         # TODO: needs to be inported
-    #         _, metrics = evaluate(
-    #         model, loss_fn=loss_fn, data_loader=data_loader, device=device
-    #         )
-    #         if table_type == "TotalRMSE":
-    #             table.add_row(
-    #             [
-    #                 name,
-    #                 f"{metrics['rmse_e'] * 1000:.1f}",
-    #                 f"{metrics['rmse_f'] * 1000:.1f}",
-    #                 f"{metrics['rel_rmse_f']:.2f}",
-    #             ]
-    #             )
-    #         elif table_type == "PerAtomRMSE":
-    #             table.add_row(
-    #             [
-    #                 name,
-    #                 f"{metrics['rmse_e_per_atom'] * 1000:.1f}",
-    #                 f"{metrics['rmse_f'] * 1000:.1f}",
-    #                 f"{metrics['rel_rmse_f']:.2f}",
-    #             ]
-    #             )
-    #         elif table_type == "TotalMAE":
-    #             table.add_row(
-    #             [
-    #                 name,
-    #                 f"{metrics['mae_e'] * 1000:.1f}",
-    #                 f"{metrics['mae_f'] * 1000:.1f}",
-    #                 f"{metrics['rel_mae_f']:.2f}",
-    #             ]
-    #             )
-    #         elif table_type == "PerAtomMAE":
-    #             table.add_row(
-    #             [
-    #                 name,
-    #                 f"{metrics['mae_e_per_atom'] * 1000:.1f}",
-    #                 f"{metrics['mae_f'] * 1000:.1f}",
-    #                 f"{metrics['rel_mae_f']:.2f}",
-    #             ]
-    #             )
-    #     return table
