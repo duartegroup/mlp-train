@@ -3,15 +3,8 @@ import ast
 import time
 import shutil
 import logging
-import torch
-import torch.nn.functional
 import numpy as np
 from typing import Optional, Dict, List
-# TODO: remove later if works without custom table function
-# from prettytable import PrettyTable
-from e3nn import o3
-from torch.optim.swa_utils import SWALR, AveragedModel
-from torch_ema import ExponentialMovingAverage
 from ase.data import chemical_symbols
 from mlptrain.potentials._base import MLPotential
 from mlptrain.config import Config
@@ -19,7 +12,12 @@ from mlptrain.box import Box
 from mlptrain.log import logger
 
 try:
+    import torch
+    import torch.nn.functional
     import mace
+    from e3nn import o3
+    from torch.optim.swa_utils import SWALR, AveragedModel
+    from torch_ema import ExponentialMovingAverage
     from mace import data, modules, tools
     from mace.tools import torch_geometric
     from mace.tools.scripts_utils import create_error_table, get_dataset_from_xyz

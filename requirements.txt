@@ -2,9 +2,8 @@ numpy<=1.23.5
 cython
 scipy
 autode==1.1*
-ase==3.22*
+ase
 coloredlogs
 dscribe
 matplotlib-base
 pytest
-py-plumed

@@ -1,11 +1,10 @@
-# The installation only works for Linux systems
 # Make sure to be in the scripts directory before running this script
+
 echo "* Installing everything to an new conda environment called: mace *"
 
 # ----------------------------------------------------
 echo "* Installing mlp-train dependencies *"
 conda create --name mace python=3.7 --file ../requirements.txt -c conda-forge --yes
-
 conda activate mace
 
 # ----------------------------------------------------
@@ -14,7 +13,7 @@ pip install -e ../
 
 # ----------------------------------------------------
 echo "* Installing PyTorch *"
-pip3 install torch torchvision torchaudio
+pip install torch torchvision torchaudio
 
 # ----------------------------------------------------
 echo "* Installing MACE dependencies *"
