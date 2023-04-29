@@ -290,6 +290,9 @@ class Metadynamics:
 
             {save_fs, save_ps, save_ns}: Trajectory saving interval
                                          in some units
+
+            constraints: (List) List of ASE constraints to use in the dynamics
+                                e.g. [ase.constraints.Hookean(a1, a2, k, rt)]
         """
 
         start_metad = time.perf_counter()

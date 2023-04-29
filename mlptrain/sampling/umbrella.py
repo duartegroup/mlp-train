@@ -404,6 +404,9 @@ class UmbrellaSampling:
 
             {save_fs, save_ps, save_ns}: Trajectory saving interval
                                          in some units
+
+            constraints: (List) List of ASE constraints to use in the dynamics
+                                e.g. [ase.constraints.Hookean(a1, a2, k, rt)]
         """
 
         start_umbrella = time.perf_counter()
