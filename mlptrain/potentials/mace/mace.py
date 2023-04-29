@@ -103,6 +103,7 @@ class MACE(MLPotential):
         self._show_error_table()
         self._save_model()
 
+        os.remove(f'{self.name}_data.xyz')
         return None
 
     @property
@@ -234,12 +235,13 @@ class MACE(MLPotential):
             # model = self.model.to('cpu')
             self.model.to('cpu')
 
-        logging.info(f'Saving the model to {model_path}')
-        torch.save(self.model, model_path)
+        logging.info(f'Saving the model {self.filename} '
+                     f'to {self.args.checkpoints_dir} '
+                     'and the current directory')
 
-        logging.info(f'Saving the model to the current directory as well')
+        torch.save(self.model, model_path)
         shutil.copyfile(src=os.path.join(os.getcwd(), model_path),
-                        dst=os.getcwd())
+                        dst=os.path.join(os.getcwd(), self.filename))
 
         return None
 
@@ -417,7 +419,11 @@ class MACE(MLPotential):
     def output_args(self) -> Dict:
         """Dictionary containing required outputs"""
         # TODO: not in Hanwen branch, might delete
-        return {"energy": True, "forces": True}
+        return {"energy": True,
+                "forces": True,
+                "virials": False,
+                "stress": False,
+                "dipoles": False}
 
     @property
     def model(self) -> torch.nn.Module:
