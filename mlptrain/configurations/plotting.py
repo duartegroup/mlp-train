@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import linregress
 
 
+mpl.rcParams['figure.dpi'] = 400
 mpl.rcParams['axes.labelsize'] = 15
 mpl.rcParams['lines.linewidth'] = 1
 mpl.rcParams['lines.markersize'] = 5
