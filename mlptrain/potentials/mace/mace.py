@@ -1,11 +1,10 @@
 import os
 import ast
 import time
-# import shutil
+import shutil
 import logging
 import numpy as np
 from typing import Optional, Dict, List
-from ase.calculators.calculator import Calculator
 from ase.data import chemical_symbols
 from mlptrain.potentials._base import MLPotential
 from mlptrain.config import Config
@@ -22,120 +21,9 @@ try:
     from mace import data, modules, tools
     from mace.tools import torch_geometric, torch_tools, utils
     from mace.tools.scripts_utils import create_error_table, get_dataset_from_xyz
-    # from mace.calculators import MACECalculator as ParentMACECalculator
     from mace.calculators import MACECalculator
 except ModuleNotFoundError:
     pass
-
-
-# class MACECalculator(ParentMACECalculator):
-#
-#     def __init__(self,
-#                  model_path: str,
-#                  # mace: 'mlptrain.potentials.MACE',
-#                  device: str,
-#                  energy_units_to_eV: float = 1.0,
-#                  length_units_to_A: float = 1.0,
-#                  default_dtype: str = 'float64',
-#                  **kwargs):
-#         """doc"""
-#
-#         Calculator.__init__(self, **kwargs)
-#         self.results = {}
-#
-#         # model = getattr(modules, Config.mace_params['model'])
-#         ## self.model = model()
-#         # self.model = model.load_state_dict(torch.load(model_path))
-#
-#         self.mace = MACE(name='model_path', system=None)
-#         self.state_dict = torch.load(f'{self.mace.name}_state_dict.model')
-#         self.model = self._get_model()
-#
-#         self.r_max = self.state_dict['r_max']
-#         self.device = torch_tools.init_device(device)
-#         self.energy_units_to_eV = energy_units_to_eV
-#         self.length_units_to_A = length_units_to_A
-#         self.z_table = utils.AtomicNumberTable(
-#             [int(z) for z in self.state_dict['atomic_numbers']])
-#
-#         torch_tools.set_default_dtype(default_dtype)
-#
-#         # self.model = torch.load(f=model_path, map_location=device)
-#         # self.r_max = float(self.model.r_max)
-#         # self.device = torch_tools.init_device(device)
-#         # self.energy_units_to_eV = energy_units_to_eV
-#         # self.length_units_to_A = length_units_to_A
-#         # self.z_table = utils.AtomicNumberTable(
-#         #     [int(z) for z in self.model.atomic_numbers])
-#
-#     @property
-#     def args(self) -> '':
-#         """doc"""
-#         return self.mace.args
-#
-#     def _get_model(self) -> 'torch.nn.Module':
-#         """Loads the torch model from the state dictionary"""
-#
-#         model_config = dict(
-#             r_max=Config.mace_params['r_max'],
-#             num_bessel=self.args.num_radial_basis,
-#             num_polynomial_cutoff=self.args.num_cutoff_basis,
-#             max_ell=self.args.max_ell,
-#             interaction_cls=modules.interaction_classes[
-#                 self.args.interaction],
-#             num_interactions=self.args.num_interactions,
-#             num_elements=len(self.z_table),
-#             hidden_irreps=o3.Irreps(Config.mace_params['hidden_irreps']),
-#             atomic_energies=self.atomic_energies_array,
-#             avg_num_neighbors=self.avg_num_neighbors,
-#             atomic_numbers=self.z_table.zs)
-#
-#         if Config.mace_params['model'] == "MACE":
-#
-#             self.model = modules.ScaleShiftMACE(
-#                 **model_config,
-#                 correlation=Config.mace_params['correlation'],
-#                 gate=modules.gate_dict[self.args.gate],
-#                 interaction_cls_first=modules.interaction_classes[
-#                     "RealAgnosticInteractionBlock"],
-#                 MLP_irreps=o3.Irreps(self.args.MLP_irreps),
-#                 atomic_inter_scale=self.state_dict['scale_shift.scale'],
-#                 atomic_inter_shift=0.0)
-#
-#         elif Config.mace_params['model'] == "ScaleShiftMACE":
-#
-#             self.model = modules.ScaleShiftMACE(
-#                 **model_config,
-#                 correlation=Config.mace_params['correlation'],
-#                 gate=modules.gate_dict[self.args.gate],
-#                 interaction_cls_first=modules.interaction_classes[
-#                     self.args.interaction_first],
-#                 MLP_irreps=o3.Irreps(self.args.MLP_irreps),
-#                 atomic_inter_scale=self.state_dict['scale_shift.scale'],
-#                 atomic_inter_shift=self.state_dict['scale_shift.shift'])
-#
-#         elif Config.mace_params['model'] == "ScaleShiftBOTNet":
-#
-#             self.model = modules.ScaleShiftBOTNet(
-#                 **model_config,
-#                 gate=modules.gate_dict[self.args.gate],
-#                 interaction_cls_first=modules.interaction_classes[
-#                     self.args.interaction_first],
-#                 MLP_irreps=o3.Irreps(self.args.MLP_irreps),
-#                 atomic_inter_scale=self.state_dict['scale_shift.scale'],
-#                 atomic_inter_shift=self.state_dict['scale_shift.shift'])
-#
-#         elif Config.mace_params['model'] == "BOTNet":
-#
-#             self.model = modules.BOTNet(
-#                 **model_config,
-#                 gate=modules.gate_dict[self.args.gate],
-#                 interaction_cls_first=modules.interaction_classes[
-#                     self.args.interaction_first],
-#                 MLP_irreps=o3.Irreps(self.args.MLP_irreps))
-#
-#         else:
-#             raise RuntimeError(f'Unknown model: {Config.mace_params["model"]}')
 
 
 class MACE(MLPotential):
@@ -166,7 +54,6 @@ class MACE(MLPotential):
 
         logging.info(f"MACE version: {mace.__version__}")
 
-        # Cache
         self._defaults = {'_train_configs': None,
                           '_valid_configs': None,
                           '_z_table': None,
@@ -218,6 +105,7 @@ class MACE(MLPotential):
         self._load_latest_epoch()
         self._show_error_table()
         self._save_model()
+        self._reset_train_objs()
 
         os.remove(f'{self.name}_data.xyz')
         return None
@@ -240,16 +128,10 @@ class MACE(MLPotential):
                                     default_dtype="float64")
         return calculator
 
-    # @property
-    # def filename(self):
-    #     """Filename of the saved potential"""
-    #     return f'{self.name}.model'
-
-    # TODO:
-    # def pool(self, processes: int) -> 'torch.multiprocessing.Pool':
-    #     """Multiprocessing pool of the potential"""
-    #     return torch.multiprocessing.Pool(processes=processes)
-
+    @property
+    def filename(self) -> str:
+        """Name of the file where potential is stored"""
+        return f'{self.name}.model'
 
     def _run_train(self) -> None:
         """
@@ -259,8 +141,6 @@ class MACE(MLPotential):
         For more details, see
         https://github.com/ACEsuit/mace/tree/main/scripts
         """
-
-        self._reset_train_objs()
 
         tools.setup_logger(level=self.args.log_level,
                            tag=self.name,
@@ -352,27 +232,24 @@ class MACE(MLPotential):
     def _save_model(self) -> None:
         """Save the trained model"""
 
-        model_filename = f'{self.name}.model'
-        model_path = os.path.join(self.args.checkpoints_dir, model_filename)
-        state_dict_filename = f'{self.name}_state_dict.model'
+        model_path = os.path.join(self.args.checkpoints_dir, self.filename)
 
         if Config.mace_params['save_cpu']:
             self.model.to('cpu')
 
-        logging.info(f'Saving the model {model_filename} '
+        logging.info(f'Saving the model {self.filename} '
                      f'to {self.args.checkpoints_dir} '
-                     'and its state dict in the current directory')
+                     'and the current directory')
 
         torch.save(self.model, model_path)
-        # TODO:
-        # shutil.copyfile(src=os.path.join(os.getcwd(), model_path),
-        #                 dst=os.path.join(os.getcwd(), self.filename))
-        torch.save(self.model.state_dict(), state_dict_filename)
+        shutil.copyfile(src=os.path.join(os.getcwd(), model_path),
+                        dst=os.path.join(os.getcwd(), self.filename))
 
         return None
 
     def _reset_train_objs(self) -> None:
-        """Reset training objects to defaults, important during retraining"""
+        """Reset training objects to defaults, important for retraining and
+        multiprocessing"""
         for var, default in self._defaults.items():
             setattr(self, var, default)
 
@@ -584,20 +461,19 @@ class MACE(MLPotential):
 
             logging.info("Building model")
 
-            # TODO: maybe a function to build a model, could use in calculator
             model_config = dict(
-                r_max=Config.mace_params['r_max'],  # state dict
-                num_bessel=self.args.num_radial_basis,  # args (fine as cannot change)
+                r_max=Config.mace_params['r_max'],
+                num_bessel=self.args.num_radial_basis,
                 num_polynomial_cutoff=self.args.num_cutoff_basis,
                 max_ell=self.args.max_ell,
                 interaction_cls=modules.interaction_classes[
                     self.args.interaction],
                 num_interactions=self.args.num_interactions,
-                num_elements=len(self.z_table),  # state dict
-                hidden_irreps=o3.Irreps(Config.mace_params['hidden_irreps']),  # How do you know what hidden irreps were used for a given save?
-                atomic_energies=self.atomic_energies_array,  # How do you save atomic energies, should you recompute?
-                avg_num_neighbors=self.avg_num_neighbors,  # also smth that's not saved
-                atomic_numbers=self.z_table.zs)  # state dict
+                num_elements=len(self.z_table),
+                hidden_irreps=o3.Irreps(Config.mace_params['hidden_irreps']),
+                atomic_energies=self.atomic_energies_array,
+                avg_num_neighbors=self.avg_num_neighbors,
+                atomic_numbers=self.z_table.zs)
 
             if Config.mace_params['model'] == "MACE":
 

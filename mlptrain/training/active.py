@@ -2,9 +2,9 @@ import os
 import io
 import shutil
 import numpy as np
+import multiprocessing as mp
 from copy import deepcopy
 from typing import Optional, Union, Dict, List
-from multiprocessing import Pool
 from subprocess import Popen
 from ase import units as ase_units
 from mlptrain.config import Config
@@ -232,7 +232,7 @@ def _add_active_configs(mlp,
     configs = ConfigurationSet()
     results = []
 
-    with Pool(processes=n_processes) as pool:
+    with mp.get_context('spawn').Pool(processes=n_processes) as pool:
 
         for idx in range(n_configs):
             kwargs['idx'] = idx
