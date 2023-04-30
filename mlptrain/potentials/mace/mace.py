@@ -84,11 +84,11 @@ class MACE(MLPotential):
             n_cores: (int) Number of cores to use in training
         """
 
-        n_cores = (n_cores if n_cores is not None else Config.n_cores)
+        n_cores = n_cores if n_cores is not None else Config.n_cores
         os.environ['OMP_NUM_THREADS'] = str(n_cores)
         logger.info('Training a MACE potential on '
                     f'*{len(self.training_data)}* training data, '
-                    f'using {n_cores} in training')
+                    f'using {n_cores} cores for training')
 
         for config in self.training_data:
             if self.requires_non_zero_box_size and config.box is None:
@@ -103,7 +103,7 @@ class MACE(MLPotential):
         logger.info(f'MACE training ran in {delta_time / 60:.1f} m')
 
         self._load_latest_epoch()
-        self._show_error_table()
+        self._print_error_table()
         self._save_model()
         self._reset_train_objs()
 
@@ -206,8 +206,8 @@ class MACE(MLPotential):
 
         return None
 
-    def _show_error_table(self) -> None:
-        """Generate an error table and show it in logs"""
+    def _print_error_table(self) -> None:
+        """Generate an error table and print it in logs"""
 
         logging.info("Generating error table")
 
