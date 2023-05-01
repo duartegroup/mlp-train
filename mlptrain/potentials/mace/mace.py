@@ -454,7 +454,7 @@ class MACE(MLPotential):
                 "dipoles": False}
 
     @property
-    def model(self) -> torch.nn.Module:
+    def model(self) -> 'torch.nn.Module':
         """Torch Module to use in training"""
 
         if self._model is None:

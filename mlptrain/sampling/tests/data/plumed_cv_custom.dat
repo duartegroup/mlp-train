@@ -1,0 +1,2 @@
+# Loading CV from file
+p1: PATH REFERENCE=path.pdb TYPE=OPTIMAL LAMBDA=500.0
