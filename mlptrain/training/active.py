@@ -156,9 +156,11 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                                             bias_start_iter=bias_start_iter,
                                             bias=bias)
 
-        init_config_iter = _update_init_config(init_config, mlp,
-                                               fix_init_config,
-                                               inherit_metad_bias)
+        init_config_iter = _update_init_config(init_config=init_config,
+                                               mlp=mlp,
+                                               fix_init_config=fix_init_config,
+                                               bias=bias,
+                                               inherit_metad_bias=inherit_metad_bias)
 
         _add_active_configs(mlp,
                             init_config=init_config_iter,
@@ -515,18 +517,24 @@ def _attach_plumed_coords_to_init_configs(init_configs, bias) -> None:
     return None
 
 
-def _update_init_config(init_config, mlp, fix_init_config, inherit_metad_bias
-                        ) -> 'mlptrain.Configuration':
+def _update_init_config(init_config, mlp, fix_init_config, bias,
+                        inherit_metad_bias) -> 'mlptrain.Configuration':
     """Updates initial configuration for an active learning iteration"""
 
     if fix_init_config:
         return init_config
 
-    elif inherit_metad_bias is not None:
-        return mlp.training_data.lowest_inherited_biased_energy
-
     else:
-        return mlp.training_data.lowest_biased_energy
+        if bias is not None:
+
+            if inherit_metad_bias is not None:
+                return mlp.training_data.lowest_inherited_biased_energy
+
+            else:
+                return mlp.training_data.lowest_biased_energy
+
+        else:
+            return mlp.training_data.lowest_energy
 
 
 def _check_bias(bias, temp, inherit_metad_bias) -> None:
