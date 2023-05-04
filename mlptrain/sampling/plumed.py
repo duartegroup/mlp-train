@@ -525,30 +525,18 @@ class PlumedBias(ASEConstraint):
 
     def _strip_setup(self) -> None:
         """If the bias is initialised using a PLUMED input file, remove all
-        lines from the setup except the ones defining lower and upper walls,
-        and the collective variables to which the walls are attached"""
+        lines from the setup except the ones defining walls and collective
+        variables"""
 
         if self.setup is None:
             raise TypeError('Setup of the bias is not initialised, if you '
                             'want to strip the setup make sure to use a bias '
                             'which was initialised using a PLUMED input file')
 
-        _stripped_setup, _args = [], []
-        for line in reversed(self.setup):
-
-            if _defines_wall(line):
+        _stripped_setup = []
+        for line in self.setup:
+            if _defines_cv(line) or _defines_wall(line):
                 _stripped_setup.append(line)
-                _args.extend(_find_args(line))
-
-            if any(line.startswith(arg) for arg in _args):
-                _stripped_setup.append(line)
-                _args.extend(_find_args(line))
-
-        # Reverse back to normal order
-        _stripped_setup = _stripped_setup[::-1]
-
-        # Remove duplicate lines
-        _stripped_setup = list(dict.fromkeys(_stripped_setup))
 
         self.setup = _stripped_setup
 

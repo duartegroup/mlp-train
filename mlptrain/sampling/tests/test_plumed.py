@@ -178,6 +178,8 @@ def test_plumed_bias_from_file():
                           'cv1: CUSTOM ARG=dof1,dof2 VAR=dof1,dof2 '
                           'FUNC=dof2-dof1 PERIODIC=NO',
                           'lwall: LOWER_WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
+                          'p1: PATH REFERENCE=path.pdb TYPE=OPTIMAL '
+                          'LAMBDA=500.0',
                           'UPPER_WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3']
 
 
