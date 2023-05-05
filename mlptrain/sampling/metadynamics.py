@@ -1083,8 +1083,11 @@ class Metadynamics:
         -----------------------------------------------------------------------
         Arguments:
 
-            energy_units: (str) Energy units to be used in plotting, available
-                                units: 'eV', 'kcal mol-1', 'kJ mol-1'
+            energy_units: (str) Energy units to be used in computing the free
+                                energy, available units: 'eV', 'kcal mol-1',
+                                'kJ mol-1'. If fes_npy and/or blocksize options
+                                are used, the units of fes_npy and/or blocksize
+                                files must match energy units here
 
             confidence_level: (float) Specifies what confidence level to use
                                       in plots (probability for FES to lie in
@@ -1103,10 +1106,10 @@ class Metadynamics:
 
             blocksize: (int) If block analysis has been performed, the integer
                              specifies which block size to use for plotting
-                             the FES
+                             the FES standard error
         """
 
-        if fes_npy is None and blocksize is None:
+        if fes_npy is None:
             if not os.path.exists('fes_raw.npy'):
                 fes = self.compute_fes(energy_units, n_bins, cvs_bounds)
 
@@ -1116,20 +1119,8 @@ class Metadynamics:
 
                 fes = np.load('fes_raw.npy')
 
-        elif fes_npy is not None:
-            fes = np.load(fes_npy)
-
-        # Equivalent to elif blocksize is not None
         else:
-            filename = f'block_analysis/mean_fes_blocksize{blocksize}.npy'
-
-            if not os.path.exists(filename):
-                raise FileNotFoundError('The mean FES with block size '
-                                        f'{blocksize} was not found. Make '
-                                        'sure to first run block analysis and '
-                                        'use the appropriate block size')
-
-            fes = np.load(filename)
+            fes = np.load(fes_npy)
 
         if self.n_cvs == 1:
             self._plot_1d_fes(fes, energy_units, confidence_level, blocksize)
@@ -1202,40 +1193,28 @@ class Metadynamics:
 
         cv_grid = fes[0]
         fes_grids = fes[1:]
-        n_fes_grids = len(fes_grids)
-
-        if blocksize is None:
-            mean_fes = np.mean(fes_grids, axis=0)
-            std_mean_fes = ((1 / np.sqrt(n_fes_grids))
-                            * np.std(fes_grids, axis=0, ddof=1))
-
-        else:
-            # No benefit from n_fes_grids
-            mean_fes = fes_grids[-2]
-            std_mean_fes = fes_grids[-1]
-
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            confidence_interval = norm.interval(confidence_level,
-                                                loc=mean_fes,
-                                                scale=std_mean_fes)
-
-        lower_bound = confidence_interval[0]
-        upper_bound = confidence_interval[1]
 
         fig, ax = plt.subplots()
 
+        mean_fes = np.mean(fes_grids, axis=0)
         ax.plot(cv_grid, mean_fes, label='Free energy')
 
-        if blocksize is None and n_fes_grids == 1:
-            confidence_label = None
+        std_mean_fes = self._compute_fes_std(fes_grids=fes_grids,
+                                             blocksize=blocksize)
+        if np.any(std_mean_fes):
 
-        else:
-            confidence_label = 'Confidence interval'
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                confidence_interval = norm.interval(confidence_level,
+                                                    loc=mean_fes,
+                                                    scale=std_mean_fes)
 
-        ax.fill_between(cv_grid, lower_bound, upper_bound,
-                        alpha=0.3,
-                        label=confidence_label)
+            lower_bound = confidence_interval[0]
+            upper_bound = confidence_interval[1]
+
+            ax.fill_between(cv_grid, lower_bound, upper_bound,
+                            alpha=0.3,
+                            label='Confidence interval')
 
         cv = self.bias.metad_cvs[0]
         if cv.units is not None:
@@ -1272,24 +1251,6 @@ class Metadynamics:
         cv1_grid = fes[0]
         cv2_grid = fes[1]
         fes_grids = fes[2:]
-        n_fes_grids = len(fes_grids)
-
-        if blocksize is None:
-            mean_fes = np.mean(fes_grids, axis=0)
-            std_mean_fes = ((1 / np.sqrt(n_fes_grids))
-                            * np.std(fes_grids, axis=0, ddof=1))
-
-        else:
-            mean_fes = fes_grids[-2]
-            std_mean_fes = fes_grids[-1]
-
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            confidence_interval = norm.interval(confidence_level,
-                                                loc=mean_fes,
-                                                scale=std_mean_fes)
-
-        interval_range = confidence_interval[1] - confidence_interval[0]
 
         fig, (ax_mean, ax_std_error) = plt.subplots(nrows=1,
                                                     ncols=2,
@@ -1300,6 +1261,8 @@ class Metadynamics:
         jet_cmap_matrix[-1, :] = [1, 1, 1, 1]
         mod_jet_cmap = ListedColormap(jet_cmap_matrix)
 
+        mean_fes = np.mean(fes_grids, axis=0)
+
         mean_contourf = ax_mean.contourf(cv1_grid, cv2_grid, mean_fes, 256,
                                          cmap=mod_jet_cmap)
         ax_mean.contour(cv1_grid, cv2_grid, mean_fes, 20,
@@ -1309,6 +1272,17 @@ class Metadynamics:
         mean_cbar = fig.colorbar(mean_contourf, ax=ax_mean)
         mean_cbar.set_label(label=r'$\Delta G$ / '
                                   f'{convert_exponents(energy_units)}')
+
+        std_mean_fes = self._compute_fes_std(fes_grids=fes_grids,
+                                             blocksize=blocksize)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            confidence_interval = norm.interval(confidence_level,
+                                                loc=mean_fes,
+                                                scale=std_mean_fes)
+
+        interval_range = confidence_interval[1] - confidence_interval[0]
 
         std_error_contourf = ax_std_error.contourf(cv1_grid, cv2_grid,
                                                    interval_range, 256,
@@ -1347,6 +1321,35 @@ class Metadynamics:
         plt.close(fig)
 
         return None
+
+    @staticmethod
+    def _compute_fes_std(fes_grids: np.ndarray,
+                         blocksize: Optional[int] = None
+                         ) -> np.ndarray:
+        """Compute standard deviation of the free energy to use in plotting"""
+
+        n_surfaces = len(fes_grids)
+
+        if blocksize is not None:
+            filename = f'block_analysis/mean_fes_blocksize{blocksize}.npy'
+
+            if not os.path.exists(filename):
+                raise FileNotFoundError('Block averaging analysis with block '
+                                        f'size {blocksize} was not found. '
+                                        'Make sure to run block analysis '
+                                        'before using this option and use an '
+                                        'appropriate block size')
+
+            std_mean_fes = np.load(filename)[-1]
+
+        elif n_surfaces != 1:
+            std_mean_fes = ((1 / np.sqrt(n_surfaces))
+                            * np.std(fes_grids, axis=0, ddof=1))
+
+        else:
+            std_mean_fes = np.zeros_like(fes_grids[0])
+
+        return std_mean_fes
 
     def plot_fes_convergence(self,
                              stride:       int,
