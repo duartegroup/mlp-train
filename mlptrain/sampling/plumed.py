@@ -733,13 +733,18 @@ class _PlumedCV:
                     line = line.strip()
                     self.setup.append(line)
 
-        _names = [line.split(':')[0] for line in self.setup]
+        _last_line = self.setup[-1]
+        if _last_line.find(':') == -1:
+            raise ValueError('Supply a name to the collective variable on '
+                             f'the last line of {filename} file.')
+
+        _name = _last_line.split(':')[0]
 
         if component is not None:
-            self.name = f'{_names.pop()}.{component}'
+            self.name = f'{_name}.{component}'
 
         else:
-            self.name = _names.pop()
+            self.name = _name
 
         self._check_name()
 
