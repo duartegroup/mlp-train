@@ -319,6 +319,22 @@ class MACE(MLPotential):
                          for symbol in self.z_table_symbol])
 
     @property
+    def valid_fraction(self) -> float:
+        """Fraction of the whole dataset to be used as validation set"""
+        _min_dataset = -(1 // -Config.mace_params['valid_fraction'])
+        if self.n_train == 1:
+            raise ValueError('MACE training requires at least '
+                             '2 configurations')
+
+        elif self.n_train >= _min_dataset:
+            return Config.mace_params['valid_fraction']
+
+        else:
+            # Valid fraction which sets at least 1 datapoint for validation
+            _unrounded_valid_fraction = 1 / self.n_train
+            return -((_unrounded_valid_fraction * 100) // -1) / 100
+
+    @property
     def train_configs(self) -> 'mace.data.Configurations':
         """Configurations in the training dataset"""
 
@@ -350,12 +366,12 @@ class MACE(MLPotential):
                              f'configurations from "{self.args.valid_file}"')
 
             else:
-                logging.info(f'Using {100 * self.args.valid_fraction}% of the '
+                logging.info(f'Using {100 * self.valid_fraction}% of the '
                              'training set for validation')
 
                 self._train_configs, self._valid_configs = data.random_train_valid_split(
                     self.train_configs,
-                    self.args.valid_fraction,
+                    self.valid_fraction,
                     self.args.seed)
 
         return self._valid_configs
