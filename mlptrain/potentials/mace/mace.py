@@ -54,28 +54,20 @@ class MACE(MLPotential):
 
         logging.info(f"MACE version: {mace.__version__}")
 
-        self._defaults = {'_train_configs': None,
-                          '_valid_configs': None,
-                          '_z_table': None,
-                          '_loss_fn': None,
-                          '_train_loader': None,
-                          '_valid_loader': None,
-                          '_model': None,
-                          '_optimizer': None,
-                          '_scheduler': None,
-                          '_checkpoint_handler': None,
-                          '_start_epoch': None,
-                          '_swa': None,
-                          '_ema': None}
+        self._train_obj_names = ('_train_configs', '_valid_configs',
+                                 '_z_table', '_loss_fn', '_train_loader',
+                                 '_valid_loader', '_model', '_optimizer',
+                                 '_scheduler', '_checkpoint_handler',
+                                 '_start_epoch', '_swa', '_ema')
 
-        for var, default in self._defaults.items():
-            setattr(self, var, default)
+        for obj in self._train_obj_names:
+            setattr(self, obj, None)
 
     def _train(self,
                n_cores: Optional[int] = None
                ) -> None:
         """
-        Train MACE potential using the data as .xyz file and save the
+        Train a MACE potential using the data as .xyz file and save the
         final potential as .model file
 
         -----------------------------------------------------------------------
@@ -116,7 +108,7 @@ class MACE(MLPotential):
 
     @property
     def requires_non_zero_box_size(self) -> bool:
-        """ACE cannot use a zero size box"""
+        """MACE cannot use a zero size box"""
         return True
 
     @property
@@ -148,29 +140,12 @@ class MACE(MLPotential):
         tools.set_seeds(self.args.seed)
         tools.set_default_dtype(self.args.default_dtype)
 
-        logging.info(f'Using {self.args.train_file} as the training set')
-        logging.info(f'Total number of configurations: '
-                     f'valid={len(self.valid_configs)}, '
-                     f'train={len(self.train_configs)}')
-        logging.info(self.z_table)
-        logging.info(f'Chemical symbols: {self.z_table_symbol}')
-        logging.info(f'Atomic energies: {self.atomic_energies}')
-        logging.info(f'Loss: {self.loss_fn}')
-        logging.info(f'Selected the following outputs: {self.output_args}')
-
-        if self.args.compute_avg_num_neighbors:
-            logging.info(f'Average number of neighbors: '
-                         f'{self.avg_num_neighbors:.3f}')
-
-        self.model.to(Config.mace_params['device'])
+        self._set_train_objs()
 
         metrics_logger = tools.MetricsLogger(directory=self.args.results_dir,
                                              tag=f'{self.name}_train')
 
-        logging.info(f'Model: {self.model}')
-        logging.info(f'Number of parameters: '
-                     f'{tools.count_parameters(self.model)}')
-        logging.info(f'Optimizer: {self.optimizer}')
+        self.model.to(Config.mace_params['device'])
 
         tools.train(model=self.model,
                     loss_fn=self.loss_fn,
@@ -247,11 +222,34 @@ class MACE(MLPotential):
 
         return None
 
+    def _set_train_objs(self) -> None:
+        """Initialise and log training objects"""
+
+        logging.info(f'Total number of configurations: '
+                     f'valid={len(self.valid_configs)}, '
+                     f'train={len(self.train_configs)}')
+        logging.info(self.z_table)
+        logging.info(f'Chemical symbols: {self.z_table_symbol}')
+        logging.info(f'Atomic energies: {self.atomic_energies}')
+        logging.info(f'Loss: {self.loss_fn}')
+        logging.info(f'Selected the following outputs: {self.output_args}')
+
+        if self.args.compute_avg_num_neighbors:
+            logging.info(f'Average number of neighbors: '
+                         f'{self.avg_num_neighbors:.3f}')
+
+        logging.info(f'Model: {self.model}')
+        logging.info(f'Number of parameters: '
+                     f'{tools.count_parameters(self.model)}')
+        logging.info(f'Optimizer: {self.optimizer}')
+
+        return None
+
     def _reset_train_objs(self) -> None:
-        """Reset training objects to defaults, important for retraining and
+        """Reset training objects to None, important for retraining and
         multiprocessing"""
-        for var, default in self._defaults.items():
-            setattr(self, var, default)
+        for obj in self._train_obj_names:
+            setattr(self, obj, None)
 
         return None
 
@@ -270,7 +268,7 @@ class MACE(MLPotential):
     @property
     def args(self) -> 'argparse.Namespace':
         """Namespace containing mostly default MACE parameters"""
-        args = mace.tools.build_default_arg_parser().parse_args([
+        args = tools.build_default_arg_parser().parse_args([
             '--name', self.name,
             '--train_file', f'{self.name}_data.xyz',
             '--default_dtype', 'float64'])
@@ -322,6 +320,7 @@ class MACE(MLPotential):
     def valid_fraction(self) -> float:
         """Fraction of the whole dataset to be used as validation set"""
         _min_dataset = -(1 // -Config.mace_params['valid_fraction'])
+
         if self.n_train == 1:
             raise ValueError('MACE training requires at least '
                              '2 configurations')
@@ -454,7 +453,7 @@ class MACE(MLPotential):
 
     @property
     def avg_num_neighbors(self) -> float:
-        """Average number of neighbours in the training set"""
+        """Average number of neighbors in the training set"""
         if self.args.compute_avg_num_neighbors:
             return modules.compute_avg_num_neighbors(self.train_loader)
         else:
@@ -605,7 +604,7 @@ class MACE(MLPotential):
 
     @property
     def optimizer(self) -> 'torch.optim.Optimizer':
-        """Optimiser to use in training"""
+        """Optimizer to use in training"""
 
         if self._optimizer is None:
 
@@ -680,7 +679,7 @@ class MACE(MLPotential):
 
                 if Config.mace_params['start_swa'] is None:
                     # if not set start swa at 75% of training
-                    start_swa = self.max_num_epochs // 4 * 3
+                    start_swa = self.max_num_epochs // (4 * 3)
                 else:
                     start_swa = Config.mace_params['start_swa']
 
