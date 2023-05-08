@@ -200,9 +200,6 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
 
         mlp.train()
 
-    if inherit_metad_bias:
-        _remove_last_inherited_metad_bias_file(max_active_iters, bias)
-
     return None
 
 
@@ -719,6 +716,10 @@ def _generate_inheritable_metad_bias_grid(n_configs, grid_files, bias,
         np.savetxt(fname=bytes_io, X=final_array, fmt='    %.9f')
         f.write(bytes_io.getvalue().decode())
 
+    os.makedirs('accumulated_bias', exist_ok=True)
+    shutil.copyfile(src=f'bias_grid_{iteration}.dat',
+                    dst=f'bias_after_iter_{iteration}.dat')
+
     return None
 
 
@@ -796,6 +797,10 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
                 final_hills_file.write(f'{line}\n')
 
         os.remove(fname)
+
+    os.makedirs('accumulated_bias', exist_ok=True)
+    shutil.copyfile(src=f'HILLS_{iteration}.dat',
+                    dst=f'bias_after_iter_{iteration}.dat')
 
     return None
 
