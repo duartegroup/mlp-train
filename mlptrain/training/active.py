@@ -183,8 +183,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
         if mlp.n_train == previous_n_train:
 
             if iteration >= min_active_iters:
-                logger.info('No AL configurations found. Final dataset size '
-                            f'= {previous_n_train} Active learning = DONE')
+                logger.info('No AL configurations found')
                 break
 
             else:
@@ -200,6 +199,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
 
         mlp.train()
 
+    logger.info(f'Final dataset size f = {mlp.n_train} Active learning = DONE')
     return None
 
 
