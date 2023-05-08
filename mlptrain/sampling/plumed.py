@@ -664,7 +664,7 @@ class _PlumedCV:
                           exp:       float = 2
                           ) -> None:
         """
-        Attache lower wall bias to the collective variable.
+        Attach lower wall bias to the collective variable.
 
         -----------------------------------------------------------------------
         Arguments:
@@ -696,7 +696,7 @@ class _PlumedCV:
                           exp:       float = 2
                           ) -> None:
         """
-        Attache upper wall bias to the collective variable.
+        Attach upper wall bias to the collective variable.
 
         -----------------------------------------------------------------------
         Arguments:
