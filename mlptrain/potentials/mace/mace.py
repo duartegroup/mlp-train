@@ -19,8 +19,8 @@ try:
     from torch.optim.swa_utils import SWALR, AveragedModel
     from torch_ema import ExponentialMovingAverage
     from mace import data, modules, tools
-    from mace.tools import torch_geometric, torch_tools, utils
-    from mace.tools.scripts_utils import create_error_table, get_dataset_from_xyz
+    from mace.tools import torch_geometric
+    from mace.tools.scripts_utils import create_error_table
     from mace.calculators import MACECalculator
 except ModuleNotFoundError:
     pass
@@ -52,7 +52,11 @@ class MACE(MLPotential):
             raise ModuleNotFoundError('MACE install not found, install it '
                                       'here: https://github.com/ACEsuit/mace')
 
+        self.setup_logger()
         logging.info(f"MACE version: {mace.__version__}")
+
+        tools.set_seeds(self.args.seed)
+        tools.set_default_dtype(self.args.default_dtype)
 
         self._train_obj_names = ('_train_configs', '_valid_configs',
                                  '_z_table', '_loss_fn', '_train_loader',
@@ -133,12 +137,6 @@ class MACE(MLPotential):
         For more details, see
         https://github.com/ACEsuit/mace/tree/main/scripts
         """
-
-        tools.setup_logger(level=self.args.log_level,
-                           tag=self.name,
-                           directory=self.args.log_dir)
-        tools.set_seeds(self.args.seed)
-        tools.set_default_dtype(self.args.default_dtype)
 
         self._set_train_objs()
 
@@ -250,6 +248,25 @@ class MACE(MLPotential):
         multiprocessing"""
         for obj in self._train_obj_names:
             setattr(self, obj, None)
+
+        return None
+
+    def setup_logger(self) -> None:
+        """Set up a MACE logger"""
+
+        mace_logger = logging.getLogger()
+        mace_logger.setLevel(self.args.log_level)
+
+        formatter = logging.Formatter(
+            "%(asctime)s.%(msecs)03d %(levelname)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S")
+
+        os.makedirs(name=self.args.log_dir, exist_ok=True)
+        path = os.path.join(self.args.log_dir, self.name + ".log")
+
+        fh = logging.FileHandler(path)
+        fh.setFormatter(formatter)
+        mace_logger.addHandler(fh)
 
         return None
 
