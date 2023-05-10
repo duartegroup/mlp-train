@@ -120,7 +120,7 @@ class MACE(MLPotential):
         """ASE calculator for MACE potential"""
 
         calculator = MACECalculator(model_path=self.filename,
-                                    device='cpu',
+                                    device=Config.mace_params['calc_device'],
                                     default_dtype="float64")
         return calculator
 

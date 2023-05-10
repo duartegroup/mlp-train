@@ -35,6 +35,7 @@ class _ConfigClass:
                    'r_max': 5,
                    'correlation': 3,
                    'device': 'cuda',
+                   'calc_device': 'cpu',
                    'error_table': 'TotalMAE',
                    'swa': True,
                    'start_swa': 800,
