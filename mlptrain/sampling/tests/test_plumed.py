@@ -17,7 +17,7 @@ def test_plumed_cv_from_atom_groups():
                          'cv1: CUSTOM '
                          'ARG=cv1_dist1,cv1_dist2 '
                          'VAR=cv1_dist1,cv1_dist2 '
-                         'FUNC=cv1_dist2-cv1_dist1 '
+                         'FUNC=cv1_dist1-cv1_dist2 '
                          'PERIODIC=NO']
 
     cv2 = mlt.PlumedAverageCV('cv2', (0, 1, 2))
@@ -54,9 +54,11 @@ def test_plumed_cv_from_atom_groups():
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
 def test_plumed_cv_from_file():
 
-    cv1 = mlt.PlumedCustomCV('plumed_cv_custom.dat', component='s', units='Å')
+    cv1 = mlt.PlumedCustomCV('plumed_cv_custom.dat',
+                             component='spath',
+                             units='Å')
 
-    assert cv1.name == 'p1.s'
+    assert cv1.name == 'p1.spath'
     assert cv1.units == 'Å'
     assert cv1.setup == ['p1: PATH '
                          'REFERENCE=path.pdb '
@@ -89,7 +91,7 @@ def test_plumed_cv_walls():
                          'cv1: CUSTOM '
                          'ARG=cv1_dist1,cv1_dist2 '
                          'VAR=cv1_dist1,cv1_dist2 '
-                         'FUNC=cv1_dist2-cv1_dist1 '
+                         'FUNC=cv1_dist1-cv1_dist2 '
                          'PERIODIC=NO',
                          'LOWER_WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
                          'UPPER_WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3']
@@ -142,17 +144,32 @@ def test_plumed_bias_from_cvs():
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
 def test_plumed_bias_from_file():
 
-    bias = mlt.PlumedBias(file_name='plumed_bias.dat')
+    bias = mlt.PlumedBias(filename='plumed_bias.dat')
 
     assert bias.setup == ['dof1: DISTANCE ATOMS=1,2',
                           'dof2: DISTANCE ATOMS=2,3',
                           'cv1: CUSTOM ARG=dof1,dof2 VAR=dof1,dof2 '
                           'FUNC=dof2-dof1 PERIODIC=NO',
-                          'LOWER_WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
+                          'lwall: LOWER_WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
+                          'p1: PATH REFERENCE=path.pdb TYPE=OPTIMAL '
+                          'LAMBDA=500.0',
                           'UPPER_WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3',
-                          'METAD ARG=cv1 PACE=100 HEIGHT=0.1 SIGMA=0.5 '
-                          'BIASFACTOR=4 FILE=HILLS.dat',
-                          'PRINT ARG=cv1 FILE=colvar.dat STRIDE=10']
+                          'METAD ARG=cv1,p1.spath PACE=100 HEIGHT=0.1 '
+                          'SIGMA=0.5 BIASFACTOR=4 FILE=HILLS.dat',
+                          'PRINT ARG=cv1,p1.spath FILE=colvar.dat STRIDE=10']
+
+    with open('path.pdb', 'r') as f:
+        data1 = f.read()
+
+    assert bias.cv_files == [('path.pdb', data1)]
+
+    os.remove('path.pdb')
+    bias.write_cv_files()
+
+    with open('path.pdb', 'r') as f:
+        data2 = f.read()
+
+    assert data1 == data2
 
     bias.strip()
 
@@ -160,7 +177,9 @@ def test_plumed_bias_from_file():
                           'dof2: DISTANCE ATOMS=2,3',
                           'cv1: CUSTOM ARG=dof1,dof2 VAR=dof1,dof2 '
                           'FUNC=dof2-dof1 PERIODIC=NO',
-                          'LOWER_WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
+                          'lwall: LOWER_WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
+                          'p1: PATH REFERENCE=path.pdb TYPE=OPTIMAL '
+                          'LAMBDA=500.0',
                           'UPPER_WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3']
 
 

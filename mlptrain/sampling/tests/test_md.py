@@ -26,7 +26,7 @@ def _h2o_configuration():
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
 def test_md_full_plumed_input():
 
-    bias = mlt.PlumedBias(file_name='plumed_bias.dat')
+    bias = mlt.PlumedBias(filename='plumed_bias_nopath.dat')
 
     mlt.md.run_mlp_md(configuration=_h2o_configuration(),
                       mlp=TestPotential('1D'),

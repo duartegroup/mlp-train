@@ -234,7 +234,7 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
                               temp=init_temp if init_temp is not None else temp,
                               bbond_energy=bbond_energy,
                               fbond_energy=fbond_energy,
-                              restart_files=restart_files,
+                              restart=restart,
                               traj_name=traj_name)
 
     ase_traj = _initialise_traj(ase_atoms, restart, traj_name)
@@ -283,6 +283,7 @@ def _attach_calculator_and_constraints(ase_atoms, mlp, bias, temp, interval,
         logger.info('Using PLUMED bias for MLP MD')
 
         setup = plumed_setup(bias, temp, interval, **kwargs)
+        bias.write_cv_files()
 
         plumed_calc = PlumedCalculator(calc=mlp.ase_calculator,
                                        input=setup,
@@ -293,11 +294,6 @@ def _attach_calculator_and_constraints(ase_atoms, mlp, bias, temp, interval,
 
         if restart:
             plumed_calc.istep = n_previous_steps
-
-        if bias.cvs is not None:
-            for cv in bias.cvs:
-                if cv.files is not None:
-                    cv.write_files()
 
         ase_atoms.calc = plumed_calc
 
@@ -435,7 +431,7 @@ def _attach_plumed_coordinates(mlt_traj, bias, **kwargs) -> None:
     """Attach PLUMED collective variable values to configurations in the
     trajectory if all colvar files have been printed"""
 
-    colvar_filenames = [get_colvar_filename(cv, kwargs) for cv in bias.cvs]
+    colvar_filenames = [get_colvar_filename(cv, **kwargs) for cv in bias.cvs]
 
     if all(os.path.exists(fname) for fname in colvar_filenames):
 
@@ -456,12 +452,12 @@ def _set_momenta_and_geometry(ase_atoms:      'ase.atoms.Atoms',
                               temp:           float,
                               bbond_energy:   dict,
                               fbond_energy:   dict,
-                              restart_files:  List[str],
+                              restart:        bool,
                               traj_name:      str
                               ) -> None:
     """Set the initial momenta and geometry of the starting configuration"""
 
-    if restart_files is None:
+    if not restart:
 
         if temp > 0:
             logger.info(f'Initialising initial velocities for {temp} K')
@@ -600,13 +596,11 @@ def _traj_saving_interval(dt: float,
     return saving_interval
 
 
-
-
 def _remove_colvar_duplicate_frames(bias, **kwargs) -> None:
     """Remove duplicate frames from generated colvar files when using PLUMED
     bias"""
 
-    colvar_filenames = [get_colvar_filename(cv, kwargs) for cv in bias.cvs]
+    colvar_filenames = [get_colvar_filename(cv, **kwargs) for cv in bias.cvs]
 
     for filename in colvar_filenames:
 

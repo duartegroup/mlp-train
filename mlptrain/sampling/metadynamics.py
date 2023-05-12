@@ -11,6 +11,7 @@ from typing import Optional, Sequence, Union, Tuple, List
 from multiprocessing import Pool
 from subprocess import Popen
 from copy import deepcopy
+from matplotlib.colors import ListedColormap
 from scipy.stats import norm
 from ase import units as ase_units
 from ase.io import write as ase_write
@@ -53,6 +54,12 @@ class Metadynamics:
         Arguments:
 
             cvs: Sequence of PLUMED collective variables
+
+            bias: PLUMED bias which can be supplied if additional collective
+                  variables are required,
+                  e.g. Metadynamics(cvs=cv1, bias=PlumedBias(cvs=(cv1, cv2)),
+                  where cv1 will be biased using metadynamics, and cv2 might
+                  be an additional CV with WALLS to constrain the system
         """
 
         if bias is not None:
@@ -93,7 +100,7 @@ class Metadynamics:
                        **kwargs
                        ) -> List:
         """
-        Estimates optimal widths (σ) to be used in metadynamics.
+        Estimate optimal widths (σ) to be used in metadynamics.
 
         -----------------------------------------------------------------------
         Arguments:
@@ -188,7 +195,7 @@ class Metadynamics:
 
     def _get_width_for_single(self, configuration, mlp, temp, dt, interval,
                               bias, plot, **kwargs) -> List:
-        """Estimates optimal widths (σ) for a single configuration"""
+        """Estimate optimal widths (σ) for a single configuration"""
 
         logger.info(f'Running MD simulation number {kwargs["idx"]}')
 
@@ -284,6 +291,9 @@ class Metadynamics:
 
             {save_fs, save_ps, save_ns}: Trajectory saving interval
                                          in some units
+
+            constraints: (List) List of ASE constraints to use in the dynamics
+                                e.g. [ase.constraints.Hookean(a1, a2, k, rt)]
         """
 
         start_metad = time.perf_counter()
@@ -372,7 +382,7 @@ class Metadynamics:
     def _initialise_restart(width:  Sequence,
                             n_runs: int
                             ) -> None:
-        """Initialises restart for metadynamics simulation by checking
+        """Initialise restart for metadynamics simulation by checking
         conditions and moving files"""
 
         if width is None:
@@ -417,7 +427,7 @@ class Metadynamics:
 
     def _run_single_metad(self, configuration, mlp, temp, interval, dt, bias,
                           kept_substrings=None, restart=False, **kwargs):
-        """Initiates a single metadynamics run"""
+        """Initiate a single metadynamics run"""
 
         if restart:
             logger.info(f'Restarting Metadynamics simulation number '
@@ -460,8 +470,8 @@ class Metadynamics:
     @staticmethod
     def _move_and_save_files(metad_trajs, save_sep, all_to_xyz, restart
                              ) -> None:
-        """Saves metadynamics trajectories, moves them into trajectories folder
-        and computes .xyz files"""
+        """Save metadynamics trajectories, move them into trajectories folder
+        and compute .xyz files"""
 
         move_files(['.dat'],
                    dst_folder='plumed_files/metadynamics',
@@ -503,7 +513,7 @@ class Metadynamics:
 
     def _set_previous_parameters(self, configuration, mlp, temp, dt, interval,
                                  **kwargs) -> None:
-        """Sets parameters in the _previous_run_parameters"""
+        """Set parameters in the _previous_run_parameters"""
 
         self._previous_run_parameters = {'configuration': configuration,
                                          'mlp': mlp,
@@ -526,7 +536,7 @@ class Metadynamics:
                               path:         str = 'plumed_files/metadynamics'
                               ) -> None:
         """
-        Plots the height of deposited gaussians as a function of time (using
+        Plot the height of deposited gaussians as a function of time (using
         HILLS_{idx}.dat files).
 
         -----------------------------------------------------------------------
@@ -570,7 +580,7 @@ class Metadynamics:
                                       time_units:   str = 'ps'
                                       ) -> None:
         """
-        Plots the height of deposited gaussians as a function of time for a
+        Plot the height of deposited gaussians as a function of time for a
         single metadynamics run.
 
         -----------------------------------------------------------------------
@@ -619,8 +629,8 @@ class Metadynamics:
                                  **kwargs
                                  ) -> None:
         """
-        Executes multiple well-tempered metadynamics runs in parallel with a
-        provided sequence of biasfactors and plots the resulting trajectories,
+        Execute multiple well-tempered metadynamics runs in parallel with a
+        provided sequence of biasfactors and plot the resulting trajectories,
         useful for estimating the optimal biasfactor value.
 
         -----------------------------------------------------------------------
@@ -750,7 +760,7 @@ class Metadynamics:
 
     def _try_single_biasfactor(self, configuration, mlp, temp, interval, dt,
                                bias, plotted_cvs, **kwargs):
-        """Executes a single well-tempered metadynamics run and plots the
+        """Execute a single well-tempered metadynamics run and plot the
         resulting trajectory"""
 
         self._run_single_metad(configuration=configuration,
@@ -788,10 +798,11 @@ class Metadynamics:
                        interval:       Optional[int] = None,
                        ) -> None:
         """
-        Performs block averaging analysis on the sliced trajectory of the most
-        recent metadynamics run. Plots the block analysis and saves mean FES
+        Perform block averaging analysis on the sliced trajectory of the most
+        recent metadynamics run. Plot the block analysis and save mean FES
         grids with a range of block sizes, which, if the block analysis
-        converged, can be used for plotting the FES using plot_fes() method.
+        converged, can be used for plotting the FES error using plot_fes()
+        method.
 
         -----------------------------------------------------------------------
         Arguments:
@@ -818,10 +829,6 @@ class Metadynamics:
             dt: (float) Time-step in fs
 
             interval: (int) Interval between saving the geometry
-        -------------------
-        Keyword Arguments:
-
-            {fs, ps, ns}: Simulation time in some units
         """
 
         start = time.perf_counter()
@@ -902,9 +909,9 @@ class Metadynamics:
         return None
 
     def _block_analysis_params(self, temp, dt, interval) -> Tuple:
-        """Reads parameters from the previous metadynamics simulation. If
-        previous parameters are not set, the method reads parameters which were
-        supplied to the block_analysis() method"""
+        """Read parameters from the previous metadynamics simulation. If
+        previous parameters are not set, read parameters which were supplied
+        to the block_analysis() method"""
 
         # Bias with dummy width and height values, and very large pace
         bias = deepcopy(self.bias)
@@ -930,7 +937,7 @@ class Metadynamics:
 
     @staticmethod
     def _save_sliced_xyz(sliced_traj):
-        """Saves sliced trajectory as .xyz file"""
+        """Save sliced trajectory as .xyz file"""
 
         _mlt_configuration_set = ConfigurationSet()
         for atoms in sliced_traj:
@@ -950,8 +957,8 @@ class Metadynamics:
                                         'HILLS'])
     def _compute_grids_for_blocksize(self, blocksize, temp, energy_units,
                                      min_max_params, n_bins) -> np.ndarray:
-        """Computes CV, mean FES, and standard deviation of the mean FES grids
-        over blocks for a given block size and returns the stacked grid"""
+        """Compute CV, mean FES, and standard deviation of the mean FES grids
+        over blocks for a given block size and return the stacked grid"""
 
         self._generate_fes_files_for_block_analysis(blocksize, temp,
                                                     min_max_params, n_bins)
@@ -979,7 +986,7 @@ class Metadynamics:
 
     def _generate_fes_files_for_block_analysis(self, blocksize, temp,
                                                min_max_params, n_bins) -> None:
-        """Generates fes_*.dat files which are required for block analysis"""
+        """Generate fes_*.dat files which are required for block analysis"""
 
         os.environ['PLUMED_MAXBACKUP'] = '10000'
 
@@ -1009,9 +1016,7 @@ class Metadynamics:
             for line in reweight_setup:
                 f.write(f'{line}\n')
 
-        for cv in self.bias.cvs:
-            if cv.files is not None:
-                cv.write_files()
+        self.bias.write_cv_files()
 
         driver_process = Popen(['plumed', 'driver',
                                 '--ixyz', 'sliced_traj.xyz',
@@ -1036,14 +1041,14 @@ class Metadynamics:
 
     @staticmethod
     def _plot_block_analysis(blocksizes, std_grids, energy_units) -> None:
-        """Plots the standard deviation versus block size"""
+        """Plot the standard deviation versus block size"""
 
         mean_stds = [np.nanmean(std_grid) for std_grid in std_grids]
 
         fig, ax = plt.subplots()
         ax.plot(blocksizes, mean_stds, color='k')
 
-        ax.set_xlabel('Block Size')
+        ax.set_xlabel('Block size')
         ax.set_ylabel(r'$\left\langle\sigma_{\mu_{G}}\right\rangle$ / '
                       f'{convert_exponents(energy_units)}')
 
@@ -1067,16 +1072,19 @@ class Metadynamics:
                  blocksize:         Optional[int] = None,
                  ) -> None:
         """
-        Plots the free energy surface with a confidence interval. If the .npy
-        file is not supplied the file is computed (if metadynamics has been
-        run). However, if blocksize is supplied, the FES is plotted using .npy
+        Plot the free energy surface with a confidence interval. If the .npy
+        file is not supplied, the file is computed (if metadynamics has been
+        run). If blocksize is supplied, the FES error is plotted using .npy
         file with the given blocksize generated during block analysis.
 
         -----------------------------------------------------------------------
         Arguments:
 
-            energy_units: (str) Energy units to be used in plotting, available
-                                units: 'eV', 'kcal mol-1', 'kJ mol-1'
+            energy_units: (str) Energy units to be used in computing the free
+                                energy, available units: 'eV', 'kcal mol-1',
+                                'kJ mol-1'. If fes_npy and/or blocksize options
+                                are used, the units of fes_npy and/or blocksize
+                                files must match energy units here
 
             confidence_level: (float) Specifies what confidence level to use
                                       in plots (probability for FES to lie in
@@ -1095,10 +1103,10 @@ class Metadynamics:
 
             blocksize: (int) If block analysis has been performed, the integer
                              specifies which block size to use for plotting
-                             the FES
+                             the FES standard error
         """
 
-        if fes_npy is None and blocksize is None:
+        if fes_npy is None:
             if not os.path.exists('fes_raw.npy'):
                 fes = self.compute_fes(energy_units, n_bins, cvs_bounds)
 
@@ -1108,20 +1116,8 @@ class Metadynamics:
 
                 fes = np.load('fes_raw.npy')
 
-        elif fes_npy is not None:
-            fes = np.load(fes_npy)
-
-        # Equivalent to elif blocksize is not None
         else:
-            filename = f'block_analysis/mean_fes_blocksize{blocksize}.npy'
-
-            if not os.path.exists(filename):
-                raise FileNotFoundError('The mean FES with block size '
-                                        f'{blocksize} was not found. Make '
-                                        'sure to first run block analysis and '
-                                        'use the appropriate block size')
-
-            fes = np.load(filename)
+            fes = np.load(fes_npy)
 
         if self.n_cvs == 1:
             self._plot_1d_fes(fes, energy_units, confidence_level, blocksize)
@@ -1141,7 +1137,7 @@ class Metadynamics:
                     cvs_bounds:           Optional[Sequence] = None,
                     ) -> np.ndarray:
         """
-        Generates fes.dat files from HILLS.dat files and computes a total grid
+        Generate fes.dat files from HILLS.dat files and compute a total grid
         containing collective variable grids and free energy surface grids,
         which is saved in the current directory as .npy file.
 
@@ -1188,46 +1184,34 @@ class Metadynamics:
                      confidence_level:  float = 0.95,
                      blocksize:         Optional[int] = None,
                      ) -> None:
-        """Plots 1D mean free energy surface with confidence interval"""
+        """Plot 1D mean free energy surface with a confidence interval"""
 
         logger.info('Plotting 1D FES')
 
         cv_grid = fes[0]
         fes_grids = fes[1:]
-        n_fes_grids = len(fes_grids)
-
-        if blocksize is None:
-            mean_fes = np.mean(fes_grids, axis=0)
-            std_mean_fes = ((1 / np.sqrt(n_fes_grids))
-                            * np.std(fes_grids, axis=0, ddof=1))
-
-        else:
-            # No benefit from n_fes_grids
-            mean_fes = fes_grids[-2]
-            std_mean_fes = fes_grids[-1]
-
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            confidence_interval = norm.interval(confidence_level,
-                                                loc=mean_fes,
-                                                scale=std_mean_fes)
-
-        lower_bound = confidence_interval[0]
-        upper_bound = confidence_interval[1]
 
         fig, ax = plt.subplots()
 
+        mean_fes = np.mean(fes_grids, axis=0)
         ax.plot(cv_grid, mean_fes, label='Free energy')
 
-        if blocksize is None and n_fes_grids == 1:
-            confidence_label = None
+        std_mean_fes = self._compute_fes_std(fes_grids=fes_grids,
+                                             blocksize=blocksize)
+        if np.any(std_mean_fes):
 
-        else:
-            confidence_label = 'Confidence interval'
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                confidence_interval = norm.interval(confidence_level,
+                                                    loc=mean_fes,
+                                                    scale=std_mean_fes)
 
-        ax.fill_between(cv_grid, lower_bound, upper_bound,
-                        alpha=0.3,
-                        label=confidence_label)
+            lower_bound = confidence_interval[0]
+            upper_bound = confidence_interval[1]
+
+            ax.fill_between(cv_grid, lower_bound, upper_bound,
+                            alpha=0.3,
+                            label='Confidence interval')
 
         cv = self.bias.metad_cvs[0]
         if cv.units is not None:
@@ -1257,24 +1241,37 @@ class Metadynamics:
                      confidence_level:  float = 0.95,
                      blocksize:         Optional[int] = None,
                      ) -> None:
-        """Plots 2D mean free energy surface with confidence interval"""
+        """Plot 2D mean free energy surface with a confidence interval"""
 
         logger.info('Plotting 2D FES')
 
         cv1_grid = fes[0]
         cv2_grid = fes[1]
         fes_grids = fes[2:]
-        n_fes_grids = len(fes_grids)
 
-        if blocksize is None:
-            mean_fes = np.mean(fes_grids, axis=0)
-            std_mean_fes = ((1 / np.sqrt(n_fes_grids))
-                            * np.std(fes_grids, axis=0, ddof=1))
+        fig, (ax_mean, ax_std_error) = plt.subplots(nrows=1,
+                                                    ncols=2,
+                                                    figsize=(12, 5))
 
-        else:
-            # No benefit from n_fes_grids
-            mean_fes = fes_grids[-2]
-            std_mean_fes = fes_grids[-1]
+        jet_cmap = plt.get_cmap('jet')
+        jet_cmap_matrix = jet_cmap(np.linspace(0, 1, 256))
+        jet_cmap_matrix[-1, :] = [1, 1, 1, 1]
+        mod_jet_cmap = ListedColormap(jet_cmap_matrix)
+
+        mean_fes = np.mean(fes_grids, axis=0)
+
+        mean_contourf = ax_mean.contourf(cv1_grid, cv2_grid, mean_fes, 256,
+                                         cmap=mod_jet_cmap)
+        ax_mean.contour(cv1_grid, cv2_grid, mean_fes, 20,
+                        colors='k',
+                        alpha=0.2)
+
+        mean_cbar = fig.colorbar(mean_contourf, ax=ax_mean)
+        mean_cbar.set_label(label=r'$\Delta G$ / '
+                                  f'{convert_exponents(energy_units)}')
+
+        std_mean_fes = self._compute_fes_std(fes_grids=fes_grids,
+                                             blocksize=blocksize)
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
@@ -1284,22 +1281,12 @@ class Metadynamics:
 
         interval_range = confidence_interval[1] - confidence_interval[0]
 
-        fig, (ax_mean, ax_std_error) = plt.subplots(nrows=1,
-                                                    ncols=2,
-                                                    figsize=(12, 5))
-
-        mean_contourf = ax_mean.contourf(cv1_grid, cv2_grid, mean_fes, 100,
-                                         cmap='jet')
-        ax_mean.contour = (cv1_grid, cv2_grid, mean_fes, 20)
-
-        mean_cbar = fig.colorbar(mean_contourf, ax=ax_mean)
-        mean_cbar.set_label(label=r'$\Delta G$ / '
-                                  f'{convert_exponents(energy_units)}')
-
         std_error_contourf = ax_std_error.contourf(cv1_grid, cv2_grid,
-                                                   interval_range, 100,
+                                                   interval_range, 256,
                                                    cmap='Blues')
-        ax_std_error.contour = (cv1_grid, cv2_grid, interval_range, 20)
+        ax_std_error.contour(cv1_grid, cv2_grid, mean_fes, 20,
+                             colors='k',
+                             alpha=0.2)
 
         std_error_cbar = fig.colorbar(std_error_contourf, ax=ax_std_error)
         std_error_cbar.set_label(label='Confidence interval / '
@@ -1323,7 +1310,7 @@ class Metadynamics:
 
         fig.tight_layout()
 
-        figname = 'metad_free_energy.pdf'
+        figname = 'metad_free_energy.png'
         if os.path.exists(figname):
             os.rename(figname, unique_name(figname))
 
@@ -1331,6 +1318,35 @@ class Metadynamics:
         plt.close(fig)
 
         return None
+
+    @staticmethod
+    def _compute_fes_std(fes_grids: np.ndarray,
+                         blocksize: Optional[int] = None
+                         ) -> np.ndarray:
+        """Compute standard deviation of the free energy to use in plotting"""
+
+        n_surfaces = len(fes_grids)
+
+        if blocksize is not None:
+            filename = f'block_analysis/mean_fes_blocksize{blocksize}.npy'
+
+            if not os.path.exists(filename):
+                raise FileNotFoundError('Block averaging analysis with block '
+                                        f'size {blocksize} was not found. '
+                                        'Make sure to run block analysis '
+                                        'before using this option and use an '
+                                        'appropriate block size')
+
+            std_mean_fes = np.load(filename)[-1]
+
+        elif n_surfaces != 1:
+            std_mean_fes = ((1 / np.sqrt(n_surfaces))
+                            * np.std(fes_grids, axis=0, ddof=1))
+
+        else:
+            std_mean_fes = np.zeros_like(fes_grids[0])
+
+        return std_mean_fes
 
     def plot_fes_convergence(self,
                              stride:       int,
@@ -1342,8 +1358,8 @@ class Metadynamics:
                              idx:          int = 1
                              ) -> None:
         """
-        Computes multiple fes.dat files from a HILLS_idx.dat file by summing
-        the deposited gaussians using a stride. Uses the computed files to plot
+        Compute multiple fes.dat files from a HILLS_idx.dat file by summing
+        the deposited gaussians using a stride. Use the computed files to plot
         multiple FESs as a function of simulation time.
 
         -----------------------------------------------------------------------
@@ -1433,7 +1449,7 @@ class Metadynamics:
     @staticmethod
     def _plot_surface_difference(fes_grids, fes_time, time_units, energy_units
                                  ) -> None:
-        """Plots the root mean square difference between free energy surfaces
+        """Plot the root mean square difference between free energy surfaces
         as a function of time"""
 
         fes_diff_grids = np.diff(fes_grids, axis=0)
@@ -1457,7 +1473,7 @@ class Metadynamics:
     def _plot_multiple_1d_fes_surfaces(self, cv_grids, fes_grids, fes_time,
                                        n_surfaces, time_units, energy_units
                                        ) -> None:
-        """Plots multiple 1D free energy surfaces as a function of simulation
+        """Plot multiple 1D free energy surfaces as a function of simulation
         time"""
 
         plotted_cv = self.bias.metad_cvs[0]
@@ -1494,7 +1510,7 @@ class Metadynamics:
                             idx:         Optional[int] = None
                             ) -> None:
         """
-        Generates fes.dat files from a HILLS.dat file.
+        Generate fes.dat files from a HILLS.dat file.
 
         -----------------------------------------------------------------------
         Arguments:
@@ -1556,7 +1572,7 @@ class Metadynamics:
                             relative:     bool = True
                             ) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Uses fes.dat files in a current directory to compute a grid containing
+        Use fes.dat files in a current directory to compute a grid containing
         collective variables and a grid containing free energy surfaces.
 
         -----------------------------------------------------------------------
@@ -1692,8 +1708,8 @@ class Metadynamics:
                          cvs_bounds: Sequence
                          ) -> Sequence:
         """
-        Checks the validity of the supplied CVs bounds and returns the
-        bounds in a universal format.
+        Check the validity of the supplied CVs bounds and returns the bounds
+        in a universal format.
 
         -----------------------------------------------------------------------
         Arguments:

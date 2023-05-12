@@ -156,9 +156,11 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                                             bias_start_iter=bias_start_iter,
                                             bias=bias)
 
-        init_config_iter = _update_init_config(init_config, mlp,
-                                               fix_init_config,
-                                               inherit_metad_bias)
+        init_config_iter = _update_init_config(init_config=init_config,
+                                               mlp=mlp,
+                                               fix_init_config=fix_init_config,
+                                               bias=bias,
+                                               inherit_metad_bias=inherit_metad_bias)
 
         _add_active_configs(mlp,
                             init_config=init_config_iter,
@@ -181,8 +183,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
         if mlp.n_train == previous_n_train:
 
             if iteration >= min_active_iters:
-                logger.info('No AL configurations found. Final dataset size '
-                            f'= {previous_n_train} Active learning = DONE')
+                logger.info('No AL configurations found')
                 break
 
             else:
@@ -201,6 +202,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
     if inherit_metad_bias:
         _remove_last_inherited_metad_bias_file(max_active_iters, bias)
 
+    logger.info(f'Final dataset size = {mlp.n_train} Active learning = DONE')
     return None
 
 
@@ -485,6 +487,9 @@ def _attach_plumed_coords_to_init_configs(init_configs, bias) -> None:
                             f'FILE=colvar_{cv.name}_driver.dat '
                             'STRIDE=1')
 
+    # Remove duplicate lines
+    driver_setup = list(dict.fromkeys(driver_setup))
+
     with open('driver_setup.dat', 'w') as f:
         for line in driver_setup:
             f.write(f'{line}\n')
@@ -512,18 +517,24 @@ def _attach_plumed_coords_to_init_configs(init_configs, bias) -> None:
     return None
 
 
-def _update_init_config(init_config, mlp, fix_init_config, inherit_metad_bias
-                        ) -> 'mlptrain.Configuration':
+def _update_init_config(init_config, mlp, fix_init_config, bias,
+                        inherit_metad_bias) -> 'mlptrain.Configuration':
     """Updates initial configuration for an active learning iteration"""
 
     if fix_init_config:
         return init_config
 
-    elif inherit_metad_bias is not None:
-        return mlp.training_data.lowest_inherited_biased_energy
-
     else:
-        return mlp.training_data.lowest_biased_energy
+        if bias is not None:
+
+            if inherit_metad_bias is not None:
+                return mlp.training_data.lowest_inherited_biased_energy
+
+            else:
+                return mlp.training_data.lowest_biased_energy
+
+        else:
+            return mlp.training_data.lowest_energy
 
 
 def _check_bias(bias, temp, inherit_metad_bias) -> None:
@@ -708,6 +719,10 @@ def _generate_inheritable_metad_bias_grid(n_configs, grid_files, bias,
         np.savetxt(fname=bytes_io, X=final_array, fmt='    %.9f')
         f.write(bytes_io.getvalue().decode())
 
+    os.makedirs('accumulated_bias', exist_ok=True)
+    shutil.copyfile(src=f'bias_grid_{iteration}.dat',
+                    dst=f'accumulated_bias/bias_after_iter_{iteration}.dat')
+
     return None
 
 
@@ -785,6 +800,10 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
                 final_hills_file.write(f'{line}\n')
 
         os.remove(fname)
+
+    os.makedirs('accumulated_bias', exist_ok=True)
+    shutil.copyfile(src=f'HILLS_{iteration}.dat',
+                    dst=f'accumulated_bias/bias_after_iter_{iteration}.dat')
 
     return None
 

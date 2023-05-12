@@ -6,13 +6,13 @@ General machine learnt potential (MLP) training for molecular systems
 
 
 ```
-conda install --file requirements.txt
+conda install -c conda-forge --file requirements.txt
 pip install -e .
+cd scripts
+source install_ase.sh
 ```
 
-ACE can be installed directly from `scripts/` with `source install_ace.sh`.
-
-PLUMED bias is supported only with the unreleased ASE version which can be installed directly from `scripts/` with `source install_ase.sh`.
+Machine learning potentials can be installed directly from `scripts/`.
 
 ### Notes
 
