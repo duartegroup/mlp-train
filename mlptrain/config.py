@@ -23,6 +23,28 @@ class _ConfigClass:
     nequip_params = {'cutoff': 4.0,
                      'train_fraction': 0.9}
 
+    # MACE params
+    mace_params = {'valid_fraction': 0.1,
+                   'config_type_weights': '{"Default":1.0}',
+                   'model': 'MACE',
+                   'loss': 'weighted',
+                   'energy_weight': 1.0,
+                   'forces_weight': 5.0,
+                   'hidden_irreps': '128x0e + 128x1o',
+                   'batch_size': 10,
+                   'r_max': 5,
+                   'correlation': 3,
+                   'device': 'cuda',
+                   'calc_device': 'cpu',
+                   'error_table': 'TotalMAE',
+                   'swa': True,
+                   'start_swa': 800,
+                   'ema': False,
+                   'ema_decay': 0.99,
+                   'amsgrad': True,
+                   'restart_latest': False,
+                   'save_cpu': True}
+
     # --------------------- Internal properties ---------------------------
 
     @property
