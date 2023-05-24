@@ -1,7 +1,10 @@
-
+---
 name: Test with pytest
 
-on: [push]
+on:
+  push:
+    branches: [main]
+  pull_request:
 
 jobs:
   test:
@@ -12,7 +15,7 @@ jobs:
       fail-fast: true
       matrix:
         os: ["ubuntu-latest"]
-        python-version: ["3.7", "3.9"]
+        python-version: ["3.9"]
       
     defaults:
       run:
@@ -30,11 +33,7 @@ jobs:
     - name: Install
       run: |
         conda activate test
-        conda install --file requirements.txt -c conda-forge
-        cd ./scripts
-        source install_ase.sh
-        cd ..
-        python -m pip install . --no-deps
+        ./install.sh
     - name: Test
       run: |
         pytest
