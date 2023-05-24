@@ -4,15 +4,11 @@ General machine learnt potential (MLP) training for molecular systems
 ***
 ### Install
 
-
 ```
-conda install -c conda-forge --file requirements.txt
-pip install -e .
-cd scripts
-source install_ase.sh
+./install.sh
 ```
 
-Machine learning potentials can be installed directly from `scripts/`.
+Machine learning potentials can be installed directly from [scripts/](scripts).
 
 ### Notes
 
