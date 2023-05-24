@@ -30,11 +30,7 @@ jobs:
     - name: Install
       run: |
         conda activate test
-        conda install --file requirements.txt -c conda-forge
-        cd ./scripts
-        source install_ase.sh
-        cd ..
-        python -m pip install . --no-deps
+        ./install.sh
     - name: Test
       run: |
         pytest
