@@ -15,7 +15,8 @@ class ConfigurationSet(list):
     """A set of configurations"""
 
     def __init__(self,
-                 *args: Union[Configuration, str]):
+                 *args: Union[Configuration, str],
+                 allow_duplicates: bool = False):
         """
         Construct a configuration set from Configurations, or a saved file.
         This is a set, thus no duplicates configurations are present.
@@ -24,8 +25,12 @@ class ConfigurationSet(list):
         Arguments:
             args: Either strings of existing files (e.g. data.npz) or
                   individual configurations.
+
+            allow_duplicates: Should duplicate configurations be supported? For
+                              a training configuration set this should be false
         """
         super().__init__()
+        self.allow_duplicates = allow_duplicates
 
         for arg in args:
 
@@ -223,7 +228,7 @@ class ConfigurationSet(list):
         if value is None:
             return
 
-        if value in self:
+        if not self.allow_duplicates and value in self:
             logger.warning('Not appending configuration to set - already '
                            'present')
             return

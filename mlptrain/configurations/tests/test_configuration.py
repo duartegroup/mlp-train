@@ -11,4 +11,3 @@ def test_equality():
     config2 = Configuration(atoms=[Atom('H')])
 
     assert config1 != config2
-
