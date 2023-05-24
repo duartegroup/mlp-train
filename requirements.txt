@@ -2,9 +2,9 @@ numpy<=1.23.5
 cython
 scipy
 autode==1.1*
-ase
+# ase  # Must be installed from https://github.com/rosswhitfield/ase:master
 coloredlogs
-dscribe
+dscribe==1.*
 matplotlib-base
 pytest
 py-plumed
