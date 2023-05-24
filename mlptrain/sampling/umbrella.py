@@ -571,6 +571,7 @@ class UmbrellaSampling:
 
         bin_centres = np.linspace(self.zeta_refs[0], self.zeta_refs[-1], num=n_bins)
         bin_width = (bin_centres[-1] - bin_centres[0]) / (len(bin_centres) - 1)
+        logger.debug(f"Bin width: {bin_width} Å")
 
         for window in self.windows:
             window.bin_edges = np.linspace(
