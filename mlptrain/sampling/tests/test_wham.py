@@ -8,10 +8,8 @@ here = os.path.dirname(os.path.abspath(__file__))
 kj_to_ev = 0.0103642
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
-def test_wham():
+def _initialised_us() -> UmbrellaSampling:
 
-    # Initialise an umbrella sampling class with some dummy arguments
     us = UmbrellaSampling(zeta_func=lambda x: None,
                           kappa=0.0)
 
@@ -36,6 +34,13 @@ def test_wham():
 
         us.windows.append(window)
 
+    return us
+
+
+@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+def test_wham_is_close_to_ref():
+
+    us = _initialised_us()
     zetas, free_energies = us.wham(n_bins=499)
     free_energies -= min(free_energies)
 
@@ -53,3 +58,17 @@ def test_wham():
         assert np.isclose(free_energy,
                           ref_free_energies[close_idx],
                           atol=0.02)
+
+
+@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+def test_wham_is_somewhat_independent_of_nbins():
+
+    us = _initialised_us()
+    _, free_energies_500bins = us.wham(n_bins=500)
+    _, free_energies_1000bins = us.wham(n_bins=1000)
+
+    assert np.allclose(
+        free_energies_500bins,
+        np.mean(free_energies_1000bins.reshape(-1, 2), axis=1),  # block average
+        atol=5E-2
+    )
