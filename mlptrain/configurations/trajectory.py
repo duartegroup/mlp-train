@@ -1,9 +1,15 @@
+from typing import Union
+
 from mlptrain.log import logger
+from mlptrain.configurations.configuration import Configuration
 from mlptrain.configurations.configuration_set import ConfigurationSet
 
 
 class Trajectory(ConfigurationSet):
     """Trajectory"""
+
+    def __init__(self, *args: Union[Configuration, str]):
+        super().__init__(*args, allow_duplicates=True)
 
     @property
     def t0(self) -> float:

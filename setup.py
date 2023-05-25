@@ -13,6 +13,6 @@ setup(name='mlptrain',
                 'mlptrain.potentials.gap',
                 'mlptrain.potentials.ace',
                 'mlptrain.potentials.nequip'],
-      url='https://github.com/t-young31/mlptrain',
+      url='https://github.com/duartegroup/mlp-train',
       license='MIT',
-      author='Tom Young, Tristan Johnston-Wood')
+      author='mlp-train authors')

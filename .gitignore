@@ -6,3 +6,4 @@ dist/
 **/__pycache__/
 **/__MACOSX/
 .coverage
+.pytest_cache
