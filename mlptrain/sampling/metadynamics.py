@@ -1,8 +1,8 @@
 import os
 import re
 import time
+import glob
 import shutil
-import warnings
 import numpy as np
 import multiprocessing as mp
 import matplotlib.pyplot as plt
@@ -14,6 +14,7 @@ from copy import deepcopy
 from matplotlib.colors import ListedColormap
 from scipy.stats import norm
 from ase import units as ase_units
+from ase.io import read as ase_read
 from ase.io import write as ase_write
 from ase.io.trajectory import Trajectory as ASETrajectory
 from mlptrain.configurations import Configuration, ConfigurationSet
@@ -788,14 +789,18 @@ class Metadynamics:
         return None
 
     def block_analysis(self,
-                       start_time:     float,
-                       idx:            int = 1,
-                       energy_units:   str = 'kcal mol-1',
-                       n_bins:         int = 300,
-                       cvs_bounds:     Optional[Sequence] = None,
-                       temp:           Optional[float] = None,
-                       dt:             Optional[float] = None,
-                       interval:       Optional[int] = None,
+                       start_time:         float,
+                       idx:                int = 1,
+                       energy_units:       str = 'kcal mol-1',
+                       n_bins:             int = 300,
+                       min_n_blocks:       int = 10,
+                       min_blocksize:      int = 10,
+                       blocksize_interval: int = 10,
+                       bandwidth:          float = 0.02,
+                       cvs_bounds:         Optional[Sequence] = None,
+                       temp:               Optional[float] = None,
+                       dt:                 Optional[float] = None,
+                       interval:           Optional[int] = None,
                        ) -> None:
         """
         Perform block averaging analysis on the sliced trajectory of the most
@@ -819,6 +824,17 @@ class Metadynamics:
 
             n_bins: (int) Number of bins to use when dumping histograms
 
+            min_n_blocks: (int) Minimum number of blocks
+
+            min_blocksize: (int) Minimum size of a block
+
+            blocksize_interval: (int) Block size interval describing the
+                                      difference in the number of frames per
+                                      block for adjacent block sizes
+
+            bandwidth: (float) Bandwidth parameter used in the histogram
+                               estimations
+
             cvs_bounds: Specifies the range between which to compute the free
                         energy for each collective variable,
                         e.g. [(0.8, 1.5), (80, 120)]
@@ -834,12 +850,12 @@ class Metadynamics:
         start = time.perf_counter()
 
         bias, temp, dt, interval = self._block_analysis_params(temp, dt, interval)
-
-        full_traj = ASETrajectory(f'trajectories/trajectory_{idx}.traj', 'r')
         start_frame_index = int((start_time * 1E3) / (dt * interval))
-        sliced_traj = full_traj[start_frame_index:]
 
+        sliced_traj = ase_read(f'trajectories/trajectory_{idx}.traj',
+                               index=f'{start_frame_index}:')
         self._save_sliced_xyz(sliced_traj)
+
         shutil.copyfile(src=f'plumed_files/metadynamics/HILLS_{idx}.dat',
                         dst=f'HILLS_{idx}.dat')
 
@@ -859,10 +875,6 @@ class Metadynamics:
         # The number of frames PLUMED driver takes into account
         # n_used_frames = n_total_frames - 1
         n_used_frames = len(sliced_traj) - 1
-
-        min_n_blocks = 10
-        min_blocksize = 10
-        blocksize_interval = 10
         max_blocksize = n_used_frames // min_n_blocks
 
         if max_blocksize < min_blocksize:
@@ -872,7 +884,7 @@ class Metadynamics:
         logger.info('Performing block analysis in parallel using '
                     f'{Config.n_cores} cores')
 
-        grid_procs, std_grids = [], []
+        grid_procs, data_dict = [], {}
         blocksizes = list(range(min_blocksize, max_blocksize + 1,
                                 blocksize_interval))
 
@@ -883,25 +895,24 @@ class Metadynamics:
                 grid_proc = pool.apply_async(func=self._compute_grids_for_blocksize,
                                              args=(blocksize,
                                                    temp,
-                                                   energy_units,
                                                    min_max_params,
-                                                   n_bins))
+                                                   n_bins,
+                                                   bandwidth,
+                                                   energy_units))
                 grid_procs.append(grid_proc)
 
             for blocksize, grid_proc in zip(blocksizes, grid_procs):
-                grid = grid_proc.get()
-                std_grids.append(grid[-1])
-                np.save(f'mean_fes_blocksize{blocksize}.npy', grid)
+                cvs_grid, fes_error = grid_proc.get()
+                data_dict[str(blocksize)] = fes_error
 
-        move_files([r'mean_fes_blocksize\d+\.npy'],
-                   dst_folder='block_analysis',
-                   regex=True)
+        data_dict['CVs'] = cvs_grid
+        np.savez('block_analysis.npz', **data_dict)
 
         os.remove('plumed_setup.dat')
         os.remove('sliced_traj.xyz')
         os.remove(f'HILLS_{idx}.dat')
 
-        self._plot_block_analysis(blocksizes, std_grids, energy_units)
+        self._plot_block_analysis(blocksizes, data_dict, energy_units)
 
         finish = time.perf_counter()
         logger.info(f'Block analysis done in {(finish - start) / 60:.1f} m')
@@ -939,7 +950,7 @@ class Metadynamics:
     def _save_sliced_xyz(sliced_traj):
         """Save sliced trajectory as .xyz file"""
 
-        _mlt_configuration_set = ConfigurationSet()
+        _mlt_configuration_set = ConfigurationSet(allow_duplicates=True)
         for atoms in sliced_traj:
             config = Configuration()
             config.atoms = [ade.Atom(label) for label in atoms.symbols]
@@ -950,48 +961,90 @@ class Metadynamics:
             _mlt_configuration_set.append(config)
 
         _mlt_configuration_set.save('sliced_traj.xyz')
+
         return None
 
     @work_in_tmp_dir(copied_substrings=['sliced_traj.xyz',
                                         'plumed_setup.dat',
                                         'HILLS'])
-    def _compute_grids_for_blocksize(self, blocksize, temp, energy_units,
-                                     min_max_params, n_bins) -> np.ndarray:
-        """Compute CV, mean FES, and standard deviation of the mean FES grids
-        over blocks for a given block size and return the stacked grid"""
+    def _compute_grids_for_blocksize(self, blocksize, temp, min_max_params,
+                                     n_bins, bandwidth, energy_units
+                                     ) -> Tuple[np.ndarray, np.ndarray]:
+        """Compute CV and FES error grids over blocks for a given block size and
+        return both grids"""
 
-        self._generate_fes_files_for_block_analysis(blocksize, temp,
-                                                    min_max_params, n_bins)
+        self._generate_hist_files_for_block_analysis(blocksize=blocksize,
+                                                     temp=temp,
+                                                     min_max_params=min_max_params,
+                                                     n_bins=n_bins,
+                                                     bandwidth=bandwidth)
 
-        cv_grids, fes_grids = self._fes_files_to_grids(energy_units, n_bins)
+        norm, hist, cvs_grid = self._read_histogram(fname='hist.dat',
+                                                    n_bins=n_bins,
+                                                    compute_cvs=True)
+        norm_sq = norm**2
+        average = norm*hist
+        average_sq = norm*hist**2
 
-        fes_grids[fes_grids == np.inf] = np.nan
-        n_blocks = len(fes_grids)
+        for hist_file in glob.glob(f'analysis.*.hist.dat'):
+            tnorm, new_hist, _ = self._read_histogram(fname=hist_file,
+                                                      n_bins=n_bins)
+            norm += tnorm
+            norm_sq += tnorm**2
+            average += tnorm*new_hist
+            average_sq += tnorm*new_hist**2
 
-        # Taking nanstd() of a line of only np.nan values raises warnings
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
+        average /= norm
+        variance = (average_sq / norm) - average**2
+        variance *= (norm / (norm - (norm_sq / norm)))
 
-            # μ_A when using n_blocks
-            mean_fes_grid = np.nanmean(fes_grids, axis=0)
+        n_grids = 1 + len(glob.glob(f'analysis.*.hist.dat'))
+        hist_error = np.sqrt(variance / n_grids)
+        fes_error = (ase_units.kB * temp * hist_error)
+        fes_error = np.where(average != 0, np.divide(fes_error, average), 0)
+        fes_error = convert_ase_energy(fes_error, energy_units)
 
-            # σ_μ_A when using n_blocks
-            std_mean_fes_grid = ((1 / np.sqrt(n_blocks))
-                                 * np.nanstd(fes_grids, axis=0, ddof=1))
+        return cvs_grid, fes_error
 
-        fes_grids = np.stack((mean_fes_grid, std_mean_fes_grid), axis=0)
-        grid = np.concatenate((cv_grids, fes_grids), axis=0)
+    def _read_histogram(self,
+                        fname: str,
+                        n_bins: int,
+                        compute_cvs: bool = False
+                        ) -> Tuple:
+        """Read the histogram file and return the normalisation together with
+        the CVs and the histogram as numpy grids"""
 
-        return grid
+        grid_shape = tuple([n_bins for _ in range(self.n_cvs)])
 
-    def _generate_fes_files_for_block_analysis(self, blocksize, temp,
-                                               min_max_params, n_bins) -> None:
-        """Generate fes_*.dat files which are required for block analysis"""
+        hist_vector = np.loadtxt(fname, usecols=self.n_cvs)
+        hist = np.reshape(hist_vector, (1, *grid_shape))
+
+        cvs_grid = np.zeros((self.n_cvs, *grid_shape))
+        if compute_cvs:
+            for idx in range(self.n_cvs):
+                cv_vector = np.loadtxt(fname, usecols=idx)
+
+                cv_grid = np.reshape(cv_vector, grid_shape)
+                cvs_grid[idx] = cv_grid
+
+        with open(fname, 'r') as f:
+            for line in f:
+                if line.startswith("#! SET normalisation"):
+                    norm = line.split()[3]
+                    break
+
+        return float(norm), hist, cvs_grid
+
+    def _generate_hist_files_for_block_analysis(self, blocksize, temp,
+                                                min_max_params, n_bins,
+                                                bandwidth) -> None:
+        """Generate analysis.*.hist.dat + hist.dat files which are required
+        for block analysis"""
 
         os.environ['PLUMED_MAXBACKUP'] = '10000'
 
         min_param_seq, max_param_seq = min_max_params
-        bandwidth_seq = ','.join('0.05' for _ in range(self.n_cvs))
+        bandwidth_seq = ','.join(str(bandwidth) for _ in range(self.n_cvs))
         bin_param_seq = ','.join(str(n_bins-1) for _ in range(self.n_cvs))
 
         reweight_setup = ['as: REWEIGHT_BIAS '
@@ -1006,10 +1059,10 @@ class Metadynamics:
                           f'GRID_BIN={bin_param_seq} '
                           f'BANDWIDTH={bandwidth_seq} '
                           'LOGWEIGHTS=as',
-                          'fes: CONVERT_TO_FES '
-                          f'TEMP={temp} '
-                          'GRID=hist',
-                          f'DUMPGRID GRID=fes FILE=fes.dat STRIDE={blocksize}']
+                          'DUMPGRID '
+                          'GRID=hist '
+                          'FILE=hist.dat '
+                          f'STRIDE={blocksize}']
 
         os.rename('plumed_setup.dat', 'reweight.dat')
         with open('reweight.dat', 'a') as f:
@@ -1024,32 +1077,20 @@ class Metadynamics:
                                 '--length-units', 'A'])
         driver_process.wait()
 
-        # Files generated: analysis.0.fes.dat, analysis.1.fes.dat, ..., fes.dat
-        # Filenames wanted: fes_0.dat, fes_1.dat, fes_2.dat, ...
-        max_idx = 0
-        for filename in os.listdir():
-            if filename.startswith('analysis'):
-                idx = int(filename.split('.')[1])
-                os.rename(filename, f'fes_{idx}.dat')
-
-                if idx > max_idx:
-                    max_idx = idx
-
-        os.rename('fes.dat', f'fes_{max_idx+1}.dat')
-
         return None
 
     @staticmethod
-    def _plot_block_analysis(blocksizes, std_grids, energy_units) -> None:
+    def _plot_block_analysis(blocksizes, data_dict, energy_units) -> None:
         """Plot the standard deviation versus block size"""
 
-        mean_stds = [np.nanmean(std_grid) for std_grid in std_grids]
+        data_dict.pop('CVs')
+        mean_errors = [np.mean(error_grid) for error_grid in data_dict.values()]
 
         fig, ax = plt.subplots()
-        ax.plot(blocksizes, mean_stds, color='k')
+        ax.plot(blocksizes, mean_errors, color='k')
 
         ax.set_xlabel('Block size')
-        ax.set_ylabel(r'$\left\langle\sigma_{\mu_{G}}\right\rangle$ / '
+        ax.set_ylabel(r'$\left\langle\sigma_{G}\right\rangle$ / '
                       f'{convert_exponents(energy_units)}')
 
         fig.tight_layout()
@@ -1074,8 +1115,9 @@ class Metadynamics:
         """
         Plot the free energy surface with a confidence interval. If the .npy
         file is not supplied, the file is computed (if metadynamics has been
-        run). If blocksize is supplied, the FES error is plotted using .npy
-        file with the given blocksize generated during block analysis.
+        run). If blocksize is supplied, the FES error is plotted using
+        block_analysis.npz file with the given blocksize generated during
+        block averaging analysis.
 
         -----------------------------------------------------------------------
         Arguments:
@@ -1200,11 +1242,9 @@ class Metadynamics:
                                              blocksize=blocksize)
         if np.any(std_mean_fes):
 
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore')
-                confidence_interval = norm.interval(confidence_level,
-                                                    loc=mean_fes,
-                                                    scale=std_mean_fes)
+            confidence_interval = norm.interval(confidence_level,
+                                                loc=mean_fes,
+                                                scale=std_mean_fes)
 
             lower_bound = confidence_interval[0]
             upper_bound = confidence_interval[1]
@@ -1273,11 +1313,9 @@ class Metadynamics:
         std_mean_fes = self._compute_fes_std(fes_grids=fes_grids,
                                              blocksize=blocksize)
 
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            confidence_interval = norm.interval(confidence_level,
-                                                loc=mean_fes,
-                                                scale=std_mean_fes)
+        confidence_interval = norm.interval(confidence_level,
+                                            loc=mean_fes,
+                                            scale=std_mean_fes)
 
         interval_range = confidence_interval[1] - confidence_interval[0]
 
@@ -1328,16 +1366,15 @@ class Metadynamics:
         n_surfaces = len(fes_grids)
 
         if blocksize is not None:
-            filename = f'block_analysis/mean_fes_blocksize{blocksize}.npy'
+            try:
+                std_mean_fes = np.load('block_analysis.npz')[str(blocksize)]
 
-            if not os.path.exists(filename):
+            except (FileNotFoundError, KeyError):
                 raise FileNotFoundError('Block averaging analysis with block '
                                         f'size {blocksize} was not found. '
                                         'Make sure to run block analysis '
                                         'before using this option and use an '
                                         'appropriate block size')
-
-            std_mean_fes = np.load(filename)[-1]
 
         elif n_surfaces != 1:
             std_mean_fes = ((1 / np.sqrt(n_surfaces))

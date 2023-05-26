@@ -272,7 +272,7 @@ def test_block_analysis():
     metad.block_analysis(start_time=start_time)
 
     assert os.path.exists('block_analysis.pdf')
-    assert os.path.exists('block_analysis')
+    assert os.path.exists('block_analysis.npz')
 
     start_time_fs = start_time * 1E3
     n_steps = int(start_time_fs / dt)
@@ -283,10 +283,11 @@ def test_block_analysis():
     blocksize_interval = 10
     max_blocksize = n_used_frames // min_n_blocks
 
-    for blocksize in range(min_blocksize, max_blocksize + 1, blocksize_interval):
-        grid_name = f'block_analysis/mean_fes_blocksize{blocksize}.npy'
-        assert os.path.exists(grid_name)
+    data = np.load('block_analysis.npz')
 
-        # axis 0: CV1, mean_fes, std_mean_fes; axis 1: 300 bins
-        grid = np.load(grid_name)
-        assert np.shape(grid) == (3, 300)
+    # axis 0: CV1; axis 1: 300 bins
+    assert np.shape(data['CVs']) == (1, 300)
+    for blocksize in range(min_blocksize, max_blocksize + 1, blocksize_interval):
+
+        # axis 0: error; axis 1: 300 bins
+        assert np.shape(data[str(blocksize)]) == (3, 300)
