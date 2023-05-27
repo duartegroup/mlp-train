@@ -3,6 +3,7 @@ import re
 import time
 import glob
 import shutil
+import warnings
 import numpy as np
 import multiprocessing as mp
 import matplotlib.pyplot as plt
@@ -1250,9 +1251,12 @@ class Metadynamics:
                                             blocksize=blocksize)
         if np.any(fes_error):
 
-            confidence_interval = norm.interval(confidence_level,
-                                                loc=mean_fes,
-                                                scale=fes_error)
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore',
+                                        message='invalid value encountered in multiply')
+                confidence_interval = norm.interval(confidence_level,
+                                                    loc=mean_fes,
+                                                    scale=fes_error)
 
             lower_bound = confidence_interval[0]
             upper_bound = confidence_interval[1]
@@ -1320,10 +1324,12 @@ class Metadynamics:
 
         fes_error = self._compute_fes_error(fes_grids=fes_grids,
                                             blocksize=blocksize)
-
-        confidence_interval = norm.interval(confidence_level,
-                                            loc=mean_fes,
-                                            scale=fes_error)
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore',
+                                    message='invalid value encountered in multiply')
+            confidence_interval = norm.interval(confidence_level,
+                                                loc=mean_fes,
+                                                scale=fes_error)
 
         interval_range = confidence_interval[1] - confidence_interval[0]
 
@@ -1376,6 +1382,7 @@ class Metadynamics:
         if blocksize is not None:
             try:
                 fes_error = np.load('block_analysis.npz')[str(blocksize)]
+                fes_error = fes_error.flatten()
 
             except (FileNotFoundError, KeyError):
                 raise FileNotFoundError('Block averaging analysis with block '
