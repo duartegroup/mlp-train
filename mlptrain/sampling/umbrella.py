@@ -504,7 +504,7 @@ class UmbrellaSampling:
                 traj.save(filename=f'window_{idx}.xyz')
 
         else:
-            combined_traj = ConfigurationSet()
+            combined_traj = ConfigurationSet(allow_duplicates=True)
             for window_traj in window_trajs:
                 combined_traj += window_traj
 

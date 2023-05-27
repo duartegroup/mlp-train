@@ -491,7 +491,7 @@ class Metadynamics:
                 metad_traj.save(filename=f'metad_{idx}.xyz')
 
         else:
-            combined_traj = ConfigurationSet()
+            combined_traj = ConfigurationSet(allow_duplicates=True)
             for metad_traj in metad_trajs:
                 combined_traj += metad_traj
 
