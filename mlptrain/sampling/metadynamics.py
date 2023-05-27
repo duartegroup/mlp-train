@@ -1000,8 +1000,11 @@ class Metadynamics:
 
         n_grids = 1 + len(glob.glob(f'analysis.*.hist.dat'))
         hist_error = np.sqrt(variance / n_grids)
+
         fes_error = (ase_units.kB * temp * hist_error)
-        fes_error = np.where(average != 0, np.divide(fes_error, average), 0)
+        fes_error = np.divide(fes_error, average,
+                              out=np.zeros_like(fes_error),
+                              where=average!=0)
         fes_error = convert_ase_energy(fes_error, energy_units)
 
         return cvs_grid, fes_error
@@ -1203,7 +1206,12 @@ class Metadynamics:
 
         logger.info('Computing and saving the free energy grid as fes_raw.npy')
 
-        os.chdir('plumed_files/metadynamics')
+        try:
+            os.chdir('plumed_files/metadynamics')
+        except FileNotFoundError:
+            raise FileNotFoundError('Metadynamics directory not found. Make '
+                                    'sure to run metadynamics before trying '
+                                    'to compute the FES')
 
         fes_files = [fname for fname in os.listdir() if 'fes' in fname]
         for fname in fes_files:
@@ -1238,13 +1246,13 @@ class Metadynamics:
         mean_fes = np.mean(fes_grids, axis=0)
         ax.plot(cv_grid, mean_fes, label='Free energy')
 
-        std_mean_fes = self._compute_fes_std(fes_grids=fes_grids,
-                                             blocksize=blocksize)
-        if np.any(std_mean_fes):
+        fes_error = self._compute_fes_error(fes_grids=fes_grids,
+                                            blocksize=blocksize)
+        if np.any(fes_error):
 
             confidence_interval = norm.interval(confidence_level,
                                                 loc=mean_fes,
-                                                scale=std_mean_fes)
+                                                scale=fes_error)
 
             lower_bound = confidence_interval[0]
             upper_bound = confidence_interval[1]
@@ -1310,12 +1318,12 @@ class Metadynamics:
         mean_cbar.set_label(label=r'$\Delta G$ / '
                                   f'{convert_exponents(energy_units)}')
 
-        std_mean_fes = self._compute_fes_std(fes_grids=fes_grids,
-                                             blocksize=blocksize)
+        fes_error = self._compute_fes_error(fes_grids=fes_grids,
+                                            blocksize=blocksize)
 
         confidence_interval = norm.interval(confidence_level,
                                             loc=mean_fes,
-                                            scale=std_mean_fes)
+                                            scale=fes_error)
 
         interval_range = confidence_interval[1] - confidence_interval[0]
 
@@ -1358,16 +1366,16 @@ class Metadynamics:
         return None
 
     @staticmethod
-    def _compute_fes_std(fes_grids: np.ndarray,
-                         blocksize: Optional[int] = None
-                         ) -> np.ndarray:
-        """Compute standard deviation of the free energy to use in plotting"""
+    def _compute_fes_error(fes_grids: np.ndarray,
+                           blocksize: Optional[int] = None
+                           ) -> np.ndarray:
+        """Compute standard error of the free energy to use in plotting"""
 
         n_surfaces = len(fes_grids)
 
         if blocksize is not None:
             try:
-                std_mean_fes = np.load('block_analysis.npz')[str(blocksize)]
+                fes_error = np.load('block_analysis.npz')[str(blocksize)]
 
             except (FileNotFoundError, KeyError):
                 raise FileNotFoundError('Block averaging analysis with block '
@@ -1377,13 +1385,13 @@ class Metadynamics:
                                         'appropriate block size')
 
         elif n_surfaces != 1:
-            std_mean_fes = ((1 / np.sqrt(n_surfaces))
-                            * np.std(fes_grids, axis=0, ddof=1))
+            fes_error = ((1 / np.sqrt(n_surfaces))
+                         * np.std(fes_grids, axis=0, ddof=1))
 
         else:
-            std_mean_fes = np.zeros_like(fes_grids[0])
+            fes_error = np.zeros_like(fes_grids[0])
 
-        return std_mean_fes
+        return fes_error
 
     def plot_fes_convergence(self,
                              stride:       int,
