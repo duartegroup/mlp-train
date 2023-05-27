@@ -380,8 +380,8 @@ class Metadynamics:
 
         return None
 
-    @staticmethod
-    def _initialise_restart(width:  Sequence,
+    def _initialise_restart(self,
+                            width:  Sequence,
                             n_runs: int
                             ) -> None:
         """Initialise restart for metadynamics simulation by checking
@@ -396,24 +396,19 @@ class Metadynamics:
                                     'sure to run metadynamics before '
                                     'trying to restart')
 
-        colvar_files = []
-        for filename in os.listdir('plumed_files/metadynamics'):
-            if 'colvar' in filename:
-                colvar_files.append(filename)
-
-        n_runs_previously = len(colvar_files)
-
-        if n_runs_previously != n_runs:
-            raise NotImplementedError('Restart is implemented only if the '
-                                      'number of runs matches the number '
-                                      'of runs in the previous simulation')
-
         metad_path = os.path.join(os.getcwd(), 'plumed_files/metadynamics')
         traj_path = os.path.join(os.getcwd(), 'trajectories')
 
-        for filename in os.listdir(metad_path):
-            if filename.startswith('fes'):
-                os.remove(os.path.join(metad_path, filename))
+        for cv in self.bias.metad_cvs:
+            colvar_path = os.path.join(metad_path, f'colvar_{cv.name}_*.dat')
+            n_previous_runs = len(glob.glob(colvar_path))
+            if n_previous_runs != n_runs:
+                raise NotImplementedError('Restart is implemented only if the '
+                                          'number of runs matches the number '
+                                          'of runs in the previous simulation')
+
+        for filename in glob.glob(os.path.join(metad_path, 'fes_*.dat')):
+            os.remove(filename)
 
         move_files(['.dat'],
                    dst_folder=os.getcwd(),
@@ -980,7 +975,7 @@ class Metadynamics:
                                                      n_bins=n_bins,
                                                      bandwidth=bandwidth)
 
-        norm, hist, cvs_grid = self._read_histogram(fname='hist.dat',
+        norm, hist, cvs_grid = self._read_histogram(filename='hist.dat',
                                                     n_bins=n_bins,
                                                     compute_cvs=True)
         norm_sq = norm**2
@@ -988,7 +983,7 @@ class Metadynamics:
         average_sq = norm*hist**2
 
         for hist_file in glob.glob(f'analysis.*.hist.dat'):
-            tnorm, new_hist, _ = self._read_histogram(fname=hist_file,
+            tnorm, new_hist, _ = self._read_histogram(filename=hist_file,
                                                       n_bins=n_bins)
             norm += tnorm
             norm_sq += tnorm**2
@@ -1011,8 +1006,8 @@ class Metadynamics:
         return cvs_grid, fes_error
 
     def _read_histogram(self,
-                        fname: str,
-                        n_bins: int,
+                        filename:    str,
+                        n_bins:      int,
                         compute_cvs: bool = False
                         ) -> Tuple:
         """Read the histogram file and return the normalisation together with
@@ -1020,18 +1015,18 @@ class Metadynamics:
 
         grid_shape = tuple([n_bins for _ in range(self.n_cvs)])
 
-        hist_vector = np.loadtxt(fname, usecols=self.n_cvs)
+        hist_vector = np.loadtxt(filename, usecols=self.n_cvs)
         hist = np.reshape(hist_vector, (1, *grid_shape))
 
         cvs_grid = np.zeros((self.n_cvs, *grid_shape))
         if compute_cvs:
             for idx in range(self.n_cvs):
-                cv_vector = np.loadtxt(fname, usecols=idx)
+                cv_vector = np.loadtxt(filename, usecols=idx)
 
                 cv_grid = np.reshape(cv_vector, grid_shape)
                 cvs_grid[idx] = cv_grid
 
-        with open(fname, 'r') as f:
+        with open(filename, 'r') as f:
             for line in f:
                 if line.startswith("#! SET normalisation"):
                     norm = line.split()[3]
@@ -1590,31 +1585,29 @@ class Metadynamics:
         bin_param_seq = ','.join(str(n_bins-1) for _ in range(self.n_cvs))
         min_param_seq, max_param_seq = self._get_min_max_params(cvs_bounds)
 
-        hills_filename_start = 'HILLS' if idx is None else f'HILLS_{idx}'
+        label = '*' if idx is None else idx
 
-        for filename in os.listdir():
+        for filename in glob.glob(f'HILLS_{label}.dat'):
 
-            if filename.startswith(hills_filename_start):
+            # HILLS_*.dat -> *
+            index = filename.split('.')[0].split('_')[-1]
 
-                # HILLS_*.dat -> *
-                index = filename[:-4].split('_')[-1]
+            if stride is None:
+                fes_filename = f'fes_{index}.dat'
+                stride_setup = ''
 
-                if stride is None:
-                    fes_filename = f'fes_{index}.dat'
-                    stride_setup = ''
+            else:
+                fes_filename = f'fes_{index}_'
+                stride_setup = ['--stride', f'{stride}']
 
-                else:
-                    fes_filename = f'fes_{index}_'
-                    stride_setup = ['--stride', f'{stride}']
-
-                compute_fes = Popen(['plumed', 'sum_hills',
-                                     '--hills', filename,
-                                     '--outfile', fes_filename,
-                                     '--bin', bin_param_seq,
-                                     '--min', min_param_seq,
-                                     '--max', max_param_seq,
-                                     *stride_setup])
-                compute_fes.wait()
+            compute_fes = Popen(['plumed', 'sum_hills',
+                                 '--hills', filename,
+                                 '--outfile', fes_filename,
+                                 '--bin', bin_param_seq,
+                                 '--min', min_param_seq,
+                                 '--max', max_param_seq,
+                                 *stride_setup])
+            compute_fes.wait()
 
         return None
 
@@ -1728,12 +1721,11 @@ class Metadynamics:
             for cv in self.bias.metad_cvs:
                 min_values, max_values = [], []
 
-                for filename in os.listdir():
-                    if filename.startswith(f'colvar_{cv.name}'):
-                        cv_values = np.loadtxt(filename, usecols=1)
+                for filename in glob.glob(f'colvar_{cv.name}_*.dat'):
+                    cv_values = np.loadtxt(filename, usecols=1)
 
-                        min_values.append(np.min(cv_values))
-                        max_values.append(np.max(cv_values))
+                    min_values.append(np.min(cv_values))
+                    max_values.append(np.max(cv_values))
 
                 total_min = min(min_values)
                 total_max = max(max_values)

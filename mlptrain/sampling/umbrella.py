@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import glob
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
@@ -718,11 +719,9 @@ class UmbrellaSampling:
             raise ValueError(f'Loading from a folder was not possible as '
                              f'{folder_name} is not a valid folder')
 
-        for filename in os.listdir(folder_name):
-
-            if filename.startswith('window_') and filename.endswith('.txt'):
-                window = _Window.from_file(os.path.join(folder_name, filename))
-                self.windows.append(window)
+        for filename in glob.glob(os.path.join(folder_name, 'window_*.txt')):
+            window = _Window.from_file(filename)
+            self.windows.append(window)
 
         return None
 
