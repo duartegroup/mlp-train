@@ -145,22 +145,18 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
 
     mlp.train()
 
-    # Run the active learning loop, running iterative GAP-MD
+    # Run the active learning loop, running iterative MLP-MD
     for iteration in range(max_active_iters):
 
         previous_n_train = mlp.n_train
-
-        if inherit_metad_bias and iteration >= bias_start_iter:
-            _attach_inherited_bias_energies(configurations=mlp.training_data,
-                                            iteration=iteration,
-                                            bias_start_iter=bias_start_iter,
-                                            bias=bias)
 
         init_config_iter = _update_init_config(init_config=init_config,
                                                mlp=mlp,
                                                fix_init_config=fix_init_config,
                                                bias=bias,
-                                               inherit_metad_bias=inherit_metad_bias)
+                                               inherit_metad_bias=inherit_metad_bias,
+                                               bias_start_iter=bias_start_iter,
+                                               iteration=iteration)
 
         _add_active_configs(mlp,
                             init_config=init_config_iter,
@@ -179,7 +175,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                             bias_start_iter=bias_start_iter,
                             iteration=iteration)
 
-        # Active learning finds no configurations,,
+        # Active learning finds no configurations
         if mlp.n_train == previous_n_train:
 
             if iteration >= min_active_iters:
@@ -518,7 +514,8 @@ def _attach_plumed_coords_to_init_configs(init_configs, bias) -> None:
 
 
 def _update_init_config(init_config, mlp, fix_init_config, bias,
-                        inherit_metad_bias) -> 'mlptrain.Configuration':
+                        inherit_metad_bias, bias_start_iter, iteration
+                        ) -> 'mlptrain.Configuration':
     """Updates initial configuration for an active learning iteration"""
 
     if fix_init_config:
@@ -527,7 +524,12 @@ def _update_init_config(init_config, mlp, fix_init_config, bias,
     else:
         if bias is not None:
 
-            if inherit_metad_bias is not None:
+            if inherit_metad_bias and iteration >= bias_start_iter:
+                _attach_inherited_bias_energies(configurations=mlp.training_data,
+                                                iteration=iteration,
+                                                bias_start_iter=bias_start_iter,
+                                                bias=bias)
+
                 return mlp.training_data.lowest_inherited_biased_energy
 
             else:
