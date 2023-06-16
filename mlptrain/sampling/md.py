@@ -528,14 +528,14 @@ def _initialise_traj(ase_atoms:      'ase.atoms.Atoms',
 
     else:
         # Remove the last frame to avoid duplicate frames
-        previous_traj = ASETrajectory(traj_name, 'r', ase_atoms)
-        previous_atoms = previous_traj[:-1]
-
+        previous_atoms = read(traj_name, index=':-1')
         os.remove(traj_name)
 
         traj = ASETrajectory(traj_name, 'w', ase_atoms)
         for atoms in previous_atoms:
             traj.write(atoms)
+
+        logger.info('Trajectory has been loaded')
 
     return traj
 
