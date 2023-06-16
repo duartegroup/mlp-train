@@ -966,8 +966,8 @@ class Metadynamics:
     def _compute_grids_for_blocksize(self, blocksize, temp, min_max_params,
                                      n_bins, bandwidth, energy_units
                                      ) -> Tuple[np.ndarray, np.ndarray]:
-        """Compute CV and FES error grids over blocks for a given block size
-        and return both grids"""
+        """Compute CV and FES error grids over blocks for a given block size and
+        return both grids"""
 
         self._generate_hist_files_for_block_analysis(blocksize=blocksize,
                                                      temp=temp,
