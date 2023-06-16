@@ -818,6 +818,11 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
             os.remove(fname)
             continue
 
+        # In some cases PLUMED fails to fully print the last line
+        # Therefore, the number of columns is compared to the previous line
+        if len(f_lines[-1].split()) != len(f_lines[-2].split()):
+            f_lines.pop()
+
         height_column_index = -2
         with open(f'HILLS_{iteration}.dat', 'a') as final_hills_file:
 
