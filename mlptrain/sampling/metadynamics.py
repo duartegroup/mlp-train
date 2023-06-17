@@ -326,6 +326,7 @@ class Metadynamics:
 
         if al_iter:
             self._initialise_inherited_bias(al_iter=al_iter, n_runs=n_runs)
+            kwargs['load_metad_bias'] = True
 
         if restart:
             self._initialise_restart(width=width, n_runs=n_runs)
@@ -389,6 +390,7 @@ class Metadynamics:
                                   save_sep=save_sep,
                                   all_to_xyz=all_to_xyz,
                                   restart=restart)
+
         self.plot_gaussian_heights()
 
         self._set_previous_parameters(configuration=configuration,
@@ -407,7 +409,7 @@ class Metadynamics:
         bias_path = f'accumulated_bias/bias_after_iter_{al_iter}.dat'
         if os.path.exists(bias_path):
             for i in range(n_runs):
-                shutil.copyfile(src=bias_path, dst=f'HILLS_{i}.dat')
+                shutil.copyfile(src=bias_path, dst=f'HILLS_{i+1}.dat')
 
         else:
             raise FileNotFoundError('Inherited bias generated after AL '
@@ -638,67 +640,6 @@ class Metadynamics:
 
         return None
 
-    def run_inherited_bias_metadynamics(self,
-                                        al_iter:       int,
-                                        configuration: 'mlptrain.Configuration',
-                                        mlp:           'mlptrain.potentials._base.MLPotential',
-                                        temp:          float,
-                                        interval:      int,
-                                        dt:            float,
-                                        pace:          int = 100,
-                                        height:        Optional[float] = None,
-                                        width:         Optional = None,
-                                        biasfactor:    Optional[float] = None,
-                                        n_runs:        int = 1,
-                                        save_sep:      bool = True,
-                                        all_to_xyz:    bool = False,
-                                        **kwargs
-                                        ) -> None:
-        """
-        Perform metadynamics starting with a metadynamics bias generated during
-        inherited-bias active learning.
-
-        """
-
-        copied_substrings = ['.xml', '.json', '.pth', '.model']
-
-        grid_path = f'accumulated_bias/grid_after_iter_{al_iter}.dat'
-        grid_file = f'grid_after_iter_{al_iter}.dat'
-        hills_path = f'accumulated_bias/hills_after_iter_{al_iter}.dat'
-        hills_file = f'hills_after_iter_{al_iter}.dat'
-
-        if os.path.exists(grid_path):
-            shutil.copyfile(src=grid_path, dst=grid_file)
-            copied_substrings.append(grid_file)
-
-        elif os.path.exists(hills_path):
-            # TODO: need to somehow only copy a single hills file for each
-            #  process, otherwise copying back will overwrite files
-            shutil.copyfile(src=hills_path, dst=hills_file)
-            copied_substrings.append(hills_file)
-
-        else:
-            raise FileNotFoundError('Inherited bias generated after AL '
-                                    f'iteration {al_iter} not found')
-
-        self.run_metadynamics(configuration=configuration,
-                              mlp=mlp,
-                              temp=temp,
-                              interval=interval,
-                              dt=dt,
-                              pace=pace,
-                              height=height,
-                              width=width,
-                              biasfactor=biasfactor,
-                              n_runs=n_runs,
-                              save_sep=save_sep,
-                              all_to_xyz=all_to_xyz,
-                              copied_substrings=copied_substrings,
-                              restart=False,
-                              load_metad_bias=True,
-                              **kwargs)
-
-        return None
 
     def try_multiple_biasfactors(self,
                                  configuration: 'mlptrain.Configuration',

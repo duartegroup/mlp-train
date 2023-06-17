@@ -148,9 +148,9 @@ def test_run_metadynamics_with_inherited_bias():
     metad = mlt.Metadynamics(cv1)
     n_runs = 4
 
-    _run_metadynamics(metad, n_runs, al_iter=4, fs=500)
+    _run_metadynamics(metad, n_runs, al_iter=3, fs=500)
 
-    _run_metadynamics(metad, n_runs, al_iter=4, restart=True, fs=500)
+    _run_metadynamics(metad, n_runs, al_iter=3, restart=True, fs=500)
 
     metad_dir = 'plumed_files/metadynamics'
     for idx in range(1, n_runs + 1):
