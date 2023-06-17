@@ -4,7 +4,7 @@ echo "* Installing everything to an new conda environment called: mace *"
 
 # ----------------------------------------------------
 echo "* Installing mlp-train dependencies *"
-conda create --name mace python=3.7 --file ../requirements.txt -c conda-forge --yes
+conda create --name mace python=3.9 --file ../requirements.txt -c conda-forge --yes
 conda activate mace
 
 # ----------------------------------------------------
