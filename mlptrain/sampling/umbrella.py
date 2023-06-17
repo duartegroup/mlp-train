@@ -459,12 +459,12 @@ class UmbrellaSampling:
                 self.windows.append(window)
                 window_trajs.append(window_traj)
 
-        # Move .traj files into 'trajectories' folder and compute .xyz files
-        self._move_and_save_files(window_trajs, save_sep, all_to_xyz)
-
         finish_umbrella = time.perf_counter()
         logger.info('Umbrella sampling done in '
                     f'{(finish_umbrella - start_umbrella) / 60:.1f} m')
+
+        # Move .traj files into 'trajectories' folder and compute .xyz files
+        self._move_and_save_files(window_trajs, save_sep, all_to_xyz)
 
         return None
 

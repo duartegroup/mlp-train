@@ -34,7 +34,7 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
                bbond_energy:       Optional[dict] = None,
                bias:               Optional = None,
                restart_files:      Optional[List[str]] = None,
-               copied_substrings:  Sequence[str] = ('.xml', '.json', '.pth', '.model'),
+               copied_substrings:  Optional[Sequence[str]] = None,
                kept_substrings:    Optional[Sequence[str]] = None,
                **kwargs
                ) -> 'mlptrain.Trajectory':
@@ -80,7 +80,8 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
                          e.g. '.json', 'trajectory_1.traj'
 
         copied_substrings: List of substrings with which files are copied
-                           to the temporary directory
+                           to the temporary directory. Files required for MLPs
+                           are added to the list automatically
     ---------------
     Keyword Arguments:
 
@@ -101,11 +102,15 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
 
     restart = restart_files is not None
 
+    if copied_substrings is None:
+        copied_substrings = []
     if kept_substrings is None:
         kept_substrings = []
 
     copied_substrings_list = list(copied_substrings)
     kept_substrings_list = list(kept_substrings)
+
+    copied_substrings_list.extend(['.xml', '.json', '.pth', '.model'])
 
     if restart:
         logger.info('Restarting MLP MD')
@@ -119,7 +124,6 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
                                 'specifying filenames')
 
         if not any(file.endswith('.traj') for file in restart_files):
-
             raise ValueError('Restaring a simulation requires a .traj file '
                              'from the previous simulation')
 

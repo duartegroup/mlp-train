@@ -172,6 +172,9 @@ class Metadynamics:
                 all_widths.append(width_process.get())
                 all_widths = np.array(all_widths)
 
+        finish = time.perf_counter()
+        logger.info(f'Width estimation done in {(finish - start) / 60:.1f} m')
+
         move_files([r'colvar_\w+_\d+\.dat'],
                    dst_folder='plumed_files/width_estimation',
                    regex=True)
@@ -189,10 +192,7 @@ class Metadynamics:
             else:
                 opt_widths_strs.append(f'{cv.name} {width:.2f}')
 
-        finish = time.perf_counter()
-        logger.info(f'Width estimation done in {(finish - start) / 60:.1f} m')
         logger.info(f'Estimated widths: {", ".join(opt_widths_strs)}')
-
         return opt_widths
 
     def _get_width_for_single(self, configuration, mlp, temp, dt, interval,
@@ -239,6 +239,7 @@ class Metadynamics:
                          height:        Optional[float] = None,
                          width:         Optional = None,
                          biasfactor:    Optional[float] = None,
+                         al_iter:       Optional[int] = None,
                          n_runs:        int = 1,
                          save_sep:      bool = True,
                          all_to_xyz:    bool = False,
@@ -272,9 +273,15 @@ class Metadynamics:
                    (parameter describing the width) of placed gaussians,
                    if not supplied it is estimated automatically
 
-            biasfactor: (float) γ, describes how quickly gaussians shrink,
-                                larger values make gaussians to be placed
-                                less sensitive to the bias potential
+            biasfactor: (float | None) γ, describes how quickly gaussians
+                                       shrink, larger values make gaussians to
+                                       be placed less sensitive to the bias
+                                       potential
+
+            al_iter: (int | None) If not None, can be used to load metadynamics
+                                  bias generated during inherited-bias active
+                                  learning. The index specifies from which AL
+                                  iteration to load the bias
 
             n_runs: (int) Number of times to run metadynamics
 
@@ -294,21 +301,22 @@ class Metadynamics:
             {save_fs, save_ps, save_ns}: Trajectory saving interval
                                          in some units
 
+            {grid_min, grid_max, grid_bin}: Grid parameters: if defined, the
+                                            deposited gaussians are dumped to
+                                            a grid that is used to compute
+                                            the biased forces
+
             constraints: (List) List of ASE constraints to use in the dynamics
                                 e.g. [ase.constraints.Hookean(a1, a2, k, rt)]
         """
 
-        start_metad = time.perf_counter()
-
         self.temp = temp
-        if height is None:
 
+        if height is None:
             if temp > 0:
                 logger.info('Height was not supplied, '
                             'setting height to 0.5*k_B*T')
-
                 height = 0.5 * self.kbt
-
             else:
                 raise ValueError('Height was not supplied')
 
@@ -316,9 +324,11 @@ class Metadynamics:
             raise ValueError('Temperature must be positive and non-zero for '
                              'well-tempered metadynamics')
 
+        if al_iter:
+            self._initialise_inherited_bias(al_iter=al_iter, n_runs=n_runs)
+
         if restart:
-            self._initialise_restart(width, n_runs)
-            kept_substrings = None
+            self._initialise_restart(width=width, n_runs=n_runs)
 
         else:
             if width is None:
@@ -330,12 +340,13 @@ class Metadynamics:
                 width = self.estimate_width(configurations=configuration,
                                             mlp=mlp)
 
-            kept_substrings = ['.traj', '.dat']
+            kwargs['kept_substrings'] = ['.traj', '.dat']
 
         self.bias._set_metad_params(width=width,
                                     pace=pace,
                                     height=height,
-                                    biasfactor=biasfactor)
+                                    biasfactor=biasfactor,
+                                    **kwargs)
 
         metad_processes, metad_trajs = [], []
 
@@ -343,6 +354,8 @@ class Metadynamics:
         logger.info(f'Running {n_runs} independent Metadynamics '
                     f'simulation(s), {n_processes} simulation(s) run '
                     f'in parallel, 1 walker per simulation')
+
+        start_metad = time.perf_counter()
 
         with Pool(processes=n_processes) as pool:
 
@@ -359,7 +372,7 @@ class Metadynamics:
                                                        interval,
                                                        dt,
                                                        self.bias,
-                                                       kept_substrings,
+                                                       al_iter,
                                                        restart),
                                                  kwds=kwargs_single)
                 metad_processes.append(metad_process)
@@ -367,23 +380,42 @@ class Metadynamics:
             for metad_process in metad_processes:
                 metad_trajs.append(metad_process.get())
 
-        # Move .traj files into 'trajectories' folder and compute .xyz files
-        self._move_and_save_files(metad_trajs, save_sep, all_to_xyz, restart)
-        self.plot_gaussian_heights()
-
         finish_metad = time.perf_counter()
         logger.info('Metadynamics done in '
                     f'{(finish_metad - start_metad) / 60:.1f} m')
 
-        self._set_previous_parameters(configuration, mlp, temp, dt, interval,
+        # Move .traj files into 'trajectories' folder and compute .xyz files
+        self._move_and_save_files(metad_trajs=metad_trajs,
+                                  save_sep=save_sep,
+                                  all_to_xyz=all_to_xyz,
+                                  restart=restart)
+        self.plot_gaussian_heights()
+
+        self._set_previous_parameters(configuration=configuration,
+                                      mlp=mlp,
+                                      temp=temp,
+                                      dt=dt,
+                                      interval=interval,
                                       **kwargs)
+        return None
+
+    @staticmethod
+    def _initialise_inherited_bias(al_iter: int, n_runs: int) -> None:
+        """Initialise files in order to load a bias generated during
+        inherited-bias active learning"""
+
+        bias_path = f'accumulated_bias/bias_after_iter_{al_iter}.dat'
+        if os.path.exists(bias_path):
+            for i in range(n_runs):
+                shutil.copyfile(src=bias_path, dst=f'HILLS_{i}.dat')
+
+        else:
+            raise FileNotFoundError('Inherited bias generated after AL '
+                                    f'iteration {al_iter} not found')
 
         return None
 
-    def _initialise_restart(self,
-                            width:  Sequence,
-                            n_runs: int
-                            ) -> None:
+    def _initialise_restart(self, width: Sequence, n_runs: int) -> None:
         """Initialise restart for metadynamics simulation by checking
         conditions and moving files"""
 
@@ -423,13 +455,16 @@ class Metadynamics:
         return None
 
     def _run_single_metad(self, configuration, mlp, temp, interval, dt, bias,
-                          kept_substrings=None, restart=False, **kwargs):
+                          al_iter=None, restart=False, **kwargs):
         """Initiate a single metadynamics run"""
 
-        if restart:
-            logger.info(f'Restarting Metadynamics simulation number '
-                        f'{kwargs["idx"]}')
+        logger.info('Running Metadynamics simulation '
+                    f'number {kwargs["idx"]}')
 
+        if al_iter is not None:
+            kwargs['copied_substrings'] = [f'HILLS_{kwargs["idx"]}.dat']
+
+        if restart:
             restart_files = []
 
             for cv in self.bias.cvs:
@@ -439,15 +474,6 @@ class Metadynamics:
             restart_files.append(f'trajectory_{kwargs["idx"]}.traj')
 
         else:
-            if bias.biasfactor is None:
-                logger.info('Running Metadynamics simulation '
-                            f'number {kwargs["idx"]}')
-
-            else:
-                logger.info('Running Well-tempered Metadynamics simulation '
-                            f'number {kwargs["idx"]} '
-                            f'with a biasfactor {bias.biasfactor}')
-
             restart_files = None
 
         kwargs['n_cores'] = 1
@@ -458,7 +484,6 @@ class Metadynamics:
                           dt=dt,
                           interval=interval,
                           bias=bias,
-                          kept_substrings=kept_substrings,
                           restart_files=restart_files,
                           **kwargs)
 
@@ -594,14 +619,15 @@ class Metadynamics:
 
         filename = f'HILLS_{idx}.dat'
 
-        times = np.loadtxt(filename, usecols=0)
-        times = convert_ase_time(time_array=times, units=time_units)
+        deposit_time = np.loadtxt(filename, usecols=0)
+        deposit_time = convert_ase_time(time_array=deposit_time,
+                                        units=time_units)
 
         heights = np.loadtxt(filename, usecols=-2)
         heights = convert_ase_energy(energy_array=heights, units=energy_units)
 
         fig, ax = plt.subplots()
-        ax.plot(times, heights)
+        ax.plot(deposit_time, heights)
 
         ax.set_xlabel(f'Time / {time_units}')
         ax.set_ylabel(f'Gaussian height / {convert_exponents(energy_units)}')
@@ -609,6 +635,68 @@ class Metadynamics:
         fig.tight_layout()
         fig.savefig(f'gaussian_heights_{idx}.pdf')
         plt.close(fig)
+
+        return None
+
+    def run_inherited_bias_metadynamics(self,
+                                        al_iter:       int,
+                                        configuration: 'mlptrain.Configuration',
+                                        mlp:           'mlptrain.potentials._base.MLPotential',
+                                        temp:          float,
+                                        interval:      int,
+                                        dt:            float,
+                                        pace:          int = 100,
+                                        height:        Optional[float] = None,
+                                        width:         Optional = None,
+                                        biasfactor:    Optional[float] = None,
+                                        n_runs:        int = 1,
+                                        save_sep:      bool = True,
+                                        all_to_xyz:    bool = False,
+                                        **kwargs
+                                        ) -> None:
+        """
+        Perform metadynamics starting with a metadynamics bias generated during
+        inherited-bias active learning.
+
+        """
+
+        copied_substrings = ['.xml', '.json', '.pth', '.model']
+
+        grid_path = f'accumulated_bias/grid_after_iter_{al_iter}.dat'
+        grid_file = f'grid_after_iter_{al_iter}.dat'
+        hills_path = f'accumulated_bias/hills_after_iter_{al_iter}.dat'
+        hills_file = f'hills_after_iter_{al_iter}.dat'
+
+        if os.path.exists(grid_path):
+            shutil.copyfile(src=grid_path, dst=grid_file)
+            copied_substrings.append(grid_file)
+
+        elif os.path.exists(hills_path):
+            # TODO: need to somehow only copy a single hills file for each
+            #  process, otherwise copying back will overwrite files
+            shutil.copyfile(src=hills_path, dst=hills_file)
+            copied_substrings.append(hills_file)
+
+        else:
+            raise FileNotFoundError('Inherited bias generated after AL '
+                                    f'iteration {al_iter} not found')
+
+        self.run_metadynamics(configuration=configuration,
+                              mlp=mlp,
+                              temp=temp,
+                              interval=interval,
+                              dt=dt,
+                              pace=pace,
+                              height=height,
+                              width=width,
+                              biasfactor=biasfactor,
+                              n_runs=n_runs,
+                              save_sep=save_sep,
+                              all_to_xyz=all_to_xyz,
+                              copied_substrings=copied_substrings,
+                              restart=False,
+                              load_metad_bias=True,
+                              **kwargs)
 
         return None
 
@@ -664,10 +752,17 @@ class Metadynamics:
         Keyword Arguments:
 
             {fs, ps, ns}: Simulation time in some units
+
+            {grid_min, grid_max, grid_bin}: Grid parameters: if defined, the
+                                            deposited gaussians are dumped to
+                                            a grid that is used to compute
+                                            the biased forces
+
+            constraints: (List) List of ASE constraints to use in the dynamics
+                                e.g. [ase.constraints.Hookean(a1, a2, k, rt)]
         """
 
         logger.info(f'Trying {len(biasfactors)} different biasfactors')
-        start = time.perf_counter()
 
         if not isinstance(biasfactors, Sequence):
             raise TypeError('Supplied biasfactors variable must be a sequence')
@@ -679,7 +774,6 @@ class Metadynamics:
         self.temp = temp
         if height is None:
             logger.info('Height was not supplied, setting height to 0.5*k_B*T')
-
             height = 0.5 * self.kbt
 
         if width is None:
@@ -695,7 +789,6 @@ class Metadynamics:
         if plotted_cvs is not None:
             cvs_holder = PlumedBias(plotted_cvs)
             cvs_holder._set_metad_cvs(plotted_cvs)
-
         else:
             cvs_holder = self.bias
 
@@ -710,13 +803,16 @@ class Metadynamics:
 
         self.bias._set_metad_params(width=width,
                                     pace=pace,
-                                    height=height)
+                                    height=height,
+                                    **kwargs)
 
         n_processes = min(Config.n_cores, len(biasfactors))
         logger.info('Running Well-Tempered Metadynamics simulations '
                     f'with {len(biasfactors)} different biasfactors, '
                     f'{n_processes} simulation(s) run in parallel, '
                     f'1 walker per simulation')
+
+        start = time.perf_counter()
 
         with mp.get_context('spawn').Pool(processes=n_processes) as pool:
 
@@ -741,6 +837,10 @@ class Metadynamics:
             pool.close()
             pool.join()
 
+        finish = time.perf_counter()
+        logger.info('Simulations with multiple biasfactors done in '
+                    f'{(finish - start) / 60:.1f} m')
+
         move_files([r'colvar_\w+_\d+\.dat', r'HILLS_\d+\.dat'],
                    dst_folder='plumed_files/multiple_biasfactors',
                    regex=True)
@@ -748,10 +848,6 @@ class Metadynamics:
         move_files([r'\w+_biasf\d+\.pdf'],
                    dst_folder='multiple_biasfactors',
                    regex=True)
-
-        finish = time.perf_counter()
-        logger.info('Simulations with multiple biasfactors done in '
-                    f'{(finish - start) / 60:.1f} m')
 
         return None
 
@@ -975,24 +1071,24 @@ class Metadynamics:
                                                      n_bins=n_bins,
                                                      bandwidth=bandwidth)
 
-        norm, hist, cvs_grid = self._read_histogram(filename='hist.dat',
-                                                    n_bins=n_bins,
-                                                    compute_cvs=True)
-        norm_sq = norm**2
-        average = norm*hist
-        average_sq = norm*hist**2
+        normal, hist, cvs_grid = self._read_histogram(filename='hist.dat',
+                                                      n_bins=n_bins,
+                                                      compute_cvs=True)
+        normal_sq = normal**2
+        average = normal*hist
+        average_sq = normal*hist**2
 
         for hist_file in glob.glob(f'analysis.*.hist.dat'):
-            tnorm, new_hist, _ = self._read_histogram(filename=hist_file,
-                                                      n_bins=n_bins)
-            norm += tnorm
-            norm_sq += tnorm**2
-            average += tnorm*new_hist
-            average_sq += tnorm*new_hist**2
+            tnormal, new_hist, _ = self._read_histogram(filename=hist_file,
+                                                        n_bins=n_bins)
+            normal += tnormal
+            normal_sq += tnormal**2
+            average += tnormal*new_hist
+            average_sq += tnormal*new_hist**2
 
-        average /= norm
-        variance = (average_sq / norm) - average**2
-        variance *= (norm / (norm - (norm_sq / norm)))
+        average /= normal
+        variance = (average_sq / normal) - average**2
+        variance *= (normal / (normal - (normal_sq / normal)))
 
         n_grids = 1 + len(glob.glob(f'analysis.*.hist.dat'))
         hist_error = np.sqrt(variance / n_grids)
@@ -1000,7 +1096,7 @@ class Metadynamics:
         fes_error = (ase_units.kB * temp * hist_error)
         fes_error = np.divide(fes_error, average,
                               out=np.zeros_like(fes_error),
-                              where=average!=0)
+                              where=average != 0)
         fes_error = convert_ase_energy(fes_error, energy_units)
 
         return cvs_grid, fes_error
@@ -1029,10 +1125,10 @@ class Metadynamics:
         with open(filename, 'r') as f:
             for line in f:
                 if line.startswith("#! SET normalisation"):
-                    norm = line.split()[3]
+                    normal = line.split()[3]
                     break
 
-        return float(norm), hist, cvs_grid
+        return float(normal), hist, cvs_grid
 
     def _generate_hist_files_for_block_analysis(self, blocksize, temp,
                                                 min_max_params, n_bins,

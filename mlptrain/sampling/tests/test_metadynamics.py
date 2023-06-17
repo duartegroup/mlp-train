@@ -26,6 +26,7 @@ def _h2o_configuration():
 def _run_metadynamics(metadynamics,
                       n_runs,
                       configuration=None,
+                      al_iter=None,
                       save_sep=False,
                       all_to_xyz=False,
                       restart=False,
@@ -43,6 +44,7 @@ def _run_metadynamics(metadynamics,
                                   width=0.05,
                                   height=0.1,
                                   biasfactor=3,
+                                  al_iter=al_iter,
                                   n_runs=n_runs,
                                   save_sep=save_sep,
                                   all_to_xyz=all_to_xyz,
@@ -136,6 +138,28 @@ def test_run_metadynamics_restart():
     # removing one duplicate frame (same as before, except testing this for
     # the generated .traj file instead of .dat file)
     assert len(trajectory) == 51 + 51 - 1
+
+
+
+@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+def test_run_metadynamics_with_inherited_bias():
+
+    cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
+    metad = mlt.Metadynamics(cv1)
+    n_runs = 4
+
+    _run_metadynamics(metad, n_runs, al_iter=4, fs=500)
+
+    _run_metadynamics(metad, n_runs, al_iter=4, restart=True, fs=500)
+
+    metad_dir = 'plumed_files/metadynamics'
+    for idx in range(1, n_runs + 1):
+        assert os.path.exists(f'trajectories/trajectory_{idx}.traj')
+
+        assert os.path.exists(os.path.join(metad_dir,
+                                           f'colvar_cv1_{idx}.dat'))
+        assert os.path.exists(os.path.join(metad_dir,
+                                           f'HILLS_{idx}.dat'))
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))

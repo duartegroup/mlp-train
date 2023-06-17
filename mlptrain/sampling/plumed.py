@@ -205,7 +205,8 @@ class PlumedBias(ASEConstraint):
                           grid_bin:      Union[Sequence[float], float] = None,
                           grid_wstride:  Optional[int] = None,
                           grid_wfile:    Optional[str] = None,
-                          grid_rfile:    Optional[str] = None
+                          grid_rfile:    Optional[str] = None,
+                          **kwargs
                           ) -> None:
         """
         Define parameters used in (well-tempered) metadynamics.
