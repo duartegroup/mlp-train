@@ -140,7 +140,6 @@ def test_run_metadynamics_restart():
     assert len(trajectory) == 51 + 51 - 1
 
 
-
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
 def test_run_metadynamics_with_inherited_bias():
 
@@ -160,6 +159,9 @@ def test_run_metadynamics_with_inherited_bias():
                                            f'colvar_cv1_{idx}.dat'))
         assert os.path.exists(os.path.join(metad_dir,
                                            f'HILLS_{idx}.dat'))
+
+    metad.compute_fes(via_reweighting=True)
+    assert os.path.exists('fes_raw.npy')
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))

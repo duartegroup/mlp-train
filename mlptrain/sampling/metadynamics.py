@@ -390,8 +390,8 @@ class Metadynamics:
                                   save_sep=save_sep,
                                   all_to_xyz=all_to_xyz,
                                   restart=restart)
-
-        self.plot_gaussian_heights()
+        if al_iter is None:
+            self.plot_gaussian_heights()
 
         self._set_previous_parameters(configuration=configuration,
                                       mlp=mlp,
@@ -408,8 +408,8 @@ class Metadynamics:
 
         bias_path = f'accumulated_bias/bias_after_iter_{al_iter}.dat'
         if os.path.exists(bias_path):
-            for i in range(n_runs):
-                shutil.copyfile(src=bias_path, dst=f'HILLS_{i+1}.dat')
+            for idx in range(n_runs):
+                shutil.copyfile(src=bias_path, dst=f'HILLS_{idx+1}.dat')
 
         else:
             raise FileNotFoundError('Inherited bias generated after AL '
@@ -639,7 +639,6 @@ class Metadynamics:
         plt.close(fig)
 
         return None
-
 
     def try_multiple_biasfactors(self,
                                  configuration: 'mlptrain.Configuration',
@@ -872,22 +871,22 @@ class Metadynamics:
                         energy for each collective variable,
                         e.g. [(0.8, 1.5), (80, 120)]
 
-            temp: (float) Temperature in K to initialise velocities and to run
-                          NVT MD. Must be positive
+            temp: (float) Temperature in K during the analysed simulation
 
-            dt: (float) Time-step in fs
+            dt: (float) Time-step in fs during the analysed simulation
 
-            interval: (int) Interval between saving the geometry
+            interval: (int) Interval between saving the geometry during the
+                            analysed simulation
         """
 
         start = time.perf_counter()
 
-        bias, temp, dt, interval = self._block_analysis_params(temp, dt, interval)
+        bias, temp, dt, interval = self._reweighting_params(temp, dt, interval)
         start_frame_index = int((start_time * 1E3) / (dt * interval))
 
         sliced_traj = ase_read(f'trajectories/trajectory_{idx}.traj',
                                index=f'{start_frame_index}:')
-        self._save_sliced_xyz(sliced_traj)
+        self._save_ase_traj_as_xyz(sliced_traj)
 
         shutil.copyfile(src=f'plumed_files/metadynamics/HILLS_{idx}.dat',
                         dst=f'HILLS_{idx}.dat')
@@ -942,7 +941,7 @@ class Metadynamics:
         np.savez('block_analysis.npz', **data_dict)
 
         os.remove('plumed_setup.dat')
-        os.remove('sliced_traj.xyz')
+        os.remove('traj.xyz')
         os.remove(f'HILLS_{idx}.dat')
 
         self._plot_block_analysis(blocksizes, data_dict, energy_units)
@@ -952,10 +951,10 @@ class Metadynamics:
 
         return None
 
-    def _block_analysis_params(self, temp, dt, interval) -> Tuple:
-        """Read parameters from the previous metadynamics simulation. If
-        previous parameters are not set, read parameters which were supplied
-        to the block_analysis() method"""
+    def _reweighting_params(self, temp, dt, interval) -> Tuple:
+        """Read parameters required for reweighting from the previous
+        metadynamics simulation. If previous parameters are not set, read
+        parameters which are supplied to the method"""
 
         # Bias with dummy width and height values, and very large pace
         bias = deepcopy(self.bias)
@@ -980,11 +979,11 @@ class Metadynamics:
         return bias, temp, dt, interval
 
     @staticmethod
-    def _save_sliced_xyz(sliced_traj):
-        """Save sliced trajectory as .xyz file"""
+    def _save_ase_traj_as_xyz(ase_traj):
+        """Save ASE trajectory as .xyz file"""
 
         _mlt_configuration_set = ConfigurationSet(allow_duplicates=True)
-        for atoms in sliced_traj:
+        for atoms in ase_traj:
             config = Configuration()
             config.atoms = [ade.Atom(label) for label in atoms.symbols]
 
@@ -993,11 +992,11 @@ class Metadynamics:
 
             _mlt_configuration_set.append(config)
 
-        _mlt_configuration_set.save('sliced_traj.xyz')
+        _mlt_configuration_set.save('traj.xyz')
 
         return None
 
-    @work_in_tmp_dir(copied_substrings=['sliced_traj.xyz',
+    @work_in_tmp_dir(copied_substrings=['traj.xyz',
                                         'plumed_setup.dat',
                                         'HILLS'])
     def _compute_grids_for_blocksize(self, blocksize, temp, min_max_params,
@@ -1006,11 +1005,11 @@ class Metadynamics:
         """Compute CV and FES error grids over blocks for a given block size and
         return both grids"""
 
-        self._generate_hist_files_for_block_analysis(blocksize=blocksize,
-                                                     temp=temp,
-                                                     min_max_params=min_max_params,
-                                                     n_bins=n_bins,
-                                                     bandwidth=bandwidth)
+        self._generate_hist_files_by_reweighting(blocksize=blocksize,
+                                                 temp=temp,
+                                                 min_max_params=min_max_params,
+                                                 n_bins=n_bins,
+                                                 bandwidth=bandwidth)
 
         normal, hist, cvs_grid = self._read_histogram(filename='hist.dat',
                                                       n_bins=n_bins,
@@ -1034,7 +1033,7 @@ class Metadynamics:
         n_grids = 1 + len(glob.glob(f'analysis.*.hist.dat'))
         hist_error = np.sqrt(variance / n_grids)
 
-        fes_error = (ase_units.kB * temp * hist_error)
+        fes_error = ase_units.kB * temp * hist_error
         fes_error = np.divide(fes_error, average,
                               out=np.zeros_like(fes_error),
                               where=average != 0)
@@ -1071,9 +1070,9 @@ class Metadynamics:
 
         return float(normal), hist, cvs_grid
 
-    def _generate_hist_files_for_block_analysis(self, blocksize, temp,
-                                                min_max_params, n_bins,
-                                                bandwidth) -> None:
+    def _generate_hist_files_by_reweighting(self, blocksize, temp,
+                                            min_max_params, n_bins,
+                                            bandwidth) -> None:
         """Generate analysis.*.hist.dat + hist.dat files which are required
         for block analysis"""
 
@@ -1083,13 +1082,16 @@ class Metadynamics:
         bandwidth_seq = ','.join(str(bandwidth) for _ in range(self.n_cvs))
         bin_param_seq = ','.join(str(n_bins-1) for _ in range(self.n_cvs))
 
+        clear_setup = f'CLEAR={blocksize} ' if blocksize is not None else ''
+        stride_setup = f'STRIDE={blocksize} ' if blocksize is not None else ''
+
         reweight_setup = ['as: REWEIGHT_BIAS '
                           f'TEMP={temp} '
                           'ARG=metad.bias',
                           'hist: HISTOGRAM '
                           f'ARG={self.bias.metad_cv_sequence} '
                           f'STRIDE=1 '
-                          f'CLEAR={blocksize} '
+                          f'{clear_setup}'
                           f'GRID_MIN={min_param_seq} '
                           f'GRID_MAX={max_param_seq} '
                           f'GRID_BIN={bin_param_seq} '
@@ -1097,8 +1099,8 @@ class Metadynamics:
                           'LOGWEIGHTS=as',
                           'DUMPGRID '
                           'GRID=hist '
-                          'FILE=hist.dat '
-                          f'STRIDE={blocksize}']
+                          f'{stride_setup}'
+                          'FILE=hist.dat']
 
         os.rename('plumed_setup.dat', 'reweight.dat')
         with open('reweight.dat', 'a') as f:
@@ -1108,7 +1110,7 @@ class Metadynamics:
         self.bias.write_cv_files()
 
         driver_process = Popen(['plumed', 'driver',
-                                '--ixyz', 'sliced_traj.xyz',
+                                '--ixyz', 'traj.xyz',
                                 '--plumed', 'reweight.dat',
                                 '--length-units', 'A'])
         driver_process.wait()
@@ -1210,14 +1212,19 @@ class Metadynamics:
         return None
 
     def compute_fes(self,
-                    energy_units:         str = 'kcal mol-1',
-                    n_bins:               int = 300,
-                    cvs_bounds:           Optional[Sequence] = None,
+                    energy_units:    str = 'kcal mol-1',
+                    n_bins:          int = 300,
+                    cvs_bounds:      Optional[Sequence] = None,
+                    via_reweighting: bool = False,
+                    start_time:      float = 0.00,
+                    bandwidth:       float = 0.02,
+                    temp:            Optional[float] = None,
+                    dt:              Optional[float] = None,
+                    interval:        Optional[int] = None,
                     ) -> np.ndarray:
         """
-        Generate fes.dat files from HILLS.dat files and compute a total grid
-        containing collective variable grids and free energy surface grids,
-        which is saved in the current directory as .npy file.
+        Compute a grid containing collective variable grids and free energy
+        surface grids, which is saved in the current directory as .npy file.
 
         -----------------------------------------------------------------------
         Arguments:
@@ -1232,12 +1239,133 @@ class Metadynamics:
                         energy for each collective variable
                         e.g. [(0.8, 1.5), (80, 120)]
 
+            reweighting: (bool) If true the free energy is computed using the
+                                reweighting scheme
+
+            start_time: (float) Start time of the sliced trajectory which is
+                                going to be used in reweighting (in ps)
+
+            bandwidth: (float) Bandwidth parameter used in the histogram
+                               estimations
+
+            temp: (float) Temperature in K during the analysed simulation,
+                          only needed when reweighting
+
+            dt: (float) Time-step in fs during the analysed simulation, only
+                        needed when reweighting
+
+            interval: (int) Interval between saving the geometry during the
+                            analysed simulation, only needed
+                            when reweighting
+
         Returns:
 
             (np.ndarray): The total grid containing CVs and FESs
         """
 
         logger.info('Computing and saving the free energy grid as fes_raw.npy')
+
+        if via_reweighting:
+            fes_raw = self._compute_fes_via_reweighting(energy_units=energy_units,
+                                                        n_bins=n_bins,
+                                                        cvs_bounds=cvs_bounds,
+                                                        temp=temp,
+                                                        dt=dt,
+                                                        interval=interval,
+                                                        start_time=start_time,
+                                                        bandwidth=bandwidth)
+        else:
+            fes_raw = self._compute_fes_via_hills(energy_units=energy_units,
+                                                  n_bins=n_bins,
+                                                  cvs_bounds=cvs_bounds)
+        np.save('fes_raw.npy', fes_raw)
+        return fes_raw
+
+    def _compute_fes_via_reweighting(self, temp, dt, interval, start_time,
+                                     energy_units, cvs_bounds, n_bins,
+                                     bandwidth) -> np.ndarray:
+        """Compute the free energy surface grid by reweighting the biased
+        distribution"""
+
+        bias, temp, dt, interval = self._reweighting_params(temp, dt, interval)
+        start_frame_index = int((start_time * 1E3) / (dt * interval))
+
+        min_max_params = self._get_min_max_params(cvs_bounds=cvs_bounds,
+                                                  path='plumed_files/'
+                                                       'metadynamics')
+        n_runs = len(glob.glob('trajectories/trajectory_*.traj'))
+        n_processes = min(Config.n_cores, n_runs)
+        fes_processes, fes_grids = [], []
+
+        with Pool(processes=n_processes) as pool:
+            for idx in range(1, n_runs+1):
+                traj_path = os.path.join(os.getcwd(),
+                                         f'trajectories/trajectory_{idx}.traj')
+                hills_path = os.path.join(os.getcwd(),
+                                          f'plumed_files/metadynamics/HILLS_{idx}.dat')
+
+                proc = pool.apply_async(func=self._compute_single_fes_via_reweighting,
+                                        args=(idx,
+                                              traj_path,
+                                              hills_path,
+                                              start_frame_index,
+                                              bias,
+                                              temp,
+                                              interval,
+                                              min_max_params,
+                                              n_bins,
+                                              bandwidth,
+                                              energy_units))
+                fes_processes.append(proc)
+
+            for proc in fes_processes:
+                cvs_grid, fes_grid = proc.get()
+                fes_grids.append(fes_grid)
+
+        fes_raw = np.concatenate([cvs_grid] + fes_grids, axis=0)
+        return fes_raw
+
+    @work_in_tmp_dir()
+    def _compute_single_fes_via_reweighting(self, idx, traj_path, hills_path,
+                                            start_frame_index, bias, temp,
+                                            interval, min_max_params, n_bins,
+                                            bandwidth, energy_units) -> Tuple:
+        """Compute CVs and FES grids for a single run by reweighting"""
+
+        sliced_traj = ase_read(traj_path, index=f'{start_frame_index}:')
+        self._save_ase_traj_as_xyz(sliced_traj)
+
+        shutil.copyfile(src=hills_path, dst=f'HILLS_{idx}.dat')
+        plumed_setup(bias=bias,
+                     temp=temp,
+                     interval=interval,
+                     idx=idx,
+                     load_metad_bias=True,
+                     remove_print=True,
+                     write_plumed_setup=True)
+
+        self._generate_hist_files_by_reweighting(blocksize=None,
+                                                 temp=temp,
+                                                 min_max_params=min_max_params,
+                                                 n_bins=n_bins,
+                                                 bandwidth=bandwidth)
+
+        _, hist, cvs_grid = self._read_histogram(filename='hist.dat',
+                                                 n_bins=n_bins,
+                                                 compute_cvs=True)
+
+        fes_grid = -ase_units.kB * temp * np.log(hist)
+        fes_grid = fes_grid - np.min(fes_grid)
+        fes_grid = convert_ase_energy(fes_grid, energy_units)
+
+        return cvs_grid, fes_grid
+
+    def _compute_fes_via_hills(self,
+                               energy_units: str = 'kcal mol-1',
+                               n_bins:       int = 300,
+                               cvs_bounds:   Optional[Sequence] = None,
+                               ) -> np.ndarray:
+        """Compute the free energy surface grid using the deposited bias"""
 
         try:
             os.chdir('plumed_files/metadynamics')
@@ -1246,7 +1374,7 @@ class Metadynamics:
                                     'sure to run metadynamics before trying '
                                     'to compute the FES')
 
-        fes_files = [fname for fname in os.listdir() if 'fes' in fname]
+        fes_files = [fname for fname in os.listdir() if fname.startswith('fes')]
         for fname in fes_files:
             os.remove(fname)
 
@@ -1257,8 +1385,6 @@ class Metadynamics:
         os.chdir('../..')
 
         fes_raw = np.concatenate((cv_grids, fes_grids), axis=0)
-        np.save('fes_raw.npy', fes_raw)
-
         return fes_raw
 
     def _plot_1d_fes(self,
