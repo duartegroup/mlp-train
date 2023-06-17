@@ -597,45 +597,18 @@ def _modify_kwargs_for_metad_bias_inheritance(kwargs) -> Dict:
     """Modifies keyword arguments to enable metadynamics bias inheritance for
     active learning"""
 
-    bias = kwargs['bias']
-
-    if bias.metad_grid_min is not None and bias.metad_grid_max is not None:
-
-        if kwargs['iteration'] == kwargs['bias_start_iter']:
-            previous_grid_fname = None
-
-        else:
-            previous_grid_fname = f'bias_grid_{kwargs["iteration"]-1}.dat'
-            kwargs['copied_substrings'] = ['.xml', '.json', '.pth', '.model',
-                                           previous_grid_fname]
-
-        grid_fname = f'bias_grid_{kwargs["iteration"]}_{kwargs["idx"]}.dat'
-        kwargs['kept_substrings'] = [grid_fname]
-
-        bias._set_metad_grid_params(grid_min=bias.metad_grid_min,
-                                    grid_max=bias.metad_grid_max,
-                                    grid_bin=bias.metad_grid_bin,
-                                    grid_wstride=bias.pace,
-                                    grid_wfile=grid_fname,
-                                    grid_rfile=previous_grid_fname)
-
-    # Using HILLS instead of grids
-    else:
-        hills_fname = f'HILLS_{kwargs["iteration"]}_{kwargs["idx"]}.dat'
-
-        if kwargs['iteration'] > kwargs['bias_start_iter']:
-            previous_hills_fname = f'HILLS_{kwargs["iteration"]-1}.dat'
-
-            # Overwrites hills_fname when it is present during recursive MD
-            shutil.copyfile(src=previous_hills_fname, dst=hills_fname)
-
-            kwargs['copied_substrings'] = ['.xml', '.json', '.pth', '.model',
-                                           hills_fname]
-
-        kwargs['kept_substrings'] = [hills_fname]
+    hills_fname = f'HILLS_{kwargs["iteration"]}_{kwargs["idx"]}.dat'
 
     if kwargs['iteration'] > kwargs['bias_start_iter']:
+        previous_hills_fname = f'HILLS_{kwargs["iteration"]-1}.dat'
+
+        # Overwrites hills_fname when it is present during recursive MD
+        shutil.copyfile(src=previous_hills_fname, dst=hills_fname)
+
+        kwargs['copied_substrings'] = [hills_fname]
         kwargs['load_metad_bias'] = True
+
+    kwargs['kept_substrings'] = [hills_fname]
 
     return kwargs
 
@@ -644,84 +617,19 @@ def _generate_inheritable_metad_bias(n_configs, kwargs) -> None:
     """Generates files containing metadynamics bias to be inherited in the next
     active learning iteration"""
 
-    bias = kwargs['bias']
     iteration = kwargs['iteration']
     bias_start_iter = kwargs['bias_start_iter']
-
-    grid_files = [f'bias_grid_{iteration}_{idx}.dat' for idx in range(n_configs)]
-    using_grids = all(os.path.exists(fname) for fname in grid_files)
 
     hills_files = [f'HILLS_{iteration}_{idx}.dat' for idx in range(n_configs)]
     using_hills = all(os.path.exists(fname) for fname in hills_files)
 
-    if using_grids:
-        _generate_inheritable_metad_bias_grid(n_configs, grid_files, bias,
-                                              iteration, bias_start_iter)
-
-    elif using_hills:
+    if using_hills:
         _generate_inheritable_metad_bias_hills(n_configs, hills_files,
                                                iteration, bias_start_iter)
 
     else:
         logger.error('All files required for generating inheritable '
                      'metadynamics bias could not be found')
-
-    return None
-
-
-def _generate_inheritable_metad_bias_grid(n_configs, grid_files, bias,
-                                          iteration, bias_start_iter) -> None:
-    """Generates bias_grid_{iteration}.dat file containing metadynamics bias to
-    be inherited in the next active learning iteration {iteration+1}"""
-
-    logger.info('Generating metadynamics bias grid file to inherit from')
-
-    if iteration > bias_start_iter:
-        os.remove(f'bias_grid_{iteration-1}.dat')
-
-    # Extract the header
-    with open(f'bias_grid_{iteration}_0.dat', 'r') as f:
-
-        header = ''
-        for line in f:
-
-            if line.startswith('#!'):
-                header += line
-
-            else:
-                break
-
-    # cv1 cv2 ... metad.bias der_cv1 der_cv2 ...
-    cvs_cols = range(0, bias.n_metad_cvs)
-    cvs = np.loadtxt(f'bias_grid_{iteration}_0.dat', usecols=cvs_cols, ndmin=2)
-
-    # data is bias and derivatives, which is going to be averaged over files
-    data_cols = range(bias.n_metad_cvs, 2 * bias.n_metad_cvs + 1)
-    n_cols = len(data_cols)
-    n_rows = len(cvs)
-    data = np.zeros((n_rows, n_cols))
-
-    for fname in grid_files:
-        data += np.loadtxt(fname, usecols=data_cols)
-        os.remove(fname)
-        os.remove(f'bck.last.{fname}')
-
-    mean_data = data / n_configs
-    final_array = np.concatenate((cvs, mean_data), axis=1)
-
-    with open(f'bias_grid_{iteration}.dat', 'w') as f:
-
-        for line in header:
-            f.write(line)
-
-        # Save str representation of the array in memory
-        bytes_io = io.BytesIO()
-        np.savetxt(fname=bytes_io, X=final_array, fmt='    %.9f')
-        f.write(bytes_io.getvalue().decode())
-
-    os.makedirs('accumulated_bias', exist_ok=True)
-    shutil.copyfile(src=f'bias_grid_{iteration}.dat',
-                    dst=f'accumulated_bias/bias_after_iter_{iteration}.dat')
 
     return None
 
@@ -821,17 +729,14 @@ def _attach_inherited_bias_energies(configurations, iteration,
             config.energy.inherited_bias = 0
 
     else:
-        inheritance_using_hills = os.path.exists(f'HILLS_{iteration-1}.dat')
+        if os.path.getsize(f'HILLS_{iteration-1}.dat') == 0:
+            for config in configurations:
+                config.energy.inherited_bias = 0
 
-        if inheritance_using_hills:
-            if os.path.getsize(f'HILLS_{iteration-1}.dat') == 0:
-                for config in configurations:
-                    config.energy.inherited_bias = 0
+            return None
 
-                return None
-
-            else:
-                _generate_grid_from_hills(configurations, iteration, bias)
+        else:
+            _generate_grid_from_hills(configurations, iteration, bias)
 
         cvs_cols = range(0, bias.n_metad_cvs)
         cvs_grid = np.loadtxt(f'bias_grid_{iteration-1}.dat',
@@ -840,9 +745,7 @@ def _attach_inherited_bias_energies(configurations, iteration,
 
         bias_grid = np.loadtxt(f'bias_grid_{iteration-1}.dat',
                                usecols=bias.n_metad_cvs)
-
-        if inheritance_using_hills:
-            bias_grid = -bias_grid
+        bias_grid = -bias_grid
 
         header = []
         with open(f'bias_grid_{iteration-1}.dat', 'r') as f:
@@ -886,8 +789,7 @@ def _attach_inherited_bias_energies(configurations, iteration,
 
             config.energy.inherited_bias = bias_grid[start_idxs[-1]]
 
-        if inheritance_using_hills:
-            os.remove(f'bias_grid_{iteration-1}.dat')
+        os.remove(f'bias_grid_{iteration-1}.dat')
 
     return None
 
@@ -930,12 +832,7 @@ def _remove_last_inherited_metad_bias_file(max_active_iters, bias) -> None:
     """Removes the last inherited metadynamics bias file"""
 
     for iteration in range(max_active_iters):
-
-        if bias.metad_grid_min is not None and bias.metad_grid_max is not None:
-            fname = f'bias_grid_{iteration}.dat'
-
-        else:
-            fname = f'HILLS_{iteration}.dat'
+        fname = f'HILLS_{iteration}.dat'
 
         if os.path.exists(fname):
             os.remove(fname)
