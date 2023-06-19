@@ -1015,16 +1015,16 @@ class Metadynamics:
                                                       n_bins=n_bins,
                                                       compute_cvs=True)
         normal_sq = normal**2
-        average = normal*hist
-        average_sq = normal*hist**2
+        average = normal * hist
+        average_sq = normal * hist**2
 
         for hist_file in glob.glob(f'analysis.*.hist.dat'):
             tnormal, new_hist, _ = self._read_histogram(filename=hist_file,
                                                         n_bins=n_bins)
             normal += tnormal
             normal_sq += tnormal**2
-            average += tnormal*new_hist
-            average_sq += tnormal*new_hist**2
+            average += tnormal * new_hist
+            average_sq += tnormal * new_hist**2
 
         average /= normal
         variance = (average_sq / normal) - average**2
