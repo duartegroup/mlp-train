@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import glob
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
@@ -458,12 +459,12 @@ class UmbrellaSampling:
                 self.windows.append(window)
                 window_trajs.append(window_traj)
 
-        # Move .traj files into 'trajectories' folder and compute .xyz files
-        self._move_and_save_files(window_trajs, save_sep, all_to_xyz)
-
         finish_umbrella = time.perf_counter()
         logger.info('Umbrella sampling done in '
                     f'{(finish_umbrella - start_umbrella) / 60:.1f} m')
+
+        # Move .traj files into 'trajectories' folder and compute .xyz files
+        self._move_and_save_files(window_trajs, save_sep, all_to_xyz)
 
         return None
 
@@ -504,7 +505,7 @@ class UmbrellaSampling:
                 traj.save(filename=f'window_{idx}.xyz')
 
         else:
-            combined_traj = ConfigurationSet()
+            combined_traj = ConfigurationSet(allow_duplicates=True)
             for window_traj in window_trajs:
                 combined_traj += window_traj
 
@@ -718,11 +719,9 @@ class UmbrellaSampling:
             raise ValueError(f'Loading from a folder was not possible as '
                              f'{folder_name} is not a valid folder')
 
-        for filename in os.listdir(folder_name):
-
-            if filename.startswith('window_') and filename.endswith('.txt'):
-                window = _Window.from_file(os.path.join(folder_name, filename))
-                self.windows.append(window)
+        for filename in glob.glob(os.path.join(folder_name, 'window_*.txt')):
+            window = _Window.from_file(filename)
+            self.windows.append(window)
 
         return None
 

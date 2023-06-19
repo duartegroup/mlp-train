@@ -26,6 +26,7 @@ def _h2o_configuration():
 def _run_metadynamics(metadynamics,
                       n_runs,
                       configuration=None,
+                      al_iter=None,
                       save_sep=False,
                       all_to_xyz=False,
                       restart=False,
@@ -43,6 +44,7 @@ def _run_metadynamics(metadynamics,
                                   width=0.05,
                                   height=0.1,
                                   biasfactor=3,
+                                  al_iter=al_iter,
                                   n_runs=n_runs,
                                   save_sep=save_sep,
                                   all_to_xyz=all_to_xyz,
@@ -136,6 +138,30 @@ def test_run_metadynamics_restart():
     # removing one duplicate frame (same as before, except testing this for
     # the generated .traj file instead of .dat file)
     assert len(trajectory) == 51 + 51 - 1
+
+
+@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+def test_run_metadynamics_with_inherited_bias():
+
+    cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
+    metad = mlt.Metadynamics(cv1)
+    n_runs = 4
+
+    _run_metadynamics(metad, n_runs, al_iter=3, fs=500)
+
+    _run_metadynamics(metad, n_runs, al_iter=3, restart=True, fs=500)
+
+    metad_dir = 'plumed_files/metadynamics'
+    for idx in range(1, n_runs + 1):
+        assert os.path.exists(f'trajectories/trajectory_{idx}.traj')
+
+        assert os.path.exists(os.path.join(metad_dir,
+                                           f'colvar_cv1_{idx}.dat'))
+        assert os.path.exists(os.path.join(metad_dir,
+                                           f'HILLS_{idx}.dat'))
+
+    metad.compute_fes(via_reweighting=True)
+    assert os.path.exists('fes_raw.npy')
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
@@ -272,7 +298,7 @@ def test_block_analysis():
     metad.block_analysis(start_time=start_time)
 
     assert os.path.exists('block_analysis.pdf')
-    assert os.path.exists('block_analysis')
+    assert os.path.exists('block_analysis.npz')
 
     start_time_fs = start_time * 1E3
     n_steps = int(start_time_fs / dt)
@@ -283,10 +309,11 @@ def test_block_analysis():
     blocksize_interval = 10
     max_blocksize = n_used_frames // min_n_blocks
 
-    for blocksize in range(min_blocksize, max_blocksize + 1, blocksize_interval):
-        grid_name = f'block_analysis/mean_fes_blocksize{blocksize}.npy'
-        assert os.path.exists(grid_name)
+    data = np.load('block_analysis.npz')
 
-        # axis 0: CV1, mean_fes, std_mean_fes; axis 1: 300 bins
-        grid = np.load(grid_name)
-        assert np.shape(grid) == (3, 300)
+    # axis 0: CV1; axis 1: 300 bins
+    assert np.shape(data['CVs']) == (1, 300)
+    for blocksize in range(min_blocksize, max_blocksize + 1, blocksize_interval):
+
+        # axis 0: error; axis 1: 300 bins
+        assert np.shape(data[str(blocksize)]) == (3, 300)

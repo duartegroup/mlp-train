@@ -205,7 +205,8 @@ class PlumedBias(ASEConstraint):
                           grid_bin:      Union[Sequence[float], float] = None,
                           grid_wstride:  Optional[int] = None,
                           grid_wfile:    Optional[str] = None,
-                          grid_rfile:    Optional[str] = None
+                          grid_rfile:    Optional[str] = None,
+                          **kwargs
                           ) -> None:
         """
         Define parameters used in (well-tempered) metadynamics.
@@ -239,7 +240,7 @@ class PlumedBias(ASEConstraint):
                               width (σ) value
 
             grid_wstride: (float) Number of steps specifying the period at
-                                  which the grid is updated
+                                  which the grid is written
 
             grid_wfile: (str) Name of the file to write the grid to
 
@@ -355,7 +356,7 @@ class PlumedBias(ASEConstraint):
                               width (σ) value
 
             grid_wstride: (float) Number of steps specifying the period at
-                                  which the grid is updated
+                                  which the grid is written
 
             grid_wfile: (str) Name of the file to write the grid to
 
