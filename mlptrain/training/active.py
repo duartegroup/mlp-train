@@ -257,7 +257,6 @@ def _add_active_configs(mlp,
             results.append(result)
 
         for result in results:
-
             try:
                 configs.append(result.get(timeout=None))
 
@@ -268,11 +267,12 @@ def _add_active_configs(mlp,
                 continue
 
     if 'method_name' in kwargs and configs.has_a_none_energy:
-        configs.single_point(method=kwargs.get('method_name'))
+        for config in configs:
+            if config.energy.true is None:
+                config.single_point(kwargs['method_name'])
 
     if (kwargs['inherit_metad_bias'] is True
             and kwargs['iteration'] >= kwargs['bias_start_iter']):
-
         _generate_inheritable_metad_bias(n_configs, kwargs)
 
     mlp.training_data += configs
@@ -392,8 +392,8 @@ def _gen_active_config(config:      'mlptrain.Configuration',
             selector(frame, mlp, method_name=method_name, n_cores=n_cores)
 
             if selector.select:
-                if traj.final_frame.energy.true is None:
-                    traj.final_frame.single_point(method_name)
+                if frame.energy.true is None:
+                    frame.single_point(method_name)
 
                 return frame
 
@@ -872,7 +872,7 @@ def _generate_grid_from_hills(configurations, iteration, bias) -> None:
     return None
 
 
-def _remove_last_inherited_metad_bias_file(max_active_iters, bias) -> None:
+def _remove_last_inherited_metad_bias_file(max_active_iters) -> None:
     """Removes the last inherited metadynamics bias file"""
 
     for iteration in range(max_active_iters):
