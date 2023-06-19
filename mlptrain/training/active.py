@@ -681,39 +681,41 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
     logger.info('Generating metadynamics bias HILLS file to inherit from')
 
     if iteration == bias_start_iter:
-        open(f'HILLS_{iteration}.dat', 'w').close()
+        open(f'HILLS_{iteration-1}.dat', 'w').close()
 
-    if iteration > bias_start_iter:
+    shutil.move(src=f'HILLS_{iteration-1}.dat',
+                dst=f'HILLS_{iteration}.dat')
 
-        shutil.move(src=f'HILLS_{iteration-1}.dat',
-                    dst=f'HILLS_{iteration}.dat')
+    # Remove inherited bias from files containing new bias
+    for fname in hills_files:
 
-        # Remove inherited bias from files containing new bias
-        for fname in hills_files:
+        with open(fname, 'r') as f:
+            f_lines = f.readlines()
 
-            with open(fname, 'r') as f:
-                f_lines = f.readlines()
+        if len(f_lines) == 0:
+            continue
 
-            if len(f_lines) == 0:
-                continue
+        prev_line = '#!'
+        n_lines_in_header = 0
+        second_header_first_index = 0
+        for i, line in enumerate(f_lines):
+            if line.startswith('#!') and not prev_line.startswith('#!'):
+                second_header_first_index = i
+                break
+            elif line.startswith('#!'):
+                n_lines_in_header += 1
+            prev_line = line
 
-            first_header_indices = [0, 1, 2]
-            second_header_first_index = 0
-            for i, line in enumerate(f_lines):
-                if line.startswith('#!') and i not in first_header_indices:
-                    second_header_first_index = i
-                    break
+        with open(fname, 'w') as f:
 
-            with open(fname, 'w') as f:
+            # No new gaussians deposited
+            if (second_header_first_index == 0
+                    and os.path.getsize(f'HILLS_{iteration}.dat') != 0):
+                pass
 
-                # No new gaussians deposited
-                if (second_header_first_index == 0
-                        and os.path.getsize(f'HILLS_{iteration}.dat') != 0):
-                    pass
-
-                else:
-                    for line in f_lines[second_header_first_index:]:
-                        f.write(line)
+            else:
+                for line in f_lines[second_header_first_index:]:
+                    f.write(line)
 
     for idx, fname in enumerate(hills_files):
 
@@ -729,16 +731,16 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
         if len(f_lines[-1].split()) != len(f_lines[-2].split()):
             f_lines.pop()
 
-        height_column_index = -2
+        height_column_index = f_lines[0].split().index('height') - 2
         with open(f'HILLS_{iteration}.dat', 'a') as final_hills_file:
 
             # Attach the header to the final file if it's empty
             if os.path.getsize(f'HILLS_{iteration}.dat') == 0:
-                for line in f_lines[:3]:
-                    final_hills_file.write(line)
+                for i in range(n_lines_in_header):
+                    final_hills_file.write(f_lines[i])
 
             # Remove headers from contributing files
-            for _ in range(3):
+            for _ in range(n_lines_in_header):
                 f_lines.pop(0)
 
             for line in f_lines:
