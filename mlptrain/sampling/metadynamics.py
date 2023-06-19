@@ -1239,8 +1239,8 @@ class Metadynamics:
                         energy for each collective variable
                         e.g. [(0.8, 1.5), (80, 120)]
 
-            reweighting: (bool) If true the free energy is computed using the
-                                reweighting scheme
+            via_reweighting: (bool) If true the free energy is computed using
+                                    the reweighting scheme
 
             start_time: (float) Start time of the sliced trajectory which is
                                 going to be used in reweighting (in ps)
