@@ -22,7 +22,6 @@ try:
     from mace import data, modules, tools
     from mace.tools import torch_geometric, torch_tools, utils
     from mace.tools.scripts_utils import create_error_table
-    from mace.calculators import MACECalculator as _MACECalculator
 except ModuleNotFoundError:
     pass
 
@@ -745,30 +744,34 @@ class MACE(MLPotential):
 
         return self._ema
 
+try:
+    from mace.calculators import MACECalculator as _MACECalculator
 
-class MACECalculator(_MACECalculator):
+    class MACECalculator(_MACECalculator):
 
-    def __init__(
-            self,
-            model_path: str,
-            device: str,
-            energy_units_to_eV: float = 1.0,
-            length_units_to_A: float = 1.0,
-            default_dtype="float64",
-            **kwargs
-    ):
-        Calculator.__init__(self, **kwargs)
-        self.results = {}
+        def __init__(
+                self,
+                model_path: str,
+                device: str,
+                energy_units_to_eV: float = 1.0,
+                length_units_to_A: float = 1.0,
+                default_dtype="float64",
+                **kwargs
+        ):
+            Calculator.__init__(self, **kwargs)
+            self.results = {}
 
-        self.model = torch.load(f=model_path, map_location=device)
-        if device == 'cuda':
-            self.model = self.model.to(device)
+            self.model = torch.load(f=model_path, map_location=device)
+            if device == 'cuda':
+                self.model = self.model.to(device)
 
-        self.r_max = float(self.model.r_max)
-        self.device = torch_tools.init_device(device)
-        self.energy_units_to_eV = energy_units_to_eV
-        self.length_units_to_A = length_units_to_A
-        self.z_table = utils.AtomicNumberTable(
-            [int(z) for z in self.model.atomic_numbers]
-        )
-        torch_tools.set_default_dtype(default_dtype)
+            self.r_max = float(self.model.r_max)
+            self.device = torch_tools.init_device(device)
+            self.energy_units_to_eV = energy_units_to_eV
+            self.length_units_to_A = length_units_to_A
+            self.z_table = utils.AtomicNumberTable(
+                [int(z) for z in self.model.atomic_numbers]
+            )
+            torch_tools.set_default_dtype(default_dtype)
+except ModuleNotFoundError:
+    pass
