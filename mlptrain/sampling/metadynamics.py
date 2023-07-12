@@ -168,9 +168,11 @@ class Metadynamics:
                                                  kwds=kwargs_single)
                 width_processes.append(width_process)
 
+            pool.close()
             for width_process in width_processes:
                 all_widths.append(width_process.get())
                 all_widths = np.array(all_widths)
+            pool.join()
 
         finish = time.perf_counter()
         logger.info(f'Width estimation done in {(finish - start) / 60:.1f} m')
@@ -378,8 +380,10 @@ class Metadynamics:
                                                  kwds=kwargs_single)
                 metad_processes.append(metad_process)
 
+            pool.close()
             for metad_process in metad_processes:
                 metad_trajs.append(metad_process.get())
+            pool.join()
 
         finish_metad = time.perf_counter()
         logger.info('Metadynamics done in '
@@ -933,9 +937,11 @@ class Metadynamics:
                                                    energy_units))
                 grid_procs.append(grid_proc)
 
+            pool.close()
             for blocksize, grid_proc in zip(blocksizes, grid_procs):
                 cvs_grid, fes_error = grid_proc.get()
                 data_dict[str(blocksize)] = fes_error
+            pool.join()
 
         data_dict['CVs'] = cvs_grid
         np.savez('block_analysis.npz', **data_dict)
@@ -1318,9 +1324,11 @@ class Metadynamics:
                                               energy_units))
                 fes_processes.append(proc)
 
+            pool.close()
             for proc in fes_processes:
                 cvs_grid, fes_grid = proc.get()
                 fes_grids.append(fes_grid)
+            pool.join()
 
         fes_raw = np.concatenate([cvs_grid] + fes_grids, axis=0)
         return fes_raw

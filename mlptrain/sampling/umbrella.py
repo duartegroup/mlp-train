@@ -447,6 +447,7 @@ class UmbrellaSampling:
                 window_processes.append(window_process)
                 biases.append(bias)
 
+            pool.close()
             for window_process, bias in zip(window_processes, biases):
 
                 window_traj = window_process.get()
@@ -458,6 +459,7 @@ class UmbrellaSampling:
 
                 self.windows.append(window)
                 window_trajs.append(window_traj)
+            pool.join()
 
         finish_umbrella = time.perf_counter()
         logger.info('Umbrella sampling done in '

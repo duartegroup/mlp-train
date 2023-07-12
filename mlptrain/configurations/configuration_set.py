@@ -617,8 +617,10 @@ class ConfigurationSet(list):
                                           kwds=kwargs)
                 results.append(result)
 
+            pool.close()
             for i, result in enumerate(results):
                 self[i] = result.get(timeout=None)
+            pool.join()
 
         logger.info(f'Calculations done in {(time() - start_time) / 60:.1f} m')
         return None

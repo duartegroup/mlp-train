@@ -256,6 +256,7 @@ def _add_active_configs(mlp,
                                       kwds=deepcopy(kwargs))
             results.append(result)
 
+        pool.close()
         for result in results:
             try:
                 configs.append(result.get(timeout=None))
@@ -265,6 +266,7 @@ def _add_active_configs(mlp,
             except Exception as err:
                 logger.error(f'Raised an exception in selection: \n{err}')
                 continue
+        pool.join()
 
     if 'method_name' in kwargs and configs.has_a_none_energy:
         for config in configs:
