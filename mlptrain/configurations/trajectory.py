@@ -19,7 +19,7 @@ class Trajectory(ConfigurationSet):
         Returns:
             (float): t_0 in fs
         """
-        return 0. if len(self) == 0 else self[0].time
+        return 0.0 if len(self) == 0 else self[0].time
 
     @t0.setter
     def t0(self, value: float):
@@ -27,8 +27,10 @@ class Trajectory(ConfigurationSet):
 
         for frame in self:
             if frame.time is None:
-                logger.warning('Attempted to set the initial time but a '
-                               f'time was note defined. Setting to {value}')
+                logger.warning(
+                    "Attempted to set the initial time but a "
+                    f"time was note defined. Setting to {value}"
+                )
                 frame.time = value
 
             else:
@@ -37,7 +39,7 @@ class Trajectory(ConfigurationSet):
         return
 
     @property
-    def final_frame(self) -> 'mlptrain.Configuration':
+    def final_frame(self) -> "mlptrain.Configuration":
         """
         Return the final frame from this trajectory
 
@@ -47,6 +49,6 @@ class Trajectory(ConfigurationSet):
         """
 
         if len(self) == 0:
-            raise ValueError('Had no final frame - no configurations present')
+            raise ValueError("Had no final frame - no configurations present")
 
         return self[-1]

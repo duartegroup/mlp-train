@@ -7,12 +7,14 @@ from mlptrain.sampling._base import Function
 
 
 class ReactionCoordinate(Function, ABC):
-
-    def __call__(self,
-                 arg: Union[ase.atoms.Atoms,
-                            'mlptrain.Configuration',
-                            'mlptrain.ConfigurationSet']
-                 ) -> Union[float, np.ndarray]:
+    def __call__(
+        self,
+        arg: Union[
+            ase.atoms.Atoms,
+            "mlptrain.Configuration",
+            "mlptrain.ConfigurationSet",
+        ],
+    ) -> Union[float, np.ndarray]:
         """Value of this reaction coordinate"""
 
         if isinstance(arg, ase.atoms.Atoms):
@@ -25,8 +27,10 @@ class ReactionCoordinate(Function, ABC):
             return np.array([self._call(c.ase_atoms) for c in arg])
 
         else:
-            raise ValueError('Reaction coordinate must be called using ase '
-                             'atoms, a configuration or configuration set')
+            raise ValueError(
+                "Reaction coordinate must be called using ase "
+                "atoms, a configuration or configuration set"
+            )
 
     @abstractmethod
     def _call(self, atoms: ase.atoms.Atoms):
@@ -36,8 +40,9 @@ class ReactionCoordinate(Function, ABC):
         """Gradient of this reaction coordinate for a set of ase atoms"""
 
         if not isinstance(atoms, ase.atoms.Atoms):
-            raise NotImplementedError('Grad must be called with a set of '
-                                      'ASE atoms')
+            raise NotImplementedError(
+                "Grad must be called with a set of ASE atoms"
+            )
 
         return self._grad(atoms)
 
@@ -47,12 +52,11 @@ class ReactionCoordinate(Function, ABC):
 
 
 class DummyCoordinate(ReactionCoordinate):
-
     def _call(self, atoms: ase.atoms.Atoms):
-        raise ValueError('Cannot call energy on a dummy coordinate')
+        raise ValueError("Cannot call energy on a dummy coordinate")
 
     def _grad(self, atoms: ase.atoms.Atoms):
-        raise ValueError('Cannot call grad on a dummy coordinate')
+        raise ValueError("Cannot call grad on a dummy coordinate")
 
 
 class _Distances:
@@ -68,8 +72,10 @@ class _Distances:
 
         for arg in args:
             if len(arg) != 2:
-                raise ValueError('Distances must be initialised from a '
-                                 '2-tuple of atom indices')
+                raise ValueError(
+                    "Distances must be initialised from a "
+                    "2-tuple of atom indices"
+                )
 
             self.atom_pair_list.append(tuple(arg))
 
@@ -97,16 +103,22 @@ class AverageDistance(ReactionCoordinate, _Distances):
         atom_idxs = [idx for pair in self.atom_pair_list for idx in pair]
 
         if len(set(atom_idxs)) != len(atom_idxs):
-            raise ValueError('All atoms in reaction coordinate must be '
-                             'different')
+            raise ValueError(
+                "All atoms in reaction coordinate must be different"
+            )
 
     def _call(self, atoms: ase.atoms.Atoms):
         """Average distance between atom pairs"""
-        return np.mean([atoms.get_distance(i, j, mic=True)
-                        for (i, j) in self.atom_pair_list])
+        return np.mean(
+            [
+                atoms.get_distance(i, j, mic=True)
+                for (i, j) in self.atom_pair_list
+            ]
+        )
 
     def _grad(self, atoms: ase.atoms.Atoms):
-        """Gradient of the average distance between atom pairs. Each component
+        """
+        Gradient of the average distance between atom pairs. Each component
         of the gradient is calculated using ∇B_i,m:
 
         ∇B_i,m = (1/M) * (r_i,m - r_i,m') / ||r_mm'||
@@ -119,13 +131,15 @@ class AverageDistance(ReactionCoordinate, _Distances):
 
         derivative = np.zeros(shape=(len(atoms), 3))
 
-        distances = [atoms.get_distance(i, j, mic=True)
-                     for (i, j) in self.atom_pair_list]
+        distances = [
+            atoms.get_distance(i, j, mic=True)
+            for (i, j) in self.atom_pair_list
+        ]
 
         for m, (i, j) in enumerate(self.atom_pair_list):
-            x_dist, y_dist, z_dist = [atoms[i].position[k] -
-                                      atoms[j].position[k] for k in
-                                      range(3)]
+            x_dist, y_dist, z_dist = [
+                atoms[i].position[k] - atoms[j].position[k] for k in range(3)
+            ]
 
             x_i = x_dist / (self.n_pairs * distances[m])
             y_i = y_dist / (self.n_pairs * distances[m])
@@ -162,13 +176,17 @@ class DifferenceDistance(ReactionCoordinate, _Distances):
         _Distances.__init__(self, *args)
 
         if len(args) != 2:
-            raise ValueError('DifferenceDistance must comprise exactly two '
-                             'pairs of atoms')
+            raise ValueError(
+                "DifferenceDistance must comprise exactly two "
+                "pairs of atoms"
+            )
 
     def _call(self, atoms: ase.atoms.Atoms):
         """Difference in distance between two atom pairs"""
-        dists = [atoms.get_distance(i, j, mic=True)
-                 for (i, j) in self.atom_pair_list]
+        dists = [
+            atoms.get_distance(i, j, mic=True)
+            for (i, j) in self.atom_pair_list
+        ]
 
         return dists[0] - dists[1]
 

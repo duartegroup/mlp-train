@@ -8,6 +8,6 @@ def test_equality():
     assert config1 == config1
     assert config1 == Configuration()
 
-    config2 = Configuration(atoms=[Atom('H')])
+    config2 = Configuration(atoms=[Atom("H")])
 
     assert config1 != config2

@@ -1,12 +1,9 @@
-from abc import ABC,abstractmethod
+from abc import ABC, abstractmethod
 from typing import Optional
 
 
 class LossValue(ABC, float):
-
-    def __init__(self,
-                 x,
-                 error: Optional[float] = None):
+    def __init__(self, x, error: Optional[float] = None):
         """
         Loss value with a possible associated error
 
@@ -28,13 +25,11 @@ class LossValue(ABC, float):
     @property
     def _err_str(self) -> str:
         """String containing the value and any associated error"""
-        return '' if self.error is None else f'±{self.error}'
+        return "" if self.error is None else f"±{self.error}"
 
 
 class LossFunction(ABC):
-
-    def __init__(self,
-                 method_name: Optional[str] = None):
+    def __init__(self, method_name: Optional[str] = None):
         """
         Construct a loss function
 
@@ -47,8 +42,10 @@ class LossFunction(ABC):
         self.method_name = method_name
 
     @abstractmethod
-    def __call__(self,
-                 configurations: 'mlptrain.ConfigurationSet',
-                 mlp:            'mlptrain.potentials._base.MLPotential',
-                 **kwargs) -> LossValue:
+    def __call__(
+        self,
+        configurations: "mlptrain.ConfigurationSet",
+        mlp: "mlptrain.potentials._base.MLPotential",
+        **kwargs,
+    ) -> LossValue:
         """Compute a loss value"""

@@ -8,8 +8,10 @@ from typing import Optional, List, Sequence, Union
 from ase import units as ase_units
 
 
-def work_in_tmp_dir(kept_substrings:   Optional[Sequence[str]] = None,
-                    copied_substrings: Optional[Sequence[str]] = None):
+def work_in_tmp_dir(
+    kept_substrings: Optional[Sequence[str]] = None,
+    copied_substrings: Optional[Sequence[str]] = None,
+):
     """
     Execute a function in a temporary directory
 
@@ -25,7 +27,6 @@ def work_in_tmp_dir(kept_substrings:   Optional[Sequence[str]] = None,
     """
 
     def func_decorator(func):
-
         @wraps(func)
         def wrapped_function(*args, **kwargs):
 
@@ -35,12 +36,16 @@ def work_in_tmp_dir(kept_substrings:   Optional[Sequence[str]] = None,
             if copied_substrings is not None:
 
                 for filename in os.listdir(here_path):
-                    if _name_contains_substring(name=filename,
-                                                substrings=copied_substrings,
-                                                regex=False):
+                    if _name_contains_substring(
+                        name=filename,
+                        substrings=copied_substrings,
+                        regex=False,
+                    ):
 
-                        shutil.copy(src=os.path.join(here_path, filename),
-                                    dst=os.path.join(tmpdir_path, filename))
+                        shutil.copy(
+                            src=os.path.join(here_path, filename),
+                            dst=os.path.join(tmpdir_path, filename),
+                        )
 
             # Move directories and execute
             os.chdir(tmpdir_path)
@@ -52,12 +57,16 @@ def work_in_tmp_dir(kept_substrings:   Optional[Sequence[str]] = None,
                 if kept_substrings is not None:
 
                     for filename in os.listdir(tmpdir_path):
-                        if _name_contains_substring(name=filename,
-                                                    substrings=kept_substrings,
-                                                    regex=False):
+                        if _name_contains_substring(
+                            name=filename,
+                            substrings=kept_substrings,
+                            regex=False,
+                        ):
 
-                            shutil.copy(src=os.path.join(tmpdir_path, filename),
-                                        dst=os.path.join(here_path, filename))
+                            shutil.copy(
+                                src=os.path.join(tmpdir_path, filename),
+                                dst=os.path.join(here_path, filename),
+                            )
 
                 os.chdir(here_path)
 
@@ -67,13 +76,13 @@ def work_in_tmp_dir(kept_substrings:   Optional[Sequence[str]] = None,
             return out
 
         return wrapped_function
+
     return func_decorator
 
 
-def _name_contains_substring(name: str,
-                             substrings: Sequence[str],
-                             regex: bool
-                             ) -> bool:
+def _name_contains_substring(
+    name: str, substrings: Sequence[str], regex: bool
+) -> bool:
     """Returns True if one of the regex or regular substrings are found
     in the name"""
 
@@ -99,7 +108,6 @@ def work_in_dir(dirname: str):
     """
 
     def func_decorator(func):
-
         @wraps(func)
         def wrapped_function(*args, **kwargs):
             here_path = os.getcwd()
@@ -112,12 +120,11 @@ def work_in_dir(dirname: str):
             return out
 
         return wrapped_function
+
     return func_decorator
 
 
-def unique_name(name: str,
-                path: Optional[str] = None
-                ) -> str:
+def unique_name(name: str, path: Optional[str] = None) -> str:
     """
     Returns a unique name for a file or directory in the specified directory
     by adding bck0, bck1, ... to the front of the name until a unique name
@@ -146,18 +153,19 @@ def unique_name(name: str,
     i = 0
     old_name = name
     while _name_exists():
-        name = f'bck{i}_{old_name}'
+        name = f"bck{i}_{old_name}"
         i += 1
 
     return name
 
 
-def move_files(moved_substrings: List[str],
-               dst_folder:       str,
-               src_folder:       Optional[str] = None,
-               unique:           bool = True,
-               regex:            bool = False
-               ) -> None:
+def move_files(
+    moved_substrings: List[str],
+    dst_folder: str,
+    src_folder: Optional[str] = None,
+    unique: bool = True,
+    regex: bool = False,
+) -> None:
     """
     Move files with given regex or regular substrings from a directory
     src_folder to a directory dst_folder. If dst_folder already exists
@@ -185,8 +193,8 @@ def move_files(moved_substrings: List[str],
 
     if os.path.exists(dst_folder) and unique:
 
-        name = dst_folder.split('/')[-1]
-        path = '/'.join(dst_folder.split('/')[:-1])
+        name = dst_folder.split("/")[-1]
+        path = "/".join(dst_folder.split("/")[:-1])
         unique_dst_folder = os.path.join(path, unique_name(name, path))
 
         os.rename(dst_folder, unique_dst_folder)
@@ -196,9 +204,9 @@ def move_files(moved_substrings: List[str],
         os.makedirs(dst_folder)
 
     for filename in os.listdir(src_folder):
-        if _name_contains_substring(name=filename,
-                                    substrings=moved_substrings,
-                                    regex=regex):
+        if _name_contains_substring(
+            name=filename, substrings=moved_substrings, regex=regex
+        ):
 
             source = os.path.join(src_folder, filename)
             destination = os.path.join(dst_folder, filename)
@@ -223,16 +231,16 @@ def convert_exponents(string: str) -> str:
     """
 
     def _modified_exponent(exponent):
-        return f'$^{{{exponent.group(2)}}}$'
+        return f"$^{{{exponent.group(2)}}}$"
 
-    exponent_pattern = re.compile(r'(\^?)(-?\d+)')
+    exponent_pattern = re.compile(r"(\^?)(-?\d+)")
 
     return re.sub(exponent_pattern, _modified_exponent, string)
 
 
-def convert_ase_time(time_array: Union[np.ndarray, float],
-                     units:      str
-                     ) -> np.ndarray:
+def convert_ase_time(
+    time_array: Union[np.ndarray, float], units: str
+) -> np.ndarray:
     """
     Converts ASE time units to different time units.
 
@@ -248,27 +256,27 @@ def convert_ase_time(time_array: Union[np.ndarray, float],
         (np.ndarray): Numpy array containing time in the other units
     """
 
-    if units == 'fs':
+    if units == "fs":
         conversion = 1 / ase_units.fs
         time_array *= conversion
 
-    elif units == 'ps':
-        conversion = 1 / (ase_units.fs * 10**3)
+    elif units == "ps":
+        conversion = 1 / (ase_units.fs * 10 ** 3)
         time_array *= conversion
 
-    elif units == 'ns':
-        conversion = 1 / (ase_units.fs * 10**6)
+    elif units == "ns":
+        conversion = 1 / (ase_units.fs * 10 ** 6)
         time_array *= conversion
 
     else:
-        raise ValueError(f'Unknown time time_units: {units}')
+        raise ValueError(f"Unknown time time_units: {units}")
 
     return time_array
 
 
-def convert_ase_energy(energy_array: Union[np.ndarray, float],
-                       units:        str
-                       ) -> np.ndarray:
+def convert_ase_energy(
+    energy_array: Union[np.ndarray, float], units: str
+) -> np.ndarray:
     """
     Converts ASE energy units to different energy units.
 
@@ -284,16 +292,16 @@ def convert_ase_energy(energy_array: Union[np.ndarray, float],
         (np.ndarray): Numpy array containing energy in the other units
     """
 
-    if units.lower() == 'ev':
+    if units.lower() == "ev":
         pass
 
-    elif units.lower() == 'kcal mol-1':
+    elif units.lower() == "kcal mol-1":
         energy_array *= 23.060541945329334
 
-    elif units.lower() == 'kj mol-1':
+    elif units.lower() == "kj mol-1":
         energy_array *= 96.48530749925793
 
     else:
-        raise ValueError(f'Unknown energy units: {units}')
+        raise ValueError(f"Unknown energy units: {units}")
 
     return energy_array

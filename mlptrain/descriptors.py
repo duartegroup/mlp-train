@@ -3,9 +3,10 @@ import mlptrain as mlt
 from typing import Union, Optional, Sequence
 
 
-def soap_matrix(*args:    Union[mlt.ConfigurationSet, mlt.Configuration],
-                elements: Optional[Sequence] = None
-                ) -> np.ndarray:
+def soap_matrix(
+    *args: Union[mlt.ConfigurationSet, mlt.Configuration],
+    elements: Optional[Sequence] = None,
+) -> np.ndarray:
     """
     Create a SOAP matrix using dscribe (https://github.com/SINGROUP/dscribe)
     for a set of configurations
@@ -40,22 +41,25 @@ def soap_matrix(*args:    Union[mlt.ConfigurationSet, mlt.Configuration],
             configurations.extend([c for c in item])
 
         else:
-            raise ValueError(f'Could not calculate a SOAP vector for {item}')
+            raise ValueError(f"Could not calculate a SOAP vector for {item}")
 
     # logger.info(f'Calculating SOAP descriptor for {len(configurations)}'
     #             f' configuration(s)')
 
     if elements is None:
-        elements = list(set(atom.label for c in configurations
-                            for atom in c.atoms))
+        elements = list(
+            set(atom.label for c in configurations for atom in c.atoms)
+        )
 
     # Compute the average SOAP vector where the expansion coefficients are
     # calculated over averages over each site
-    soap_desc = SOAP(species=elements,
-                     rcut=5,             # Distance cutoff (Å)
-                     nmax=6,             # Maximum order of the radial
-                     lmax=6,             # Maximum order of the angular
-                     average='inner')
+    soap_desc = SOAP(
+        species=elements,
+        rcut=5,  # Distance cutoff (Å)
+        nmax=6,  # Maximum order of the radial
+        lmax=6,  # Maximum order of the angular
+        average="inner",
+    )
 
     soap_vec = soap_desc.create([conf.ase_atoms for conf in configurations])
     # logger.info('SOAP calculation done')
@@ -67,9 +71,11 @@ def soap_matrix(*args:    Union[mlt.ConfigurationSet, mlt.Configuration],
     return soap_vec
 
 
-def soap_kernel_vector(configuration:  mlt.Configuration,
-                       configurations: mlt.ConfigurationSet,
-                       zeta:           int = 4):
+def soap_kernel_vector(
+    configuration: mlt.Configuration,
+    configurations: mlt.ConfigurationSet,
+    zeta: int = 4,
+):
     """
     Calculate the kernel matrix between a set of configurations where the
     kernel is:
