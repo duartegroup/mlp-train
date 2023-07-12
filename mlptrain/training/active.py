@@ -759,7 +759,7 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
 
     os.makedirs('accumulated_bias', exist_ok=True)
     shutil.copyfile(src=f'HILLS_{iteration}.dat',
-                    dst=f'accumulated_bias/hills_after_iter_{iteration}.dat')
+                    dst=f'accumulated_bias/bias_after_iter_{iteration}.dat')
 
     return None
 
