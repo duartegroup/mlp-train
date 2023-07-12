@@ -12,7 +12,7 @@ class HarmonicPotential(Calculator):
 
         r = atoms.get_distance(0, 1)
 
-        return (r - 1) ** 2
+        return (r - 1)**2
 
     def get_forces(self, atoms):
 
@@ -20,9 +20,8 @@ class HarmonicPotential(Calculator):
 
         r = atoms.get_distance(0, 1)
 
-        x_dist, y_dist, z_dist = [
-            atoms[0].position[j] - atoms[1].position[j] for j in range(3)
-        ]
+        x_dist, y_dist, z_dist = [atoms[0].position[j] - atoms[1].position[j]
+                                  for j in range(3)]
 
         x_i, y_i, z_i = (x_dist / r), (y_dist / r), (z_dist / r)
 
@@ -38,7 +37,10 @@ class TestPotential(MLPotential):
 
     __test__ = False
 
-    def __init__(self, name: str, calculator="harmonic", system=None):
+    def __init__(self,
+                 name: str,
+                 calculator='harmonic',
+                 system=None):
 
         super().__init__(name=name, system=system)
         self.calculator = calculator.lower()
@@ -46,16 +48,15 @@ class TestPotential(MLPotential):
     @property
     def ase_calculator(self):
 
-        if self.calculator == "harmonic":
+        if self.calculator == 'harmonic':
             return HarmonicPotential()
 
-        if self.calculator == "lj":
+        if self.calculator == 'lj':
             return LennardJones(rc=2.5, r0=3.0)
 
         else:
-            raise NotImplementedError(
-                f"{self.calculator} is not implemented as a test potential"
-            )
+            raise NotImplementedError(f'{self.calculator} is not implemented '
+                                      f'as a test potential')
 
     def _train(self) -> None:
         """ABC for MLPotential required but unused in TestPotential"""

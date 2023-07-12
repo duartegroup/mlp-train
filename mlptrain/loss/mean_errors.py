@@ -9,12 +9,10 @@ class _DeltaLossFunction(LossFunction, ABC):
 
     loss_type = None
 
-    def __call__(
-        self,
-        configurations: "mlptrain.ConfigurationSet",
-        mlp: "mlptrain.potentials.MLPotential",
-        **kwargs,
-    ) -> LossValue:
+    def __call__(self,
+                 configurations: 'mlptrain.ConfigurationSet',
+                 mlp:            'mlptrain.potentials.MLPotential',
+                 **kwargs) -> LossValue:
         """Calculate the value of the loss
 
         -----------------------------------------------------------------------
@@ -25,13 +23,13 @@ class _DeltaLossFunction(LossFunction, ABC):
         """
 
         if self.loss_type is None:
-            raise NotImplementedError(f"{self} did not define loss_type")
+            raise NotImplementedError(f'{self} did not define loss_type')
 
-        if "method_name" in kwargs:
-            self.method_name = kwargs.pop("method_name")
+        if 'method_name' in kwargs:
+            self.method_name = kwargs.pop('method_name')
 
         if len(kwargs) > 0:
-            raise ValueError(f"Unknown keyword arguments: {kwargs}")
+            raise ValueError(f'Unknown keyword arguments: {kwargs}')
 
         delta_Es = self._delta_energies(configurations, mlp)
         std_error = bootstrap(delta_Es, self.statistic).standard_error
@@ -48,10 +46,8 @@ class _DeltaLossFunction(LossFunction, ABC):
                     configuration.single_point(method=self.method_name)
 
                 else:
-                    raise RuntimeError(
-                        f"Cannot compute loss for configuration "
-                        f"{idx}, a true energy was not present"
-                    )
+                    raise RuntimeError(f'Cannot compute loss for configuration '
+                                       f'{idx}, a true energy was not present')
 
             if configuration.energy.predicted is None:
                 mlp.predict(configuration)
@@ -65,8 +61,9 @@ class _DeltaLossFunction(LossFunction, ABC):
 
 
 class RMSEValue(LossValue):
+
     def __repr__(self):
-        return f"RMSE({float.__repr__(self)}{self._err_str})"
+        return f'RMSE({float.__repr__(self)}{self._err_str})'
 
 
 class RMSE(_DeltaLossFunction):
@@ -80,8 +77,9 @@ class RMSE(_DeltaLossFunction):
 
 
 class MADValue(LossValue):
+
     def __repr__(self):
-        return f"MAD({float.__repr__(self)}{self._err_str})"
+        return f'MAD({float.__repr__(self)}{self._err_str})'
 
 
 class MAD(LossFunction):
