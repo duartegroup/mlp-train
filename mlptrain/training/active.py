@@ -860,6 +860,7 @@ def _generate_grid_from_hills(configurations, iteration, bias) -> None:
     bin_widths = [(width / 5) for width in bias.width]
     n_bins = [int((max_params[i] - min_params[i]) / bin_widths[i])
               for i in range(bias.n_metad_cvs)]
+    n_bins = [bins if bins != 0 else 1 for bins in n_bins]
 
     bin_sequence = ','.join(str(bins) for bins in n_bins)
     min_sequence = ','.join(str(param) for param in min_params)
