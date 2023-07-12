@@ -260,7 +260,7 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
 
 def _attach_calculator_and_constraints(ase_atoms: 'ase.atoms.Atoms',
                                        mlp: 'mlptrain.potentials._base.MLPotential',
-                                       bias: Optional,
+                                       bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
                                        temp: float,
                                        interval: int,
                                        dt_ase: float,
@@ -413,7 +413,7 @@ def _get_traj_name(restart_files: Optional[List[str]] = None,
 
 
 def _convert_ase_traj(traj_name: str,
-                      bias: Optional,
+                      bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
                       **kwargs) -> 'mlptrain.Trajectory':
     """Convert an ASE trajectory into an mlptrain Trajectory"""
 

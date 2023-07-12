@@ -569,7 +569,7 @@ def _attach_plumed_coords_to_init_configs(init_configs: 'mlptrain.ConfigurationS
 def _update_init_config(init_config: 'mlptrain.Configuration',
                         mlp: 'mlptrain.potentials._base.MLPotential',
                         fix_init_config: bool,
-                        bias: Optional,
+                        bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
                         inherit_metad_bias: bool,
                         bias_start_iter: int,
                         iteration: int
@@ -597,7 +597,7 @@ def _update_init_config(init_config: 'mlptrain.Configuration',
             return mlp.training_data.lowest_energy
 
 
-def _check_bias(bias: Optional,
+def _check_bias(bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
                 temp: float,
                 inherit_metad_bias: bool
                 ) -> None:
@@ -614,7 +614,7 @@ def _check_bias(bias: Optional,
     return None
 
 
-def _check_bias_parameters(bias: Optional,
+def _check_bias_parameters(bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
                            temp: float
                            ) -> None:
     """
