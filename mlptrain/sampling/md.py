@@ -3,7 +3,7 @@ import shutil
 import numpy as np
 import autode as ade
 from copy import deepcopy
-from typing import Optional, Sequence, List
+from typing import Optional, Sequence, List, Union
 from numpy.random import RandomState
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
@@ -138,10 +138,17 @@ def run_mlp_md(configuration:      'mlptrain.Configuration',
 
     _run_mlp_md_decorated = decorator(_run_mlp_md)
 
-    traj = _run_mlp_md_decorated(configuration, mlp, temp, dt, interval,
-                                 init_temp, fbond_energy, bbond_energy,
-                                 bias, restart_files, **kwargs)
-
+    traj = _run_mlp_md_decorated(configuration=configuration,
+                                 mlp=mlp,
+                                 temp=temp,
+                                 dt=dt,
+                                 interval=interval,
+                                 init_temp=init_temp,
+                                 fbond_energy=fbond_energy,
+                                 bbond_energy=bbond_energy,
+                                 bias=bias,
+                                 restart_files=restart_files,
+                                 **kwargs)
     return traj
 
 
@@ -159,55 +166,7 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
                 ) -> 'mlptrain.Trajectory':
     """
     Run molecular dynamics on a system using a MLP to predict energies and
-    forces and ASE to drive dynamics.
-
-    ---------------------------------------------------------------------------
-    Arguments:
-
-        configuration: Configuration from which the simulation is started
-                       (if restart is False)
-
-        mlp: Machine learnt potential
-
-        temp: Temperature in K to initialise velocities and to run
-              NVT MD, if temp=0 then will run NVE
-
-        init_temp: (float | None) Initial temperature to initialise momenta
-                   with. If None then will be set to temp
-
-        dt: (float) Time-step in fs
-
-        interval: (int) Interval between saving the geometry
-
-        bbond_energy: (dict | None) Additional energy to add to a breaking
-                         bond. e.g. bbond_energy={(0, 1), 0.1} Adds 0.1 eV
-                         to the 'bond' between atoms 0 and 1 as velocities
-                         shared between the atoms in the breaking bond direction
-
-        fbond_energy: (dict | None) As bbond_energy but in the direction to
-                         form a bond
-
-        bias: (mlptrain.Bias | mlptrain.PlumedBias) mlp-train constrain
-              to use in the dynamics
-
-        restart_files: List of files which are needed for restarting the
-                       simulation
-    ---------------
-    Keyword Arguments:
-
-        {fs, ps, ns}: Simulation time in some units
-
-        {save_fs, save_ps, save_ns}: Trajectory saving interval in some units
-
-        constraints: (List) List of ASE constraints to use in the dynamics
-                            e.g. [ase.constraints.Hookean(a1, a2, k, rt)]
-
-        write_plumed_setup: (bool) If True saves the PLUMED input file as
-                            plumed_setup.dat
-
-    Returns:
-
-        (mlptrain.Trajectory):
+    forces and ASE to drive dynamics
     """
 
     restart = restart_files is not None
@@ -220,7 +179,8 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
 
     # Transform dt from fs into ASE time units (for dynamics only)
     dt_ase = dt * ase_units.fs
-    n_steps = _n_simulation_steps(dt, kwargs)
+    n_steps = _n_simulation_steps(dt=dt,
+                                  kwargs=kwargs)
 
     if restart and n_steps % interval != 0:
         raise NotImplementedError('Current implementation requires the number '
@@ -232,16 +192,19 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
         configuration.box = Box([100, 100, 100])
 
     ase_atoms = configuration.ase_atoms
-    traj_name = _get_traj_name(restart_files, **kwargs)
+    traj_name = _get_traj_name(restart_files=restart_files,
+                               **kwargs)
 
-    _set_momenta_and_geometry(ase_atoms,
+    _set_momenta_and_geometry(ase_atoms=ase_atoms,
                               temp=init_temp if init_temp is not None else temp,
                               bbond_energy=bbond_energy,
                               fbond_energy=fbond_energy,
                               restart=restart,
                               traj_name=traj_name)
 
-    ase_traj = _initialise_traj(ase_atoms, restart, traj_name)
+    ase_traj = _initialise_traj(ase_atoms=ase_atoms,
+                                restart=restart,
+                                traj_name=traj_name)
 
     # If MD is restarted, energies of frames from the previous trajectory
     # are not loaded. Setting them to None
@@ -250,18 +213,36 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
     bias_energies = deepcopy(energies)
 
     n_previous_steps = interval * len(ase_traj)
-    _attach_calculator_and_constraints(ase_atoms, mlp, bias, temp,
-                                       interval, dt_ase, restart,
-                                       n_previous_steps, **kwargs)
+    _attach_calculator_and_constraints(ase_atoms=ase_atoms,
+                                       mlp=mlp,
+                                       bias=bias,
+                                       temp=temp,
+                                       interval=interval,
+                                       dt_ase=dt_ase,
+                                       restart=restart,
+                                       n_previous_steps=n_previous_steps,
+                                       **kwargs)
 
-    _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
-                  n_steps, energies, biased_energies, **kwargs)
+    _run_dynamics(ase_atoms=ase_atoms,
+                  ase_traj=ase_traj,
+                  traj_name=traj_name,
+                  interval=interval,
+                  temp=temp,
+                  dt=dt,
+                  dt_ase=dt_ase,
+                  n_steps=n_steps,
+                  energies=energies,
+                  biased_energies=biased_energies,
+                  **kwargs)
 
     # Duplicate frames removed only if PLUMED bias is initialised not from file
     if restart and isinstance(bias, PlumedBias) and not bias.from_file:
-        _remove_colvar_duplicate_frames(bias, **kwargs)
+        _remove_colvar_duplicate_frames(bias=bias,
+                                        **kwargs)
 
-    traj = _convert_ase_traj(traj_name, bias, **kwargs)
+    traj = _convert_ase_traj(traj_name=traj_name,
+                             bias=bias,
+                             **kwargs)
 
     for energy, biased_energy in zip(energies, biased_energies):
         if energy is not None and biased_energy is not None:
@@ -277,16 +258,27 @@ def _run_mlp_md(configuration:  'mlptrain.Configuration',
     return traj
 
 
-def _attach_calculator_and_constraints(ase_atoms, mlp, bias, temp, interval,
-                                       dt_ase, restart, n_previous_steps,
+def _attach_calculator_and_constraints(ase_atoms: 'ase.atoms.Atoms',
+                                       mlp: 'mlptrain.potentials._base.MLPotential',
+                                       bias: Optional,
+                                       temp: float,
+                                       interval: int,
+                                       dt_ase: float,
+                                       restart: bool,
+                                       n_previous_steps: int,
                                        **kwargs) -> None:
-    """Set up the calculator and attach it to the ase_atoms together with bias
-    and constraints"""
+    """
+    Set up the calculator and attach it to the ase_atoms together with bias
+    and constraints
+    """
 
     if isinstance(bias, PlumedBias):
         logger.info('Using PLUMED bias for MLP MD')
 
-        setup = plumed_setup(bias, temp, interval, **kwargs)
+        setup = plumed_setup(bias=bias,
+                             temp=temp,
+                             interval=interval,
+                             **kwargs)
         bias.write_cv_files()
 
         plumed_calc = PlumedCalculator(calc=mlp.ase_calculator,
@@ -317,8 +309,17 @@ def _attach_calculator_and_constraints(ase_atoms, mlp, bias, temp, interval,
     return None
 
 
-def _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
-                  n_steps, energies, biased_energies, **kwargs) -> None:
+def _run_dynamics(ase_atoms: 'ase.atoms.Atoms',
+                  ase_traj: 'ase.io.trajectory.Trajectory',
+                  traj_name: str,
+                  interval: int,
+                  temp: float,
+                  dt: float,
+                  dt_ase: float,
+                  n_steps: int,
+                  energies: List,
+                  biased_energies: List,
+                  **kwargs) -> None:
     """Initialise dynamics object and run dynamics"""
 
     if temp > 0:                                        # Default Langevin NVT
@@ -355,9 +356,13 @@ def _run_dynamics(ase_atoms, ase_traj, traj_name, interval, temp, dt, dt_ase,
     return None
 
 
-def _save_trajectory(ase_traj, traj_name, **kwargs) -> None:
-    """Save the trajectory with a unique name based on the current simulation
-    time"""
+def _save_trajectory(ase_traj: 'ase.io.trajectory.Trajectory',
+                     traj_name: str,
+                     **kwargs) -> None:
+    """
+    Save the trajectory with a unique name based on the current simulation
+    time
+    """
 
     # Prevents initial trajectory save at time == 0
     if len(ase_traj) == 1:
@@ -386,8 +391,10 @@ def _save_trajectory(ase_traj, traj_name, **kwargs) -> None:
 def _get_traj_name(restart_files: Optional[List[str]] = None,
                    **kwargs
                    ) -> str:
-    """Return the name of the trajectory which is going to be created
-    (or on to which the new frames will be appended in the case of restart)"""
+    """
+    Return the name of the trajectory which is going to be created
+    (or on to which the new frames will be appended in the case of restart)
+    """
 
     if restart_files is None:
         if 'idx' in kwargs:
@@ -405,7 +412,9 @@ def _get_traj_name(restart_files: Optional[List[str]] = None,
                 return traj_name
 
 
-def _convert_ase_traj(traj_name, bias, **kwargs) -> 'mlptrain.Trajectory':
+def _convert_ase_traj(traj_name: str,
+                      bias: Optional,
+                      **kwargs) -> 'mlptrain.Trajectory':
     """Convert an ASE trajectory into an mlptrain Trajectory"""
 
     ase_traj = ASETrajectory(traj_name, 'r')
@@ -431,9 +440,13 @@ def _convert_ase_traj(traj_name, bias, **kwargs) -> 'mlptrain.Trajectory':
     return mlt_traj
 
 
-def _attach_plumed_coordinates(mlt_traj, bias, **kwargs) -> None:
-    """Attach PLUMED collective variable values to configurations in the
-    trajectory if all colvar files have been printed"""
+def _attach_plumed_coordinates(mlt_traj: 'mlptrain.Trajectory',
+                               bias: 'mlptrain.PlumedBias',
+                               **kwargs) -> None:
+    """
+    Attach PLUMED collective variable values to configurations in the
+    trajectory if all colvar files have been printed
+    """
 
     colvar_filenames = [get_colvar_filename(cv, **kwargs) for cv in bias.cvs]
 
@@ -600,9 +613,12 @@ def _traj_saving_interval(dt: float,
     return saving_interval
 
 
-def _remove_colvar_duplicate_frames(bias, **kwargs) -> None:
-    """Remove duplicate frames from generated colvar files when using PLUMED
-    bias"""
+def _remove_colvar_duplicate_frames(bias: 'mlptrain.PlumedBias',
+                                    **kwargs) -> None:
+    """
+    Remove duplicate frames from generated colvar files when using PLUMED
+    bias
+    """
 
     colvar_filenames = [get_colvar_filename(cv, **kwargs) for cv in bias.cvs]
 

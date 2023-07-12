@@ -197,8 +197,15 @@ class Metadynamics:
         logger.info(f'Estimated widths: {", ".join(opt_widths_strs)}')
         return opt_widths
 
-    def _get_width_for_single(self, configuration, mlp, temp, dt, interval,
-                              bias, plot, **kwargs) -> List:
+    def _get_width_for_single(self,
+                              configuration: 'mlptrain.Configuration',
+                              mlp: 'mlptrain.potentials._base.MLPotential',
+                              temp: float,
+                              dt: float,
+                              interval: int,
+                              bias: 'mlptrain.PlumedBias',
+                              plot: bool,
+                              **kwargs) -> List:
         """Estimate optimal widths (σ) for a single configuration"""
 
         logger.info(f'Running MD simulation number {kwargs["idx"]}')
@@ -407,8 +414,10 @@ class Metadynamics:
 
     @staticmethod
     def _initialise_inherited_bias(al_iter: int, n_runs: int) -> None:
-        """Initialise files in order to load a bias generated during
-        inherited-bias active learning"""
+        """
+        Initialise files in order to load a bias generated during
+        inherited-bias active learning
+        """
 
         bias_path = f'accumulated_bias/bias_after_iter_{al_iter}.dat'
         if os.path.exists(bias_path):
@@ -422,8 +431,10 @@ class Metadynamics:
         return None
 
     def _initialise_restart(self, width: Sequence, n_runs: int) -> None:
-        """Initialise restart for metadynamics simulation by checking
-        conditions and moving files"""
+        """
+        Initialise restart for metadynamics simulation by checking
+        conditions and moving files
+        """
 
         if width is None:
             raise ValueError('Make sure to use exactly the same width as '
@@ -460,8 +471,16 @@ class Metadynamics:
 
         return None
 
-    def _run_single_metad(self, configuration, mlp, temp, interval, dt, bias,
-                          al_iter=None, restart=False, **kwargs):
+    def _run_single_metad(self,
+                          configuration: 'mlptrain.Configuration',
+                          mlp: 'mlptrain.potentials._base.MLPotential',
+                          temp: float,
+                          interval: int,
+                          dt: float,
+                          bias: 'mlptrain.PlumedBias',
+                          al_iter: Optional[int] = None,
+                          restart: Optional[bool] = False,
+                          **kwargs) -> 'mlptrain.Trajectory':
         """Initiate a single metadynamics run"""
 
         logger.info('Running Metadynamics simulation '
@@ -496,10 +515,15 @@ class Metadynamics:
         return traj
 
     @staticmethod
-    def _move_and_save_files(metad_trajs, save_sep, all_to_xyz, restart
+    def _move_and_save_files(metad_trajs: List['mlptrain.Trajectory'],
+                             save_sep: bool,
+                             all_to_xyz: bool,
+                             restart: bool
                              ) -> None:
-        """Save metadynamics trajectories, move them into trajectories folder
-        and compute .xyz files"""
+        """
+        Save metadynamics trajectories, move them into trajectories folder
+        and compute .xyz files
+        """
 
         move_files(['.dat'],
                    dst_folder='plumed_files/metadynamics',
@@ -539,7 +563,12 @@ class Metadynamics:
 
         return None
 
-    def _set_previous_parameters(self, configuration, mlp, temp, dt, interval,
+    def _set_previous_parameters(self,
+                                 configuration: 'mlptrain.Configuration',
+                                 mlp: 'mlptrain.potentials._base.MLPotential',
+                                 temp: float,
+                                 dt: float,
+                                 interval: int,
                                  **kwargs) -> None:
         """Set parameters in the _previous_run_parameters"""
 
@@ -795,10 +824,19 @@ class Metadynamics:
 
         return None
 
-    def _try_single_biasfactor(self, configuration, mlp, temp, interval, dt,
-                               bias, plotted_cvs, **kwargs):
-        """Execute a single well-tempered metadynamics run and plot the
-        resulting trajectory"""
+    def _try_single_biasfactor(self,
+                               configuration: 'mlptrain.Configuration',
+                               mlp: 'mlptrain.potentials._base.MLPotential',
+                               temp: float,
+                               interval: int,
+                               dt: float,
+                               bias: 'mlptrain.PlumedBias',
+                               plotted_cvs: Optional,
+                               **kwargs):
+        """
+        Execute a single well-tempered metadynamics run and plot the
+        resulting trajectory
+        """
 
         self._run_single_metad(configuration=configuration,
                                mlp=mlp,
@@ -885,7 +923,9 @@ class Metadynamics:
 
         start = time.perf_counter()
 
-        bias, temp, dt, interval = self._reweighting_params(temp, dt, interval)
+        bias, temp, dt, interval = self._reweighting_params(temp=temp,
+                                                            dt=dt,
+                                                            interval=interval)
         start_frame_index = int((start_time * 1E3) / (dt * interval))
 
         sliced_traj = ase_read(f'trajectories/trajectory_{idx}.traj',
@@ -950,17 +990,25 @@ class Metadynamics:
         os.remove('traj.xyz')
         os.remove(f'HILLS_{idx}.dat')
 
-        self._plot_block_analysis(blocksizes, data_dict, energy_units)
+        self._plot_block_analysis(blocksizes=blocksizes,
+                                  data_dict=data_dict,
+                                  energy_units=energy_units)
 
         finish = time.perf_counter()
         logger.info(f'Block analysis done in {(finish - start) / 60:.1f} m')
 
         return None
 
-    def _reweighting_params(self, temp, dt, interval) -> Tuple:
-        """Read parameters required for reweighting from the previous
+    def _reweighting_params(self,
+                            temp: float,
+                            dt: float,
+                            interval: int
+                            ) -> Tuple:
+        """
+        Read parameters required for reweighting from the previous
         metadynamics simulation. If previous parameters are not set, read
-        parameters which are supplied to the method"""
+        parameters which are supplied to the method
+        """
 
         # Bias with dummy width and height values, and very large pace
         bias = deepcopy(self.bias)
@@ -985,7 +1033,7 @@ class Metadynamics:
         return bias, temp, dt, interval
 
     @staticmethod
-    def _save_ase_traj_as_xyz(ase_traj):
+    def _save_ase_traj_as_xyz(ase_traj: 'ase.io.trajectory.Trajectory'):
         """Save ASE trajectory as .xyz file"""
 
         _mlt_configuration_set = ConfigurationSet(allow_duplicates=True)
@@ -1005,8 +1053,13 @@ class Metadynamics:
     @work_in_tmp_dir(copied_substrings=['traj.xyz',
                                         'plumed_setup.dat',
                                         'HILLS'])
-    def _compute_grids_for_blocksize(self, blocksize, temp, min_max_params,
-                                     n_bins, bandwidth, energy_units
+    def _compute_grids_for_blocksize(self,
+                                     blocksize: int,
+                                     temp: float,
+                                     min_max_params: Tuple,
+                                     n_bins: int,
+                                     bandwidth: float,
+                                     energy_units: str
                                      ) -> Tuple[np.ndarray, np.ndarray]:
         """Compute CV and FES error grids over blocks for a given block size and
         return both grids"""
@@ -1043,7 +1096,8 @@ class Metadynamics:
         fes_error = np.divide(fes_error, average,
                               out=np.zeros_like(fes_error),
                               where=average != 0)
-        fes_error = convert_ase_energy(fes_error, energy_units)
+        fes_error = convert_ase_energy(energy_array=fes_error,
+                                       units=energy_units)
 
         return cvs_grid, fes_error
 
@@ -1052,8 +1106,10 @@ class Metadynamics:
                         n_bins:      int,
                         compute_cvs: bool = False
                         ) -> Tuple:
-        """Read the histogram file and return the normalisation together with
-        the CVs and the histogram as numpy grids"""
+        """
+        Read the histogram file and return the normalisation together with
+        the CVs and the histogram as numpy grids
+        """
 
         grid_shape = tuple([n_bins for _ in range(self.n_cvs)])
 
@@ -1076,11 +1132,17 @@ class Metadynamics:
 
         return float(normal), hist, cvs_grid
 
-    def _generate_hist_files_by_reweighting(self, blocksize, temp,
-                                            min_max_params, n_bins,
-                                            bandwidth) -> None:
-        """Generate analysis.*.hist.dat + hist.dat files which are required
-        for block analysis"""
+    def _generate_hist_files_by_reweighting(self,
+                                            blocksize: Optional[int],
+                                            temp: float,
+                                            min_max_params: Tuple,
+                                            n_bins: int,
+                                            bandwidth: float
+                                            ) -> None:
+        """
+        Generate analysis.*.hist.dat + hist.dat files which are required
+        for block analysis
+        """
 
         os.environ['PLUMED_MAXBACKUP'] = '10000'
 
@@ -1124,7 +1186,10 @@ class Metadynamics:
         return None
 
     @staticmethod
-    def _plot_block_analysis(blocksizes, data_dict, energy_units) -> None:
+    def _plot_block_analysis(blocksizes: List,
+                             data_dict: dict,
+                             energy_units: str
+                             ) -> None:
         """Plot the standard deviation versus block size"""
 
         data_dict.pop('CVs')
@@ -1206,10 +1271,16 @@ class Metadynamics:
             fes = np.load(fes_npy)
 
         if self.n_cvs == 1:
-            self._plot_1d_fes(fes, energy_units, confidence_level, blocksize)
+            self._plot_1d_fes(fes=fes,
+                              energy_units=energy_units,
+                              confidence_level=confidence_level,
+                              blocksize=blocksize)
 
         elif self.n_cvs == 2:
-            self._plot_2d_fes(fes, energy_units, confidence_level, blocksize)
+            self._plot_2d_fes(fes=fes,
+                              energy_units=energy_units,
+                              confidence_level=confidence_level,
+                              blocksize=blocksize)
 
         else:
             raise NotImplementedError('Plotting FES is available only for one '
@@ -1287,13 +1358,24 @@ class Metadynamics:
         np.save('fes_raw.npy', fes_raw)
         return fes_raw
 
-    def _compute_fes_via_reweighting(self, temp, dt, interval, start_time,
-                                     energy_units, cvs_bounds, n_bins,
-                                     bandwidth) -> np.ndarray:
-        """Compute the free energy surface grid by reweighting the biased
-        distribution"""
+    def _compute_fes_via_reweighting(self,
+                                     temp: float,
+                                     dt: float,
+                                     interval: int,
+                                     start_time: float,
+                                     energy_units: str,
+                                     cvs_bounds: Optional[Sequence],
+                                     n_bins: int,
+                                     bandwidth: float
+                                     ) -> np.ndarray:
+        """
+        Compute the free energy surface grid by reweighting the biased
+        distribution
+        """
 
-        bias, temp, dt, interval = self._reweighting_params(temp, dt, interval)
+        bias, temp, dt, interval = self._reweighting_params(temp=temp,
+                                                            dt=dt,
+                                                            interval=interval)
         start_frame_index = int((start_time * 1E3) / (dt * interval))
 
         min_max_params = self._get_min_max_params(cvs_bounds=cvs_bounds,
@@ -1334,10 +1416,19 @@ class Metadynamics:
         return fes_raw
 
     @work_in_tmp_dir()
-    def _compute_single_fes_via_reweighting(self, idx, traj_path, hills_path,
-                                            start_frame_index, bias, temp,
-                                            interval, min_max_params, n_bins,
-                                            bandwidth, energy_units) -> Tuple:
+    def _compute_single_fes_via_reweighting(self,
+                                            idx: int,
+                                            traj_path: str,
+                                            hills_path: str,
+                                            start_frame_index: int,
+                                            bias: 'mlptrain.PlumedBias',
+                                            temp: float,
+                                            interval: int,
+                                            min_max_params: Tuple,
+                                            n_bins: int,
+                                            bandwidth: float,
+                                            energy_units: str
+                                            ) -> Tuple:
         """Compute CVs and FES grids for a single run by reweighting"""
 
         sliced_traj = ase_read(traj_path, index=f'{start_frame_index}:')
@@ -1364,7 +1455,8 @@ class Metadynamics:
 
         fes_grid = -ase_units.kB * temp * np.log(hist)
         fes_grid = fes_grid - np.min(fes_grid)
-        fes_grid = convert_ase_energy(fes_grid, energy_units)
+        fes_grid = convert_ase_energy(energy_array=fes_grid,
+                                      units=energy_units)
 
         return cvs_grid, fes_grid
 
@@ -1386,9 +1478,10 @@ class Metadynamics:
         for fname in fes_files:
             os.remove(fname)
 
-        self._generate_fes_files(n_bins, cvs_bounds)
+        self._generate_fes_files(n_bins=n_bins, cvs_bounds=cvs_bounds)
 
-        cv_grids, fes_grids = self._fes_files_to_grids(energy_units, n_bins)
+        cv_grids, fes_grids = self._fes_files_to_grids(energy_units=energy_units,
+                                                       n_bins=n_bins)
 
         os.chdir('../..')
 
@@ -1627,7 +1720,7 @@ class Metadynamics:
         remove_duplicate = fes_time[-1] == deposit_time[-1]
         fes_time.append(deposit_time[-1])
 
-        fes_time = convert_ase_time(np.array(fes_time), time_units)
+        fes_time = convert_ase_time(time_array=np.array(fes_time), units=time_units)
         fes_time = np.round(fes_time, decimals=1)
 
         self._generate_fes_files(n_bins=n_bins,
@@ -1646,7 +1739,8 @@ class Metadynamics:
             os.remove(f'fes_{idx}_{len(fes_time)-1}.dat')
             fes_time = fes_time[:-1]
 
-        cv_grids, fes_grids = self._fes_files_to_grids(energy_units, n_bins)
+        cv_grids, fes_grids = self._fes_files_to_grids(energy_units=energy_units,
+                                                       n_bins=n_bins)
 
         self._plot_surface_difference(fes_grids=fes_grids,
                                       fes_time=fes_time,
@@ -1670,10 +1764,15 @@ class Metadynamics:
         return None
 
     @staticmethod
-    def _plot_surface_difference(fes_grids, fes_time, time_units, energy_units
+    def _plot_surface_difference(fes_grids: np.ndarray,
+                                 fes_time: List,
+                                 time_units: str,
+                                 energy_units: str
                                  ) -> None:
-        """Plot the root mean square difference between free energy surfaces
-        as a function of time"""
+        """
+        Plot the root mean square difference between free energy surfaces
+        as a function of time
+        """
 
         fes_diff_grids = np.diff(fes_grids, axis=0)
         rms_diffs = [np.sqrt(np.mean(grid * grid)) for grid in fes_diff_grids]
@@ -1693,11 +1792,17 @@ class Metadynamics:
 
         return None
 
-    def _plot_multiple_1d_fes_surfaces(self, cv_grids, fes_grids, fes_time,
-                                       n_surfaces, time_units, energy_units
+    def _plot_multiple_1d_fes_surfaces(self,
+                                       cv_grids: np.ndarray,
+                                       fes_grids: np.ndarray,
+                                       fes_time: List,
+                                       n_surfaces: int,
+                                       time_units: str,
+                                       energy_units: str
                                        ) -> None:
-        """Plot multiple 1D free energy surfaces as a function of simulation
-        time"""
+        """
+        Plot multiple 1D free energy surfaces as a function of simulation time
+        """
 
         plotted_cv = self.bias.metad_cvs[0]
 
@@ -1850,7 +1955,8 @@ class Metadynamics:
                                     usecols=self.n_cvs)
 
             fes_grid = np.reshape(fes_vector, grid_shape)
-            fes_grid = convert_ase_energy(fes_grid, energy_units)
+            fes_grid = convert_ase_energy(energy_array=fes_grid,
+                                          units=energy_units)
 
             if relative:
                 fes_grid -= np.min(fes_grid)
