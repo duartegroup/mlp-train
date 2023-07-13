@@ -22,8 +22,10 @@ class PlumedCalculator(Plumed):
     implemented_properties = ['energy', 'forces', 'energy_bias', 'forces_bias']
 
     def compute_energy_and_forces(self, pos, istep) -> Tuple:
-        """Compute unbiased energies and forces, and PLUMED energy and force
-        biases separately"""
+        """
+        Compute unbiased energies and forces, and PLUMED energy and force
+        biases separately
+        """
 
         unbiased_energy = self.calc.get_potential_energy(self.atoms)
         unbiased_forces = self.calc.get_forces(self.atoms)
@@ -130,16 +132,20 @@ class PlumedBias(ASEConstraint):
 
     @property
     def cv_sequence(self) -> str:
-        """String containing names of all collective variables separated
-        by commas"""
+        """
+        String containing names of all collective variables separated
+        by commas
+        """
 
         cv_names = (cv.name for cv in self.cvs)
         return ','.join(cv_names)
 
     @property
     def metad_cv_sequence(self) -> str:
-        """String containing names of collective variables used in metadynamics
-        separated by commas"""
+        """
+        String containing names of collective variables used in metadynamics
+        separated by commas
+        """
         metad_cv_names = (cv.name for cv in self.metad_cvs)
         return ','.join(metad_cv_names)
 
@@ -289,9 +295,12 @@ class PlumedBias(ASEConstraint):
         else:
             self.biasfactor = biasfactor
 
-        self._set_metad_grid_params(grid_min, grid_max, grid_bin, grid_wstride,
-                                    grid_wfile, grid_rfile)
-
+        self._set_metad_grid_params(grid_min=grid_min,
+                                    grid_max=grid_max,
+                                    grid_bin=grid_bin,
+                                    grid_wstride=grid_wstride,
+                                    grid_wfile=grid_wfile,
+                                    grid_rfile=grid_rfile)
         return None
 
     def _set_metad_cvs(self,
@@ -501,14 +510,22 @@ class PlumedBias(ASEConstraint):
         if height is None:
             height = 0
 
-        self._set_metad_params(pace, width, height, biasfactor, cvs, grid_min,
-                               grid_max, grid_bin)
+        self._set_metad_params(pace=pace,
+                               width=width,
+                               height=height,
+                               biasfactor=biasfactor,
+                               cvs=cvs,
+                               grid_min=grid_min,
+                               grid_max=grid_max,
+                               grid_bin=grid_bin)
 
         return None
 
     def strip(self) -> None:
-        """Change the bias such that it would only contain the definitions of
-        collective variables and their associated upper and lower walls"""
+        """
+        Change the bias such that it would only contain the definitions of
+        collective variables and their associated upper and lower walls
+        """
 
         if self.from_file:
             self._strip_setup()
@@ -525,9 +542,11 @@ class PlumedBias(ASEConstraint):
         return None
 
     def _strip_setup(self) -> None:
-        """If the bias is initialised using a PLUMED input file, remove all
+        """
+        If the bias is initialised using a PLUMED input file, remove all
         lines from the setup except the ones defining walls and collective
-        variables"""
+        variables
+        """
 
         if self.setup is None:
             raise TypeError('Setup of the bias is not initialised, if you '
@@ -544,9 +563,12 @@ class PlumedBias(ASEConstraint):
         return None
 
     @staticmethod
-    def _check_cvs_format(cvs) -> List['_PlumedCV']:
-        """Check if the supplied collective variables are in the correct
-        format"""
+    def _check_cvs_format(cvs: Union[Sequence['_PlumedCV'], '_PlumedCV']
+                          ) -> List['_PlumedCV']:
+        """
+        Check if the supplied collective variables are in the correct
+        format
+        """
 
         # e.g. cvs == [cv1, cv2]; (cv1, cv2)
         if isinstance(cvs, list) or isinstance(cvs, tuple):
@@ -803,12 +825,12 @@ class _PlumedCV:
                      for atom_group in atom_groups):
 
                 for idx, atom_group in enumerate(atom_groups):
-                    self._atom_group_to_dof(idx, atom_group)
+                    self._atom_group_to_dof(idx=idx, atom_group=atom_group)
 
             # e.g. atom_groups = [0, 1]
             elif all(isinstance(idx, int) for idx in atom_groups):
 
-                self._atom_group_to_dof(0, atom_groups)
+                self._atom_group_to_dof(idx=0, atom_group=atom_groups)
 
             else:
                 raise TypeError('Elements of atom_groups must all be '
@@ -1022,8 +1044,10 @@ def _defines_cv(line: str) -> bool:
 
 
 def _find_files(setup: List[str]) -> List:
-    """Find and return filenames required for PLUMED collective variables
-    during a simulation"""
+    """
+    Find and return filenames required for PLUMED collective variables
+    during a simulation
+    """
 
     filenames = []
     for line in setup:
@@ -1042,8 +1066,10 @@ def _find_files(setup: List[str]) -> List:
 
 
 def _find_args(line: str) -> List:
-    """Find and return inputs to ARG parameter in a given line of a PLUMED
-    setup"""
+    """
+    Find and return inputs to ARG parameter in a given line of a PLUMED
+    setup
+    """
 
     _args = []
     _line = line.split(' ')
@@ -1093,7 +1119,7 @@ def plot_cv_versus_time(filename:    str,
     ase_time_array = np.loadtxt(filename, usecols=0)
     cv_array = np.loadtxt(filename, usecols=1)
 
-    time_array = convert_ase_time(ase_time_array, time_units)
+    time_array = convert_ase_time(time_array=ase_time_array, units=time_units)
 
     fig, ax = plt.subplots()
 
@@ -1310,8 +1336,10 @@ def plumed_setup(bias:     'mlptrain.PlumedBias',
 
 def get_colvar_filename(cv: '_PlumedCV',
                         **kwargs) -> str:
-    """Return the name of the file where the trajectory in terms of collective
-    variable values would be written"""
+    """
+    Return the name of the file where the trajectory in terms of collective
+    variable values would be written
+    """
 
     # Remove the dot if component CV is used
     name_without_dot = '_'.join(cv.name.split('.'))
@@ -1326,8 +1354,10 @@ def get_colvar_filename(cv: '_PlumedCV',
 
 
 def get_hills_filename(**kwargs) -> str:
-    """Return the name of the file where a list of deposited gaussians would be
-    written"""
+    """
+    Return the name of the file where a list of deposited gaussians would be
+    written
+    """
 
     filename = 'HILLS'
 

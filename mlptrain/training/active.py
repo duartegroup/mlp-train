@@ -4,7 +4,7 @@ import shutil
 import numpy as np
 import multiprocessing as mp
 from copy import deepcopy
-from typing import Optional, Union, Dict, List
+from typing import Optional, Union, List
 from subprocess import Popen
 from ase import units as ase_units
 from mlptrain.config import Config
@@ -34,8 +34,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
           restart_iter:        Optional[int] = None,
           inherit_metad_bias:  bool = False,
           constraints:         Optional[List] = None,
-          bias:                Union['mlptrain.sampling.Bias',
-                                     'mlptrain.sampling.PlumedBias'] = None
+          bias:                Optional = None
           ) -> None:
     """
     Train a system using active learning, by propagating dynamics using ML
@@ -123,11 +122,12 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
         constraints: (List) List of ASE contraints to use in the dynamics
                             during active learning
 
-        bias: Bias to add during the MD simulations, useful for exploring
-              under-explored regions in the dynamics
+        bias: (mlptrain.Bias | mlptrain.PlumedBias) Bias to add during MD
+              simulations, useful for exploring under-explored regions in the
+              dynamics
     """
 
-    _check_bias(bias, temp, inherit_metad_bias)
+    _check_bias(bias=bias, temp=temp, inherit_metad_bias=inherit_metad_bias)
 
     if restart_iter is not None:
         _initialise_restart(mlp=mlp,
@@ -137,13 +137,14 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
 
     elif init_configs is None:
         init_config = mlp.system.configuration
-        _gen_and_set_init_training_configs(mlp,
+        _gen_and_set_init_training_configs(mlp=mlp,
                                            method_name=method_name,
                                            num=n_init_configs)
 
     else:
         init_config = init_configs[0]
-        _set_init_training_configs(mlp, init_configs,
+        _set_init_training_configs(mlp=mlp,
+                                   init_configs=init_configs,
                                    method_name=method_name)
 
     if isinstance(bias, PlumedBias) and not bias.from_file:
@@ -171,7 +172,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                                                bias_start_iter=bias_start_iter,
                                                iteration=iteration)
 
-        _add_active_configs(mlp,
+        _add_active_configs(mlp=mlp,
                             init_config=init_config_iter,
                             selection_method=selection_method,
                             n_configs=n_configs_iter,
@@ -215,10 +216,10 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
     return None
 
 
-def _add_active_configs(mlp,
-                        init_config,
-                        selection_method,
-                        n_configs=10,
+def _add_active_configs(mlp: 'mlptrain.potentials._base.MLPotential',
+                        init_config: 'mlptrain.Configuration',
+                        selection_method: 'mlptrain.training.selection.SelectionMethod',
+                        n_configs: int = 10,
                         **kwargs
                         ) -> None:
     """
@@ -256,6 +257,7 @@ def _add_active_configs(mlp,
                                       kwds=deepcopy(kwargs))
             results.append(result)
 
+        pool.close()
         for result in results:
             try:
                 configs.append(result.get(timeout=None))
@@ -265,6 +267,7 @@ def _add_active_configs(mlp,
             except Exception as err:
                 logger.error(f'Raised an exception in selection: \n{err}')
                 continue
+        pool.join()
 
     if 'method_name' in kwargs and configs.has_a_none_energy:
         for config in configs:
@@ -273,7 +276,7 @@ def _add_active_configs(mlp,
 
     if (kwargs['inherit_metad_bias'] is True
             and kwargs['iteration'] >= kwargs['bias_start_iter']):
-        _generate_inheritable_metad_bias(n_configs, kwargs)
+        _generate_inheritable_metad_bias(n_configs=n_configs, kwargs=kwargs)
 
     mlp.training_data += configs
 
@@ -415,7 +418,10 @@ def _gen_active_config(config:      'mlptrain.Configuration',
                               **kwargs)
 
 
-def _set_init_training_configs(mlp, init_configs, method_name) -> None:
+def _set_init_training_configs(mlp: 'mlptrain.potentials._base.MLPotential',
+                               init_configs: 'mlptrain.ConfigurationSet',
+                               method_name: str
+                               ) -> None:
     """Set some initial training configurations"""
 
     if len(init_configs) == 0:
@@ -432,7 +438,10 @@ def _set_init_training_configs(mlp, init_configs, method_name) -> None:
     return None
 
 
-def _gen_and_set_init_training_configs(mlp, method_name, num) -> None:
+def _gen_and_set_init_training_configs(mlp: 'mlptrain.potentials._base.MLPotential',
+                                       method_name: str,
+                                       num: int
+                                       ) -> None:
     """
     Generate a set of initial configurations for a system, if init_configs
     is undefined. Otherwise ensure all the true energies and forces are defined
@@ -483,8 +492,11 @@ def _gen_and_set_init_training_configs(mlp, method_name, num) -> None:
     return None
 
 
-def _initialise_restart(mlp, restart_iter, inherit_metad_bias):
-    """Initialises initial configurations and inherited bias"""
+def _initialise_restart(mlp: 'mlptrain.potentials._base.MLPotential',
+                        restart_iter: int,
+                        inherit_metad_bias: bool
+                        ) -> None:
+    """Initialise initial configurations and inherited bias"""
 
     init_configs = ConfigurationSet()
     init_configs.load(f'datasets/dataset_after_iter_{restart_iter}.npz')
@@ -502,9 +514,13 @@ def _initialise_restart(mlp, restart_iter, inherit_metad_bias):
     return None
 
 
-def _attach_plumed_coords_to_init_configs(init_configs, bias) -> None:
-    """Attaches PLUMED collective variable values to the configurations
-    in the initial training set"""
+def _attach_plumed_coords_to_init_configs(init_configs: 'mlptrain.ConfigurationSet',
+                                          bias: 'mlptrain.PlumedBias'
+                                          ) -> None:
+    """
+    Attach PLUMED collective variable values to the configurations in the
+    initial training set
+    """
 
     logger.info('Attaching PLUMED CV values to the initial training set')
 
@@ -550,10 +566,15 @@ def _attach_plumed_coords_to_init_configs(init_configs, bias) -> None:
     return None
 
 
-def _update_init_config(init_config, mlp, fix_init_config, bias,
-                        inherit_metad_bias, bias_start_iter, iteration
+def _update_init_config(init_config: 'mlptrain.Configuration',
+                        mlp: 'mlptrain.potentials._base.MLPotential',
+                        fix_init_config: bool,
+                        bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
+                        inherit_metad_bias: bool,
+                        bias_start_iter: int,
+                        iteration: int
                         ) -> 'mlptrain.Configuration':
-    """Updates initial configuration for an active learning iteration"""
+    """Update initial configuration for an active learning iteration"""
 
     if fix_init_config:
         return init_config
@@ -576,9 +597,14 @@ def _update_init_config(init_config, mlp, fix_init_config, bias,
             return mlp.training_data.lowest_energy
 
 
-def _check_bias(bias, temp, inherit_metad_bias) -> None:
-    """Checks if the bias is suitable for running active learning with the
-    requested parameters"""
+def _check_bias(bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
+                temp: float,
+                inherit_metad_bias: bool
+                ) -> None:
+    """
+    Check if the bias is suitable for running active learning with the
+    requested parameters
+    """
 
     _check_bias_parameters(bias, temp)
 
@@ -588,9 +614,13 @@ def _check_bias(bias, temp, inherit_metad_bias) -> None:
     return None
 
 
-def _check_bias_parameters(bias, temp) -> None:
-    """Checks if all the required parameters of the bias are set (currently
-    only checks PlumedBias initialised not from a file)"""
+def _check_bias_parameters(bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
+                           temp: float
+                           ) -> None:
+    """
+    Check if all the required parameters of the bias are set (currently
+    only checks PlumedBias initialised not from a file)
+    """
 
     if isinstance(bias, PlumedBias):
 
@@ -604,9 +634,11 @@ def _check_bias_parameters(bias, temp) -> None:
     return None
 
 
-def _check_bias_for_metad_bias_inheritance(bias) -> None:
-    """Checks if the bias is suitable to inherit metadynamics bias during
-    active learning"""
+def _check_bias_for_metad_bias_inheritance(bias: Optional) -> None:
+    """
+    Check if the bias is suitable to inherit metadynamics bias during
+    active learning
+    """
 
     if not isinstance(bias, PlumedBias):
         raise TypeError('Metadynamics bias can only be inherited when '
@@ -619,9 +651,12 @@ def _check_bias_for_metad_bias_inheritance(bias) -> None:
     return None
 
 
-def _remove_bias_potential(bias) -> Union['mlptrain.sampling.PlumedBias', None]:
-    """Removes bias potential from a bias, except LOWER_WALLS and UPPER_WALLS
-    when the bias is PlumedBias"""
+def _remove_bias_potential(bias: Optional
+                           ) -> Union['mlptrain.sampling.PlumedBias', None]:
+    """
+    Remove bias potential from a bias, except LOWER_WALLS and UPPER_WALLS
+    when the bias is PlumedBias
+    """
 
     if isinstance(bias, PlumedBias):
         bias.strip()
@@ -632,9 +667,11 @@ def _remove_bias_potential(bias) -> Union['mlptrain.sampling.PlumedBias', None]:
     return bias
 
 
-def _modify_kwargs_for_metad_bias_inheritance(kwargs) -> Dict:
-    """Modifies keyword arguments to enable metadynamics bias inheritance for
-    active learning"""
+def _modify_kwargs_for_metad_bias_inheritance(kwargs: dict) -> dict:
+    """
+    Modify keyword arguments to enable metadynamics bias inheritance for
+    active learning
+    """
 
     hills_fname = f'HILLS_{kwargs["iteration"]}_{kwargs["idx"]}.dat'
 
@@ -652,9 +689,13 @@ def _modify_kwargs_for_metad_bias_inheritance(kwargs) -> Dict:
     return kwargs
 
 
-def _generate_inheritable_metad_bias(n_configs, kwargs) -> None:
-    """Generates files containing metadynamics bias to be inherited in the next
-    active learning iteration"""
+def _generate_inheritable_metad_bias(n_configs: int,
+                                     kwargs: dict
+                                     ) -> None:
+    """
+    Generate files containing metadynamics bias to be inherited in the next
+    active learning iteration
+    """
 
     iteration = kwargs['iteration']
     bias_start_iter = kwargs['bias_start_iter']
@@ -663,8 +704,10 @@ def _generate_inheritable_metad_bias(n_configs, kwargs) -> None:
     using_hills = all(os.path.exists(fname) for fname in hills_files)
 
     if using_hills:
-        _generate_inheritable_metad_bias_hills(n_configs, hills_files,
-                                               iteration, bias_start_iter)
+        _generate_inheritable_metad_bias_hills(n_configs=n_configs,
+                                               hills_files=hills_files,
+                                               iteration=iteration,
+                                               bias_start_iter=bias_start_iter)
 
     else:
         logger.error('All files required for generating inheritable '
@@ -673,10 +716,15 @@ def _generate_inheritable_metad_bias(n_configs, kwargs) -> None:
     return None
 
 
-def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
-                                           bias_start_iter) -> None:
-    """Generates HILLS_{iteration}.dat file containing metadynamics bias to be
-    inherited in the next active learning iteration {iteration+1}"""
+def _generate_inheritable_metad_bias_hills(n_configs: int,
+                                           hills_files: List[str],
+                                           iteration: int,
+                                           bias_start_iter: int
+                                           ) -> None:
+    """
+    Generate HILLS_{iteration}.dat file containing metadynamics bias to be
+    inherited in the next active learning iteration {iteration+1}
+    """
 
     logger.info('Generating metadynamics bias HILLS file to inherit from')
 
@@ -757,15 +805,20 @@ def _generate_inheritable_metad_bias_hills(n_configs, hills_files, iteration,
 
     os.makedirs('accumulated_bias', exist_ok=True)
     shutil.copyfile(src=f'HILLS_{iteration}.dat',
-                    dst=f'accumulated_bias/hills_after_iter_{iteration}.dat')
+                    dst=f'accumulated_bias/bias_after_iter_{iteration}.dat')
 
     return None
 
 
-def _attach_inherited_bias_energies(configurations, iteration,
-                                    bias_start_iter, bias) -> None:
-    """Attaches inherited metadynamics bias energies from the previous active
-    learning iteration to the configurations"""
+def _attach_inherited_bias_energies(configurations: 'mlptrain.ConfigurationSet',
+                                    iteration: int,
+                                    bias_start_iter: int,
+                                    bias: 'mlptrain.PlumedBias'
+                                    ) -> None:
+    """
+    Attach inherited metadynamics bias energies from the previous active
+    learning iteration to the configurations
+    """
 
     logger.info('Attaching inherited bias energies to the whole training '
                 'data set')
@@ -782,7 +835,9 @@ def _attach_inherited_bias_energies(configurations, iteration,
             return None
 
         else:
-            _generate_grid_from_hills(configurations, iteration, bias)
+            _generate_grid_from_hills(configurations=configurations,
+                                      iteration=iteration,
+                                      bias=bias)
 
         cvs_cols = range(0, bias.n_metad_cvs)
         cvs_grid = np.loadtxt(f'bias_grid_{iteration-1}.dat',
@@ -840,8 +895,13 @@ def _attach_inherited_bias_energies(configurations, iteration,
     return None
 
 
-def _generate_grid_from_hills(configurations, iteration, bias) -> None:
-    """Generates bias_grid_{iteration-1}.dat from HILLS_{iteration-1}.dat"""
+def _generate_grid_from_hills(configurations: 'mlptrain.ConfigurationSet',
+                              iteration: int,
+                              bias: 'mlptrain.PlumedBias'
+                              ) -> None:
+    """
+    Generate bias_grid_{iteration-1}.dat from HILLS_{iteration-1}.dat
+    """
 
     min_params, max_params = [], []
     metad_cv_idxs = [bias.cvs.index(cv) for cv in bias.metad_cvs]
@@ -858,6 +918,7 @@ def _generate_grid_from_hills(configurations, iteration, bias) -> None:
     bin_widths = [(width / 5) for width in bias.width]
     n_bins = [int((max_params[i] - min_params[i]) / bin_widths[i])
               for i in range(bias.n_metad_cvs)]
+    n_bins = [bins if bins != 0 else 1 for bins in n_bins]
 
     bin_sequence = ','.join(str(bins) for bins in n_bins)
     min_sequence = ','.join(str(param) for param in min_params)
@@ -874,8 +935,9 @@ def _generate_grid_from_hills(configurations, iteration, bias) -> None:
     return None
 
 
-def _remove_last_inherited_metad_bias_file(max_active_iters) -> None:
-    """Removes the last inherited metadynamics bias file"""
+def _remove_last_inherited_metad_bias_file(max_active_iters: int
+                                           ) -> None:
+    """Remove the last inherited metadynamics bias file"""
 
     for iteration in range(max_active_iters):
         fname = f'HILLS_{iteration}.dat'

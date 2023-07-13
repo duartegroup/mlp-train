@@ -447,6 +447,7 @@ class UmbrellaSampling:
                 window_processes.append(window_process)
                 biases.append(bias)
 
+            pool.close()
             for window_process, bias in zip(window_processes, biases):
 
                 window_traj = window_process.get()
@@ -458,19 +459,28 @@ class UmbrellaSampling:
 
                 self.windows.append(window)
                 window_trajs.append(window_traj)
+            pool.join()
 
         finish_umbrella = time.perf_counter()
         logger.info('Umbrella sampling done in '
                     f'{(finish_umbrella - start_umbrella) / 60:.1f} m')
 
         # Move .traj files into 'trajectories' folder and compute .xyz files
-        self._move_and_save_files(window_trajs, save_sep, all_to_xyz)
+        self._move_and_save_files(window_trajs=window_trajs,
+                                  save_sep=save_sep,
+                                  all_to_xyz=all_to_xyz)
 
         return None
 
-    def _run_individual_window(self, frame, mlp, temp, interval, dt, bias,
+    def _run_individual_window(self,
+                               frame: 'mlptrain.Configuration',
+                               mlp: 'mlptrain.potentials._base.MLPotential',
+                               temp: float,
+                               interval: int,
+                               dt: float,
+                               bias: 'mlptrain.Bias',
                                **kwargs):
-        """Runs an individual umbrella sampling window"""
+        """Run an individual umbrella sampling window"""
 
         logger.info(f'Running US window {kwargs["idx"]} with '
                     f'ζ_ref={kwargs["ref"]:.2f} Å '
@@ -490,9 +500,14 @@ class UmbrellaSampling:
         return traj
 
     @staticmethod
-    def _move_and_save_files(window_trajs, save_sep, all_to_xyz) -> None:
-        """Saves window trajectories, moves them into trajectories folder and
-        computes .xyz files"""
+    def _move_and_save_files(window_trajs: List['mlptrain.Trajectory'],
+                             save_sep: bool,
+                             all_to_xyz: bool
+                             ) -> None:
+        """
+        Save window trajectories, move them into trajectories folder and
+        compute .xyz files
+        """
 
         move_files([r'trajectory_\d+\.traj', r'trajectory_\d+_\w+\.traj'],
                    dst_folder='trajectories',
@@ -823,7 +838,7 @@ def _plot_and_save_free_energy(free_energies,
         zetas: Values of the reaction coordinate
     """
 
-    free_energies = convert_ase_energy(free_energies, units)
+    free_energies = convert_ase_energy(energy_array=free_energies, units=units)
 
     rel_free_energies = free_energies - min(free_energies)
 
