@@ -4,11 +4,13 @@ from typing import Optional
 class Energy:
     """Energy in units of eV"""
 
-    def __init__(self,
-                 predicted:      Optional[float] = None,
-                 true:           Optional[float] = None,
-                 bias:           Optional[float] = None,
-                 inherited_bias: Optional[float] = None):
+    def __init__(
+        self,
+        predicted: Optional[float] = None,
+        true: Optional[float] = None,
+        bias: Optional[float] = None,
+        inherited_bias: Optional[float] = None,
+    ):
         """
         Energy
 
@@ -38,9 +40,9 @@ class Energy:
         """
 
         if self.true is None:
-            raise ValueError('Cannot calculate ∆E. No true energy')
+            raise ValueError("Cannot calculate ∆E. No true energy")
 
         if self.predicted is None:
-            raise ValueError('Cannot calculate ∆E. No predicted energy')
+            raise ValueError("Cannot calculate ∆E. No predicted energy")
 
         return self.true - self.predicted

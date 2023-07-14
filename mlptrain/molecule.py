@@ -4,7 +4,6 @@ from scipy.spatial.distance import cdist
 
 
 class Molecule(ade.Molecule):
-
     @property
     def centroid(self) -> np.ndarray:
         """
@@ -16,9 +15,7 @@ class Molecule(ade.Molecule):
         """
         return np.average(self.coordinates, axis=0)
 
-    def is_in_box(self,
-                  box: 'mlptrain.box.Box'
-                  ) -> bool:
+    def is_in_box(self, box: "mlptrain.box.Box") -> bool:
         """Is this molecule totally inside a box with an origin at
         (0,0,0) and top right corner (a, b, c) = box.size
 
@@ -40,9 +37,7 @@ class Molecule(ade.Molecule):
 
         return True
 
-    def min_distance_to(self,
-                        coords: np.ndarray
-                        ) -> float:
+    def min_distance_to(self, coords: np.ndarray) -> float:
         """Calculate the minimum distance from this molecule to a set
         of coordinates
 
@@ -59,9 +54,7 @@ class Molecule(ade.Molecule):
 
         return np.min(cdist(coords, self.coordinates))
 
-    def random_normal_jiggle(self,
-                             sigma: float = 0.01
-                             ) -> None:
+    def random_normal_jiggle(self, sigma: float = 0.01) -> None:
         """
         Add a random displacement to each atoms position.
 
@@ -69,9 +62,9 @@ class Molecule(ade.Molecule):
         Arguments:
             sigma: Standard deviation of the standard deviation
         """
-        dx = np.random.normal(scale=sigma,  # Å
-                              loc=0.0,
-                              size=(self.n_atoms, 3))
+        dx = np.random.normal(
+            scale=sigma, loc=0.0, size=(self.n_atoms, 3)  # Å
+        )
 
         self.coordinates += dx
 

@@ -3,7 +3,6 @@ from typing import Sequence
 
 
 class Box:
-
     def __init__(self, size: Sequence[float]):
         """
         Periodic cuboidal box
@@ -28,7 +27,7 @@ class Box:
     @property
     def has_zero_volume(self) -> bool:
         """Is this box essentially of zero size"""
-        return self.volume < 1E-10
+        return self.volume < 1e-10
 
     @property
     def midpoint(self) -> np.ndarray:
@@ -38,5 +37,7 @@ class Box:
     def __eq__(self, other):
         """Equality of two boxes"""
 
-        return (isinstance(other, Box)
-                and np.linalg.norm(other.size - self.size) < 1E-10)
+        return (
+            isinstance(other, Box)
+            and np.linalg.norm(other.size - self.size) < 1e-10
+        )

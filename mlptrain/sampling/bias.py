@@ -4,10 +4,12 @@ from mlptrain.sampling._base import Function, ASEConstraint
 class Bias(ASEConstraint, Function):
     """Modifies the forces and energy of a set of ASE atoms under a bias"""
 
-    def __init__(self,
-                 zeta_func: 'mlptrain.sampling.reaction_coord.ReactionCoordinate',
-                 kappa:     float,
-                 reference: float):
+    def __init__(
+        self,
+        zeta_func: "mlptrain.sampling.reaction_coord.ReactionCoordinate",
+        kappa: float,
+        reference: float,
+    ):
         """
         Bias that modifies the forces and energy of a set of atoms under a
         harmonic bias function.
@@ -33,7 +35,7 @@ class Bias(ASEConstraint, Function):
     def __call__(self, atoms):
         """Value of the bias for set of atom pairs in atoms"""
 
-        return 0.5 * self.kappa * (self.f(atoms) - self.ref)**2
+        return 0.5 * self.kappa * (self.f(atoms) - self.ref) ** 2
 
     def grad(self, atoms):
         """Gradient of the biasing potential a set of atom pairs in atoms"""

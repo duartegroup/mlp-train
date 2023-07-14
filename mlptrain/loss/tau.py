@@ -7,20 +7,20 @@ from mlptrain.loss._base import LossFunction, LossValue
 
 
 class Tau(LossValue):
-
     def __repr__(self):
-        return f'τ_acc = {float.__repr__(self)}{self._err_str}'
+        return f"τ_acc = {float.__repr__(self)}{self._err_str}"
 
 
 class TauCalculator(LossFunction):
-
-    def __init__(self,
-                 e_lower:       float = 0.1,
-                 e_thresh:      Optional[float] = None,
-                 max_time:      float = 1000.0,
-                 time_interval: float = 50.0,
-                 temp:          float = 300.0,
-                 dt:            float = 0.5):
+    def __init__(
+        self,
+        e_lower: float = 0.1,
+        e_thresh: Optional[float] = None,
+        max_time: float = 1000.0,
+        time_interval: float = 50.0,
+        temp: float = 300.0,
+        dt: float = 0.5,
+    ):
         """
         τ_acc prospective error metric in fs
 
@@ -48,8 +48,9 @@ class TauCalculator(LossFunction):
         super().__init__()
 
         if time_interval < dt:
-            raise ValueError('The calculated interval must be more than a '
-                             'single timestep')
+            raise ValueError(
+                "The calculated interval must be more than a single timestep"
+            )
 
         self.dt = float(dt)
         self.temp = float(temp)
@@ -59,14 +60,18 @@ class TauCalculator(LossFunction):
         self.e_l = float(e_lower)
         self.e_t = 10 * self.e_l if e_thresh is None else float(e_thresh)
 
-        logger.info('Successfully initialised τ_acc, will do a maximum of '
-                    f'{int(self.max_time // self.time_interval)} reference '
-                    f'calculations')
+        logger.info(
+            "Successfully initialised τ_acc, will do a maximum of "
+            f"{int(self.max_time // self.time_interval)} reference "
+            f"calculations"
+        )
 
-    def __call__(self,
-                 configurations: 'mlptrain.ConfigurationSet',
-                 mlp:            'mlptrain.potentials._base.MLPotential',
-                 **kwargs) -> Tau:
+    def __call__(
+        self,
+        configurations: "mlptrain.ConfigurationSet",
+        mlp: "mlptrain.potentials._base.MLPotential",
+        **kwargs,
+    ) -> Tau:
 
         """
         Calculate τ_acc from a set of initial configurations
@@ -82,19 +87,26 @@ class TauCalculator(LossFunction):
             (Tau): τ_acc
         """
         if len(configurations) < 2:
-            raise ValueError(f'Cannot calculate τ_acc over only '
-                             f'{len(configurations)} configurations. Need > 1')
+            raise ValueError(
+                f"Cannot calculate τ_acc over only "
+                f"{len(configurations)} configurations. Need > 1"
+            )
 
-        if 'method_name' not in kwargs:
-            raise ValueError('Cannot compute τ_acc without a method. Please '
-                             'specify e.g. calc(..., method_name="orca")')
+        if "method_name" not in kwargs:
+            raise ValueError(
+                "Cannot compute τ_acc without a method. Please "
+                'specify e.g. calc(..., method_name="orca")'
+            )
 
-        taus = [self._calculate_single(c, mlp, kwargs['method_name'])
-                for c in configurations]
+        taus = [
+            self._calculate_single(c, mlp, kwargs["method_name"])
+            for c in configurations
+        ]
 
         # Calculate τ_acc as the average ± the standard error in the mean
-        return Tau(np.average(taus),
-                   error=np.std(taus) / np.sqrt(len(taus) - 1))
+        return Tau(
+            np.average(taus), error=np.std(taus) / np.sqrt(len(taus) - 1)
+        )
 
     def _calculate_single(self, config, mlp, method_name):
         """Calculate a single τ_acc from one configuration"""
@@ -104,29 +116,33 @@ class TauCalculator(LossFunction):
 
         while curr_time < self.max_time:
 
-            traj = run_mlp_md(config,
-                              mlp=mlp,
-                              temp=self.temp,
-                              dt=self.dt,
-                              interval=int(self.time_interval / self.dt),
-                              fs=block_time,
-                              n_cores=min(Config.n_cores, 4))
+            traj = run_mlp_md(
+                config,
+                mlp=mlp,
+                temp=self.temp,
+                dt=self.dt,
+                interval=int(self.time_interval / self.dt),
+                fs=block_time,
+                n_cores=min(Config.n_cores, 4),
+            )
 
             try:
                 traj.single_point(method_name)
             except (ValueError, TypeError):
-                logger.warning('Failed to calculate single point energies with'
-                               f' {method_name}. τ_acc will be underestimated '
-                               f'by <{block_time}')
+                logger.warning(
+                    "Failed to calculate single point energies with"
+                    f" {method_name}. τ_acc will be underestimated "
+                    f"by <{block_time}"
+                )
                 return curr_time
 
-            logger.info('      ___ |E_true - E_GAP|/eV ___')
-            logger.info(f' t/fs      err      cumul(err)')
+            logger.info("      ___ |E_true - E_GAP|/eV ___")
+            logger.info(f" t/fs      err      cumul(err)")
 
             for i, frame in enumerate(traj):
 
                 if frame.energy.true is None:
-                    logger.warning(f'Frame {i} had no energy')
+                    logger.warning(f"Frame {i} had no energy")
                     e_error = np.inf
                 else:
                     e_error = abs(frame.energy.delta)
@@ -134,14 +150,16 @@ class TauCalculator(LossFunction):
                 # Add any error above the allowed threshold
                 cuml_error += max(e_error - self.e_l, 0)
                 curr_time += self.time_interval
-                logger.info(f'{curr_time:5.0f}     '
-                            f'{e_error:6.4f}     '
-                            f'{cuml_error:6.4f}')
+                logger.info(
+                    f"{curr_time:5.0f}     "
+                    f"{e_error:6.4f}     "
+                    f"{cuml_error:6.4f}"
+                )
 
                 if cuml_error > self.e_t:
                     return curr_time
 
             config = traj[-1]
 
-        logger.info(f'Reached max(τ_acc) = {self.max_time} fs')
+        logger.info(f"Reached max(τ_acc) = {self.max_time} fs")
         return self.max_time
