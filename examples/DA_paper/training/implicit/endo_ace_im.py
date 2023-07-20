@@ -19,8 +19,6 @@ if __name__ == '__main__':
     selector = MaxAtomicEnvDistance()
     ace.al_train(method_name='orca',
                  selection_method = selector,
-                 init_configs = init_configs,
-                 max_active_iters = 35,
                  max_active_time = 5000,
                  fix_init_config = True,
                  temp=300)
