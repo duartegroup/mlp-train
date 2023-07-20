@@ -246,11 +246,11 @@ if __name__ == '__main__':
     # generate sub training set of pure water system by AL training
     water_system = mlt.System(water_mol, box = Box([100, 100, 100]))
     water_system.add_molecules(water_mol, num= 26)
-    water_mlp = mlt.potentials.ACE('water_sys', water_system)
+    Water_mlp = mlt.potentials.ACE('water_sys', water_system)
     water_init = generate_init_configs(n = 10, 
                                        bulk_water = True, 
                                        TS_with_water = False)
-    water_mlp.al_train(method_name = 'orca',
+    Water_mlp.al_train(method_name = 'orca',
                       selection_method = MaxAtomicEnvDistance(),
                       init_configs = water_init,
                       random_init_config = True,
@@ -295,7 +295,7 @@ if __name__ == '__main__':
   system = mlt.System(TS_mol, box = Box([100, 100, 100]))
   system.add_molecules(water_mol, num= 40)
   endo = mlt.potentials.ACE('endo_in_water_ace_wB97M', system)
-  pure_water_config = remove_randomly_from_configset(water_mlp.training_data, 50)
+  pure_water_config = remove_randomly_from_configset(Water_mlp.training_data, 50)
   TS_in_water_config = remove_randomly_from_configset(TS_in_water_mlp.training_data, 250)
   TS_2water_config = remove_randomly_from_configset(TS_2water_mlp.training_data, 150)
   gasphase_config = remove_randomly_from_configset(TS_gasphase_mlp.training_data, 150)
