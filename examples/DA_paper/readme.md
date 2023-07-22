@@ -4,4 +4,6 @@ This folder includes codes and starting files for various computational tasks re
 
 Please note that due to the large size of the training and validation data, as well as the uphill and downhill trajectories, these data are not included in the GitHub repository. To obtain access to these data, kindly contact the authors via email.
 
-One aim achieved in the paper is to train an machine learning potential for the Diels-Alder reaction of CP and MVK in the explicit solvent. Here we illustrated the workflow of training such potentials as following:
+One of the objectives achieved in the paper is the training of a machine learning potential for the Diels-Alder reaction of CP and MVK in an explicit solvent. In order to illustrate the workflow of training such potentials, we provide an example using the endo reaction in explicit water:
+![alt text](training_strategy.png)
+For detailed code information, please refer to the file "endo_ace_ex.py" located in the "training/explicit" directory.
