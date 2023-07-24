@@ -224,7 +224,7 @@ def get_reactant_states(TS, solution, mlp):
                                        fs=200,
                                        temp=300,
                                        dt=0.5,
-                                       fbond_energy ={(1,12) : 0.04, (6,11) : 0.04},
+                                       bbond_energy ={(1,12) : 0.04, (6,11) : 0.04},
                                        interval=2)
 
     final_traj_reactant = trajectory_reactant.final_frame
