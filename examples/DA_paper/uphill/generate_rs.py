@@ -152,6 +152,9 @@ def mlpmd_fix_solute(solute, configuration, mlp, temp, dt, interval, n_steps, **
     constraints = FixAtoms(indices = solute_idx)
     ase_atoms.set_constraint(constraints)
 
+    MaxwellBoltzmannDistribution(ase_atoms, temperature_K=temp,
+                                     rng=RandomState())
+    
     asetraj = ASETrajectory("tmp.traj", 'w', ase_atoms)
 
     dyn = Langevin(ase_atoms, dt * ase_units.fs,
@@ -263,6 +266,9 @@ def baised_md(configuration, mlp, temp, dt, interval, bias, **kwargs):
     ase_atoms.set_calculator(mlp.ase_calculator)
     ase_atoms.set_constraint(bias)
 
+    MaxwellBoltzmannDistribution(ase_atoms, temperature_K=temp,
+                                     rng=RandomState())
+    
     traj = ASETrajectory("tmp.traj", 'w', ase_atoms)
 
     if temp > 0:                                         # Default Langevin NVT
