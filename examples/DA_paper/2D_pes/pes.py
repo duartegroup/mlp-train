@@ -5,7 +5,8 @@ import autode as ade
 from autode.utils import work_in_tmp_dir
 from autode.wrappers.base import ElectronicStructureMethod
 from autode.wrappers.keywords import KeywordsSet
-from ase.constraints import FixBondLength
+from ase.constraints import Hookean
+from ase.geometry import find_mic
 from mlptrain.log import logger
 from mlptrain.config import Config
 from mlptrain.md import  _convert_ase_traj
@@ -16,6 +17,60 @@ mlt.Config.n_cores = 8
 ade.Config.n_cores = 8
 
 ev_to_ha = 1.0 / 27.2114
+
+def adjust_potential_energy(self, atoms):
+    """Returns the difference to the potential energy due to an active
+    constraint. (That is, the quantity returned is to be added to the
+    potential energy.)"""
+    positions = atoms.positions
+    if self._type == 'plane':
+        A, B, C, D = self.plane
+        x, y, z = positions[self.index]
+        d = ((A * x + B * y + C * z + D) /
+         np.sqrt(A**2 + B**2 + C**2))
+        if d > 0:
+            return 0.5 * self.spring * d**2
+        else:
+            return 0.
+    if self._type == 'two atoms':
+        p1, p2 = positions[self.indices]
+    elif self._type == 'point':
+        p1 = positions[self.index]
+        p2 = self.origin
+    displace, _ = find_mic(p2 - p1, atoms.cell, atoms.pbc)
+    bondlength = np.linalg.norm(displace)
+
+    return 0.5 * self.spring * (bondlength - self.threshold)**2
+def adjust_forces(self, atoms, forces):
+    positions = atoms.positions
+    if self._type == 'plane':
+        A, B, C, D = self.plane
+        x, y, z = positions[self.index]
+        d = ((A * x + B * y + C * z + D) /
+         np.sqrt(A**2 + B**2 + C**2))
+        if d < 0:
+            return
+        magnitude = self.spring * d
+        direction = - np.array((A, B, C)) / np.linalg.norm((A, B, C))
+        forces[self.index] += direction * magnitude
+        return
+    if self._type == 'two atoms':
+        p1, p2 = positions[self.indices]
+    elif self._type == 'point':
+        p1 = positions[self.index]
+        p2 = self.origin
+    displace, _ = find_mic(p2 - p1, atoms.cell, atoms.pbc)
+    bondlength = np.linalg.norm(displace)
+    magnitude = self.spring * (bondlength - self.threshold)
+    direction = displace / np.linalg.norm(displace)
+    if self._type == 'two atoms':
+        forces[self.indices[0]] += direction * magnitude
+        forces[self.indices[1]] -= direction * magnitude
+    else:
+        forces[self.index] += direction * magnitude
+
+Hookean.adjust_forces = adjust_forces
+Hookean.adjust_potential_energy = adjust_potential_energy
 
 def from_autode_to_ase (molecule, cell_size = 100):
     # convert autode.molecule to ase.atoms 
@@ -35,7 +90,7 @@ def from_autode_to_ase (molecule, cell_size = 100):
     c = []
 
     for (i, j), dist in molecule.constraints.distance.items():
-        c.append(FixBondLength(i, j))
+        c.append(Hookean(a1 = i, a2 = j, k = 50, rt = dist))
     atoms.set_constraint(c)
   
     return atoms
