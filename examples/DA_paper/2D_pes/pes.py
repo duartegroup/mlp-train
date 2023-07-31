@@ -70,9 +70,6 @@ def adjust_forces(self, atoms, forces):
     else:
         forces[self.index] += direction * magnitude
 
-Hookean.adjust_forces = adjust_forces
-Hookean.adjust_potential_energy = adjust_potential_energy
-
 def from_autode_to_ase (molecule, cell_size = 100):
     # convert autode.molecule to ase.atoms 
     # maintain the constrain generated during ade.pes.RelaxedPESnD calculation
@@ -289,6 +286,9 @@ def optimise_with_fix_solute(solute, configuration, fmax, mlp, constraint = True
     final_traj = traj.final_frame
 
     return final_traj
+
+Hookean.adjust_forces = adjust_forces
+Hookean.adjust_potential_energy = adjust_potential_energy
 
 if __name__ == '__main__':
 
