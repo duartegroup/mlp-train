@@ -29,7 +29,7 @@ def grid_box (positions, size, grid_space):
     grid_points = np.vstack(np.meshgrid(x_space,y_space,z_space)).reshape(3,-1).T
     return grid_points
 
-def cavity_volnum (ase_system, solute_idx = 22, grid_side_length = 0.2, radius = 1.5):
+def cavity_volume (ase_system, solute_idx = 22, grid_side_length = 0.2, radius = 1.5):
     # calcuate the cavity volume
     
     solute_sys = ase_system[:solute_idx]
@@ -102,8 +102,8 @@ def md_with_file (configuration, mlp, temp, dt, interval, init_temp = None, **kw
         reaction_coords.append(reaction_coord)
 
     cavity_volumn = []
-    def get_cavity_volumn (atoms = ase_atoms):
-        volumn = cavity_volnum(ase_system = atoms)
+    def get_cavity_volume (atoms = ase_atoms):
+        volumn = cavity_volume(ase_system = atoms)
         cavity_volumn.append(volumn)
     if temp > 0:                                         # Default Langevin NVT
         dyn = Langevin(ase_atoms, dt * ase_units.fs,
@@ -168,7 +168,7 @@ def traj_study (configs,  ml_potential,  init_md_time_fs = 500, max_time_fs = 30
             C2_C7_list = []
             C4_C6_list = []
 
-            traj, reaction_coords, cavity_volumn= md_with_file(config,
+            traj, reaction_coords, cavity_volume= md_with_file(config,
                                                                 mlp = ml_potential,
                                                                 temp=300,
                                                                 dt=0.5,
@@ -188,8 +188,8 @@ def traj_study (configs,  ml_potential,  init_md_time_fs = 500, max_time_fs = 30
                 with open ('reaction_coords.txt','a') as f:
                     line = reaction_coords
                     print(line, file=f)
-                with open ('cavity_volumn.txt','a') as f:
-                    line = cavity_volumn
+                with open ('cavity_volume.txt','a') as f:
+                    line = cavity_volume
                     print(line, file=f)
                 break
 
