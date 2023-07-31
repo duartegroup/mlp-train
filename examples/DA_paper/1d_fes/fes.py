@@ -10,7 +10,7 @@ if __name__ == '__main__':
 
     us = mlt.UmbrellaSampling(zeta_func=mlt.AverageDistance((1,12), (6,11)),
                               kappa=10)
-    temp = float(300)
+    temp = 300
 
     neb = mlt.ConfigurationSet()
     neb.load_xyz(filename='neb_optimised.xyz', charge=0, mult=1)
@@ -28,13 +28,13 @@ if __name__ == '__main__':
     logger.info(f'average bond length in reactant is {(r112_reactant+r611_reactant)/2}')
     logger.info(f'average bond length in product is {(r112_product+r611_product)/2}')
 
-    irc.reverse()  # Go product -> reactant
+    irc.reverse()  # Go product -> reactant, the NEB path is from reactant -> product
 
-    water_mol = mlt.Molecule(name = 'h2o.xyz')
-    TS_mol = mlt.Molecule(name = 'cis_endo_TS_wB97M.xyz')
+    water_mol = mlt.Molecule(name='h2o.xyz')
+    TS_mol = mlt.Molecule(name='cis_endo_TS_wB97M.xyz')
 
-    system = mlt.System(TS_mol, box = Box([100, 100, 100]))
-    system.add_molecules(water_mol, num= 200)
+    system = mlt.System(TS_mol, box=Box([100, 100, 100]))
+    system.add_molecules(water_mol, num=200)
 
     endo = mlt.potentials.ACE('endo_in_water_ace_wB97M', system)
 
@@ -44,8 +44,8 @@ if __name__ == '__main__':
                              interval=5,
                              dt=0.5,
                              n_windows=15,
-                             init_ref = 1.55,
-                             final_ref =4,
+                             init_ref=1.55,
+                             final_ref=4,
                              ps=10)
     us.save('wide_US')
 
