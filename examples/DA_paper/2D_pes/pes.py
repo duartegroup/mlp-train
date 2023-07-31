@@ -9,7 +9,7 @@ from ase.constraints import Hookean
 from ase.geometry import find_mic
 from mlptrain.log import logger
 from mlptrain.config import Config
-from mlptrain.md import  _convert_ase_traj
+from mlptrain.md import _convert_ase_traj
 import numpy as np
 from copy import deepcopy
 
@@ -21,7 +21,7 @@ ev_to_ha = 1.0 / 27.2114
 def adjust_potential_energy(self, atoms):
     """Returns the difference to the potential energy due to an active
     constraint. (That is, the quantity returned is to be added to the
-    potential energy.)"""
+    potential energy)"""
     positions = atoms.positions
     if self._type == 'plane':
         A, B, C, D = self.plane
@@ -39,8 +39,8 @@ def adjust_potential_energy(self, atoms):
         p2 = self.origin
     displace, _ = find_mic(p2 - p1, atoms.cell, atoms.pbc)
     bondlength = np.linalg.norm(displace)
-
     return 0.5 * self.spring * (bondlength - self.threshold)**2
+    
 def adjust_forces(self, atoms, forces):
     positions = atoms.positions
     if self._type == 'plane':
@@ -53,7 +53,8 @@ def adjust_forces(self, atoms, forces):
         magnitude = self.spring * d
         direction = - np.array((A, B, C)) / np.linalg.norm((A, B, C))
         forces[self.index] += direction * magnitude
-        return
+        return None
+        
     if self._type == 'two atoms':
         p1, p2 = positions[self.indices]
     elif self._type == 'point':
@@ -77,7 +78,6 @@ def from_autode_to_ase (molecule, cell_size = 100):
     # maintain the constrain generated during ade.pes.RelaxedPESnD calculation
     
     from ase.atoms import Atoms
-    #atoms is ase.Atoms
     atoms = Atoms(symbols=[atom.label for atom in molecule.atoms],
                        positions=molecule.coordinates,
                        pbc=True)
@@ -228,7 +228,7 @@ class MLPEST(ElectronicStructureMethod):
         self.action = deepcopy(action)      
 
 def get_final_species(TS, mlp):
-    # get the product by MD propogated to product and then optimised
+    # get the optimised product after MD propogation
     trajectory_product = mlt.md.run_mlp_md(configuration=TS,
                                        mlp=mlp,
                                        fs=500,
@@ -263,7 +263,7 @@ def optimise_with_fix_solute(solute, configuration, fmax, mlp, constraint = True
 
     assert configuration.box != None, 'configuration must have box'
 
-    logger.info('Optimise the configuratoin with fixed solute (solute coords should at the first in configuration coords) by MLP')
+    logger.info('Optimise the configuration with fixed solute (solute coords should at the first in configuration coords) by MLP')
 
     n_cores = kwargs['n_cores'] if 'n_cores' in kwargs else min(Config.n_cores, 8)
 
