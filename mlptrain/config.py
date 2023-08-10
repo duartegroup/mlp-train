@@ -24,6 +24,13 @@ class _ConfigClass:
                      'train_fraction': 0.9}
 
     # MACE params
+
+    try:
+        import torch
+        mace_device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    except ImportError:
+        mace_device = 'cpu'
+
     mace_params = {'valid_fraction': 0.1,
                    'config_type_weights': '{"Default":1.0}',
                    'model': 'MACE',
@@ -34,7 +41,7 @@ class _ConfigClass:
                    'batch_size': 10,
                    'r_max': 5,
                    'correlation': 3,
-                   'device': 'cuda',
+                   'device': mace_device ,
                    'calc_device': 'cpu',
                    'error_table': 'TotalMAE',
                    'swa': True,
