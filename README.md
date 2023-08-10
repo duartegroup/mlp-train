@@ -20,10 +20,15 @@ Machine learning potentials can be installed directly from [scripts/](scripts).
 
 The OpenMM backend only works with MACE at the moment
 
-First install openmm-torch from conda-forge:
+First install requirements from conda-forge
 
 ```
-conda install -c conda-forge openmm-torch
+mamba install -c conda-forge autode=1.1* python=3.9 openmm-torch=1.1 pytorch=2.0
+```
+
+Then install this version of ASE:
+```
+pip install git+https://github.com/rosswhitfield/ase.git
 ```
 
 Then install MACE:
@@ -43,13 +48,17 @@ cd mlptrain
 pip install -e .
 ```
 
+
 xtb can be installed from conda-forge
 ```
-conda install -c conda-forge xtb
+mamba install -c conda-forge xtb
 ```
 
 
-Now run `water_openmm.py` in ./examples
+You should now be able to run `water_openmm.py` in "examples"
+
+You can use OpenMM during active learning by passing the keyword argument `md_program="OpenMM"` to the `al_train` method.
+You can run MD with OpenMM using `mlptrain.md_openmm.run_mlp_md_openmm()`
 
 ## Citation
 
