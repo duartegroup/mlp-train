@@ -55,7 +55,7 @@ mamba install -c conda-forge xtb
 ```
 
 
-You should now be able to run `water_openmm.py` in "examples"
+You should now be able to run `water_openmm.py` in "examples" or run the jupyter notebook on Google Colab
 
 You can use OpenMM during active learning by passing the keyword argument `md_program="OpenMM"` to the `al_train` method.
 You can run MD with OpenMM using `mlptrain.md_openmm.run_mlp_md_openmm()`
