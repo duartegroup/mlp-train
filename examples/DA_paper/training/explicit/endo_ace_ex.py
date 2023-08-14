@@ -133,7 +133,7 @@ def solvation(solute_config, solvent_config, apm, radius, enforce = True):
         positions = atoms.positions.reshape((-1, n, 3))
         distances = positions[:, idx]-center
         old_distances = distances.copy()
-        wrap (distances, atoms.cell.diagonal(), atoms.pbc)
+        wrap(distances, atoms.cell.diagonal(), atoms.pbc)
         offsets = distances - old_distances
         positions += offsets[:, None]
         atoms.set_positions(positions.reshape((-1,3)))
@@ -189,28 +189,28 @@ def generate_init_configs(n, bulk_water = True, TS = True):
         bulk_water: whether to include a solution
         TS: whether to include the TS of the reaction in the system"""
     init_configs = mlt.ConfigurationSet()
-    TS = mlt.Configuration(box = Box([11, 11, 11]))
-    TS.load(filename = 'cis_endo_TS_wB97M.xyz', box = None)
+    TS = mlt.Configuration(box=Box([11, 11, 11]))
+    TS.load(filename = 'cis_endo_TS_wB97M.xyz', box=None)
 
     if bulk_water:      
         # TS immersed in a water box
         if TS:
-            water_mol = mlt.Molecule(name = 'h2o.xyz')
-            water_system = mlt.System(water_mol, box = Box([11, 11, 11]))
-            water_system.add_molecules(water_mol, num= 43)
+            water_mol = mlt.Molecule(name='h2o.xyz')
+            water_system = mlt.System(water_mol, box=Box([11, 11, 11]))
+            water_system.add_molecules(water_mol, num=43)
 
             for i in range (n):
-                solvated = solvation (solute_config = TS,
-                                      solvent_config = water_system.random_configuration(),
-                                      apm = 3,
-                                      radius = 1.7)
+                solvated = solvation (solute_config=TS,
+                                      solvent_config=water_system.random_configuration(),
+                                      apm=3,
+                                      radius=1.7)
                 init_configs.append(solvated)
               
         # pure water box
         else:
-            water_mol = mlt.Molecule(name = 'h2o.xyz')
-            water_system = mlt.System(water_mol, box = Box([9.32, 9.32, 9.32]))
-            water_system.add_molecules(water_mol, num= 26)
+            water_mol = mlt.Molecule(name ='h2o.xyz')
+            water_system = mlt.System(water_mol, box=Box([9.32, 9.32, 9.32]))
+            water_system.add_molecules(water_mol, num=26)
           
             for i in range (n):
                 pure_water = water_system.random_configuration()
@@ -220,7 +220,7 @@ def generate_init_configs(n, bulk_water = True, TS = True):
     else:
         assert TS == True, 'cannot generate initial configuration'
         for i in range(n):
-            TS_with_water = add_water (solute = TS, n = 2)
+            TS_with_water = add_water (solute=TS, n=2)
             init_configs.append(TS_with_water)
 
     # Change the box of system to extermely large to imitate cluster system
@@ -231,7 +231,7 @@ def generate_init_configs(n, bulk_water = True, TS = True):
 
 
 def remove_randomly_from_configset(configurationset, remainder):
-    configSet = list(np.random.choice(configurationset, size = remainder))
+    configSet = list(np.random.choice(configurationset, size=remainder))
     return configSet
 
 if __name__ == '__main__':
