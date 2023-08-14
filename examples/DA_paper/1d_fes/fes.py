@@ -14,6 +14,7 @@ if __name__ == '__main__':
 
     neb = mlt.ConfigurationSet()
     neb.load_xyz(filename='neb_optimised.xyz', charge=0, mult=1)
+    
     irc = mlt.ConfigurationSet()
     for config in neb:
         config.box = Box([18.5, 18.5, 18.5])
