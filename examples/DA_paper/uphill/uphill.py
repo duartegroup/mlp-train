@@ -13,8 +13,9 @@ from generate_rs import generate_rs
 
 mlt.Config.n_cores = 10
 
-def grid_box (positions, size, grid_space):
-    # to put grid box in the system
+
+def grid_box(positions, size, grid_space):
+    """to put grid box in the system"""
     size_x_min = np.min(positions.T[0])-size
     size_x_max = np.max(positions.T[0])+size
     size_y_min = np.min(positions.T[1])-size
@@ -29,8 +30,9 @@ def grid_box (positions, size, grid_space):
     grid_points = np.vstack(np.meshgrid(x_space,y_space,z_space)).reshape(3,-1).T
     return grid_points
 
-def cavity_volume (ase_system, solute_idx = 22, grid_side_length = 0.2, radius = 1.5):
-    # calcuate the cavity volume
+
+def cavity_volume(ase_system, solute_idx = 22, grid_side_length = 0.2, radius = 1.5):
+    """calcuate the cavity volume"""
     
     solute_sys = ase_system[:solute_idx]
     solvent_sys = ase_system[solute_idx:]
@@ -42,12 +44,11 @@ def cavity_volume (ase_system, solute_idx = 22, grid_side_length = 0.2, radius =
         dist_matrix = distance_matrix([point], solvent_sys.get_positions())
         volume += 1*(np.sum(dist_matrix < radius)==0)
     volume*=(grid_side_length ** 3)
-
     return volume
 
-def from_ase_to_autode (atoms):
+
+def from_ase_to_autode(atoms):
     from autode.atoms import Atom
-    #atoms is ase.Atoms
     autode_atoms = []
     symbols = atoms.symbols
 
@@ -59,8 +60,9 @@ def from_ase_to_autode (atoms):
 
     return autode_atoms
 
+
 @mlt.utils.work_in_tmp_dir(copied_exts=['.xml', '.json'])
-def md_with_file (configuration, mlp, temp, dt, interval, init_temp = None, **kwargs):
+def md_with_file(configuration, mlp, temp, dt, interval, init_temp = None, **kwargs):
     from mltrain.md import _convert_ase_traj, _n_simulation_steps
     from ase.io.trajectory import Trajectory as ASETrajectory
     from ase.md.langevin import Langevin
@@ -129,7 +131,8 @@ def md_with_file (configuration, mlp, temp, dt, interval, init_temp = None, **kw
 
     return traj, reaction_coords, cavity_volumn
 
-def traj_study (configs,  ml_potential,  init_md_time_fs = 500, max_time_fs = 3000):     
+
+def traj_study(configs,  ml_potential,  init_md_time_fs = 500, max_time_fs = 3000):     
     num_config = len(configs)
 
     C2_C7_recrossing_list = []
@@ -163,27 +166,26 @@ def traj_study (configs,  ml_potential,  init_md_time_fs = 500, max_time_fs = 30
         tol_md_time_f = init_md_time_fs
         md_time_fs_f = init_md_time_fs
 
-        #while not (C2_C7 >3 and C5_C6 >3) or (C2_C7 <=1.6 and C5_C6 <=1.6):
         while tol_md_time_f <=max_time_fs:
             C2_C7_list = []
             C4_C6_list = []
 
-            traj, reaction_coords, cavity_volume= md_with_file(config,
-                                                                mlp = ml_potential,
+            traj, reaction_coords, cavity_volume = md_with_file(config,
+                                                                mlp=ml_potential,
                                                                 temp=300,
                                                                 dt=0.5,
                                                                 interval=2,
-                                                                fs = md_time_f)
+                                                                fs=md_time_f)
             ending = 0
             for (i, j) in zip (C2_C7_list, C4_C6_list):
                 logger.info(f'C2-C7 and C4-C6 bond lengths are {(i,j)}')
-                if i<=1.6 and j <=1.6:
-                    ending+=1
+                if i <= 1.6 and j <= 1.6:
+                    ending += 1
                     break
                 else:
                     pass
 
-            if ending!=0:
+            if ending!= 0:
                 traj.save_xyz(f'trajectoris/traj_{k}.xyz')
                 with open ('reaction_coords.txt','a') as f:
                     line = reaction_coords
@@ -197,24 +199,22 @@ def traj_study (configs,  ml_potential,  init_md_time_fs = 500, max_time_fs = 30
             md_time_fs_f = 1000
             tol_md_time_f += md_time_fs_f
             logger.info(f'current simulation time is {tol_md_time_f} fs')
-
     return None
 
 if __name__ == '__main__':
+    water_mol = mlt.Molecule(name='h2o.xyz')
+    TS_mol = mlt.Molecule(name='cis_endo_TS_wB97M.xyz')
 
-    water_mol = mlt.Molecule(name = 'h2o.xyz')
-    TS_mol = mlt.Molecule(name = 'cis_endo_TS_wB97M.xyz')
-
-    system = mlt.System(TS_mol, box = Box([100, 100, 100]))
-    system.add_molecules(water_mol, num= 52)
+    system = mlt.System(TS_mol, box=Box([100, 100, 100]))
+    system.add_molecules(water_mol, num=52)
 
     endo = mlt.potentials.ACE('endo_in_water_ace_wB97M', system)
 
     TS = mlt.Configuration(box = Box([21.5, 21.5, 21.5]))
-    TS.load(filename = 'cis_endo_TS_wB97M.xyz', box = None)
+    TS.load(filename = 'cis_endo_TS_wB97M.xyz', box=None)
 
-    water_system = mlt.System(water_mol, box = Box([21.5, 21.5,21.5]))
-    water_system.add_molecules(water_mol, num= 331)
+    water_system = mlt.System(water_mol, box=Box([21.5, 21.5,21.5]))
+    water_system.add_molecules(water_mol, num=331)
 
     rs = generate_rs(TS, water_system, endo, 21.5)
 
