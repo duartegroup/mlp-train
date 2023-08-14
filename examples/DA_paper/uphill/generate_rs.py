@@ -10,7 +10,8 @@ mlt.Config.n_cores = 10
 
 ev_to_ha = 1.0 / 27.2114
 
-def from_ase_to_autode (atoms):
+
+def from_ase_to_autode(atoms):
     from autode.atoms import Atom
     #atoms is ase.Atoms
     autode_atoms = []
@@ -24,35 +25,34 @@ def from_ase_to_autode (atoms):
 
     return autode_atoms
 
-def solvation (solute_config, solvent_config, apm, radius, enforce = True):
-    # same function applied in training an MLP for reaction in explicit water
-    # solute: mlt.Configuration() solute.box != None
-    # solvent: mlt.Configuration() solvent.box != None
-    # aps: number of atoms per solvent molecule
-    # radius: cutout radius around each solute atom
-    # enforce: True / False Wrap solvent regardless of previous solvent PBC choices
 
+def solvation(solute_config, solvent_config, apm, radius, enforce = True):
+    """same function applied in training an MLP for reaction in explicit water
+       solute: mlt.Configuration() solute.box != None
+       solvent: mlt.Configuration() solvent.box != None
+       aps: number of atoms per solvent molecule
+       radius: cutout radius around each solute atom
+       enforce: True / False Wrap solvent regardless of previous solvent PBC choices"""
     assert solute_config.box != None, 'configuration must have box'
     assert solvent_config.box != None, 'configuration must have box'
 
     solute = solute_config.ase_atoms
     solvent = solvent_config.ase_atoms
 
-    def wrap (D, cell, pbc):
-        # wrap distance to nearest neighbor
-        # D: distance
-
+    def wrap(D, cell, pbc):
+        """ wrap distance to nearest neighbor
+            D: distance"""
         for i , periodic in enumerate(pbc):
             if periodic:
                 d = D[:, i]
                 L = cell[i]
                 d[:] = (d+L/2)%L-L/2
+        return None
 
     def molwrap(atoms, n, idx=0):
-        # Wrap to cell without breaking molecule
-        # n: number of atoms per solvent molecule
-        # idx: which atom in the solvent molecule to determine molecular distances from
-
+        """Wrap to cell without breaking molecule
+           n: number of atoms per solvent molecule
+           idx: which atom in the solvent molecule to determine molecular distances from"""
         center = atoms.cell.diagonal()/2
         positions = atoms.positions.reshape((-1, n, 3))
         distances = positions[:, idx]-center
@@ -127,20 +127,19 @@ def solvation (solute_config, solvent_config, apm, radius, enforce = True):
     solvation.box = Box([cell[0][0], cell[1][1], cell[2][2]])
     return solvation
 
+
 @mlt.utils.work_in_tmp_dir(copied_exts=['.xml', '.json'])
 def mlpmd_fix_solute(solute, configuration, mlp, temp, dt, interval, n_steps, **kwargs):
-    # run MLP MD with fixed solute atoms
+    """ run MLP MD with fixed solute atoms"""
     from ase.constraints import FixAtoms
     from ase.io.trajectory import Trajectory as ASETrajectory
     from ase.md.langevin import Langevin
     from ase import units as ase_units
-
     assert configuration.box != None, 'configuration must have box'
 
     logger.info('Run MLP MD with fixed solute (solute coords should at the first in configuration coords) by MLP')
 
     n_cores = kwargs['n_cores'] if 'n_cores' in kwargs else min(Config.n_cores, 8)
-
     os.environ['OMP_NUM_THREADS'] = str(n_cores)
     logger.info(f'Using {n_cores} cores for MLP MD')
 
@@ -167,15 +166,14 @@ def mlpmd_fix_solute(solute, configuration, mlp, temp, dt, interval, n_steps, **
     dyn.run(steps=n_steps)
 
     traj = _convert_ase_traj('tmp.traj')
-
     return traj
+
 
 @mlt.utils.work_in_tmp_dir(copied_exts=['.xml', '.json'])
 def optimize_sys(configuration, mlp, **kwargs):
     # applied MLP to optimised geometry with BFGS method
     from ase.io.trajectory import Trajectory as ASETrajectory
     from ase.optimize import BFGS
-
     assert configuration.box != None, 'configuration must have box'
 
     logger.info('Optimise the configuratoin with fixed solute (solute coords should at the first in configuration coords) by MLP')
@@ -197,18 +195,17 @@ def optimize_sys(configuration, mlp, **kwargs):
 
     traj = _convert_ase_traj('tmp.traj')
     final_traj = traj.final_frame
-
     return final_traj
-  
+
+
 def get_reactant_states(TS, solution, mlp):
-    # get RS by the following step:
-    # 1) solvated TS in solution
-    # 2) equilibrium solvent molecules by running MLP-MD for 20 ps
-    # 3) Run MLP-MD initialized from the last frame 
-    #    of equilibrated trajectory obtaiend from step 2) 
-    #    adding a momtum to force the MD propogate to RS
-    # 4) optimized thelast frame of trjactory obtained from step 3)
-  
+    """ get RS by the following step:
+        1) solvated TS in solution
+        2) equilibrium solvent molecules by running MLP-MD for 20 ps
+        3) Run MLP-MD initialized from the last frame 
+           of equilibrated trajectory obtaiend from step 2) 
+           adding a momtum to force the MD propogate to RS
+        4) optimized thelast frame of trjactory obtained from step 3)"""  
     solved_in_solution = solvation (solute_config = TS,
                                     solvent_config = solution,
                                     apm = 3,
@@ -236,10 +233,9 @@ def get_reactant_states(TS, solution, mlp):
 
     rt1 = np.linalg.norm(opt_reactant.atoms[1].coord-opt_reactant.atoms[12].coord)
     rt2 = np.linalg.norm(opt_reactant.atoms[6].coord-opt_reactant.atoms[11].coord)
-
     logger.info(f'the forming carbon bonds length in reactant are {rt1}, {rt2}')
-
     return opt_reactant  
+
 
 @mlt.utils.work_in_tmp_dir(copied_exts=['.xml', '.json', '.pth'])
 def baised_md(configuration, mlp, temp, dt, interval, bias, **kwargs):
@@ -293,10 +289,10 @@ def baised_md(configuration, mlp, temp, dt, interval, bias, **kwargs):
         frame.update_attr_from(configuration)
         frame.energy.predicted = energy
         frame.time = dt * interval * i
-
     return trajectory  
 
-def generate_rs (TS, solution, mlp, box_size):
+
+def generate_rs(TS, solution, mlp, box_size):
     ref = []
     reactants = mlt.ConfigurationSet()
     while len(reactants) < 10:
@@ -326,8 +322,7 @@ def generate_rs (TS, solution, mlp, box_size):
             rt1 = np.linalg.norm(step.atoms[1].coord-step.atoms[12].coord)
             rt2 = np.linalg.norm(step.atoms[6].coord-step.atoms[11].coord)
             if 3<rt1 <= 5 and 3<rt2 <= 5:
-                rs.append(step)
-              
+                rs.append(step)              
     return rs
   
       
