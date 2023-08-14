@@ -9,7 +9,8 @@ import random
 mlt.Config.n_cores = 10
 mlt.Config.orca_keywords = ['wB97M-D3BJ', 'def2-TZVP','def2/J', 'RIJCOSX','EnGrad']
 
-def from_ase_to_autode (atoms):
+
+def from_ase_to_autode(atoms):
     #atoms is ase.Atoms
     autode_atoms = []
     symbols = atoms.symbols
@@ -22,10 +23,11 @@ def from_ase_to_autode (atoms):
 
     return autode_atoms
 
-def add_water (solute, n = 2):
-    # add water molecules to the reactive species
-    # solute: mlt.Configuration, the molecule to add water molecules, should including box
-    # n: number of water molecules to add
+
+def add_water(solute, n = 2):
+    """add water molecules to the reactive species
+       solute: mlt.Configuration, the molecule to add water molecules, should including box
+       n: number of water molecules to add"""
     from ase import Atoms
     from ase.calculators.tip3p import rOH, angleHOH
     from ase.io import read , write
@@ -41,14 +43,12 @@ def add_water (solute, n = 2):
 
     water0 = water.copy()
     water1 = water.copy()
-
     water0.rotate(180, 'x')
     water0.rotate(180, 'z')
 
     assert solute.box != None, 'configuration must have box'
     sol = solute.ase_atoms
     sol.center()
-
     sys = sol.copy()
     
     # randomly rotate water molecule
@@ -96,30 +96,28 @@ def add_water (solute, n = 2):
             sys[mol].position += trans
 
     autode_atoms = from_ase_to_autode (atoms = sys)
-    added_water = mlt.Configuration(atoms = autode_atoms, box = solute.box)
-  
+    added_water = mlt.Configuration(atoms = autode_atoms, box = solute.box)  
     return added_water
+    
   
-def solvation (solute_config, solvent_config, apm, radius, enforce = True):
-    # function to generate solvated system by adding the solute at the center of box,
-    # then remove the overlapped solvent molecules
-    # adapted from https://doi.org/10.1002/qua.26343
-    # solute: mlt.Configuration() solute.box != None
-    # solvent: mlt.Configuration() solvent.box != None
-    # aps: number of atoms per solvent molecule
-    # radius: cutout radius around each solute atom
-    # enforce: True / False Wrap solvent regardless of previous solvent PBC choices
-
+def solvation(solute_config, solvent_config, apm, radius, enforce = True):
+    """function to generate solvated system by adding the solute at the center of box,
+       then remove the overlapped solvent molecules
+       adapted from https://doi.org/10.1002/qua.26343
+       solute: mlt.Configuration() solute.box != None
+       solvent: mlt.Configuration() solvent.box != None
+       aps: number of atoms per solvent molecule
+       radius: cutout radius around each solute atom
+       enforce: True / False Wrap solvent regardless of previous solvent PBC choices"""
     assert solute_config.box != None, 'configuration must have box'
     assert solvent_config.box != None, 'configuration must have box'
 
     solute = solute_config.ase_atoms
     solvent = solvent_config.ase_atoms
 
-    def wrap (D, cell, pbc):
-        # wrap distance to nearest neighbor
-        # D: distance
-
+    def wrap(D, cell, pbc):
+        """ wrap distance to nearest neighbor
+            D: distance"""
         for i , periodic in enumerate(pbc):
             if periodic:
                 d = D[:, i]
@@ -128,10 +126,9 @@ def solvation (solute_config, solvent_config, apm, radius, enforce = True):
         return None
 
     def molwrap(atoms, n, idx=0):
-        # Wrap to cell without breaking molecule
-        # n: number of atoms per solvent molecule
-        # idx: which atom in the solvent molecule to determine molecular distances from
-
+        """Wrap to cell without breaking molecule
+           n: number of atoms per solvent molecule
+           idx: which atom in the solvent molecule to determine molecular distances from"""
         center = atoms.cell.diagonal()/2
         positions = atoms.positions.reshape((-1, n, 3))
         distances = positions[:, idx]-center
@@ -148,7 +145,6 @@ def solvation (solute_config, solvent_config, apm, radius, enforce = True):
         'sol cell not orthorhombic'
     if enforce:
         solvent.pbc = True
-
     sol = molwrap(solvent, apm)
 
     # put the solute ay the center of the solvent box
@@ -182,24 +178,20 @@ def solvation (solute_config, solvent_config, apm, radius, enforce = True):
     # conver ase atom to autode atom then to mlt configuation
     autode_atoms = from_ase_to_autode (atoms = sys)
     solvation = mlt.Configuration(atoms = autode_atoms)
-
     return solvation
 
 def generate_init_configs(n, bulk_water = True, TS = True):
-    # generate initial configuration to train potential
-    # it can generate three sets (pure water, TS immersed in water and TS bounded two water molecules)
-    # of initial configuration by modify the boolean variables
-    # n: number of init_configs
-    # bulk_water: whether to include a solution
-    # TS: whether to include the TS of the reaction in the system
-
+    """ generate initial configuration to train potential
+        it can generate three sets (pure water, TS immersed in water and TS bounded two water molecules)
+        of initial configuration by modify the boolean variables
+        n: number of init_configs
+        bulk_water: whether to include a solution
+        TS: whether to include the TS of the reaction in the system"""
     init_configs = mlt.ConfigurationSet()
-
     TS = mlt.Configuration(box = Box([11, 11, 11]))
     TS.load(filename = 'cis_endo_TS_wB97M.xyz', box = None)
 
-    if bulk_water:
-      
+    if bulk_water:      
         # TS immersed in a water box
         if TS:
             water_mol = mlt.Molecule(name = 'h2o.xyz')
@@ -233,71 +225,68 @@ def generate_init_configs(n, bulk_water = True, TS = True):
     # Change the box of system to extermely large to imitate cluster system
     # the box is needed for ACE potential
     for config in init_configs:
-        config.box = Box([100, 100, 100])
-      
+        config.box = Box([100, 100, 100])      
     return init_configs
 
 def remove_randomly_from_configset(configurationset, remainder):
     configSet = list(np.random.choice(configurationset, size = remainder))
-
     return configSet
 
 if __name__ == '__main__':
 
-    water_mol = mlt.Molecule(name = 'h2o.xyz')
-    ts_mol = mlt.Molecule(name = 'cis_endo_TS_wB97M.xyz')
+    water_mol = mlt.Molecule(name='h2o.xyz')
+    ts_mol = mlt.Molecule(name='cis_endo_TS_wB97M.xyz')
 
     # generate sub training set of pure water system by AL training
-    water_system = mlt.System(water_mol, box = Box([100, 100, 100]))
-    water_system.add_molecules(water_mol, num= 26)
+    water_system = mlt.System(water_mol, box=Box([100, 100, 100]))
+    water_system.add_molecules(water_mol, num=26)
     Water_mlp = mlt.potentials.ACE('water_sys', water_system)
-    water_init = generate_init_configs(n = 10, 
-                                       bulk_water = True, 
-                                       TS_with_water = False)
-    Water_mlp.al_train(method_name = 'orca',
-                      selection_method = MaxAtomicEnvDistance(),
-                      init_configs = water_init,
-                      random_init_config = True,
-                      max_active_time = 5000)
+    water_init = generate_init_configs(n=10, 
+                                       bulk_water=True, 
+                                       TS_with_water=False)
+    Water_mlp.al_train(method_name='orca',
+                      selection_method=MaxAtomicEnvDistance(),
+                      init_configs=water_init,
+                      random_init_config=True,
+                      max_active_time=5000)
 
     # generate sub training set of TS in water system by AL training
-    ts_in_water = mlt.System(ts_mol, box = Box([100, 100, 100]))
-    ts_in_water.add_molecules(water_mol, num= 40)
+    ts_in_water = mlt.System(ts_mol, box=Box([100, 100, 100]))
+    ts_in_water.add_molecules(water_mol, num=40)
     ts_in_water_mlp = mlt.potentials.ACE('TS_in_water', ts_in_water)
-    ts_in_water_init = generate_init_configs(n = 10, 
-                                           bulk_water = True, 
-                                           TS_with_water = True)
-    ts_in_water_mlp.al_train(method_name = 'orca',
-                      selection_method = MaxAtomicEnvDistance(),
-                      init_configs = ts_in_water_init,
-                      random_init_config = True,
-                      max_active_time = 5000)
+    ts_in_water_init = generate_init_configs(n=10, 
+                                           bulk_water=True, 
+                                           TS_with_water=True)
+    ts_in_water_mlp.al_train(method_name='orca',
+                      selection_method=MaxAtomicEnvDistance(),
+                      init_configs=ts_in_water_init,
+                      random_init_config=True,
+                      max_active_time=5000)
 
    # generate sub training set of TS with two water system by AL training
-    ts_2water = mlt.System(ts_mol, box = Box([100, 100, 100]))
-    ts_2water.add_molecules(water_mol, num= 2)
+    ts_2water = mlt.System(ts_mol, box=Box([100, 100, 100]))
+    ts_2water.add_molecules(water_mol, num=2)
     ts_2water_mlp = mlt.potentials.ACE('TS_2water', ts_2water)
-    ts_2water_init = generate_init_configs(n = 10, 
-                                      bulk_water = False, 
-                                      ts_with_water = True)
-    ts_2water_mlp.al_train(method_name = 'orca',
-                      selection_method = MaxAtomicEnvDistance(),
-                      init_configs = ts_2water_init,
-                      random_init_config = True,
-                      max_active_time = 5000)
+    ts_2water_init = generate_init_configs(n=10, 
+                                      bulk_water=False, 
+                                      ts_with_water=True)
+    ts_2water_mlp.al_train(method_name='orca',
+                      selection_method=MaxAtomicEnvDistance(),
+                      init_configs=ts_2water_init,
+                      random_init_config=True,
+                      max_active_time=5000)
 
    # generate sub training set of TS in gas phase by AL training
-    ts_gasphase = mlt.System(ts_mol, box = Box([100, 100, 100]))
-    ts_gasphase_mlp = mlt.potentials.ACE('TS_gasphase', ts_gasphase)
-    
-    ts_gasphase_mlp.al_train(method_name = 'orca',
-                             selection_method = MaxAtomicEnvDistance(),
-                             fix_init_config = True,
-                             max_active_time = 5000)
+    ts_gasphase = mlt.System(ts_mol, box=Box([100, 100, 100]))
+    ts_gasphase_mlp = mlt.potentials.ACE('TS_gasphase', ts_gasphase)    
+    ts_gasphase_mlp.al_train(method_name='orca',
+                             selection_method=MaxAtomicEnvDistance(),
+                             fix_init_config=True,
+                             max_active_time=5000)
 
   # combined sub training set to get the finally potential 
-  system = mlt.System(ts_mol, box = Box([100, 100, 100]))
-  system.add_molecules(water_mol, num= 40)
+  system = mlt.System(ts_mol, box=Box([100, 100, 100]))
+  system.add_molecules(water_mol, num=40)
   endo = mlt.potentials.ACE('endo_in_water_ace_wB97M', system)
   pure_water_config = remove_randomly_from_configset(Water_mlp.training_data, 50)
   ts_in_water_config = remove_randomly_from_configset(ts_in_water_mlp.training_data, 250)
