@@ -1,5 +1,5 @@
 import mlptrain as mlt
-import numpy  as np
+import numpy as np
 from autode.atoms import Atoms, Atom
 from mlptrain.log import logger
 from mlptrain.box import Box
