@@ -17,9 +17,9 @@ def from_ase_to_autode(atoms):
 
     for i in range(len(atoms)):
         autode_atoms.append(Atom(symbols[i],
-                          x =  atoms.positions[i][0],
-                          y =  atoms.positions[i][1],
-                          z =  atoms.positions[i][2]))
+                          x=atoms.positions[i][0],
+                          y=atoms.positions[i][1],
+                          z=atoms.positions[i][2]))
 
     return autode_atoms
 
@@ -53,11 +53,11 @@ def add_water(solute, n = 2):
     
     # randomly rotate water molecule
     water0.rotate(np.random.uniform(0, 180), (0, np.random.uniform (-1, 0), np.random.uniform (0, 1)))
-    sys+=water0
+    sys += water0
     water1.rotate(np.random.uniform(0, 180), ( np.random.uniform (-1, 0), np.random.uniform (0, 1), 0))
     if n >=2:
         for i in range(n-1):
-            sys+=water1
+            sys += water1
           
     len_sol = len(sol)
     sol_idx = list(range(len_sol))
@@ -87,7 +87,7 @@ def add_water(solute, n = 2):
     assert len(water_idx) == n
 
     for j in range(len(water_idx)):
-        displacement = np.random.uniform (1.85, 2.4)
+        displacement = np.random.uniform(1.85, 2.4)
         logger.info(f'distance between H in water and O is TS is {displacement} ')
         vec = displacement*direction[j]
         water = water_idx[j]
@@ -95,8 +95,8 @@ def add_water(solute, n = 2):
         for mol in water_idx[j]:
             sys[mol].position += trans
 
-    autode_atoms = from_ase_to_autode (atoms = sys)
-    added_water = mlt.Configuration(atoms = autode_atoms, box = solute.box)  
+    autode_atoms = from_ase_to_autode(atoms=sys)
+    added_water = mlt.Configuration(atoms=autode_atoms, box=solute.box)  
     return added_water
     
   
@@ -176,8 +176,8 @@ def solvation(solute_config, solvent_config, apm, radius, enforce = True):
     del sys[atoms_to_delete]
 
     # conver ase atom to autode atom then to mlt configuation
-    autode_atoms = from_ase_to_autode (atoms = sys)
-    solvation = mlt.Configuration(atoms = autode_atoms)
+    autode_atoms = from_ase_to_autode(atoms=sys)
+    solvation = mlt.Configuration(atoms=autode_atoms)
     return solvation
 
 
@@ -207,7 +207,7 @@ def generate_init_configs(n, bulk_water = True, TS = True):
               
         # pure water box
         else:
-            water_mol = mlt.Molecule(name ='h2o.xyz')
+            water_mol = mlt.Molecule(name='h2o.xyz')
             water_system = mlt.System(water_mol, box=Box([9.32, 9.32, 9.32]))
             water_system.add_molecules(water_mol, num=26)
           
@@ -219,7 +219,7 @@ def generate_init_configs(n, bulk_water = True, TS = True):
     else:
         assert TS == True, 'cannot generate initial configuration'
         for i in range(n):
-            TS_with_water = add_water (solute=TS, n=2)
+            TS_with_water = add_water(solute=TS, n=2)
             init_configs.append(TS_with_water)
 
     # Change the box of system to extermely large to imitate cluster system
@@ -243,7 +243,7 @@ if __name__ == '__main__':
     Water_mlp = mlt.potentials.ACE('water_sys', water_system)
     water_init = generate_init_configs(n=10, 
                                        bulk_water=True, 
-                                       TS_with_water=False)
+                                       TS=False)
     Water_mlp.al_train(method_name='orca',
                       selection_method=MaxAtomicEnvDistance(),
                       init_configs=water_init,
@@ -255,8 +255,8 @@ if __name__ == '__main__':
     ts_in_water.add_molecules(water_mol, num=40)
     ts_in_water_mlp = mlt.potentials.ACE('TS_in_water', ts_in_water)
     ts_in_water_init = generate_init_configs(n=10, 
-                                           bulk_water=True, 
-                                           TS_with_water=True)
+                                             bulk_water=True, 
+                                             TS=True)
     ts_in_water_mlp.al_train(method_name='orca',
                       selection_method=MaxAtomicEnvDistance(),
                       init_configs=ts_in_water_init,
@@ -269,7 +269,7 @@ if __name__ == '__main__':
     ts_2water_mlp = mlt.potentials.ACE('TS_2water', ts_2water)
     ts_2water_init = generate_init_configs(n=10, 
                                       bulk_water=False, 
-                                      ts_with_water=True)
+                                      TS=True)
     ts_2water_mlp.al_train(method_name='orca',
                       selection_method=MaxAtomicEnvDistance(),
                       init_configs=ts_2water_init,
