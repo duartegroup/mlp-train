@@ -180,6 +180,7 @@ def solvation(solute_config, solvent_config, apm, radius, enforce = True):
     solvation = mlt.Configuration(atoms = autode_atoms)
     return solvation
 
+
 def generate_init_configs(n, bulk_water = True, TS = True):
     """ generate initial configuration to train potential
         it can generate three sets (pure water, TS immersed in water and TS bounded two water molecules)
@@ -228,6 +229,7 @@ def generate_init_configs(n, bulk_water = True, TS = True):
         config.box = Box([100, 100, 100])      
     return init_configs
 
+
 def remove_randomly_from_configset(configurationset, remainder):
     configSet = list(np.random.choice(configurationset, size = remainder))
     return configSet
@@ -262,7 +264,7 @@ if __name__ == '__main__':
                       random_init_config=True,
                       max_active_time=5000)
 
-   # generate sub training set of TS with two water system by AL training
+    # generate sub training set of TS with two water system by AL training
     ts_2water = mlt.System(ts_mol, box=Box([100, 100, 100]))
     ts_2water.add_molecules(water_mol, num=2)
     ts_2water_mlp = mlt.potentials.ACE('TS_2water', ts_2water)
@@ -275,7 +277,7 @@ if __name__ == '__main__':
                       random_init_config=True,
                       max_active_time=5000)
 
-   # generate sub training set of TS in gas phase by AL training
+    # generate sub training set of TS in gas phase by AL training
     ts_gasphase = mlt.System(ts_mol, box=Box([100, 100, 100]))
     ts_gasphase_mlp = mlt.potentials.ACE('TS_gasphase', ts_gasphase)    
     ts_gasphase_mlp.al_train(method_name='orca',
@@ -283,19 +285,19 @@ if __name__ == '__main__':
                              fix_init_config=True,
                              max_active_time=5000)
 
-  # combined sub training set to get the finally potential 
-  system = mlt.System(ts_mol, box=Box([100, 100, 100]))
-  system.add_molecules(water_mol, num=40)
-  endo = mlt.potentials.ACE('endo_in_water_ace_wB97M', system)
-  pure_water_config = remove_randomly_from_configset(Water_mlp.training_data, 50)
-  ts_in_water_config = remove_randomly_from_configset(ts_in_water_mlp.training_data, 250)
-  ts_2water_config = remove_randomly_from_configset(ts_2water_mlp.training_data, 150)
-  gasphase_config = remove_randomly_from_configset(ts_gasphase_mlp.training_data, 150)
+    # combined sub training set to get the finally potential 
+    system = mlt.System(ts_mol, box=Box([100, 100, 100]))
+    system.add_molecules(water_mol, num=40)
+    endo = mlt.potentials.ACE('endo_in_water_ace_wB97M', system)
+    pure_water_config = remove_randomly_from_configset(Water_mlp.training_data, 50)
+    ts_in_water_config = remove_randomly_from_configset(ts_in_water_mlp.training_data, 250)
+    ts_2water_config = remove_randomly_from_configset(ts_2water_mlp.training_data, 150)
+    gasphase_config = remove_randomly_from_configset(ts_gasphase_mlp.training_data, 150)
 
-  endo.training_data += pure_water_config
-  endo.training_data += ts_in_water_config
-  endo.training_data += ts_2water_config
-  endo.training_data += gasphase_config
+    endo.training_data += pure_water_config
+    endo.training_data += ts_in_water_config
+    endo.training_data += ts_2water_config
+    endo.training_data += gasphase_config
 
-  endo.set_atomic_energies(method_name='orca')
-  endo.train()
+    endo.set_atomic_energies(method_name='orca')
+    endo.train()
