@@ -79,7 +79,7 @@ def adjust_forces(self, atoms, forces):
     return None
 
 
-def from_autode_to_ase (molecule, cell_size = 100):
+def from_autode_to_ase(molecule, cell_size = 100):
     """ convert autode.molecule to ase.atoms 
     maintain the constrain generated during ade.pes.RelaxedPESnD calculation"""    
     from ase.atoms import Atoms
