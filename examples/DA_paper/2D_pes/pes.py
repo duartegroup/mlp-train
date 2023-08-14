@@ -33,8 +33,10 @@ def adjust_potential_energy(self, atoms):
             return 0.5 * self.spring * d**2
         else:
             return 0.
+            
     if self._type == 'two atoms':
         p1, p2 = positions[self.indices]
+        
     elif self._type == 'point':
         p1 = positions[self.index]
         p2 = self.origin
@@ -51,8 +53,7 @@ def adjust_forces(self, atoms, forces):
         d = ((A * x + B * y + C * z + D) /
          np.sqrt(A**2 + B**2 + C**2))
         if d < 0:
-            return None
-            
+            return 0            
         magnitude = self.spring * d
         direction = - np.array((A, B, C)) / np.linalg.norm((A, B, C))
         forces[self.index] += direction * magnitude
@@ -63,8 +64,7 @@ def adjust_forces(self, atoms, forces):
         
     elif self._type == 'point':
         p1 = positions[self.index]
-        p2 = self.origin
-        
+        p2 = self.origin        
     displace, _ = find_mic(p2 - p1, atoms.cell, atoms.pbc)
     bondlength = np.linalg.norm(displace)
     magnitude = self.spring * (bondlength - self.threshold)
@@ -259,7 +259,7 @@ def get_final_species(TS, mlp):
 
 @mlt.utils.work_in_tmp_dir(copied_exts=['.xml', '.json'])
 def optimise_with_fix_solute(solute, configuration, fmax, mlp, constraint = True, **kwargs):
-    # optimised molecular geometries by MLP with or without constraint
+    """optimised molecular geometries by MLP with or without constraint"""
     from ase.constraints import FixAtoms
     from ase.optimize import BFGS
     from ase.io.trajectory import Trajectory as ASETrajectory
@@ -268,7 +268,6 @@ def optimise_with_fix_solute(solute, configuration, fmax, mlp, constraint = True
     logger.info('Optimise the configuration with fixed solute (solute coords should at the first in configuration coords) by MLP')
 
     n_cores = kwargs['n_cores'] if 'n_cores' in kwargs else min(Config.n_cores, 8)
-
     os.environ['OMP_NUM_THREADS'] = str(n_cores)
     logger.info(f'Using {n_cores} cores for MLP MD')
 
@@ -282,7 +281,6 @@ def optimise_with_fix_solute(solute, configuration, fmax, mlp, constraint = True
         ase_atoms.set_constraint(constraints)
 
     asetraj = ASETrajectory("tmp.traj", 'w', ase_atoms)
-
     dyn = BFGS(ase_atoms)
     dyn.attach(asetraj.write, interval=2)
     dyn.run(fmax=fmax)
