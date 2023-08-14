@@ -91,7 +91,7 @@ def from_autode_to_ase(molecule, cell_size = 100):
 
     c = []
     for (i, j), dist in molecule.constraints.distance.items():
-        c.append(Hookean(a1 = i, a2 = j, k = 50, rt = dist))
+        c.append(Hookean(a1=i, a2=j, k=50, rt=dist))
     atoms.set_constraint(c)  
     return atoms
 
@@ -112,7 +112,7 @@ class MLPEST(ElectronicStructureMethod):
          as a gap-train  configuration object"""
 
         molecule.print_xyz_file(filename=calc.input.filename)
-        calc.input.additional_filenames = [self.path]
+        calc.input.additional_filenames=[self.path]
         return None
 
     def get_output_filename(self, calc):
@@ -135,7 +135,6 @@ class MLPEST(ElectronicStructureMethod):
 
         @work_in_tmp_dir(filenames_to_copy=calc.input.filenames,
                          kept_file_exts=('.xyz'))
-
         def execute_mlp():
             if 'opt' in self.action:
                 logger.info('start optimization')
@@ -152,7 +151,7 @@ class MLPEST(ElectronicStructureMethod):
                 final_traj.single_point(self.mlp,
                                        n_cores=calc.n_cores)
                 name = self.get_output_filename(calc)
-                final_traj.save_xyz(filename=name, predicted = True)
+                final_traj.save_xyz(filename=name, predicted=True)
                 
             else:
                 configuration = mlt.Configuration()
@@ -161,7 +160,7 @@ class MLPEST(ElectronicStructureMethod):
                 configuration.single_point(self.mlp,
                                        n_cores=calc.n_cores)
                 name = self.get_output_filename(calc)
-                configuration.save_xyz(filename=name, predicted = True)
+                configuration.save_xyz(filename=name, predicted=True)
                 
         execute_mlp()
         return None
@@ -173,7 +172,6 @@ class MLPEST(ElectronicStructureMethod):
             configuration = mlt.Configuration()
             configuration.load(name)
             return configuration.energy.true is not None
-
         return False
 
     @property
@@ -254,7 +252,7 @@ def get_final_species(TS, mlp):
     rt2 = np.linalg.norm(traj_product_optimised.atoms[6].coord-traj_product_optimised.atoms[11].coord)
     logger.info(f'the forming carbon bonds length in product are {rt1}, {rt2}')
 
-    product = mlt.Molecule(name = 'product', atoms = traj_product_optimised.atoms)
+    product = mlt.Molecule(name='product', atoms=traj_product_optimised.atoms)
     return  product
 
 
@@ -278,7 +276,7 @@ def optimise_with_fix_solute(solute, configuration, fmax, mlp, constraint = True
 
     if constraint:
         solute_idx = list(range(len(solute.atoms)))
-        constraints = FixAtoms(indices = solute_idx)
+        constraints = FixAtoms(indices=solute_idx)
         ase_atoms.set_constraint(constraints)
 
     asetraj = ASETrajectory("tmp.traj", 'w', ase_atoms)
