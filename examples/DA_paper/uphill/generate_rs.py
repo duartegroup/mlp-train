@@ -19,9 +19,9 @@ def from_ase_to_autode(atoms):
 
     for i in range(len(atoms)):
         autode_atoms.append(Atom(symbols[i],
-                          x =  atoms.positions[i][0],
-                          y =  atoms.positions[i][1],
-                          z =  atoms.positions[i][2]))
+                          x= atoms.positions[i][0],
+                          y=atoms.positions[i][1],
+                          z=atoms.positions[i][2]))
 
     return autode_atoms
 
@@ -49,7 +49,7 @@ def solvation(solute_config, solvent_config, apm, radius, enforce = True):
                 d[:] = (d+L/2)%L-L/2
         return None
 
-    def molwrap(atoms, n, idx=0):
+    def molwrap(atoms, n, idx = 0):
         """Wrap to cell without breaking molecule
            n: number of atoms per solvent molecule
            idx: which atom in the solvent molecule to determine molecular distances from"""
@@ -122,8 +122,8 @@ def solvation(solute_config, solvent_config, apm, radius, enforce = True):
     del sys[atoms_to_delete]
 
     cell = sys.cell[:]
-    autode_atoms = from_ase_to_autode (atoms = sys)
-    solvation = mlt.Configuration(atoms = autode_atoms)
+    autode_atoms = from_ase_to_autode(atoms=sys)
+    solvation = mlt.Configuration(atoms=autode_atoms)
     solvation.box = Box([cell[0][0], cell[1][1], cell[2][2]])
     return solvation
 
