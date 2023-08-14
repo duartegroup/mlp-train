@@ -7,7 +7,6 @@ from mlptrain.log import logger
 mlt.Config.n_cores = 10
 
 if __name__ == '__main__':
-
     us = mlt.UmbrellaSampling(zeta_func=mlt.AverageDistance((1,12), (6,11)),
                               kappa=10)
     temp = 300
