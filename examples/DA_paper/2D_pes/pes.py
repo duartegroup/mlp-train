@@ -95,6 +95,7 @@ def from_autode_to_ase(molecule, cell_size = 100):
     atoms.set_constraint(c)  
     return atoms
 
+
 class MLPEST(ElectronicStructureMethod):
     """class of machine learning potential fitted for autode package
     original code provided by T. Yang"""
