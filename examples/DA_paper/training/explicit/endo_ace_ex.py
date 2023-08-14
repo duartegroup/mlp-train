@@ -233,7 +233,6 @@ def remove_randomly_from_configset(configurationset, remainder):
     return configSet
 
 if __name__ == '__main__':
-
     water_mol = mlt.Molecule(name='h2o.xyz')
     ts_mol = mlt.Molecule(name='cis_endo_TS_wB97M.xyz')
 
