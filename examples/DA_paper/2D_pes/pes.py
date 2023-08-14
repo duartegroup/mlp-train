@@ -294,7 +294,6 @@ Hookean.adjust_forces = adjust_forces
 Hookean.adjust_potential_energy = adjust_potential_energy
 
 if __name__ == '__main__':
-
     TS_mol = mlt.Molecule(name='cis_endo_TS_water.xyz')
 
     system = mlt.System(TS_mol, box=Box([100, 100, 100]))
