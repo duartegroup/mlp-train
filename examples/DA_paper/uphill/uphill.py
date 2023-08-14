@@ -54,9 +54,9 @@ def from_ase_to_autode(atoms):
 
     for i in range(len(atoms)):
         autode_atoms.append(Atom(symbols[i],
-                          x =  atoms.positions[i][0],
-                          y =  atoms.positions[i][1],
-                          z =  atoms.positions[i][2]))
+                          x=atoms.positions[i][0],
+                          y=atoms.positions[i][1],
+                          z=atoms.positions[i][2]))
 
     return autode_atoms
 
