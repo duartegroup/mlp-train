@@ -57,7 +57,7 @@ def solvation(solute_config, solvent_config, apm, radius, enforce = True):
         positions = atoms.positions.reshape((-1, n, 3))
         distances = positions[:, idx]-center
         old_distances = distances.copy()
-        wrap (distances, atoms.cell.diagonal(), atoms.pbc)
+        wrap(distances, atoms.cell.diagonal(), atoms.pbc)
         offsets = distances - old_distances
         positions += offsets[:, None]
         atoms.set_positions(positions.reshape((-1,3)))
@@ -148,7 +148,7 @@ def mlpmd_fix_solute(solute, configuration, mlp, temp, dt, interval, n_steps, **
     ase_atoms.set_calculator(mlp.ase_calculator)
 
     solute_idx = list(range(len(solute.atoms)))
-    constraints = FixAtoms(indices = solute_idx)
+    constraints = FixAtoms(indices=solute_idx)
     ase_atoms.set_constraint(constraints)
 
     MaxwellBoltzmannDistribution(ase_atoms, temperature_K=temp,
@@ -206,18 +206,18 @@ def get_reactant_states(TS, solution, mlp):
            of equilibrated trajectory obtaiend from step 2) 
            adding a momtum to force the MD propogate to RS
         4) optimized thelast frame of trjactory obtained from step 3)"""  
-    solved_in_solution = solvation (solute_config = TS,
-                                    solvent_config = solution,
-                                    apm = 3,
-                                    radius = 1.7)
+    solved_in_solution = solvation (solute_config=TS,
+                                    solvent_config=solution,
+                                    apm=3,
+                                    radius=1.7)
 
-    after_fixed_md = mlpmd_fix_solute(solute = TS,
-                                    configuration = solved_in_solution,
-                                    mlp = mlp,
-                                    temp = 300,
-                                    dt = 0.5,
-                                    interval = 2,
-                                    n_steps = 40000)
+    after_fixed_md = mlpmd_fix_solute(solute=TS,
+                                    configuration=solved_in_solution,
+                                    mlp=mlp,
+                                    temp=300,
+                                    dt=0.5,
+                                    interval=2,
+                                    n_steps=40000)
 
     trajectory_reactant = mlt.md.run_mlp_md(configuration=after_fixed_md[-1],
                                        mlp=mlp,
@@ -229,7 +229,7 @@ def get_reactant_states(TS, solution, mlp):
 
     final_traj_reactant = trajectory_reactant.final_frame
 
-    opt_reactant = optimize_sys(configuration = final_traj_reactant, mlp = mlp)
+    opt_reactant = optimize_sys(configuration=final_traj_reactant, mlp = mlp)
 
     rt1 = np.linalg.norm(opt_reactant.atoms[1].coord-opt_reactant.atoms[12].coord)
     rt2 = np.linalg.norm(opt_reactant.atoms[6].coord-opt_reactant.atoms[11].coord)
@@ -296,9 +296,9 @@ def generate_rs(TS, solution, mlp, box_size):
     ref = []
     reactants = mlt.ConfigurationSet()
     while len(reactants) < 10:
-        reactant = get_reactant_states(TS = TS,
-                                   solution = solution,
-                                    mlp = mlp)
+        reactant = get_reactant_states(TS=TS,
+                                   solution=solution,
+                                    mlp=mlp)
         rt1 = np.linalg.norm(reactant.atoms[1].coord-reactant.atoms[12].coord)
         rt2 = np.linalg.norm(reactant.atoms[6].coord-reactant.atoms[11].coord)
         if 3<rt1 <= 5 and 3<rt2 <= 5:
@@ -310,18 +310,18 @@ def generate_rs(TS, solution, mlp, box_size):
 
     rs = mlt.ConfigurationSet()
     for i, species in enumerate(reactants):
-        bias = mlt.Bias(zeta_func=mlt.AverageDistance((1,12), (6,11)), kappa=0.5, reference = ref[i])
-        traj = baised_md(configuration = species,
-                              mlp = endo,
-                              temp = 300,
-                              dt = 0.5,
-                              interval = 20,
-                              fs = 1000,
-                              bias = bias)
+        bias = mlt.Bias(zeta_func=mlt.AverageDistance((1,12), (6,11)), kappa=0.5, reference=ref[i])
+        traj = baised_md(configuration=species,
+                              mlp=endo,
+                              temp=300,
+                              dt=0.5,
+                              interval=20,
+                              fs=1000,
+                              bias=bias)
         for step in traj:
             rt1 = np.linalg.norm(step.atoms[1].coord-step.atoms[12].coord)
             rt2 = np.linalg.norm(step.atoms[6].coord-step.atoms[11].coord)
-            if 3<rt1 <= 5 and 3<rt2 <= 5:
+            if 3 < rt1 <= 5 and 3 < rt2 <= 5:
                 rs.append(step)              
     return rs
   
