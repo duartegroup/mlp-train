@@ -198,7 +198,6 @@ def generate_init_configs(n, bulk_water = True, TS = True):
             water_mol = mlt.Molecule(name='h2o.xyz')
             water_system = mlt.System(water_mol, box=Box([11, 11, 11]))
             water_system.add_molecules(water_mol, num=43)
-
             for i in range (n):
                 solvated = solvation (solute_config=TS,
                                       solvent_config=water_system.random_configuration(),
