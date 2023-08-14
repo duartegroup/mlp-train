@@ -37,7 +37,7 @@ def cavity_volume(ase_system, solute_idx = 22, grid_side_length = 0.2, radius = 
     solute_sys = ase_system[:solute_idx]
     solvent_sys = ase_system[solute_idx:]
 
-    grid_pos = grid_box (positions = solute_sys.get_positions(), size = 2.0, grid_space = grid_side_length)
+    grid_pos = grid_box (positions=solute_sys.get_positions(), size=2.0, grid_space=grid_side_length)
 
     volume = 0
     for point in grid_pos:
@@ -86,26 +86,26 @@ def md_with_file(configuration, mlp, temp, dt, interval, init_temp = None, **kwa
 
     ase_atoms = configuration.ase_atoms
     ase_atoms.set_calculator(mlp.ase_calculator)
-    bias = mlt.Bias(zeta_func=mlt.AverageDistance((1,12), (6,11)), kappa=0.4, reference = 1.6)
+    bias = mlt.Bias(zeta_func=mlt.AverageDistance((1,12), (6,11)), kappa=0.4, reference=1.6)
     ase_atoms.set_constraint(bias)
     MaxwellBoltzmannDistribution(ase_atoms, temperature_K=temp,
                                      rng=RandomState())
     traj = ASETrajectory("tmp.traj", 'w', ase_atoms)
     
     energies = []
-    def append_energy(_atoms=ase_atoms):
+    def append_energy(_atoms = ase_atoms):
         energies.append(_atoms.get_potential_energy())
         
     reaction_coords = []
-    def get_reaction_coord(atoms= ase_atoms):
+    def get_reaction_coord(atoms = ase_atoms):
         C2_C7 = np.linalg.norm(atoms[1].position-atoms[12].position)
         C4_C6 = np.linalg.norm(atoms[6].position-atoms[11].position)
         reaction_coord = 0.5*(C2_C7+C4_C6)
         reaction_coords.append(reaction_coord)
 
     cavity_volumn = []
-    def get_cavity_volume (atoms = ase_atoms):
-        volumn = cavity_volume(ase_system = atoms)
+    def get_cavity_volume(atoms = ase_atoms):
+        volumn = cavity_volume(ase_system=atoms)
         cavity_volumn.append(volumn)
     if temp > 0:                                         # Default Langevin NVT
         dyn = Langevin(ase_atoms, dt * ase_units.fs,
@@ -115,8 +115,8 @@ def md_with_file(configuration, mlp, temp, dt, interval, init_temp = None, **kwa
         dyn = VelocityVerlet(ase_atoms, dt * ase_units.fs)
 
     dyn.attach(append_energy, interval=interval)
-    dyn.attach(get_reaction_coord,interval = interval)
-    dyn.attach(get_cavity_volumn,interval = interval)
+    dyn.attach(get_reaction_coord,interval=interval)
+    dyn.attach(get_cavity_volumn,interval=interval)
     dyn.attach(traj.write, interval=interval)
 
     logger.info(f'Running {n_steps:.0f} steps with a timestep of {dt} fs')
@@ -166,7 +166,7 @@ def traj_study(configs,  ml_potential,  init_md_time_fs = 500, max_time_fs = 300
         tol_md_time_f = init_md_time_fs
         md_time_fs_f = init_md_time_fs
 
-        while tol_md_time_f <=max_time_fs:
+        while tol_md_time_f <= max_time_fs:
             C2_C7_list = []
             C4_C6_list = []
 
