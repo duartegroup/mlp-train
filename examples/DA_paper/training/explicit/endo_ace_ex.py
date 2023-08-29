@@ -189,8 +189,8 @@ def generate_init_configs(n, bulk_water = True, TS = True):
         bulk_water: whether to include a solution
         TS: whether to include the TS of the reaction in the system"""
     init_configs = mlt.ConfigurationSet()
-    TS = mlt.Configuration(box=Box([11, 11, 11]))
-    TS.load(filename = 'cis_endo_TS_wB97M.xyz', box=None)
+    TS = mlt.ConfigurationSet()
+    TS.load_xyz(filename = 'cis_endo_TS_wB97M.xyz', box=Box([11, 11, 11]))
 
     if bulk_water:      
         # TS immersed in a water box
@@ -199,7 +199,7 @@ def generate_init_configs(n, bulk_water = True, TS = True):
             water_system = mlt.System(water_mol, box=Box([11, 11, 11]))
             water_system.add_molecules(water_mol, num=43)
             for i in range (n):
-                solvated = solvation (solute_config=TS,
+                solvated = solvation (solute_config=TS[0],
                                       solvent_config=water_system.random_configuration(),
                                       apm=3,
                                       radius=1.7)
@@ -219,7 +219,7 @@ def generate_init_configs(n, bulk_water = True, TS = True):
     else:
         assert TS == True, 'cannot generate initial configuration'
         for i in range(n):
-            TS_with_water = add_water(solute=TS, n=2)
+            TS_with_water = add_water(solute=TS[0], n=2)
             init_configs.append(TS_with_water)
 
     # Change the box of system to extermely large to imitate cluster system
