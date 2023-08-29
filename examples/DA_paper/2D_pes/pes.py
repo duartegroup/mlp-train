@@ -298,13 +298,13 @@ if __name__ == '__main__':
 
     endo = mlt.potentials.ACE('endo_ace_wB97M_imwater', system)
 
-    TS = mlt.Configuration(box=Box([100, 100, 100]))
-    TS.load(filename='cis_endo_TS_water.xyz', box=None)
+    TS = mlt.ConfigurationSet()
+    TS.load(filename='cis_endo_TS_water.xyz', box=Box([100, 100, 100]))
 
     cwd = os.getcwd()
     ade_endo = MLPEST(mlp=endo, action=['opt'], path=f'{cwd}/{endo.name}.json')
 
-    product = get_final_species(TS=TS, 
+    product = get_final_species(TS=TS[0], 
                                 mlp=endo)
   
     product.print_xyz_file(filename='product.xyz')
