@@ -210,12 +210,12 @@ if __name__ == '__main__':
 
     endo = mlt.potentials.ACE('endo_in_water_ace_wB97M', system)
 
-    TS = mlt.Configuration(box = Box([21.5, 21.5, 21.5]))
-    TS.load(filename = 'cis_endo_TS_wB97M.xyz', box=None)
+    TS = mlt.ConfigurationSet()
+    TS.load_xyz(filename = 'cis_endo_TS_wB97M.xyz', box=Box([21.5, 21.5, 21.5]))
 
     water_system = mlt.System(water_mol, box=Box([21.5, 21.5,21.5]))
     water_system.add_molecules(water_mol, num=331)
 
-    rs = generate_rs(TS, water_system, endo, 21.5)
+    rs = generate_rs(TS[0], water_system, endo, 21.5)
 
     traj_study (rs, endo)
