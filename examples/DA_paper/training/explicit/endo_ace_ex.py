@@ -190,7 +190,11 @@ def generate_init_configs(n, bulk_water = True, TS = True):
         TS: whether to include the TS of the reaction in the system"""
     init_configs = mlt.ConfigurationSet()
     TS = mlt.ConfigurationSet()
-    TS.load_xyz(filename = 'cis_endo_TS_wB97M.xyz', box=Box([11, 11, 11]))
+    TS.load_xyz(filename = 'cis_endo_TS_wB97M.xyz')
+    TS = TS[0]
+    TS.box = Box([11, 11, 11])
+    TS.charge = 0
+    TS.mult = 1
 
     if bulk_water:      
         # TS immersed in a water box
@@ -246,8 +250,8 @@ if __name__ == '__main__':
                                        TS=False)
     Water_mlp.al_train(method_name='orca',
                       selection_method=MaxAtomicEnvDistance(),
+                      fix_init_config=True,
                       init_configs=water_init,
-                      random_init_config=True,
                       max_active_time=5000)
 
     # generate sub training set of TS in water system by AL training
@@ -259,8 +263,8 @@ if __name__ == '__main__':
                                              TS=True)
     ts_in_water_mlp.al_train(method_name='orca',
                       selection_method=MaxAtomicEnvDistance(),
+                      fix_init_config=True,
                       init_configs=ts_in_water_init,
-                      random_init_config=True,
                       max_active_time=5000)
 
     # generate sub training set of TS with two water system by AL training
@@ -272,8 +276,8 @@ if __name__ == '__main__':
                                       TS=True)
     ts_2water_mlp.al_train(method_name='orca',
                       selection_method=MaxAtomicEnvDistance(),
+                      fix_init_config=True,
                       init_configs=ts_2water_init,
-                      random_init_config=True,
                       max_active_time=5000)
 
     # generate sub training set of TS in gas phase by AL training
