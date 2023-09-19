@@ -71,8 +71,11 @@ class GAP(MLPotential):
                                       'pip install quippy-ase')
 
         self._check_xml_exists()
-        return quippy.potential.Potential("IP GAP",
-                                          param_filename=self.xml_filename)
+
+        calculator = quippy.potential.Potential("IP GAP",
+                                                param_filename=self.xml_filename)
+        calculator.name = self.name
+        return calculator
 
     @property
     def _train_command(self):
