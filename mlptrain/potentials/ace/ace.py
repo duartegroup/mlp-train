@@ -93,9 +93,8 @@ class ACE(MLPotential):
         if len(self.training_data) == 0:
             raise ValueError('Cannot determine r_in. Had no training data')
 
-        diag_shift = 9999.9 * np.eye(len(self.training_data[0].coordinates))
-
         def pairwise_dists(_c):
+            diag_shift = 9999.9 * np.eye(len(_c.coordinates))
             return distance_matrix(_c.coordinates, _c.coordinates) + diag_shift
 
         return min(np.min(pairwise_dists(c)) for c in self.training_data) + 0.05
