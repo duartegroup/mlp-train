@@ -1,5 +1,4 @@
 import os
-import io
 import shutil
 import numpy as np
 import multiprocessing as mp
@@ -528,7 +527,7 @@ def _attach_plumed_coords_to_init_configs(init_configs: 'mlptrain.ConfigurationS
     for config in init_configs:
         config.save_xyz('init_configs_driver.xyz', append=True)
 
-    driver_setup = [f'UNITS LENGTH=A']
+    driver_setup = ['UNITS LENGTH=A']
     for cv in bias.cvs:
         driver_setup.extend(cv.setup)
         driver_setup.append('PRINT '

@@ -845,7 +845,7 @@ def _plot_and_save_free_energy(free_energies,
     fig, ax = plt.subplots()
     ax.plot(zetas, rel_free_energies, color='k')
 
-    with open(f'umbrella_free_energy.txt', 'w') as outfile:
+    with open('umbrella_free_energy.txt', 'w') as outfile:
         for zeta, free_energy in zip(zetas, rel_free_energies):
             print(zeta, free_energy, file=outfile)
 

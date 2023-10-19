@@ -1,10 +1,9 @@
 import mlptrain as mlt
 import numpy as np
-from autode.atoms import Atoms, Atom
+from autode.atoms import Atom
 from mlptrain.log import logger
 from mlptrain.box import Box
 from mlptrain.training.selection import MaxAtomicEnvDistance
-import random
 
 mlt.Config.n_cores = 10
 mlt.Config.orca_keywords = ['wB97M-D3BJ', 'def2-TZVP','def2/J', 'RIJCOSX','EnGrad']
@@ -30,7 +29,6 @@ def add_water(solute, n = 2):
        n: number of water molecules to add"""
     from ase import Atoms
     from ase.calculators.tip3p import rOH, angleHOH
-    from ase.io import read , write
 
     # water molecule
     x = angleHOH * np.pi / 180 / 2

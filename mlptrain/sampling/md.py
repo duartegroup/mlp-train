@@ -400,7 +400,7 @@ def _get_traj_name(restart_files: Optional[List[str]] = None,
         if 'idx' in kwargs:
             traj_name = f'trajectory_{kwargs["idx"]}.traj'
         else:
-            traj_name = f'trajectory.traj'
+            traj_name = 'trajectory.traj'
 
         return traj_name
 

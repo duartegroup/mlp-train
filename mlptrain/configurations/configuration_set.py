@@ -447,12 +447,12 @@ class ConfigurationSet(list):
                 n_cvs_set.add(len(config.plumed_coordinates))
 
         if len(n_cvs_set) == 0:
-            logger.info(f'PLUMED coordinates not defined - returning None')
+            logger.info('PLUMED coordinates not defined - returning None')
             return None
 
         elif len(n_cvs_set) != 1:
-            logger.info(f'Number of CVs differ between configurations - '
-                        f'returning None')
+            logger.info('Number of CVs differ between configurations - '
+                        'returning None')
             return None
 
         n_cvs = n_cvs_set.pop()
