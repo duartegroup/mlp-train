@@ -1,3 +1,4 @@
+import mlptrain
 import numpy as np
 from typing import Optional
 from mlptrain.sampling.md import run_mlp_md

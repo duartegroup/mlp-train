@@ -1,3 +1,4 @@
+import mlptrain
 from typing import Union
 
 from mlptrain.log import logger

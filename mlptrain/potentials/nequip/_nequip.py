@@ -1,4 +1,5 @@
 import os
+import ase
 import shutil
 import numpy as np
 from time import time

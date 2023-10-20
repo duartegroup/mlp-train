@@ -187,9 +187,6 @@ class MLPEST(ElectronicStructureMethod):
     def get_free_energy(self, calc):
         return None
         
-    def get_free_energy(self, calc):
-        return None
-
     def get_enthalpy(self, calc):
         return None
 
@@ -263,7 +260,7 @@ def optimise_with_fix_solute(solute, configuration, fmax, mlp, constraint = True
     from ase.optimize import BFGS
     from ase.io.trajectory import Trajectory as ASETrajectory
 
-    assert configuration.box != None, 'configuration must have box'
+    assert configuration.box is not None, 'configuration must have box'
     logger.info('Optimise the configuration with fixed solute (solute coords should at the first in configuration coords) by MLP')
 
     n_cores = kwargs['n_cores'] if 'n_cores' in kwargs else min(Config.n_cores, 8)

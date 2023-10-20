@@ -36,7 +36,7 @@ def test_selection_on_structures():
     configs = mlt.ConfigurationSet()
 
     try:
-        import dscribe
+        import dscribe  # noqa: F401 
     except ModuleNotFoundError:
         return
 

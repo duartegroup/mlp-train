@@ -1,8 +1,11 @@
+import mlptrain
+import ase
 import numpy as np
 from typing import Optional, Union, List
 from copy import deepcopy
-from autode.atoms import AtomCollection, Atoms, Atom
-from ase.atoms import Atoms
+from autode.atoms import AtomCollection, Atom
+import autode.atoms
+import ase.atoms
 from mlptrain.log import logger
 from mlptrain.energy import Energy
 from mlptrain.forces import Forces
@@ -14,7 +17,7 @@ class Configuration(AtomCollection):
     """Configuration of atoms"""
 
     def __init__(self,
-                 atoms:  Union[Atoms, List[Atom], None] = None,
+                 atoms:  Union[autode.atoms.Atoms, List[Atom], None] = None,
                  charge: int = 0,
                  mult:   int = 1,
                  box:    Optional[Box] = None
@@ -55,7 +58,7 @@ class Configuration(AtomCollection):
         Returns:
             (ase.atoms.Atoms): ASE atoms
         """
-        _atoms = Atoms(symbols=[atom.label for atom in self.atoms],
+        _atoms = ase.atoms.Atoms(symbols=[atom.label for atom in self.atoms],
                        positions=self.coordinates,
                        pbc=self.box is not None)
 
