@@ -52,9 +52,9 @@ def soap_matrix(*args:    Union[mlt.ConfigurationSet, mlt.Configuration],
     # Compute the average SOAP vector where the expansion coefficients are
     # calculated over averages over each site
     soap_desc = SOAP(species=elements,
-                     rcut=5,             # Distance cutoff (Å)
-                     nmax=6,             # Maximum order of the radial
-                     lmax=6,             # Maximum order of the angular
+                     r_cut=5,             # Distance cutoff (Å)
+                     n_max=6,             # Maximum order of the radial
+                     l_max=6,             # Maximum order of the angular
                      average='inner')
 
     soap_vec = soap_desc.create([conf.ase_atoms for conf in configurations])
