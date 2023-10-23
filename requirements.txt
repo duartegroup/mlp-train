@@ -1,4 +1,5 @@
 numpy
+ase # needs to be updated to dev version to use plumed 
 cython
 scipy
 autode==1.1*
