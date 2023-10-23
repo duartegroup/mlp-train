@@ -4,7 +4,7 @@ scipy
 autode==1.1*
 # ase  # Must be installed from https://github.com/rosswhitfield/ase:master
 coloredlogs
-dscribe~=2.0.0
+dscribe==2.0*
 matplotlib-base
 pytest
 py-plumed
