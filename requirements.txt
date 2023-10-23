@@ -1,8 +1,7 @@
-numpy<=1.23.5
+numpy
 cython
 scipy
 autode==1.1*
-# ase  # Must be installed from https://github.com/rosswhitfield/ase:master
 coloredlogs
 dscribe==2.0*
 matplotlib-base
