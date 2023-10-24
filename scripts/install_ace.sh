@@ -34,12 +34,15 @@ echo "* Adding required registries and packages to Julia *"
 
 echo "using Pkg
 Pkg.Registry.add(\"General\")
-Pkg.Registry.add(RegistrySpec(url=\"https://github.com/ACEsuit/ACEregistry\"))
-Pkg.add(PackageSpec(name=\"ACEpotentials\", version=\"0.6.3\"))
+Pkg.Registry.add(RegistrySpec(url=\"https://github.com/JuliaMolSim/MolSim.git\"))
+Pkg.add(PackageSpec(name=\"JuLIP\", version=\"0.10.1\"))
+Pkg.add(PackageSpec(name=\"ACE\", version=\"0.8.4\"))
+Pkg.add(PackageSpec(name=\"IPFitting\", version=\"0.5.0\"))
+Pkg.add(\"IJulia\")
 Pkg.add(\"ASE\")" > add_julia_pkgs.jl
 julia add_julia_pkgs.jl
 
-echo "Setting up Python-Julia integration"
+echo "* Setting up Python-Julia integration *"
 conda run -n ${CONDA_ENV_NAME} python -m pip install julia
 conda run -n ${CONDA_ENV_NAME} python -c "import julia; julia.install()"
 
@@ -50,7 +53,6 @@ echo "ENV[\"PYTHON\"] = \"$(eval "which python")\"
 using Pkg
 Pkg.build(\"PyCall\")" > pycall.jl
 julia pycall.jl
-rm pycall.jl
 
 echo "* Installing pyjulip *"
 conda run -n ${CONDA_ENV_NAME} python -m pip install pyjulip@git+https://github.com/casv2/pyjulip.git@8316043f66
@@ -64,4 +66,5 @@ conda run -n ${CONDA_ENV_NAME} python -m pip install git+https://github.com/ross
 echo "* Installing mlptrain package in editable mode *" 
 conda run -n ${CONDA_ENV_NAME} python -m pip install -e ../
 
+rm -f add_julia_pkgs.jl pycall.jl
 echo "* DONE! *"
