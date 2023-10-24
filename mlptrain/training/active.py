@@ -277,7 +277,7 @@ def _add_active_configs(mlp: 'mlptrain.potentials._base.MLPotential',
     if 'method_name' in kwargs and configs.has_a_none_energy:
         for config in configs:
             if config.energy.true is None:
-                config.single_point(kwargs['method_name'])
+                config.single_point(kwargs['method_name'], n_cores=Config.n_cores)
 
     if (kwargs['inherit_metad_bias'] is True
             and kwargs['iteration'] >= kwargs['bias_start_iter']):
@@ -398,7 +398,7 @@ def _gen_active_config(config:      'mlptrain.Configuration',
 
     if selector.select:
         if traj.final_frame.energy.true is None:
-            traj.final_frame.single_point(method_name)
+            traj.final_frame.single_point(method_name, n_cores=n_cores)
 
         return traj.final_frame
 
@@ -413,7 +413,7 @@ def _gen_active_config(config:      'mlptrain.Configuration',
 
             if selector.select:
                 if frame.energy.true is None:
-                    frame.single_point(method_name)
+                    frame.single_point(method_name, n_cores=n_cores)
 
                 return frame
 

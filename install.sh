@@ -2,17 +2,23 @@
 
 set -o errexit
 
+if [[ -n `which mamba` ]]; then
+  CONDAEXE=mamba
+elif [[ -n `which conda` ]]; then
+  CONDAEXE=conda
+else
+  echo "conda not found!"
+  exit 1
+fi
+
 # Install the conda dependencies
-conda install -c conda-forge --file requirements.txt
+$CONDAEXE install -c conda-forge --file requirements.txt
 
-# Ensure the ASE install is from https://github.com/rosswhitfield/ase
-conda uninstall ase --yes || true
-
-# Install ASE in a subshell
+# Install ASE from master branch in a subshell
 (
   cd scripts || exit
   source install_ase.sh
 )
 
-# Finally install the Python package
+# Finally install the mlptrain Python package in editable mode
 pip install -e .
