@@ -1,0 +1,6 @@
+torch
+torchvision
+torchaudio
+e3nn
+torch-ema
+mace@git+https://github.com/ACEsuit/mace@v0.2.0

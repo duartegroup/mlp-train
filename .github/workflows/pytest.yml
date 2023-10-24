@@ -33,7 +33,14 @@ jobs:
         create-args: >-
           python=${{ matrix.python-version }}
 
-    - name: Install
+    - name: Basic install
       run: ./install.sh
-    - name: Test
+
+    - name: Test basic install
       run: pytest
+
+      # NOTE: We're skipping this install to save CI time,
+      # but once there MACE-specific tests we should enable it.
+    - name: MACE install
+      if: false
+      run: cd scripts && ./install_mace.sh
