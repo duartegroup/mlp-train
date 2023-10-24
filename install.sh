@@ -20,5 +20,12 @@ $CONDAEXE install -c conda-forge --file requirements.txt
   source install_ase.sh
 )
 
+# Install xtb if not available
+echo "Looking for xtb executable in PATH"
+if ! which xtb; then
+  echo "* Installing xTB via conda *"
+  $CONDAEXE install -c conda-forge xtb
+fi
+
 # Finally install the mlptrain Python package in editable mode
 pip install -e .
