@@ -40,4 +40,4 @@ jobs:
       run: pytest
 
     - name: MACE install
-      run: ./scripts/install_mace.sh
+      run: cd scripts && ./install_mace.sh
