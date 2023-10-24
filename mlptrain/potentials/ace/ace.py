@@ -77,7 +77,7 @@ class ACE(MLPotential):
                                'potentials.\n'
                                'Install: https://github.com/casv2/pyjulip')
 
-        return pyjulip.ACE1(f'./{self.name}.json')
+        return pyjulip.ACE(f'./{self.name}.json')
 
     @property
     def _r_in_estimate(self) -> float:
@@ -114,9 +114,9 @@ class ACE(MLPotential):
         """
         inp_file = open(filename, 'w')
 
-        print('using ACEpotentials, LinearAlgebra\n'
+        print('using IPFitting, ACE, JuLIP, LinearAlgebra\n'
               'using JuLIP.MLIPs: combine, SumIP\n'
-              'using ACE1: z2i, i2z, order\n'
+              'using ACE: z2i, i2z, order\n'
               f'BLAS.set_num_threads({Config.n_cores})\n',  # number of threads for the LSQ solver
               file=inp_file)
 
@@ -198,7 +198,7 @@ class ACE(MLPotential):
 
         ######################################################################
 
-        print('Deg = ACE1.RPI.SparsePSHDegreeM(Dn, Dl, Dd)\n'
+        print('Deg = ACE.RPI.SparsePSHDegreeM(Dn, Dl, Dd)\n'
          
               # construction of a basic basis for site energies
               'Bsite = rpi_basis(species = species,\n'
