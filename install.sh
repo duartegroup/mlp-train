@@ -21,13 +21,6 @@ $CONDAEXE install -c conda-forge --file requirements.txt --yes
   source install_ase.sh
 )
 
-# Install xtb if not available
-echo "* Looking for xtb executable in PATH *"
-if ! which xtb; then
-  echo "* Installing xTB from conda-forge *"
-  $CONDAEXE install -c conda-forge --yes xtb
-fi
-
 echo "* Installing GAP requirements *"
 pip install quippy-ase
 
