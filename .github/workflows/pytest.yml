@@ -22,18 +22,18 @@ jobs:
         shell: bash -l {0}
         
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
         
-    - uses: conda-incubator/setup-miniconda@v2
+    - uses: mamba-org/setup-micromamba@v1
       with:
-        python-version: ${{ matrix.python-version }}
-        channels: conda-forge,defaults
-        auto-update-conda: true
+        # the create command looks like this:
+        # `micromamba create -n test-env python=3.9`
+        environment-name: test-env
+        cache-environment: true
+        create-args: >-
+          python=${{ matrix.python-version }}
 
     - name: Install
-      run: |
-        conda activate test
-        ./install.sh
+      run: ./install.sh
     - name: Test
-      run: |
-        pytest
+      run: pytest
