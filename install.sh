@@ -15,14 +15,11 @@ fi
 # Install the conda dependencies
 $CONDAEXE install -c conda-forge --file requirements.txt --yes
 
-# Install ASE from master branch in a subshell
-(
-  cd scripts || exit
-  source install_ase.sh
-)
-
 echo "* Installing GAP requirements *"
 pip install quippy-ase
+
+echo "* Installing ASE from master branch *"
+pip install git+https://gitlab.com/ase/ase@f2615a6e9a
 
 # Finally install the mlptrain Python package in editable mode
 pip install -e .

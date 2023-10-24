@@ -55,16 +55,16 @@ Pkg.build(\"PyCall\")" > pycall.jl
 julia pycall.jl
 
 echo "* Installing pyjulip *"
-conda run -n ${CONDA_ENV_NAME} python -m pip install pyjulip@git+https://github.com/casv2/pyjulip.git@8316043f66
+conda run -n ${CONDA_ENV_NAME} pip install pyjulip@git+https://github.com/casv2/pyjulip.git@8316043f66
 
 # Useful env variables:
 # JULIA_NUM_THREADS
 
 echo "* Installing ASE from master branch *"
-conda run -n ${CONDA_ENV_NAME} python -m pip install git+https://github.com/rosswhitfield/ase@f2615a6e9a
+conda run -n ${CONDA_ENV_NAME} pip install git+https://gitlab.com/ase/ase@f2615a6e9a
 
 echo "* Installing mlptrain package in editable mode *" 
-conda run -n ${CONDA_ENV_NAME} python -m pip install -e ../
+conda run -n ${CONDA_ENV_NAME} pip install -e ../
 
 rm -f add_julia_pkgs.jl pycall.jl
 echo "* DONE! *"
