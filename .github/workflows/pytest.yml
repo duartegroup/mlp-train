@@ -26,12 +26,11 @@ jobs:
         
     - uses: mamba-org/setup-micromamba@v1
       with:
-        python-version: ${{ matrix.python-version }}
-        micromamba-version: '1.3.1-0'
-        init-shell: >-
-          bash
-        cache-environment: false
-        post-cleanup: 'all'
+        # the create command looks like this:
+        # `micromamba create -n test-env python=3.10 numpy`
+        environment-name: test-env
+        create-args: >-
+          python=3.9
 
     - name: Install
       run: ./install.sh
