@@ -3,28 +3,31 @@
 set -euo pipefail
 
 PYTHON_VERSION="3.9"
+CONDA_ENV_NAME="mlptrain-mace"
 
-if [[ -n `which mamba` ]]; then
+echo "* Looking for mamba or conda executable *"
+if which mamba; then
   CONDAEXE=mamba
-elif [[ -n `which conda` ]]; then
+elif which conda; then
   CONDAEXE=conda
 else
-  echo "conda not found!"
+  echo "conda executable not found!"
   exit 1
 fi
 
-echo "* Installing everything to a new conda environment called: mace *"
+echo "* Installing everything to a new conda environment called: ${CONDA_ENV_NAME}*"
 
 echo "* Installing mlp-train dependencies via conda *"
-$CONDAEXE create --name mace python=${PYTHON_VERSION} --file ../requirements.txt -c conda-forge --yes
+$CONDAEXE create --name ${CONDA_ENV_NAME} python=${PYTHON_VERSION} pip --file ../requirements.txt -c conda-forge --yes
 
 # Install ASE from master branch
-./install_ase.sh
+echo "* Installing ASE from master branch *"
+$CONDAEXE run -n ${CONDA_ENV_NAME} pip install git+https://github.com/rosswhitfield/ase@f2615a6e9a
 
 echo "* Installing MACE and its dependencies (PyTorch, e3nn, ...) *"
-$CONDAEXE run -n mace pip install -r ../requirements_mace.txt
+$CONDAEXE run -n ${CONDA_ENV_NAME} pip install -r ../requirements_mace.txt
 
 echo "* Installing mlptrain in editable mode *"
-$CONDAEXE run -n mace pip install -e ../
+$CONDAEXE run -n ${CONDA_ENV_NAME} pip install -e ../
 
 echo "* DONE! *"

@@ -2,17 +2,18 @@
 
 set -o errexit
 
-if [[ -n `which mamba` ]]; then
+echo "* Looking for mamba or conda executable *"
+if which mamba; then
   CONDAEXE=mamba
-elif [[ -n `which conda` ]]; then
+elif which conda; then
   CONDAEXE=conda
 else
-  echo "conda not found!"
+  echo "* ERROR conda executable not found! *"
   exit 1
 fi
 
 # Install the conda dependencies
-$CONDAEXE install -c conda-forge --file requirements.txt
+$CONDAEXE install -c conda-forge --file requirements.txt --yes
 
 # Install ASE from master branch in a subshell
 (
@@ -21,11 +22,14 @@ $CONDAEXE install -c conda-forge --file requirements.txt
 )
 
 # Install xtb if not available
-echo "Looking for xtb executable in PATH"
+echo "* Looking for xtb executable in PATH *"
 if ! which xtb; then
-  echo "* Installing xTB via conda *"
-  $CONDAEXE install -c conda-forge xtb
+  echo "* Installing xTB from conda-forge *"
+  $CONDAEXE install -c conda-forge --yes xtb
 fi
+
+echo "* Installing GAP requirements *"
+pip install quippy-ase
 
 # Finally install the mlptrain Python package in editable mode
 pip install -e .
