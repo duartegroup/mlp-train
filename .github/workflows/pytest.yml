@@ -33,7 +33,11 @@ jobs:
         create-args: >-
           python=${{ matrix.python-version }}
 
-    - name: Install
+    - name: Basic install
       run: ./install.sh
-    - name: Test
+
+    - name: Test basic install
       run: pytest
+
+    - name: MACE install
+      run: ./scripts/install_mace.sh

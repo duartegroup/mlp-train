@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# NOTE: You need to install Julia >=1.9 before running this script!
+# NOTE: You need to install Julia >=1.6 before running this script!
 
 # Exit on error
 set -euo pipefail
