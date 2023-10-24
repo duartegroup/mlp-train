@@ -39,5 +39,8 @@ jobs:
     - name: Test basic install
       run: pytest
 
+      # NOTE: We're skipping this install to save CI time,
+      # but once there MACE-specific tests we should enable it.
     - name: MACE install
+      if: false
       run: cd scripts && ./install_mace.sh
