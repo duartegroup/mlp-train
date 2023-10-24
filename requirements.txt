@@ -8,3 +8,5 @@ dscribe==1.*
 matplotlib-base
 pytest
 py-plumed
+# Needed for GAP
+quippy-ase
