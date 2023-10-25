@@ -43,5 +43,5 @@ jobs:
       # NOTE: We're skipping this install to save CI time,
       # but once there MACE-specific tests we should enable it.
     - name: MACE install
-      if: true
+      if: false
       run: ./install_mace.sh
