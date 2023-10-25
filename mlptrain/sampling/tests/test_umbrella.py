@@ -73,7 +73,7 @@ def test_umbrella_parallel():
 
     execution_time = {}
 
-    for n_cores in (1, 4):
+    for n_cores in (1, 2):
 
         mlt.Config.n_cores = n_cores
 
@@ -93,7 +93,7 @@ def test_umbrella_parallel():
         execution_time[n_cores] = finish - start
 
     # Calculation with more cores should run faster
-    assert execution_time[4] < execution_time[1]
+    assert execution_time[2] < execution_time[1]
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))

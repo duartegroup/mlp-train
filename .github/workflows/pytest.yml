@@ -37,6 +37,9 @@ jobs:
     - name: Basic install
       run: ./install.sh
 
+    - name: List installed packages
+      run: micromamba list
+
     - name: Test basic install
       run: pytest
 
@@ -66,8 +69,11 @@ jobs:
         create-args: >-
           python=${{ matrix.python-version }}
 
-    - name: Basic install
-      run: ./install.sh
+    - name: MACE install
+      run: ./install_mace.sh
 
-    - name: Test basic install
+    - name: List installed packages
+      run: micromamba list
+
+    - name: Test MACE install
       run: pytest
