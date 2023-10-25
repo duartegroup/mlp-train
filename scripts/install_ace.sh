@@ -55,7 +55,7 @@ Pkg.build(\"PyCall\")" > pycall.jl
 julia pycall.jl
 
 echo "* Installing pyjulip *"
-conda run -n ${CONDA_ENV_NAME} pip install pyjulip@git+https://github.com/casv2/pyjulip.git@8316043f66
+conda run -n ${CONDA_ENV_NAME} pip install pyjulip@git+https://github.com/casv2/pyjulip.git@72280a6ac3
 
 # Useful env variables:
 # JULIA_NUM_THREADS
