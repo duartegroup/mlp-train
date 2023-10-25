@@ -17,8 +17,6 @@ dependencies:
   - py-plumed
   - scipy
   - xtb
+  - quippy  # GAP
   - pip:
-    # TODO: this seems to also be available on conda-forge as 'quippy'
-    # https://anaconda.org/conda-forge/quippy
-    - quippy-ase
     - ase@git+https://gitlab.com/ase/ase@f2615a6e9a # for PLUMED

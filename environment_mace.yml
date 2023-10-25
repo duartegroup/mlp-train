@@ -17,12 +17,12 @@ dependencies:
   - py-plumed
   - scipy
   - xtb
+  # MACE dependencies
+  - torch
+  - torchvision
+  - torchaudio
+  - e3nn
+  - torch-ema
   - pip:
-    # TODO: Install all these from conda-forge (except MACE and ASE)!
-    - torch
-    - torchvision
-    - torchaudio
-    - e3nn
-    - torch-ema
     - mace@git+https://github.com/ACEsuit/mace@v0.2.0
     - ase@git+https://gitlab.com/ase/ase@f2615a6e9a # for Plumed
