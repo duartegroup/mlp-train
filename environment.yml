@@ -1,0 +1,18 @@
+# NOTE: We're purposefully do not specify the environment name
+# since this is reused for different envs (ACE, MACE, etc.)
+#name: mlptrain
+
+dependencies:
+  - python=3.9
+  - pip
+  - ase         # ASE needs to be updated to dev version to use plumed 
+  - autode=1.1
+  - coloredlogs
+  - cython
+  - dscribe=2.0
+  - matplotlib-base
+  - numpy
+  - pytest
+  - py-plumed
+  - scipy
+  - xtb

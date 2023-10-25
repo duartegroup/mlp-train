@@ -4,22 +4,24 @@ set -o errexit
 
 echo "* Looking for mamba or conda executable *"
 if which mamba; then
-  CONDAEXE=mamba
+    CONDAEXE=mamba
 elif which conda; then
-  CONDAEXE=conda
+    CONDAEXE=conda
 else
-  echo "* ERROR conda executable not found! *"
-  exit 1
+    echo "* ERROR conda executable not found! *"
+    exit 1
 fi
 
-# Install the conda dependencies
-$CONDAEXE install -c conda-forge --file requirements.txt --yes
+if [[ $CONDA_DEFAULT_ENV != "test-env"  ]];then
+    echo "* Installing base dependencies via conda *"
+    $CONDAEXE install -c conda-forge --file requirements.txt --yes
+else
+    # On GitHub the environment is auto-created by setup-micromamba action
+    echo "* Skipping conda install, we're on Github! *"
+fi
 
 echo "* Installing GAP requirements *"
-pip install quippy-ase
+pip install -r requirements_gap.txt
 
-echo "* Installing ASE from master branch *"
-pip install git+https://gitlab.com/ase/ase@f2615a6e9a
-
-# Finally install the mlptrain Python package in editable mode
+echo "* Installing mlptrain package in editable mode *"
 pip install -e .

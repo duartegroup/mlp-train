@@ -27,7 +27,7 @@ jobs:
     - uses: mamba-org/setup-micromamba@v1
       with:
         # the create command looks like this:
-        # `micromamba create -n test-env python=3.9`
+        # `micromamba create -n test-env python=3.9 -f environment.yml`
         environment-name: test-env
         cache-environment: true
         create-args: >-

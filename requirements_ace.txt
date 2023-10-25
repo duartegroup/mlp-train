@@ -1,0 +1,3 @@
+julia   # Python-Julia integration (this will not install Julia itself!)
+pyjulip@git+https://github.com/casv2/pyjulip.git@8316043f66 # Integration with ACE
+ase@git+https://gitlab.com/ase/ase@f2615a6e9a
