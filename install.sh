@@ -18,6 +18,7 @@ if [[ $CONDA_DEFAULT_ENV != "gha-test-env"  ]];then
     echo "Installing everything to a new conda environment called: $CONDA_ENV_NAME"
     $CONDAEXE env create -n ${CONDA_ENV_NAME} --file environment.yml
 else
+    CONDA_ENV_NAME="gha-test-env"
     # On GitHub the environment is auto-created by setup-micromamba action
     echo "* Skipping conda install, we're on Github, it's already there! *"
 fi
