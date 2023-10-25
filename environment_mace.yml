@@ -22,7 +22,6 @@ dependencies:
   - pytorch
   - torchvision
   - torchaudio
-  - e3nn
   - torch-ema
   # TODO: You might also need CUDA-specific libraries,
   # but that depends on CUDA version
@@ -30,5 +29,8 @@ dependencies:
   # - pytorch-cuda=11.8
   # - pytorch-cuda=12.1
   - pip:
+    # e3nn is available on conda as well, but it is a dependency of mace
+    # so needs to be installed together.
+    - e3nn
     - mace@git+https://github.com/ACEsuit/mace@v0.2.0
     - ase@git+https://gitlab.com/ase/ase@f2615a6e9a # for Plumed
