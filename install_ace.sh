@@ -2,21 +2,11 @@
 # Exit on error
 set -euo pipefail
 
+# Install mlptrain together with dependencies for ACE
 # NOTE: You need to install Julia >=1.6 before running this script!
 
-CONDA_ENV_NAME="mlptrain-ace"
-
-echo "* Looking for mamba or conda executable *"
-if which mamba; then
-    CONDAEXE=mamba
-elif which micromamba; then
-    CONDAEXE=micromamba
-elif which conda; then
-    CONDAEXE=conda
-else
-  echo "ERROR: conda executable not found!"
-  exit 1
-fi
+export CONDA_ENV_NAME=mlptrain-ace
+export CONDA_ENV_FILE=environment_ace.yml
 
 echo "* Looking for Julia executable *"
 if ! which julia; then
@@ -25,8 +15,7 @@ if ! which julia; then
   exit 1
 fi
 
-echo "Installing everything to a new conda environment called: $CONDA_ENV_NAME"
-$CONDAEXE env create -n ${CONDA_ENV_NAME} --file environment_ace.yml
+source create_conda_environment.sh
 # NOTE: `conda activate` does not work in scripts, we use `conda run` below.
 # https://stackoverflow.com/a/72395091
 
@@ -50,9 +39,6 @@ echo "ENV[\"PYTHON\"] = \"$(eval "which python")\"
 using Pkg
 Pkg.build(\"PyCall\")" > pycall.jl
 julia pycall.jl
-
-echo "* Installing mlptrain package in editable mode *" 
-conda run -n ${CONDA_ENV_NAME} pip install -e .
 
 rm -f add_julia_pkgs.jl pycall.jl
 echo "* DONE! *"
