@@ -29,7 +29,7 @@ jobs:
         # the create command looks like this:
         # `micromamba create -n test-env python=3.9 -f environment.yml`
         environment-file: environment.yml
-        environment-name: test-env
+        environment-name: gha-test-env
         cache-environment: true
         create-args: >-
           python=${{ matrix.python-version }}

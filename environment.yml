@@ -1,7 +1,8 @@
-# NOTE: We're purposefully do not specify the environment name
-# since this is reused for different envs (ACE, MACE, etc.)
-#name: mlptrain
-
+# Usage: mamba env create -n myenvname -f environment.yml
+---
+name: mlptrain
+channels:
+  - conda-forge
 dependencies:
   - python=3.9
   - pip
@@ -16,3 +17,6 @@ dependencies:
   - py-plumed
   - scipy
   - xtb
+  - pip:
+    - quippy-ase
+    - ase@git+https://gitlab.com/ase/ase@f2615a6e9a

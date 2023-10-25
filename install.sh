@@ -12,16 +12,16 @@ else
     exit 1
 fi
 
-if [[ $CONDA_DEFAULT_ENV != "test-env"  ]];then
-    echo "* Installing base dependencies via conda *"
-    $CONDAEXE install -c conda-forge --file environment.yml --yes
+CONDA_ENV_NAME="mlptrain"
+
+if [[ $CONDA_DEFAULT_ENV != "gha-test-env"  ]];then
+    echo "Installing everything to a new conda environment called: $CONDA_ENV_NAME"
+    $CONDAEXE env create -n ${CONDA_ENV_NAME} --file environment.yml
 else
     # On GitHub the environment is auto-created by setup-micromamba action
-    echo "* Skipping conda install, we're on Github! *"
+    echo "* Skipping conda install, we're on Github, it's already there! *"
 fi
 
-echo "* Installing GAP requirements *"
-pip install -r requirements_gap.txt
-
 echo "* Installing mlptrain package in editable mode *"
-pip install -e .
+$CONDAEXE run -n ${CONDA_ENV_NAME} pip install -e .
+echo "* DONE! *"
