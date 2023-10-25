@@ -9,6 +9,8 @@ CONDA_ENV_NAME="mlptrain-ace"
 echo "* Looking for mamba or conda executable *"
 if which mamba; then
   CONDAEXE=mamba
+elif which micromamba; then
+    CONDAEXE=micromamba
 elif which conda; then
   CONDAEXE=conda
 else
@@ -24,12 +26,12 @@ if ! which julia; then
 fi
 
 echo "Installing everything to a new conda environment called: $CONDA_ENV_NAME"
-$CONDAEXE env create -n ${CONDA_ENV_NAME} --file environment.yml
+$CONDAEXE env create -n ${CONDA_ENV_NAME} --file environment_ace.yml
 # NOTE: `conda activate` does not work in scripts, we use `conda run` below.
 # https://stackoverflow.com/a/72395091
 
-echo "* Installing other Python dependencies via pip *" 
-conda run -n ${CONDA_ENV_NAME} pip install -r requirements_ace.txt
+#echo "* Installing other Python dependencies via pip *" 
+#conda run -n ${CONDA_ENV_NAME} pip install -r requirements_ace.txt
 
 echo "* Adding required registries and packages to Julia *"
 echo "using Pkg

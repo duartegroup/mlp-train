@@ -1,6 +1,6 @@
 # Usage: mamba env create -n myenvname -f environment.yml
 ---
-name: mlptrain
+name: mlptrain-ace
 channels:
   - conda-forge
 dependencies:
@@ -18,7 +18,6 @@ dependencies:
   - scipy
   - xtb
   - pip:
-    # TODO: this seems to also be available on conda-forge as 'quippy'
-    # https://anaconda.org/conda-forge/quippy
-    - quippy-ase
-    - ase@git+https://gitlab.com/ase/ase@f2615a6e9a # for PLUMED
+    - julia   # Python-Julia integration (this will not install Julia itself!)
+    - pyjulip@git+https://github.com/casv2/pyjulip.git@72280a6ac3 # Integration with ACE
+    - ase@git+https://gitlab.com/ase/ase@f2615a6e9a # For PLUMED

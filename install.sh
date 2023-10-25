@@ -10,7 +10,7 @@ elif which micromamba; then
 elif which conda; then
     CONDAEXE=conda
 else
-    echo "* ERROR conda executable not found! *"
+    echo "* ERROR: conda executable not found! *"
     exit 1
 fi
 
