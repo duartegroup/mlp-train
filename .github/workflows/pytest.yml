@@ -45,3 +45,11 @@ jobs:
     - name: MACE install
       if: false
       run: ./install_mace.sh
+
+    - uses: mamba-org/setup-micromamba@v1
+      with:
+        environment-file: environment_mace.yml
+        environment-name: gha-test-env-mace
+        cache-environment: true
+        create-args: >-
+          python=${{ matrix.python-version }}
