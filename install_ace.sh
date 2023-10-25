@@ -24,7 +24,7 @@ if ! which julia; then
 fi
 
 echo "Installing everything to a new conda environment called: $CONDA_ENV_NAME"
-$CONDAEXE create -n ${CONDA_ENV_NAME} -f environment.yml -c conda-forge --yes
+$CONDAEXE create -n ${CONDA_ENV_NAME} --file environment.yml -c conda-forge --yes
 # NOTE: `conda activate` does not work in scripts, we use `conda run` below.
 # https://stackoverflow.com/a/72395091
 

@@ -14,7 +14,7 @@ fi
 
 if [[ $CONDA_DEFAULT_ENV != "test-env"  ]];then
     echo "* Installing base dependencies via conda *"
-    $CONDAEXE install -c conda-forge -f environment.yml --yes
+    $CONDAEXE install -c conda-forge --file environment.yml --yes
 else
     # On GitHub the environment is auto-created by setup-micromamba action
     echo "* Skipping conda install, we're on Github! *"
