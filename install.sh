@@ -5,6 +5,8 @@ set -o errexit
 echo "* Looking for mamba or conda executable *"
 if which mamba; then
     CONDAEXE=mamba
+elif which micromamba; then
+    CONDAEXE=micromamba
 elif which conda; then
     CONDAEXE=conda
 else
