@@ -1,4 +1,4 @@
-# Usage: mamba env create -n myenvname -f environment.yml
+# Usage: mamba env create -n myenvname -f environment_mace.yml
 ---
 name: mlptrain-mace
 channels:
