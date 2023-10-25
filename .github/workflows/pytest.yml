@@ -40,8 +40,34 @@ jobs:
     - name: Test basic install
       run: pytest
 
-      # NOTE: We're skipping this install to save CI time,
-      # but once there MACE-specific tests we should enable it.
-    - name: MACE install
-      if: false
-      run: ./install_mace.sh
+
+  test-mace:
+    name: MACE (${{ matrix.python-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: true
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.9"]
+      
+    defaults:
+      run:
+        shell: bash -l {0}
+        
+    steps:
+    - uses: actions/checkout@v4
+        
+    - uses: mamba-org/setup-micromamba@v1
+      with:
+        environment-file: environment_mace.yml
+        environment-name: gha-test-env
+        cache-environment: true
+        create-args: >-
+          python=${{ matrix.python-version }}
+
+    - name: Basic install
+      run: ./install.sh
+
+    - name: Test basic install
+      run: pytest
