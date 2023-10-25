@@ -44,4 +44,4 @@ jobs:
       # but once there MACE-specific tests we should enable it.
     - name: MACE install
       if: true
-      run: cd scripts && ./install_mace.sh
+      run: ./install_mace.sh
