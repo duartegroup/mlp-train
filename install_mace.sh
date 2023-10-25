@@ -1,5 +1,5 @@
-# Make sure to be in the scripts directory before running this script
-
+#!/usr/bin/env bash
+# Exit on error
 set -euo pipefail
 
 CONDA_ENV_NAME="mlptrain-mace"
@@ -14,7 +14,7 @@ else
   exit 1
 fi
 
-echo "* Installing everything to a new conda environment called: ${CONDA_ENV_NAME}*"
+echo "* Installing everything to a new conda environment called: ${CONDA_ENV_NAME} *"
 
 echo "* Installing mlp-train dependencies via conda *"
 $CONDAEXE create -n ${CONDA_ENV_NAME} -f environment.yml -c conda-forge --yes

@@ -1,9 +1,8 @@
-#!/bin/bash
-
-# NOTE: You need to install Julia >=1.6 before running this script!
-
+#!/usr/bin/env bash
 # Exit on error
 set -euo pipefail
+
+# NOTE: You need to install Julia >=1.6 before running this script!
 
 CONDA_ENV_NAME="mlptrain-ace"
 
@@ -20,6 +19,7 @@ fi
 echo "* Looking for Julia executable *"
 if ! which julia; then
   echo "* ERROR: julia not found! *"
+  echo "* Install Julia >= 1.6 first and add it to your PATH *"
   exit 1
 fi
 
