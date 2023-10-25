@@ -35,7 +35,7 @@ jobs:
           python=${{ matrix.python-version }}
 
     - name: Basic install
-      run: ./install.sh
+      run: ./install_gap.sh
 
     - name: List installed packages
       run: micromamba list
