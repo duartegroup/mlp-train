@@ -1,19 +1,36 @@
+[![Test with pytest](https://github.com/duartegroup/mlp-train/actions/workflows/pytest.yml/badge.svg?event=push)](https://github.com/duartegroup/mlp-train/actions/workflows/pytest.yml)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 # mlp-train
-General machine learnt potential (MLP) training for molecular systems
+General machine learning potentials (MLP) training for molecular systems in gas phase and solution
+
+Available models:
+- GAP
+- ACE
+- MACE
+
 
 ***
 ### Install
 
+Each model is installed into individual conda environment:
+
 ```
-./install.sh
+# Install GAP
+./install_gap.sh
+
+# Install ACE
+./install_ace.sh
+
+#Install MACE
+./install_mace.sh 
 ```
 
-Machine learning potentials can be installed directly from [scripts/](scripts).
 
 ### Notes
 
-- Units are: distance (Å), energy (eV), force (eV Å-1), time (fs)
-- Training using molecular mechanics (MM) is not supported as we've not found it to be efficient
+- Units are: distance (Å), energy (eV), force (eV Å$`^{-1}`$), time (fs)
 
 ## Citation
 
