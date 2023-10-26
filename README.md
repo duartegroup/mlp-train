@@ -30,7 +30,7 @@ Each model is installed into individual conda environment:
 
 ### Notes
 
-- Units are: distance (Å), energy (eV), force (eV Å$^{-1}`$), time (fs)
+- Units are: distance (Å), energy (eV), force (eV Å$^{-1}$), time (fs)
 
 ## Citation
 
