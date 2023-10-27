@@ -268,6 +268,10 @@ def baised_md(configuration, mlp, temp, dt, interval, bias, **kwargs):
                                      rng=RandomState())
     
     traj = ASETrajectory("tmp.traj", 'w', ase_atoms)
+    energies = []
+
+    def append_energy(_atoms=ase_atoms):
+        energies.append(_atoms.get_potential_energy())
 
     if temp > 0:                                         # Default Langevin NVT
         dyn = Langevin(ase_atoms, dt * ase_units.fs,
@@ -285,7 +289,7 @@ def baised_md(configuration, mlp, temp, dt, interval, bias, **kwargs):
     trajectory = mlt.ConfigurationSet()
     for i in range(10, len(traj)):
         trajectory.append(traj[i])
-    energies = energies[10:] # noqa: F821
+    energies = energies[10:]
   
     for i, (frame, energy) in enumerate(zip(trajectory, energies)):
         frame.update_attr_from(configuration)
@@ -314,7 +318,7 @@ def generate_rs(TS, solution, mlp, box_size):
     for i, species in enumerate(reactants):
         bias = mlt.Bias(zeta_func=mlt.AverageDistance((1,12), (6,11)), kappa=0.5, reference=ref[i])
         traj = baised_md(configuration=species,
-                              mlp=endo, # noqa: F821
+                              mlp=mlp,
                               temp=300,
                               dt=0.5,
                               interval=20,
