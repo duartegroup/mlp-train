@@ -32,13 +32,9 @@ def _distorted_methane():
 
 
 def test_selection_on_structures():
+    import dscribe
 
     configs = mlt.ConfigurationSet()
-
-    try:
-        import dscribe  # noqa: F401 
-    except ModuleNotFoundError:
-        return
 
     file_path = os.path.join(here, 'data', 'methane.xyz')
     configs.load_xyz(filename=file_path,

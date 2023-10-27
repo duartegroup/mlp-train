@@ -1,0 +1,22 @@
+# Usage: mamba env create -n myenvname -f environment.yml
+---
+name: mlptrain
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip
+  - ase
+  - autode=1.1
+  - coloredlogs
+  - cython
+  - dscribe=2.0
+  - matplotlib-base
+  - numpy
+  - pytest
+  - py-plumed
+  - scipy
+  - xtb
+  - quippy  # GAP
+  - pip:
+    - ase@git+https://gitlab.com/ase/ase@f2615a6e9a # for PLUMED

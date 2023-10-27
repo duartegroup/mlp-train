@@ -1,0 +1,23 @@
+# Usage: mamba env create -n myenvname -f environment_ace.yml
+---
+name: mlptrain-ace
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip
+  - ase
+  - autode=1.1
+  - coloredlogs
+  - cython
+  - dscribe=2.0
+  - matplotlib-base
+  - numpy
+  - pytest
+  - py-plumed
+  - scipy
+  - xtb
+  - pip:
+    - julia   # Python-Julia integration (this will not install Julia itself!)
+    - pyjulip@git+https://github.com/casv2/pyjulip.git@72280a6ac3 # Integration with ACE
+    - ase@git+https://gitlab.com/ase/ase@f2615a6e9a # For PLUMED
