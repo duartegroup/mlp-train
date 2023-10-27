@@ -1,4 +1,3 @@
-#!/bin/bash
 # NOTE: This script should not be called on its own,
 # but should be sourced from other install scripts such as install_ace.sh
 set -euo pipefail
