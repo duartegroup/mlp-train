@@ -1,8 +1,8 @@
 [![Test with pytest](https://github.com/duartegroup/mlp-train/actions/workflows/pytest.yml/badge.svg?event=push)](https://github.com/duartegroup/mlp-train/actions/workflows/pytest.yml)
-[![GitHub issues](https://img.shields.io/github/issues/duartegroup/mlp-train.svg)](https://github.com/duartegroup/mlp-train/issues)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License](https://img.shields.io/badge/License-MIT%202.0-blue.svg)](https://opensource.org/licenses/mit)
-[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
+[![GitHub issues](https://img.shields.io/github/issues/duartegroup/mlp-train.svg)](https://github.com/duartegroup/mlp-train/issues)
 
 # mlp-train
 General machine learning potentials (MLP) training for molecular systems in gas phase and solution
@@ -34,15 +34,15 @@ Each model is installed into individual conda environment:
 
 ## For developers
 
-We are happy to accept pull requests from users. Please first fork mlp-train repository. We use pre-commit, Ruff and pytest to check the code. Your PR needs to pass through these checks before is accepted. Pre-commit is installed as one the dependecies. To use it in your repository, run the following command in the mlp-train folder:
+We are happy to accept pull requests from users. Please first fork mlp-train repository. We use `pre-commit`, `Ruff` and `pytest` to check the code. Your PR needs to pass through these checks before is accepted. `Pre-commit` is installed as one the dependecies. To use it in your repository, run the following command in the mlp-train folder:
 
 ```
 pre-commit install 
 ```
 
-Pre-commit will then run automatically at each commit and will take care of installation and running of Ruff.
+`Pre-commit` will then run automatically at each commit and will take care of installation and running of `Ruff`.
 
-## REFERENCES
+## References
 
 If _mlptrain_ is used in a publication please consider citing the [paper](https://doi.org/10.1039/D2CP02978B):
 
@@ -58,7 +58,7 @@ If _mlptrain_ is used in a publication please consider citing the [paper](https:
 }
 ```
 
-## CONTACT
+## Contact
 
 For bugs or implementation requests, please use [GitHub Issues](https://github.com/duartegroup/mlp-train/issues)
 
