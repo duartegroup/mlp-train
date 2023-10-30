@@ -142,6 +142,7 @@ def run_mlp_md_openmm(
     return traj_openmm
 
 
+# TODO: This function is already defined in md.py!
 def _n_simulation_steps(dt: float, kwargs: dict) -> int:
     """
     Calculate the number of simulation steps from a set of keyword
@@ -174,26 +175,6 @@ def _n_simulation_steps(dt: float, kwargs: dict) -> int:
     n_steps = max(int(time_fs / dt), 1)  # Run at least one step
 
     return n_steps
-
-
-def _traj_saving_interval(dt: float, kwargs: dict) -> int:
-    """Calculate the interval at which a trajectory is saved"""
-
-    if 'save_ps' in kwargs:
-        time_fs = 1e3 * kwargs['save_ps']
-
-    elif 'save_fs' in kwargs:
-        time_fs = kwargs['save_fs']
-
-    elif 'save_ns' in kwargs:
-        time_fs = 1e6 * kwargs['save_ns']
-
-    else:
-        raise ValueError('Saving time not found')
-
-    saving_interval = max(int(time_fs / dt), 1)
-
-    return saving_interval
 
 
 def _run_mlp_md_openmm(
