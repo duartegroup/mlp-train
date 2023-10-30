@@ -1,12 +1,11 @@
 import copy
 from typing import Optional, Sequence, List
-from mlptrain.configurations import Configuration, Trajectory
-from mlptrain.log import logger
-from mlptrain.box import Box
+
+import mlptrain as mlt
 
 
-def run_mlp_md_openmm(configuration:      'mlptrain.Configuration',
-               mlp:                'mlptrain.potentials._base.MLPotential',
+def run_mlp_md_openmm(configuration: 'mlt.Configuration',
+               mlp:                'mlt.potentials._base.MLPotential',
                temp:               float,
                dt:                 float,
                interval:           int,
@@ -18,7 +17,7 @@ def run_mlp_md_openmm(configuration:      'mlptrain.Configuration',
                copied_substrings:  Optional[Sequence[str]] = None,
                kept_substrings:    Optional[Sequence[str]] = None,
                **kwargs
-               ) -> 'mlptrain.Trajectory':
+               ) -> 'mlt.Trajectory':
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics. The function is executed in a temporary
@@ -50,7 +49,7 @@ def run_mlp_md_openmm(configuration:      'mlptrain.Configuration',
         fbond_energy: (dict | None) As bbond_energy but in the direction to
                          form a bond
 
-        bias: (mlptrain.Bias | mlptrain.PlumedBias) mlp-train constrain
+        bias: (mlt.Bias | mltr.PlumedBias) mlp-train constrain
               to use in the dynamics
 
         restart_files: List of files which are needed for restarting the
@@ -78,7 +77,7 @@ def run_mlp_md_openmm(configuration:      'mlptrain.Configuration',
 
     Returns:
 
-        (mlptrain.Trajectory):
+        (mlt.Trajectory):
     """
 
 
@@ -95,8 +94,8 @@ def run_mlp_md_openmm(configuration:      'mlptrain.Configuration',
     copied_substrings_list.extend(['.xml', '.json', '.pth', '.model'])
 
     if restart:
-        logger.error('Restarting MLP MD with OpenMM not implemented')
-        logger.info('Restarting MLP MD')
+        mlt.log.logger.error('Restarting MLP MD with OpenMM not implemented')
+        mlt.log.logger.info('Restarting MLP MD')
 
         if not isinstance(restart_files, list):
             raise TypeError('Restart files must be a list')
@@ -114,7 +113,7 @@ def run_mlp_md_openmm(configuration:      'mlptrain.Configuration',
         kept_substrings_list.extend(restart_files)
 
     else:
-        logger.info('Running MLP MD')
+        mlt.log.logger.info('Running MLP MD')
 
 
 
@@ -150,7 +149,7 @@ def _n_simulation_steps(dt: float,
         (int): Number of simulation steps to perform
     """
     if dt < 0.09 or dt > 5:
-        logger.warning('Unexpectedly small or large timestep - is it in fs?')
+        mlt.log.logger.warning('Unexpectedly small or large timestep - is it in fs?')
 
     if 'ps' in kwargs:
         time_fs = 1E3 * kwargs['ps']
@@ -191,8 +190,8 @@ def _traj_saving_interval(dt: float,
     return saving_interval
 
 
-def _run_mlp_md_openmm(configuration:  'mlptrain.Configuration',
-                mlp:            'mlptrain.potentials._base.MLPotential',
+def _run_mlp_md_openmm(configuration:  'mlt.Configuration',
+                mlp:            'mlt.potentials._base.MLPotential',
                 temp:           float,
                 dt:             float,
                 interval:       int,
@@ -202,7 +201,7 @@ def _run_mlp_md_openmm(configuration:  'mlptrain.Configuration',
                 bias:           Optional = None,
                 restart_files:  Optional[List[str]] = None,
                 **kwargs
-                ) -> 'mlptrain.Trajectory':
+                ) -> 'mlt.Trajectory':
     
     """
     Run molecular dynamics on a system using a MLP to predict energies and
@@ -226,8 +225,8 @@ def _run_mlp_md_openmm(configuration:  'mlptrain.Configuration',
     n_steps = _n_simulation_steps(dt=dt, kwargs=kwargs)
 
     if mlp.requires_non_zero_box_size and configuration.box is None:
-        logger.warning('Assuming vaccum simulation. Box size = 1000 nm^3')
-        configuration.box = Box([100, 100, 100])
+        mlt.log.logger.warning('Assuming vaccum simulation. Box size = 1000 nm^3')
+        configuration.box = mlt.Box([100, 100, 100])
 
 
     ase_atoms = configuration.ase_atoms
@@ -267,7 +266,7 @@ def _run_mlp_md_openmm(configuration:  'mlptrain.Configuration',
 
     # create MLP train trajectory to save frames into
 
-    mlt_traj = Trajectory()
+    mlt_traj = mlt.Trajectory()
 
     
     print("running using OpenMM for ", n_steps, " steps with saving interval", interval)
@@ -278,7 +277,7 @@ def _run_mlp_md_openmm(configuration:  'mlptrain.Configuration',
     coordinates = state.getPositions(asNumpy=True).value_in_unit(unit.angstrom)
     energy = state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
 
-    config = Configuration()
+    config = mlt.Configuration()
     config.atoms = copy.deepcopy(configuration.atoms)
     config.box = copy.deepcopy(configuration.box)
 
@@ -299,7 +298,7 @@ def _run_mlp_md_openmm(configuration:  'mlptrain.Configuration',
         coordinates = state.getPositions(asNumpy=True).value_in_unit(unit.angstrom)
         energy = state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
 
-        config = Configuration()
+        config = mlt.Configuration()
         config.atoms = copy.deepcopy(configuration.atoms)
         config.box = copy.deepcopy(configuration.box)
 
