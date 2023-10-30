@@ -42,7 +42,7 @@ pre-commit install
 
 `Pre-commit` will then run automatically at each commit and will take care of installation and running of `Ruff`.
 
-## References
+## Citations
 
 If _mlptrain_ is used in a publication please consider citing the [paper](https://doi.org/10.1039/D2CP02978B):
 
