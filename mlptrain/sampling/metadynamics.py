@@ -1,3 +1,5 @@
+import mlptrain
+import ase
 import os
 import re
 import time
@@ -1077,7 +1079,7 @@ class Metadynamics:
         average = normal * hist
         average_sq = normal * hist**2
 
-        for hist_file in glob.glob(f'analysis.*.hist.dat'):
+        for hist_file in glob.glob('analysis.*.hist.dat'):
             tnormal, new_hist, _ = self._read_histogram(filename=hist_file,
                                                         n_bins=n_bins)
             normal += tnormal
@@ -1089,7 +1091,7 @@ class Metadynamics:
         variance = (average_sq / normal) - average**2
         variance *= (normal / (normal - (normal_sq / normal)))
 
-        n_grids = 1 + len(glob.glob(f'analysis.*.hist.dat'))
+        n_grids = 1 + len(glob.glob('analysis.*.hist.dat'))
         hist_error = np.sqrt(variance / n_grids)
 
         fes_error = ase_units.kB * temp * hist_error

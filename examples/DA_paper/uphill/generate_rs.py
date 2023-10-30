@@ -4,6 +4,8 @@ from mlptrain.box import Box
 from mlptrain.log import logger
 from mlptrain.config import Config
 from mlptrain.md import  _convert_ase_traj
+from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+from numpy.random import RandomState
 import numpy as np
 
 mlt.Config.n_cores = 10
@@ -28,13 +30,13 @@ def from_ase_to_autode(atoms):
 
 def solvation(solute_config, solvent_config, apm, radius, enforce = True):
     """same function applied in training an MLP for reaction in explicit water
-       solute: mlt.Configuration() solute.box != None
-       solvent: mlt.Configuration() solvent.box != None
+       solute: mlt.Configuration() solute.box is not None
+       solvent: mlt.Configuration() solvent.box is not None
        aps: number of atoms per solvent molecule
        radius: cutout radius around each solute atom
        enforce: True / False Wrap solvent regardless of previous solvent PBC choices"""
-    assert solute_config.box != None, 'configuration must have box'
-    assert solvent_config.box != None, 'configuration must have box'
+    assert solute_config.box is not None, 'configuration must have box'
+    assert solvent_config.box is not None, 'configuration must have box'
 
     solute = solute_config.ase_atoms
     solvent = solvent_config.ase_atoms
@@ -135,7 +137,7 @@ def mlpmd_fix_solute(solute, configuration, mlp, temp, dt, interval, n_steps, **
     from ase.io.trajectory import Trajectory as ASETrajectory
     from ase.md.langevin import Langevin
     from ase import units as ase_units
-    assert configuration.box != None, 'configuration must have box'
+    assert configuration.box is not None, 'configuration must have box'
 
     logger.info('Run MLP MD with fixed solute (solute coords should at the first in configuration coords) by MLP')
 
@@ -174,7 +176,7 @@ def optimize_sys(configuration, mlp, **kwargs):
     # applied MLP to optimised geometry with BFGS method
     from ase.io.trajectory import Trajectory as ASETrajectory
     from ase.optimize import BFGS
-    assert configuration.box != None, 'configuration must have box'
+    assert configuration.box is not None, 'configuration must have box'
 
     logger.info('Optimise the configuratoin with fixed solute (solute coords should at the first in configuration coords) by MLP')
 
@@ -266,6 +268,10 @@ def baised_md(configuration, mlp, temp, dt, interval, bias, **kwargs):
                                      rng=RandomState())
     
     traj = ASETrajectory("tmp.traj", 'w', ase_atoms)
+    energies = []
+
+    def append_energy(_atoms=ase_atoms):
+        energies.append(_atoms.get_potential_energy())
 
     if temp > 0:                                         # Default Langevin NVT
         dyn = Langevin(ase_atoms, dt * ase_units.fs,
@@ -312,7 +318,7 @@ def generate_rs(TS, solution, mlp, box_size):
     for i, species in enumerate(reactants):
         bias = mlt.Bias(zeta_func=mlt.AverageDistance((1,12), (6,11)), kappa=0.5, reference=ref[i])
         traj = baised_md(configuration=species,
-                              mlp=endo,
+                              mlp=mlp,
                               temp=300,
                               dt=0.5,
                               interval=20,

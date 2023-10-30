@@ -32,7 +32,6 @@ def _distorted_methane():
 
 
 def test_selection_on_structures():
-    import dscribe
 
     configs = mlt.ConfigurationSet()
 

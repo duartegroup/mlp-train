@@ -1,3 +1,4 @@
+import ase
 import numpy as np
 import mlptrain as mlt
 from copy import deepcopy
@@ -13,7 +14,7 @@ class MLPotential(ABC):
 
     def __init__(self,
                  name:   str,
-                 system: 'mlptrain.System'):
+                 system: 'mlt.System'):
         """
         Machine learnt potential. Name defines the name of the potential
         which will be saved. Training data is populated
@@ -31,7 +32,7 @@ class MLPotential(ABC):
         self.atomic_energies = {}
 
     def train(self,
-              configurations: Optional['mlptrain.ConfigurationSet'] = None
+              configurations: Optional['mlt.ConfigurationSet'] = None
               ) -> None:
         """
         Train this potential on a set of configurations
@@ -89,7 +90,7 @@ class MLPotential(ABC):
 
         -----------------------------------------------------------------------
         Arguments:
-            args (mlptrain.ConfigurationSet | mlptrain.Configuration):
+            args (mlt.ConfigurationSet | mlt.Configuration):
         """
         all_configurations = mlt.ConfigurationSet()
 
@@ -121,17 +122,17 @@ class MLPotential(ABC):
         return None
 
     @property
-    def training_data(self) -> 'mlptrain.ConfigurationSet':
+    def training_data(self) -> 'mlt.ConfigurationSet':
         """Training data which this potential was trained on
 
         Returns:
-            (mlptrain.ConfigurationSet):
+            (mlt.ConfigurationSet):
         """
         return self._training_data
 
     @training_data.setter
     def training_data(self,
-                      value: Optional['mlptrain.ConfigurationSet']):
+                      value: Optional['mlt.ConfigurationSet']):
         """Set the training date for this MLP"""
 
         if value is None:
@@ -195,7 +196,7 @@ class MLPotential(ABC):
 
     def al_train_then_bias(self,
                            method_name: str,
-                           coordinate: 'mlptrain.sampling.ReactionCoordinate',
+                           coordinate: 'mlt.sampling.ReactionCoordinate',
                            min_coordinate: Optional[float] = None,
                            max_coordinate: Optional[float] = None,
                            **kwargs
@@ -261,7 +262,7 @@ class MLPotential(ABC):
     def _best_bias_init_frame(self,
                               value:  float,
                               values: np.ndarray
-                              ) -> 'mlptrain.configurations.ConfigurationSet':
+                              ) -> 'mlt.configurations.ConfigurationSet':
         """
         Get the closest single frame as a configuration set to start a biased
         AL loop, where the closest distance from the value to any one of the

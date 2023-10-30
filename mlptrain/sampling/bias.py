@@ -1,3 +1,4 @@
+import mlptrain
 from mlptrain.sampling._base import Function, ASEConstraint
 
 

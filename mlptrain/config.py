@@ -1,4 +1,4 @@
-from autode.wrappers.keywords import *
+from autode.wrappers.keywords import GradientKeywords
 
 
 class _ConfigClass:

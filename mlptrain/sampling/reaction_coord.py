@@ -1,3 +1,4 @@
+import mlptrain
 import numpy as np
 import ase
 import mlptrain as mlt

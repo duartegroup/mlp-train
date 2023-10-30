@@ -1,10 +1,9 @@
 import mlptrain as mlt
 import numpy as np
-from autode.atoms import Atoms, Atom
+from autode.atoms import Atom
 from mlptrain.log import logger
 from mlptrain.box import Box
 from mlptrain.training.selection import MaxAtomicEnvDistance
-import random
 
 mlt.Config.n_cores = 10
 mlt.Config.orca_keywords = ['wB97M-D3BJ', 'def2-TZVP','def2/J', 'RIJCOSX','EnGrad']
@@ -30,7 +29,6 @@ def add_water(solute, n = 2):
        n: number of water molecules to add"""
     from ase import Atoms
     from ase.calculators.tip3p import rOH, angleHOH
-    from ase.io import read , write
 
     # water molecule
     x = angleHOH * np.pi / 180 / 2
@@ -46,7 +44,7 @@ def add_water(solute, n = 2):
     water0.rotate(180, 'x')
     water0.rotate(180, 'z')
 
-    assert solute.box != None, 'configuration must have box'
+    assert solute.box is not None, 'configuration must have box'
     sol = solute.ase_atoms
     sol.center()
     sys = sol.copy()
@@ -104,13 +102,13 @@ def solvation(solute_config, solvent_config, apm, radius, enforce = True):
     """function to generate solvated system by adding the solute at the center of box,
        then remove the overlapped solvent molecules
        adapted from https://doi.org/10.1002/qua.26343
-       solute: mlt.Configuration() solute.box != None
-       solvent: mlt.Configuration() solvent.box != None
+       solute: mlt.Configuration() solute.box is not None
+       solvent: mlt.Configuration() solvent.box is not None
        aps: number of atoms per solvent molecule
        radius: cutout radius around each solute atom
        enforce: True / False Wrap solvent regardless of previous solvent PBC choices"""
-    assert solute_config.box != None, 'configuration must have box'
-    assert solvent_config.box != None, 'configuration must have box'
+    assert solute_config.box is not None, 'configuration must have box'
+    assert solvent_config.box is not None, 'configuration must have box'
 
     solute = solute_config.ase_atoms
     solvent = solvent_config.ase_atoms
@@ -221,7 +219,7 @@ def generate_init_configs(n, bulk_water = True, TS = True):
               
     # TS bounded with two water molecules at carbonyl group to form hydrogen bond
     else:
-        assert TS == True, 'cannot generate initial configuration'
+        assert TS is True, 'cannot generate initial configuration'
         for i in range(n):
             TS_with_water = add_water(solute=TS, n=2)
             init_configs.append(TS_with_water)

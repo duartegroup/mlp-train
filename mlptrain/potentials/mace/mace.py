@@ -1,3 +1,6 @@
+import ase
+import mlptrain
+import argparse
 import os
 import ast
 import time
@@ -16,9 +19,9 @@ try:
     import torch
     import torch.nn.functional
     import mace
+    import torch_ema
     from e3nn import o3
     from torch.optim.swa_utils import SWALR, AveragedModel
-    from torch_ema import ExponentialMovingAverage
     from mace import data, modules, tools
     from mace.tools import torch_geometric, torch_tools, utils
     from mace.tools.scripts_utils import create_error_table
@@ -735,7 +738,7 @@ class MACE(MLPotential):
         if self._ema is None:
 
             if Config.mace_params['ema']:
-                self._ema = ExponentialMovingAverage(
+                self._ema = torch_ema.ExponentialMovingAverage(
                     self.model.parameters(),
                     decay=Config.mace_params['ema_decay'])
 
