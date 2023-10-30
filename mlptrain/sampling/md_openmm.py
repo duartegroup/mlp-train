@@ -4,20 +4,21 @@ from typing import Optional, Sequence, List
 import mlptrain as mlt
 
 
-def run_mlp_md_openmm(configuration: 'mlt.Configuration',
-               mlp:                'mlt.potentials._base.MLPotential',
-               temp:               float,
-               dt:                 float,
-               interval:           int,
-               init_temp:          Optional[float] = None,
-               fbond_energy:       Optional[dict] = None,
-               bbond_energy:       Optional[dict] = None,
-               bias:               Optional = None,
-               restart_files:      Optional[List[str]] = None,
-               copied_substrings:  Optional[Sequence[str]] = None,
-               kept_substrings:    Optional[Sequence[str]] = None,
-               **kwargs
-               ) -> 'mlt.Trajectory':
+def run_mlp_md_openmm(
+    configuration: 'mlt.Configuration',
+    mlp: 'mlt.potentials._base.MLPotential',
+    temp: float,
+    dt: float,
+    interval: int,
+    init_temp: Optional[float] = None,
+    fbond_energy: Optional[dict] = None,
+    bbond_energy: Optional[dict] = None,
+    bias: Optional = None,
+    restart_files: Optional[List[str]] = None,
+    copied_substrings: Optional[Sequence[str]] = None,
+    kept_substrings: Optional[Sequence[str]] = None,
+    **kwargs,
+) -> 'mlt.Trajectory':
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and OpenMM to drive dynamics. The function is executed in a temporary
@@ -80,7 +81,6 @@ def run_mlp_md_openmm(configuration: 'mlt.Configuration',
         (mlt.Trajectory):
     """
 
-
     restart = restart_files is not None
 
     if copied_substrings is None:
@@ -102,12 +102,16 @@ def run_mlp_md_openmm(configuration: 'mlt.Configuration',
 
         for file in restart_files:
             if not isinstance(file, str):
-                raise TypeError('Restart files must be a list of strings '
-                                'specifying filenames')
+                raise TypeError(
+                    'Restart files must be a list of strings '
+                    'specifying filenames'
+                )
 
         if not any(file.endswith('.traj') for file in restart_files):
-            raise ValueError('Restaring a simulation requires a .traj file '
-                             'from the previous simulation')
+            raise ValueError(
+                'Restaring a simulation requires a .traj file '
+                'from the previous simulation'
+            )
 
         copied_substrings_list.extend(restart_files)
         kept_substrings_list.extend(restart_files)
@@ -115,28 +119,24 @@ def run_mlp_md_openmm(configuration: 'mlt.Configuration',
     else:
         mlt.log.logger.info('Running MLP MD')
 
-
-
-    traj_openmm = _run_mlp_md_openmm(configuration=configuration,
-                                 mlp=mlp,
-                                 temp=temp,
-                                 dt=dt,
-                                 interval=interval,
-                                 init_temp=init_temp,
-                                 fbond_energy=fbond_energy,
-                                 bbond_energy=bbond_energy,
-                                 bias=bias,
-                                 restart_files=restart_files,
-                                 **kwargs)
-
+    traj_openmm = _run_mlp_md_openmm(
+        configuration=configuration,
+        mlp=mlp,
+        temp=temp,
+        dt=dt,
+        interval=interval,
+        init_temp=init_temp,
+        fbond_energy=fbond_energy,
+        bbond_energy=bbond_energy,
+        bias=bias,
+        restart_files=restart_files,
+        **kwargs,
+    )
 
     return traj_openmm
 
 
-
-def _n_simulation_steps(dt: float,
-                        kwargs: dict
-                        ) -> int:
+def _n_simulation_steps(dt: float, kwargs: dict) -> int:
     """
     Calculate the number of simulation steps from a set of keyword
     arguments e.g. kwargs = {'fs': 100}
@@ -149,38 +149,38 @@ def _n_simulation_steps(dt: float,
         (int): Number of simulation steps to perform
     """
     if dt < 0.09 or dt > 5:
-        mlt.log.logger.warning('Unexpectedly small or large timestep - is it in fs?')
+        mlt.log.logger.warning(
+            'Unexpectedly small or large timestep - is it in fs?'
+        )
 
     if 'ps' in kwargs:
-        time_fs = 1E3 * kwargs['ps']
+        time_fs = 1e3 * kwargs['ps']
 
     elif 'fs' in kwargs:
         time_fs = kwargs['fs']
 
     elif 'ns' in kwargs:
-        time_fs = 1E6 * kwargs['ns']
+        time_fs = 1e6 * kwargs['ns']
 
     else:
         raise ValueError('Simulation time not found')
 
-    n_steps = max(int(time_fs / dt), 1)                 # Run at least one step
+    n_steps = max(int(time_fs / dt), 1)  # Run at least one step
 
     return n_steps
 
 
-def _traj_saving_interval(dt: float,
-                          kwargs: dict
-                          ) -> int:
+def _traj_saving_interval(dt: float, kwargs: dict) -> int:
     """Calculate the interval at which a trajectory is saved"""
 
     if 'save_ps' in kwargs:
-        time_fs = 1E3 * kwargs['save_ps']
+        time_fs = 1e3 * kwargs['save_ps']
 
     elif 'save_fs' in kwargs:
         time_fs = kwargs['save_fs']
 
     elif 'save_ns' in kwargs:
-        time_fs = 1E6 * kwargs['save_ns']
+        time_fs = 1e6 * kwargs['save_ns']
 
     else:
         raise ValueError('Saving time not found')
@@ -190,19 +190,19 @@ def _traj_saving_interval(dt: float,
     return saving_interval
 
 
-def _run_mlp_md_openmm(configuration:  'mlt.Configuration',
-                mlp:            'mlt.potentials._base.MLPotential',
-                temp:           float,
-                dt:             float,
-                interval:       int,
-                init_temp:      Optional[float] = None,
-                fbond_energy:   Optional[dict] = None,
-                bbond_energy:   Optional[dict] = None,
-                bias:           Optional = None,
-                restart_files:  Optional[List[str]] = None,
-                **kwargs
-                ) -> 'mlt.Trajectory':
-    
+def _run_mlp_md_openmm(
+    configuration: 'mlt.Configuration',
+    mlp: 'mlt.potentials._base.MLPotential',
+    temp: float,
+    dt: float,
+    interval: int,
+    init_temp: Optional[float] = None,
+    fbond_energy: Optional[dict] = None,
+    bbond_energy: Optional[dict] = None,
+    bias: Optional = None,
+    restart_files: Optional[List[str]] = None,
+    **kwargs,
+) -> 'mlt.Trajectory':
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and OpenMM to drive dynamics
@@ -213,21 +213,24 @@ def _run_mlp_md_openmm(configuration:  'mlt.Configuration',
         import openmm.app as app
         import openmm.unit as unit
     except ImportError:
-        raise ImportError("Cannot import OpenMM. Please make sure OpenMM is installed.")
-    
+        raise ImportError(
+            'Cannot import OpenMM. Please make sure OpenMM is installed.'
+        )
+
     try:
         from openmmml import MLPotential
     except ImportError:
-        raise ImportError("Cannot import OpenMM-ML")
-    
+        raise ImportError('Cannot import OpenMM-ML')
+
     from sys import stdout
-    
+
     n_steps = _n_simulation_steps(dt=dt, kwargs=kwargs)
 
     if mlp.requires_non_zero_box_size and configuration.box is None:
-        mlt.log.logger.warning('Assuming vaccum simulation. Box size = 1000 nm^3')
+        mlt.log.logger.warning(
+            'Assuming vaccum simulation. Box size = 1000 nm^3'
+        )
         configuration.box = mlt.Box([100, 100, 100])
-
 
     ase_atoms = configuration.ase_atoms
 
@@ -235,14 +238,13 @@ def _run_mlp_md_openmm(configuration:  'mlt.Configuration',
     topology = app.Topology()
     chain = topology.addChain()
 
-    positions = ase_atoms.get_positions()*unit.angstrom
+    positions = ase_atoms.get_positions() * unit.angstrom
     atomic_numbers = ase_atoms.get_atomic_numbers()
 
     for atomic_number in atomic_numbers:
         residue = topology.addResidue(name='X', chain=chain)
         element = app.Element.getByAtomicNumber(atomic_number)
-        topology.addAtom(element.name,element,residue)
-
+        topology.addAtom(element.name, element, residue)
 
     # use the mace model with openmm-ml
     # make sure total energy is used
@@ -250,23 +252,36 @@ def _run_mlp_md_openmm(configuration:  'mlt.Configuration',
     system = potential.createSystem(topology, interaction_energy=False)
 
     # setup OpenMM simulation with Langevin dynamics
-    integrator = mm.LangevinIntegrator(300*unit.kelvin, 1.0/unit.picoseconds, dt*unit.femtoseconds)
-    simulation=app.Simulation(topology, system, integrator)
+    integrator = mm.LangevinIntegrator(
+        300 * unit.kelvin, 1.0 / unit.picoseconds, dt * unit.femtoseconds
+    )
+    simulation = app.Simulation(topology, system, integrator)
     simulation.context.setPositions(positions)
-    simulation.context.setVelocitiesToTemperature(temp*unit.kelvin)
+    simulation.context.setVelocitiesToTemperature(temp * unit.kelvin)
 
     interval = int(interval)
 
-    simulation.reporters.append(app.StateDataReporter(stdout, interval, step=True,
-            potentialEnergy=True, temperature=True, speed=True))
-
+    simulation.reporters.append(
+        app.StateDataReporter(
+            stdout,
+            interval,
+            step=True,
+            potentialEnergy=True,
+            temperature=True,
+            speed=True,
+        )
+    )
 
     # create MLP train trajectory to save frames into
 
     mlt_traj = mlt.Trajectory()
 
-    
-    mlt.log.logger.info("Running using OpenMM for ", n_steps, " steps with saving interval", interval)
+    mlt.log.logger.info(
+        'Running using OpenMM for ',
+        n_steps,
+        ' steps with saving interval',
+        interval,
+    )
 
     # add the first config using energies from current MLP
     state = simulation.context.getState(getPositions=True, getEnergy=True)
@@ -281,19 +296,23 @@ def _run_mlp_md_openmm(configuration:  'mlt.Configuration',
     for i, position in enumerate(coordinates):
         config.atoms[i].coord = position
 
-    config.energy.predicted = energy/96.48530749925793 # kj/mol -> eV
+    config.energy.predicted = energy / 96.48530749925793  # kj/mol -> eV
     config.time = 0.0
 
     mlt_traj.append(config)
 
     # now run for n_steps saving at every interval
-    for j in range (n_steps//interval):
+    for j in range(n_steps // interval):
         simulation.step(interval)
 
         state = simulation.context.getState(getPositions=True, getEnergy=True)
 
-        coordinates = state.getPositions(asNumpy=True).value_in_unit(unit.angstrom)
-        energy = state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
+        coordinates = state.getPositions(asNumpy=True).value_in_unit(
+            unit.angstrom
+        )
+        energy = state.getPotentialEnergy().value_in_unit(
+            unit.kilojoules_per_mole
+        )
 
         config = mlt.Configuration()
         config.atoms = copy.deepcopy(configuration.atoms)
@@ -302,10 +321,9 @@ def _run_mlp_md_openmm(configuration:  'mlt.Configuration',
         for i, position in enumerate(coordinates):
             config.atoms[i].coord = position
 
-        config.energy.predicted = energy/96.48530749925793 # kJ/mol -> eV
-        config.time = dt*interval*(j+1)
+        config.energy.predicted = energy / 96.48530749925793  # kJ/mol -> eV
+        config.time = dt * interval * (j + 1)
 
         mlt_traj.append(config)
 
     return mlt_traj
-
