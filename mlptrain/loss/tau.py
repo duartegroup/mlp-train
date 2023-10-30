@@ -1,3 +1,4 @@
+import mlptrain
 import numpy as np
 from typing import Optional
 from mlptrain.sampling.md import run_mlp_md
@@ -121,7 +122,7 @@ class TauCalculator(LossFunction):
                 return curr_time
 
             logger.info('      ___ |E_true - E_GAP|/eV ___')
-            logger.info(f' t/fs      err      cumul(err)')
+            logger.info(' t/fs      err      cumul(err)')
 
             for i, frame in enumerate(traj):
 

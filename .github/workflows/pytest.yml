@@ -27,13 +27,53 @@ jobs:
     - uses: mamba-org/setup-micromamba@v1
       with:
         # the create command looks like this:
-        # `micromamba create -n test-env python=3.9`
-        environment-name: test-env
+        # `micromamba create -n test-env python=3.9 -f environment.yml`
+        environment-file: environment.yml
+        environment-name: gha-test-env
         cache-environment: true
         create-args: >-
           python=${{ matrix.python-version }}
 
-    - name: Install
-      run: ./install.sh
-    - name: Test
+    - name: Basic install
+      run: ./install_gap.sh
+
+    - name: List installed packages
+      run: micromamba list
+
+    - name: Test basic install
+      run: pytest
+
+
+  test-mace:
+    name: MACE (${{ matrix.python-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: true
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.9"]
+      
+    defaults:
+      run:
+        shell: bash -l {0}
+        
+    steps:
+    - uses: actions/checkout@v4
+        
+    - uses: mamba-org/setup-micromamba@v1
+      with:
+        environment-file: environment_mace.yml
+        environment-name: gha-test-env
+        cache-environment: true
+        create-args: >-
+          python=${{ matrix.python-version }}
+
+    - name: MACE install
+      run: ./install_mace.sh
+
+    - name: List installed packages
+      run: micromamba list
+
+    - name: Test MACE install
       run: pytest

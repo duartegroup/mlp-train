@@ -35,11 +35,6 @@ def test_selection_on_structures():
 
     configs = mlt.ConfigurationSet()
 
-    try:
-        import dscribe
-    except ModuleNotFoundError:
-        return
-
     file_path = os.path.join(here, 'data', 'methane.xyz')
     configs.load_xyz(filename=file_path,
                      charge=0, mult=1, box=None)

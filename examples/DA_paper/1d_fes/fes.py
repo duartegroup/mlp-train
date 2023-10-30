@@ -1,4 +1,3 @@
-import sys
 import mlptrain as mlt
 import numpy as np
 from mlptrain.box import Box

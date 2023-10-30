@@ -1,14 +1,9 @@
 import mlptrain as mlt
 import numpy as np
-import matplotlib.pyplot as plt
 from mlptrain.log import logger
-import random
 from mlptrain.box import Box
 from scipy.spatial import distance_matrix
 import os
-import math
-from ase.constraints import Hookean
-from ase.geometry import find_mic
 from generate_rs import generate_rs
 
 mlt.Config.n_cores = 10
@@ -116,7 +111,7 @@ def md_with_file(configuration, mlp, temp, dt, interval, init_temp = None, **kwa
 
     dyn.attach(append_energy, interval=interval)
     dyn.attach(get_reaction_coord,interval=interval)
-    dyn.attach(get_cavity_volumn,interval=interval)
+    dyn.attach(get_cavity_volume,interval=interval)
     dyn.attach(traj.write, interval=interval)
 
     logger.info(f'Running {n_steps:.0f} steps with a timestep of {dt} fs')
@@ -133,19 +128,9 @@ def md_with_file(configuration, mlp, temp, dt, interval, init_temp = None, **kwa
 
 
 def traj_study(configs,  ml_potential,  init_md_time_fs = 500, max_time_fs = 3000):     
-    num_config = len(configs)
-
-    C2_C7_recrossing_list = []
-    C4_C6_recrossing_list = []
-
-    C2_C7_product_list = []
-    C4_C6_product_list = []
-
+    
     C2_C7_initial_list = []
     C4_C6_initial_list = []
-
-    time_sep = []
-    intermediate_time = []
 
     for k in range(500):
         config =configs[k]
@@ -175,7 +160,7 @@ def traj_study(configs,  ml_potential,  init_md_time_fs = 500, max_time_fs = 300
                                                                 temp=300,
                                                                 dt=0.5,
                                                                 interval=2,
-                                                                fs=md_time_f)
+                                                                fs=md_time_fs_f)
             ending = 0
             for (i, j) in zip (C2_C7_list, C4_C6_list):
                 logger.info(f'C2-C7 and C4-C6 bond lengths are {(i,j)}')

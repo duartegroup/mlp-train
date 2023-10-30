@@ -1,0 +1,38 @@
+# Usage: mamba env create -n myenvname -f environment_mace.yml
+---
+name: mlptrain-mace
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.9
+  - pip
+  - pre-commit
+  - ase
+  - autode=1.1
+  - coloredlogs
+  - cython
+  - dscribe=2.0
+  - matplotlib-base
+  - numpy
+  - pytest
+  - py-plumed
+  - scipy
+  - xtb
+  # MACE dependencies
+  - pytorch
+  - openmm-torch=1.1
+  - torchvision
+  - torchaudio
+  - torch-ema
+  # TODO: You might also need CUDA-specific libraries,
+  # but that depends on CUDA version
+  # https://pytorch.org/get-started/locally/
+  # - pytorch-cuda=11.8
+  # - pytorch-cuda=12.1
+  - pip:
+    # e3nn is available on conda as well, but it is a dependency of mace
+    # so needs to be installed together.
+    - e3nn
+    - mace@git+https://github.com/ACEsuit/mace@v0.2.0
+    - ase@git+https://gitlab.com/ase/ase@f2615a6e9a # for Plumed

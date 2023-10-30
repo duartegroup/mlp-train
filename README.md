@@ -1,39 +1,43 @@
+[![Test with pytest](https://github.com/duartegroup/mlp-train/actions/workflows/pytest.yml/badge.svg?event=push)](https://github.com/duartegroup/mlp-train/actions/workflows/pytest.yml)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![License](https://img.shields.io/badge/License-MIT%202.0-blue.svg)](https://opensource.org/licenses/mit)
+[![GitHub issues](https://img.shields.io/github/issues/duartegroup/mlp-train.svg)](https://github.com/duartegroup/mlp-train/issues)
+
 # mlp-train
-General machine learnt potential (MLP) training for molecular systems
+General machine learning potentials (MLP) training for molecular systems in gas phase and solution
 
-***
-### Install
+Available models:
+- GAP
+- ACE
+- MACE
+
+
+## Install
+
+Each model is installed into individual conda environment:
 
 ```
-./install.sh
-```
+# Install GAP
+./install_gap.sh
 
-Machine learning potentials can be installed directly from [scripts/](scripts).
+# Install ACE
+./install_ace.sh
+
+# Install MACE
+./install_mace.sh 
+```
 
 ### Notes
 
-- Units are: distance (Å), energy (eV), force (eV Å-1), time (fs)
-- Training using molecular mechanics (MM) is not supported as we've not found it to be efficient
-
+- Units are: distance (Å), energy (eV), force (eV Å$`^{-1}`$), time (fs)
 
 ## Using with OpenMM
 
-The OpenMM backend only works with MACE at the moment
+The OpenMM backend only works with MACE at the moment. First, install mlptrain-mace conda environment:
 
-First install requirements from conda-forge
-
-```
-mamba install -c conda-forge autode=1.1* python=3.9 openmm-torch=1.1 pytorch=2.0
-```
-
-Then install this version of ASE:
-```
-pip install git+https://github.com/rosswhitfield/ase.git
-```
-
-Then install MACE:
-```
-pip install git+https://github.com/ACEsuit/mace.git
+```console
+./install_mace.sh
 ```
 
 Then install this specific fork of OpenMM-ML:
@@ -41,26 +45,22 @@ Then install this specific fork of OpenMM-ML:
 pip install git+https://github.com/sef43/openmm-ml@mace
 ```
 
-Then install this fork of MLP-Train
-```
-git clone https://github.com/sef43/mlptrain
-cd mlptrain
-pip install -e .
-```
-
-
-xtb can be installed from conda-forge
-```
-mamba install -c conda-forge xtb
-```
-
-
 You should now be able to run `water_openmm.py` in `./examples` or run the jupyter notebook on Google Colab [`water_openmm_colab.ipynb`](./examples/water_openmm_colab.ipynb).
 
 You can use OpenMM during active learning by passing the keyword argument `md_program="OpenMM"` to the `al_train` method.
 You can run MD with OpenMM using `mlptrain.md_openmm.run_mlp_md_openmm()`
 
-## Citation
+## For developers
+
+We are happy to accept pull requests from users. Please first fork mlp-train repository. We use `pre-commit`, `Ruff` and `pytest` to check the code. Your PR needs to pass through these checks before is accepted. `Pre-commit` is installed as one the dependecies. To use it in your repository, run the following command in the mlp-train folder:
+
+```
+pre-commit install 
+```
+
+`Pre-commit` will then run automatically at each commit and will take care of installation and running of `Ruff`.
+
+## Citations
 
 If _mlptrain_ is used in a publication please consider citing the [paper](https://doi.org/10.1039/D2CP02978B):
 
@@ -75,3 +75,8 @@ If _mlptrain_ is used in a publication please consider citing the [paper](https:
   journal = {Phys. Chem. Chem. Phys.}
 }
 ```
+
+## Contact
+
+For bugs or implementation requests, please use [GitHub Issues](https://github.com/duartegroup/mlp-train/issues)
+
