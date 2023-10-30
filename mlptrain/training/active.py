@@ -371,7 +371,7 @@ def _gen_active_config(config:      'mlptrain.Configuration',
         kwargs = _modify_kwargs_for_metad_bias_inheritance(kwargs)
 
 
-    if kwargs['md_program'] == 'OpenMM':
+    if kwargs['md_program'].lower() == 'openmm':
         traj = run_mlp_md_openmm(config,
                         mlp=mlp,
                         temp=temp if curr_time > 0 else i_temp,

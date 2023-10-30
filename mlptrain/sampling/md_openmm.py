@@ -20,7 +20,7 @@ def run_mlp_md_openmm(configuration: 'mlt.Configuration',
                ) -> 'mlt.Trajectory':
     """
     Run molecular dynamics on a system using a MLP to predict energies and
-    forces and ASE to drive dynamics. The function is executed in a temporary
+    forces and OpenMM to drive dynamics. The function is executed in a temporary
     directory.
 
     ---------------------------------------------------------------------------
@@ -238,14 +238,11 @@ def _run_mlp_md_openmm(configuration:  'mlt.Configuration',
     positions = ase_atoms.get_positions()*unit.angstrom
     atomic_numbers = ase_atoms.get_atomic_numbers()
 
-    #print(positions, atomic_numbers)
-
     for atomic_number in atomic_numbers:
         residue = topology.addResidue(name='X', chain=chain)
         element = app.Element.getByAtomicNumber(atomic_number)
         topology.addAtom(element.name,element,residue)
 
-    #print(topology)
 
     # use the mace model with openmm-ml
     # make sure total energy is used
@@ -269,7 +266,7 @@ def _run_mlp_md_openmm(configuration:  'mlt.Configuration',
     mlt_traj = mlt.Trajectory()
 
     
-    print("running using OpenMM for ", n_steps, " steps with saving interval", interval)
+    mlt.log.logger.info("Running using OpenMM for ", n_steps, " steps with saving interval", interval)
 
     # add the first config using energies from current MLP
     state = simulation.context.getState(getPositions=True, getEnergy=True)
