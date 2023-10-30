@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Env (${{ matrix.python-version }}, ${{ matrix.os }})
+    name: GAP (${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     
     strategy:
@@ -36,9 +36,6 @@ jobs:
 
     - name: Basic install
       run: ./install_gap.sh
-
-    - name: List installed packages
-      run: micromamba list
 
     - name: Test basic install
       run: pytest
@@ -71,9 +68,6 @@ jobs:
 
     - name: MACE install
       run: ./install_mace.sh
-
-    - name: List installed packages
-      run: micromamba list
 
     - name: Test MACE install
       run: pytest

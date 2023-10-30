@@ -89,14 +89,14 @@ def run_mlp_md_openmm(
         kept_substrings = []
 
     copied_substrings_list = list(copied_substrings)
-    kept_substrings_list = list(kept_substrings)
+    # kept_substrings_list = list(kept_substrings)
 
     copied_substrings_list.extend(['.xml', '.json', '.pth', '.model'])
 
     if restart:
-        mlt.log.logger.error('Restarting MLP MD with OpenMM not implemented')
-        mlt.log.logger.info('Restarting MLP MD')
-
+        msg = 'Restarting MLP MD with OpenMM not supported'
+        raise NotImplementedError(msg)
+        """
         if not isinstance(restart_files, list):
             raise TypeError('Restart files must be a list')
 
@@ -115,9 +115,9 @@ def run_mlp_md_openmm(
 
         copied_substrings_list.extend(restart_files)
         kept_substrings_list.extend(restart_files)
+        """
 
-    else:
-        mlt.log.logger.info('Running MLP MD')
+    mlt.log.logger.info('Running MLP MD with OpenMM')
 
     traj_openmm = _run_mlp_md_openmm(
         configuration=configuration,

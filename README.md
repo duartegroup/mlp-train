@@ -34,15 +34,10 @@ Each model is installed into individual conda environment:
 
 ## Using with OpenMM
 
-The OpenMM backend only works with MACE at the moment. First, install mlptrain-mace conda environment:
+The OpenMM backend only works with MACE at the moment. The necessary dependencies are installed automatically via conda:
 
 ```console
 ./install_mace.sh
-```
-
-Then install this specific fork of OpenMM-ML:
-```
-pip install git+https://github.com/sef43/openmm-ml@mace
 ```
 
 You should now be able to run `water_openmm.py` in `./examples` or run the jupyter notebook on Google Colab [`water_openmm_colab.ipynb`](./examples/water_openmm_colab.ipynb).
