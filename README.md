@@ -32,7 +32,7 @@ Each model is installed into individual conda environment:
 
 - Units are: distance (Å), energy (eV), force (eV Å$`^{-1}`$), time (fs)
 
-## Using with OpenMM
+## Using with OpenMM (Experimental!)
 
 The OpenMM backend only works with MACE at the moment. The necessary dependencies are installed automatically via conda:
 
