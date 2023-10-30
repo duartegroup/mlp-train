@@ -83,6 +83,12 @@ def run_mlp_md_openmm(
 
     restart = restart_files is not None
 
+    # TODO: Implement this!
+    if copied_substrings is not None:
+        raise NotImplementedError("copied_substrings argument not supported yet")
+    if kept_substrings is not None:
+        raise NotImplementedError("kept_substrings argument not supported yet")
+
     if copied_substrings is None:
         copied_substrings = []
     if kept_substrings is None:
