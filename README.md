@@ -24,13 +24,26 @@ Each model is installed into individual conda environment:
 # Install ACE
 ./install_ace.sh
 
-#Install MACE
+# Install MACE
 ./install_mace.sh 
 ```
 
 ### Notes
 
 - Units are: distance (Å), energy (eV), force (eV Å$`^{-1}`$), time (fs)
+
+## Using with OpenMM (Experimental!)
+
+The OpenMM backend only works with MACE at the moment. The necessary dependencies are installed automatically via conda:
+
+```console
+./install_mace.sh
+```
+
+You should now be able to run `water_openmm.py` in `./examples` or run the jupyter notebook on Google Colab [`water_openmm_colab.ipynb`](./examples/water_openmm_colab.ipynb).
+
+You can use OpenMM during active learning by passing the keyword argument `md_program="OpenMM"` to the `al_train` method.
+You can run MD with OpenMM using `mlptrain.md_openmm.run_mlp_md_openmm()`
 
 ## For developers
 

@@ -12,6 +12,7 @@ repos:
         args: ['--maxkb=500', '--enforce-all']
         exclude: mlptrain/sampling/tests/data.zip
       - id: check-yaml
+      - id: check-toml
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.

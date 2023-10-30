@@ -15,3 +15,9 @@ requires-python = ">=3.8"
 [project.urls]
 Home = "https://github.com/duartegroup/mlp-train"
 Source = "https://github.com/duartegroup/mlp-train"
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.format]
+quote-style = "single"

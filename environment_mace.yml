@@ -20,7 +20,8 @@ dependencies:
   - scipy
   - xtb
   # MACE dependencies
-  - pytorch
+  - pytorch=2.0
+  - openmm-torch=1.1
   - torchvision
   - torchaudio
   - torch-ema
@@ -34,4 +35,6 @@ dependencies:
     # so needs to be installed together.
     - e3nn
     - mace@git+https://github.com/ACEsuit/mace@v0.2.0
+    # The upstream PR to openmm-ml has not been merged yet: https://github.com/openmm/openmm-ml/pull/61)
+    - openmmml@git+https://github.com/sef43/openmm-ml@mace
     - ase@git+https://gitlab.com/ase/ase@f2615a6e9a # for Plumed

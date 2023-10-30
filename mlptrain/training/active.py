@@ -9,6 +9,7 @@ from subprocess import Popen
 from ase import units as ase_units
 from mlptrain.config import Config
 from mlptrain.sampling import PlumedBias
+from mlptrain.sampling.md_openmm import run_mlp_md_openmm
 from mlptrain.sampling.md import run_mlp_md
 from mlptrain.training.selection import SelectionMethod, AbsDiffE
 from mlptrain.configurations import ConfigurationSet
@@ -34,7 +35,8 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
           restart_iter:        Optional[int] = None,
           inherit_metad_bias:  bool = False,
           constraints:         Optional[List] = None,
-          bias:                Optional = None
+          bias:                Optional = None,
+          md_program:          str = "ASE"
           ) -> None:
     """
     Train a system using active learning, by propagating dynamics using ML
@@ -125,6 +127,8 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
         bias: (mlptrain.Bias | mlptrain.PlumedBias) Bias to add during MD
               simulations, useful for exploring under-explored regions in the
               dynamics
+
+        md_program: (str) 'ASE' or 'OpenMM'
     """
 
     _check_bias(bias=bias, temp=temp, inherit_metad_bias=inherit_metad_bias)
@@ -187,7 +191,8 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                             bias=deepcopy(bias),
                             inherit_metad_bias=inherit_metad_bias,
                             bias_start_iter=bias_start_iter,
-                            iteration=iteration)
+                            iteration=iteration,
+                            md_program=md_program)
 
         # Active learning finds no configurations
         if mlp.n_train == previous_n_train:
@@ -365,14 +370,26 @@ def _gen_active_config(config:      'mlptrain.Configuration',
 
         kwargs = _modify_kwargs_for_metad_bias_inheritance(kwargs)
 
-    traj = run_mlp_md(config,
-                      mlp=mlp,
-                      temp=temp if curr_time > 0 else i_temp,
-                      dt=0.5,
-                      interval=max(1, 2*md_time//selector.n_backtrack),
-                      fs=md_time,
-                      n_cores=1,
-                      **kwargs)
+
+    if kwargs['md_program'].lower() == 'openmm':
+        traj = run_mlp_md_openmm(config,
+                        mlp=mlp,
+                        temp=temp if curr_time > 0 else i_temp,
+                        dt=0.5,
+                        interval=max(1, 2*md_time//selector.n_backtrack),
+                        fs=md_time,
+                        n_cores=1,
+                        **kwargs)
+    else:
+        traj = run_mlp_md(config,
+                mlp=mlp,
+                temp=temp if curr_time > 0 else i_temp,
+                dt=0.5,
+                interval=max(1, 2*md_time//selector.n_backtrack),
+                fs=md_time,
+                n_cores=1,
+                **kwargs)
+
 
     traj.t0 = curr_time  # Increment the initial time (t0)
 
