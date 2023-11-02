@@ -18,6 +18,6 @@ dependencies:
   - py-plumed
   - scipy
   - xtb
-  - quippy  # GAP
   - pip:
+    - quippy-ase # GAP
     - ase@git+https://gitlab.com/ase/ase@f2615a6e9a # for PLUMED
