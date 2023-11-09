@@ -373,8 +373,8 @@ def _gen_active_config(config:      'mlptrain.Configuration',
     temp = 300. if 'temp' not in kwargs else kwargs.pop('temp')
     i_temp = temp if 'init_active_temp' not in kwargs else kwargs.pop('init_active_temp')
 
-    pbc = False. if 'pbc' not in kwargs else kwargs.pop('pbc')
-    box_size = None. if 'box_size' not in kwargs else kwargs.pop('box_size')
+    pbc = False if 'pbc' not in kwargs else kwargs.pop('pbc')
+    box_size = None if 'box_size' not in kwargs else kwargs.pop('box_size')
 
     if extra_time > 0:
         logger.info(f'Running an extra {extra_time:.1f} fs of MD')
