@@ -141,7 +141,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
 
     _check_bias(bias=bias, temp=temp, inherit_metad_bias=inherit_metad_bias)
 
-    assert pbc is True and box_size is not None, 
+    assert pbc is True and box_size is not None, "\n"
     "to propahate with PBC, box_size cannot be None"
                     
     if restart_iter is not None:
