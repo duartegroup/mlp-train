@@ -4,11 +4,13 @@ from typing import Optional
 class Energy:
     """Energy in units of eV"""
 
-    def __init__(self,
-                 predicted:      Optional[float] = None,
-                 true:           Optional[float] = None,
-                 bias:           Optional[float] = None,
-                 inherited_bias: Optional[float] = None):
+    def __init__(
+        self,
+        predicted: Optional[float] = None,
+        true: Optional[float] = None,
+        bias: Optional[float] = None,
+        inherited_bias: Optional[float] = None,
+    ):
         """
         Energy
 

@@ -15,9 +15,9 @@ from mlptrain.box import Box
 class ConfigurationSet(list):
     """A set of configurations"""
 
-    def __init__(self,
-                 *args: Union[Configuration, str],
-                 allow_duplicates: bool = False):
+    def __init__(
+        self, *args: Union[Configuration, str], allow_duplicates: bool = False
+    ):
         """
         Construct a configuration set from Configurations, or a saved file.
         This is a set, thus no duplicates configurations are present.
@@ -34,7 +34,6 @@ class ConfigurationSet(list):
         self.allow_duplicates = allow_duplicates
 
         for arg in args:
-
             if isinstance(arg, Configuration):
                 self.append(arg)
 
@@ -117,14 +116,17 @@ class ConfigurationSet(list):
             (mlptrain.Configuration):
         """
         if len(self) == 0:
-            raise ValueError('No lowest biased energy configuration in an '
-                             'empty set')
+            raise ValueError(
+                'No lowest biased energy configuration in an ' 'empty set'
+            )
 
-        true_energy = np.array([e if e is not None else np.inf
-                                for e in self.true_energies])
+        true_energy = np.array(
+            [e if e is not None else np.inf for e in self.true_energies]
+        )
 
-        bias_energy = np.array([e if e is not None else 0
-                                for e in self.bias_energies])
+        bias_energy = np.array(
+            [e if e is not None else 0 for e in self.bias_energies]
+        )
 
         biased_energy = true_energy + bias_energy
         return self[np.argmin(biased_energy)]
@@ -141,14 +143,17 @@ class ConfigurationSet(list):
             (mlptrain.Configuration):
         """
         if len(self) == 0:
-            raise ValueError('No lowest biased energy configuration in an '
-                             'empty set')
+            raise ValueError(
+                'No lowest biased energy configuration in an ' 'empty set'
+            )
 
-        true_energy = np.array([e if e is not None else np.inf
-                                for e in self.true_energies])
+        true_energy = np.array(
+            [e if e is not None else np.inf for e in self.true_energies]
+        )
 
-        inherited_bias_energy = np.array([e if e is not None else 0
-                                          for e in self.inherited_bias_energies])
+        inherited_bias_energy = np.array(
+            [e if e is not None else 0 for e in self.inherited_bias_energies]
+        )
 
         inherited_biased_energy = true_energy + inherited_bias_energy
         return self[np.argmin(inherited_biased_energy)]
@@ -207,16 +212,17 @@ class ConfigurationSet(list):
             (float): Time in fs
         """
         if len(self) < from_idx:
-            logger.warning('Insufficient data to determine minimum time '
-                           f'from index {from_idx}')
+            logger.warning(
+                'Insufficient data to determine minimum time '
+                f'from index {from_idx}'
+            )
             return 0.0
 
-        return min(c.time if c.time is not None else 0.0
-                   for c in self[from_idx:])
+        return min(
+            c.time if c.time is not None else 0.0 for c in self[from_idx:]
+        )
 
-    def append(self,
-               value: Optional['mlptrain.Configuration']
-               ) -> None:
+    def append(self, value: Optional['mlptrain.Configuration']) -> None:
         """
         Append an item onto these set of configurations. None will not be
         appended
@@ -230,15 +236,16 @@ class ConfigurationSet(list):
             return
 
         if not self.allow_duplicates and value in self:
-            logger.warning('Not appending configuration to set - already '
-                           'present')
+            logger.warning(
+                'Not appending configuration to set - already ' 'present'
+            )
             return
 
         return super().append(value)
 
-    def compare(self,
-                *args: Union['mlptrain.potentials.MLPotential', str]
-                ) -> None:
+    def compare(
+        self, *args: Union['mlptrain.potentials.MLPotential', str]
+    ) -> None:
         """
         Compare methods e.g. a MLP to a ground truth reference method over
         these set of configurations. Will generate plots of total energies
@@ -249,8 +256,10 @@ class ConfigurationSet(list):
             *args: Strings defining the method or MLPs
         """
         if _num_strings_in(args) > 1:
-            raise NotImplementedError('Compare currently only supports a '
-                                      'single reference method (string).')
+            raise NotImplementedError(
+                'Compare currently only supports a '
+                'single reference method (string).'
+            )
 
         name = self._comparison_name(*args)
 
@@ -273,11 +282,9 @@ class ConfigurationSet(list):
         parity_plot(self, name=name)
         return None
 
-    def save_xyz(self,
-                 filename:  str,
-                 true:      bool = False,
-                 predicted: bool = False
-                 ) -> None:
+    def save_xyz(
+        self, filename: str, true: bool = False, predicted: bool = False
+    ) -> None:
         """Save these configurations to a file
 
         -----------------------------------------------------------------------
@@ -295,25 +302,23 @@ class ConfigurationSet(list):
             return None
 
         if self[0].energy.true is not None and not (predicted or true):
-            logger.warning('Save called without defining what energy and '
-                           'forces to print. Had true energies to using those')
+            logger.warning(
+                'Save called without defining what energy and '
+                'forces to print. Had true energies to using those'
+            )
             true = True
 
         open(filename, 'w').close()  # Empty the file
 
         for configuration in self:
-            configuration.save_xyz(filename,
-                                   true=true,
-                                   predicted=predicted,
-                                   append=True)
+            configuration.save_xyz(
+                filename, true=true, predicted=predicted, append=True
+            )
         return None
 
-    def load_xyz(self,
-                 filename: str,
-                 charge:   int,
-                 mult:     int,
-                 box:      Optional[Box] = None
-                 ) -> None:
+    def load_xyz(
+        self, filename: str, charge: int, mult: int, box: Optional[Box] = None
+    ) -> None:
         """
         Load configurations from a .xyz file. Will not load any energies or
         forces
@@ -339,7 +344,6 @@ class ConfigurationSet(list):
             return None
 
         for idx, line in enumerate(file_lines):
-
             if is_xyz_line(line):
                 atoms.append(Atom(*line.split()[:4]))
 
@@ -394,17 +398,20 @@ class ConfigurationSet(list):
             self._load_npz(filename)
 
         elif filename.endswith('.xyz'):
-            raise ValueError('Loading .xyz files is not supported. Call '
-                             'load_xyz() with defined charge & multiplicity')
+            raise ValueError(
+                'Loading .xyz files is not supported. Call '
+                'load_xyz() with defined charge & multiplicity'
+            )
 
         else:
-            raise ValueError(f'Cannot load {filename}. Must be either a '
-                             f'.xyz or .npz file')
+            raise ValueError(
+                f'Cannot load {filename}. Must be either a '
+                f'.xyz or .npz file'
+            )
 
         return None
 
-    def single_point(self,
-                     method: str) -> None:
+    def single_point(self, method: str) -> None:
         """
         Evaluate energies and forces on all configuration in this set
 
@@ -412,8 +419,9 @@ class ConfigurationSet(list):
         Arguments:
             method:
         """
-        return self._run_parallel_method(function=_single_point_eval,
-                                         method_name=method)
+        return self._run_parallel_method(
+            function=_single_point_eval, method_name=method
+        )
 
     @property
     def _coordinates(self) -> np.ndarray:
@@ -452,8 +460,10 @@ class ConfigurationSet(list):
             return None
 
         elif len(n_cvs_set) != 1:
-            logger.info('Number of CVs differ between configurations - '
-                        'returning None')
+            logger.info(
+                'Number of CVs differ between configurations - '
+                'returning None'
+            )
             return None
 
         n_cvs = n_cvs_set.pop()
@@ -474,7 +484,9 @@ class ConfigurationSet(list):
             (np.ndarray): Atomic numbers matrix (n, n_atoms)
         """
 
-        return np.array([[atom.atomic_number for atom in c.atoms] for c in self])
+        return np.array(
+            [[atom.atomic_number for atom in c.atoms] for c in self]
+        )
 
     @property
     def _box_sizes(self) -> np.ndarray:
@@ -486,8 +498,9 @@ class ConfigurationSet(list):
         Returns:
             (np.ndarray): Box sizes matrix (n, 3)
         """
-        return np.array([c.box.size if c.box is not None else np.zeros(3)
-                         for c in self])
+        return np.array(
+            [c.box.size if c.box is not None else np.zeros(3) for c in self]
+        )
 
     @property
     def _charges(self) -> np.ndarray:
@@ -515,20 +528,22 @@ class ConfigurationSet(list):
     def _save_npz(self, filename: str) -> None:
         """Save a compressed numpy array of all the data in this set"""
 
-        np.savez(filename,
-                 R=self._coordinates,
-                 R_plumed=self.plumed_coordinates,
-                 E_true=self.true_energies,
-                 E_predicted=self.predicted_energies,
-                 E_bias=self.bias_energies,
-                 E_inherited_bias=self.inherited_bias_energies,
-                 F_true=self.true_forces,
-                 F_predicted=self.predicted_forces,
-                 Z=self._atomic_numbers,
-                 L=self._box_sizes,
-                 C=self._charges,
-                 M=self._multiplicities,
-                 allow_pickle=True)
+        np.savez(
+            filename,
+            R=self._coordinates,
+            R_plumed=self.plumed_coordinates,
+            E_true=self.true_energies,
+            E_predicted=self.predicted_energies,
+            E_bias=self.bias_energies,
+            E_inherited_bias=self.inherited_bias_energies,
+            F_true=self.true_forces,
+            F_predicted=self.predicted_forces,
+            Z=self._atomic_numbers,
+            L=self._box_sizes,
+            C=self._charges,
+            M=self._multiplicities,
+            allow_pickle=True,
+        )
 
         return None
 
@@ -538,13 +553,14 @@ class ConfigurationSet(list):
         data = np.load(filename, allow_pickle=True)
 
         for i, coords in enumerate(data['R']):
-
             box = Box(size=data['L'][i])
 
-            config = Configuration(atoms=_atoms_from_z_r(data['Z'][i], coords),
-                                   charge=int(data['C'][i]),
-                                   mult=int(data['M'][i]),
-                                   box=None if box.has_zero_volume else box)
+            config = Configuration(
+                atoms=_atoms_from_z_r(data['Z'][i], coords),
+                charge=int(data['C'][i]),
+                mult=int(data['M'][i]),
+                box=None if box.has_zero_volume else box,
+            )
 
             if data['R_plumed'].ndim > 0:
                 config.plumed_coordinates = data['R_plumed'][i]
@@ -571,9 +587,10 @@ class ConfigurationSet(list):
 
         return None
 
-    def __add__(self,
-                other: Union['mlptrain.Configuration',
-                             'mlptrain.ConfigurationSet']):
+    def __add__(
+        self,
+        other: Union['mlptrain.Configuration', 'mlptrain.ConfigurationSet'],
+    ):
         """Add another configuration or set of configurations onto this one"""
 
         if isinstance(other, Configuration):
@@ -583,8 +600,10 @@ class ConfigurationSet(list):
             self.extend(other)
 
         else:
-            raise TypeError('Can only add a Configuration or'
-                            f' ConfigurationSet, not {type(other)}')
+            raise TypeError(
+                'Can only add a Configuration or'
+                f' ConfigurationSet, not {type(other)}'
+            )
 
         logger.info(f'Current number of configurations is {len(self)}')
         return self
@@ -608,14 +627,15 @@ class ConfigurationSet(list):
         n_processes = min(len(self), Config.n_cores)
         n_cores_pp = max(Config.n_cores // len(self), 1)
         kwargs['n_cores'] = n_cores_pp
-        logger.info(f'Running {n_processes} processes; {n_cores_pp} cores each')
+        logger.info(
+            f'Running {n_processes} processes; {n_cores_pp} cores each'
+        )
 
         with Pool(processes=n_processes) as pool:
-
             for _, config in enumerate(self):
-                result = pool.apply_async(func=function,
-                                          args=(config,),
-                                          kwds=kwargs)
+                result = pool.apply_async(
+                    func=function, args=(config,), kwds=kwargs
+                )
                 results.append(result)
 
             pool.close()
@@ -647,8 +667,9 @@ def _single_point_eval(config, method_name, **kwargs):
     return config
 
 
-def _atoms_from_z_r(atomic_numbers: np.ndarray,
-                    coordinates:    np.ndarray) -> List[Atom]:
+def _atoms_from_z_r(
+    atomic_numbers: np.ndarray, coordinates: np.ndarray
+) -> List[Atom]:
     """From a set of atomic numbers and coordinates create a set of atoms"""
 
     atoms = []

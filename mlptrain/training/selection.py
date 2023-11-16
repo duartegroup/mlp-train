@@ -10,7 +10,7 @@ from mlptrain.log import logger
 class SelectionMethod(ABC):
     """Active learning selection method
 
-                    NOTE: Should execute in serial
+    NOTE: Should execute in serial
     """
 
     def __init__(self):
@@ -20,11 +20,12 @@ class SelectionMethod(ABC):
         self._configuration: Optional['mlptrain.Configuration'] = None
 
     @abstractmethod
-    def __call__(self,
-                 configuration: 'mlptrain.Configuration',
-                 mlp:           'mlptrain.potentials.MLPotential',
-                 **kwargs
-                 ) -> None:
+    def __call__(
+        self,
+        configuration: 'mlptrain.Configuration',
+        mlp: 'mlptrain.potentials.MLPotential',
+        **kwargs,
+    ) -> None:
         """Evaluate the selector"""
 
     @property
@@ -54,9 +55,7 @@ class SelectionMethod(ABC):
 
 
 class AbsDiffE(SelectionMethod):
-
-    def __init__(self,
-                 e_thresh: float = 0.1):
+    def __init__(self, e_thresh: float = 0.1):
         """
         Selection method based on the absolute difference between the
         true and predicted total energies.
@@ -86,14 +85,17 @@ class AbsDiffE(SelectionMethod):
         self._configuration = configuration
 
         if method_name is None:
-            raise ValueError('Evaluating the absolute difference requires a '
-                             'method name but None was present')
+            raise ValueError(
+                'Evaluating the absolute difference requires a '
+                'method name but None was present'
+            )
 
         if configuration.energy.predicted is None:
             self._configuration.single_point(mlp)
 
-        self._configuration.single_point(method_name,
-                                         n_cores=kwargs.get('n_cores', 1))
+        self._configuration.single_point(
+            method_name, n_cores=kwargs.get('n_cores', 1)
+        )
         return None
 
     @property
@@ -118,9 +120,7 @@ class AbsDiffE(SelectionMethod):
 
 
 class MaxAtomicEnvDistance(SelectionMethod):
-
-    def __init__(self,
-                 threshold: float = 0.999):
+    def __init__(self, threshold: float = 0.999):
         """
         Selection criteria based on the maximum distance between any of the
         training set and a new configuration. Evaluated based on the similarity
@@ -139,10 +139,12 @@ class MaxAtomicEnvDistance(SelectionMethod):
         self.threshold = float(threshold)
         self._k_vec = np.array([])
 
-    def __call__(self,
-                 configuration: 'mlptrain.Configuration',
-                 mlp:           'mlptrain.potentials.MLPotential',
-                 **kwargs) -> None:
+    def __call__(
+        self,
+        configuration: 'mlptrain.Configuration',
+        mlp: 'mlptrain.potentials.MLPotential',
+        **kwargs,
+    ) -> None:
         """
         Evaluate the selection criteria
 
@@ -155,9 +157,9 @@ class MaxAtomicEnvDistance(SelectionMethod):
         if len(mlp.training_data) == 0:
             return None
 
-        self._k_vec = soap_kernel_vector(configuration,
-                                         configurations=mlp.training_data,
-                                         zeta=8)
+        self._k_vec = soap_kernel_vector(
+            configuration, configurations=mlp.training_data, zeta=8
+        )
         return None
 
     @property

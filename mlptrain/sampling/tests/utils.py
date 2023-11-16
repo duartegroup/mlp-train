@@ -15,10 +15,8 @@ def work_in_zipped_dir(zip_path, chdir=True):
     assert zip_path.endswith('.zip')
 
     def func_decorator(func):
-
         @wraps(func)
         def wrapped_function(*args, **kwargs):
-
             dir_path = zip_path[:-4]  # Remove the .zip extension
 
             extract_path = os.path.split(dir_path)[0]
@@ -42,4 +40,5 @@ def work_in_zipped_dir(zip_path, chdir=True):
             return result
 
         return wrapped_function
+
     return func_decorator
