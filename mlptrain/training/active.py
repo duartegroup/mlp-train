@@ -176,7 +176,11 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
 
         if restart_iter is not None and iteration <= restart_iter:
             continue
-
+        if isinstance(bias, PlumedBias) and iteratoin > bias_start_iter:
+            extra_time = 0
+        else:
+            extra_time=mlp.training_data.t_min(-n_configs_iter)
+                  
         previous_n_train = mlp.n_train
 
         init_config_iter = _update_init_config(init_config=init_config,
@@ -197,7 +201,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
                             bbond_energy=bbond_energy,
                             fbond_energy=fbond_energy,
                             init_temp=init_active_temp,
-                            extra_time=mlp.training_data.t_min(-n_configs_iter),
+                            extra_time= extra_time,
                             constraints=constraints,
                             bias=deepcopy(bias),
                             inherit_metad_bias=inherit_metad_bias,
