@@ -176,7 +176,7 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
 
         if restart_iter is not None and iteration <= restart_iter:
             continue
-        if isinstance(bias, PlumedBias) and iteratoin > bias_start_iter:
+        if isinstance(bias, PlumedBias) and iteration > bias_start_iter:
             extra_time = 0
         else:
             extra_time=mlp.training_data.t_min(-n_configs_iter)
