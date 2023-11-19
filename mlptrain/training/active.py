@@ -151,10 +151,10 @@ def train(mlp:                 'mlptrain.potentials._base.MLPotential',
         init_config = mlp.training_data[0]
 
     elif init_configs is None:
-        init_config = mlp.system.configuration
-        _gen_and_set_init_training_configs(mlp=mlp,
+        init_configs = _gen_and_set_init_training_configs(mlp=mlp,
                                            method_name=method_name,
                                            num=n_init_configs)
+        init_config = init_configs[0]
 
     else:
         init_config = init_configs[0]
@@ -531,7 +531,7 @@ def _gen_and_set_init_training_configs(mlp: 'mlptrain.potentials._base.MLPotenti
     logger.info(f'Added {num} configurations with min dist = {dist:.3f} Å')
     init_configs.single_point(method_name)
     mlp.training_data += init_configs
-    return None
+    return init_configs
 
 
 def _initialise_restart(mlp: 'mlptrain.potentials._base.MLPotential',
