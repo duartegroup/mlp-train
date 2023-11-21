@@ -20,4 +20,4 @@ dependencies:
   - xtb
   - pip:
     - quippy-ase # GAP
-    - ase@git+https://gitlab.com/ase/ase@f2615a6e9a # for PLUMED
+    - ase@git+https://gitlab.com/ase/ase.git@f2615a6e9a # For PLUMED

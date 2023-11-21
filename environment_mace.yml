@@ -34,7 +34,7 @@ dependencies:
     # e3nn is available on conda as well, but it is a dependency of mace
     # so needs to be installed together.
     - e3nn
-    - mace@git+https://github.com/ACEsuit/mace@v0.2.0
+    - mace@git+https://github.com/ACEsuit/mace.git@v0.2.0
     # The upstream PR to openmm-ml has not been merged yet: https://github.com/openmm/openmm-ml/pull/61)
-    - openmmml@git+https://github.com/sef43/openmm-ml@mace
-    - ase@git+https://gitlab.com/ase/ase@f2615a6e9a # for Plumed
+    - openmmml@git+https://github.com/sef43/openmm-ml.git@mace
+    - ase@git+https://gitlab.com/ase/ase.git@f2615a6e9a # For PLUMED
