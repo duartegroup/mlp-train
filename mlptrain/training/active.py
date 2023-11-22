@@ -415,12 +415,13 @@ def _gen_active_config(config:      'mlptrain.Configuration',
 
     traj.t0 = curr_time  # Increment the initial time (t0)
 
+    for frame in traj:
+          frame.box = Box([100,100,100])
     # Evaluate the selector on the final frame
     selector(traj.final_frame, mlp, method_name=method_name, n_cores=n_cores)
 
     if selector.select:
         if traj.final_frame.energy.true is None:
-            traj.final_frame.box = Box([100,100,100])
             traj.final_frame.single_point(method_name, n_cores=n_cores)
 
         return traj.final_frame
@@ -436,7 +437,6 @@ def _gen_active_config(config:      'mlptrain.Configuration',
 
             if selector.select:
                 if frame.energy.true is None:
-                    frame.box = Box([100,100,100])
                     frame.single_point(method_name, n_cores=n_cores)
 
                 return frame
