@@ -296,7 +296,7 @@ if __name__ == '__main__':
     endo = mlt.potentials.ACE('endo_ace_wB97M_imwater', system)
 
     TS = mlt.ConfigurationSet()
-    TS.load_xyz(filename = 'cis_endo_TS_wB97M.xyz')
+    TS.load_xyz(filename = 'cis_endo_TS_wB97M.xyz', charge = 0, mult = 1)
     TS = TS[0]
     TS.box = Box([100, 100, 100])
     TS.charge = 0

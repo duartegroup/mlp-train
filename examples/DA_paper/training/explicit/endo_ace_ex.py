@@ -188,7 +188,7 @@ def generate_init_configs(n, bulk_water = True, TS = True):
         TS: whether to include the TS of the reaction in the system"""
     init_configs = mlt.ConfigurationSet()
     TS = mlt.ConfigurationSet()
-    TS.load_xyz(filename = 'cis_endo_TS_wB97M.xyz')
+    TS.load_xyz(filename = 'cis_endo_TS_wB97M.xyz', charge = 0, mult = 1)
     TS = TS[0]
     TS.box = Box([11, 11, 11])
     TS.charge = 0
