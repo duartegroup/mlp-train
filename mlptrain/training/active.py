@@ -397,10 +397,28 @@ def _gen_active_config(config:      'mlptrain.Configuration',
     selector(traj.final_frame, mlp, method_name=method_name, n_cores=n_cores)
 
     if selector.select:
-        if traj.final_frame.energy.true is None:
-            traj.final_frame.single_point(method_name, n_cores=n_cores)
+        if selector.check:
+            logger.warning('distance selector, do backtracking')
 
-        return traj.final_frame
+             stride = max(1, len(traj)//selector.n_backtrack)
+
+             back_traj = mlt.ConfigurationSet()
+             for i in reversed(traj[::stride]):
+                 back_traj.append(i)
+
+             for i, frame in enumerate(back_traj):
+                  logger.info(f'check {i} th config')
+                  selector(frame, mlp, method_name=method_name, n_cores=n_cores, e_thresh = e_thresh)
+                  if selector.select == False:
+                     logger.info(f'select {i-1} th config')
+                     frame = back_traj[i-1]
+                     break
+          else:
+              frame = traj.final_frame   
+        if frame.energy.true is None:
+            frame.single_point(method_name, n_cores=n_cores)
+
+        return frame
 
     if selector.too_large:
 
