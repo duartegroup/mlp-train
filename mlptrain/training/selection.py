@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from mlptrain.descriptors import soap_kernel_vector
 from mlptrain.log import logger
+from mlptrain.descriptors import soap_matrix
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.decomposition import PCA
 
@@ -193,8 +194,8 @@ class MaxAtomicEnvDistance(SelectionMethod):
         """Number of training environments available"""
         return len(self._k_vec)
 
-def Novelty (configuration: 'mltrain.Configuration',
-             configurations:'mltrain.ConfigurationSet',
+def Novelty (configuration: 'mlptrain.Configuration',
+             configurations:'mlptrain.ConfigurationSet',
              d_reduaction: bool = False,
              distance_metric: str = "euclidean"):
     """
