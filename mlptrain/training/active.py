@@ -402,14 +402,14 @@ def _gen_active_config(config:      'mlptrain.Configuration',
 
             stride = max(1, len(traj)//selector.n_backtrack)
 
-            back_traj = mlt.ConfigurationSet()
+            back_traj = ConfigurationSet()
             for i in reversed(traj[::stride]):
                 back_traj.append(i)
 
             for i, frame in enumerate(back_traj):
                 logger.info(f'check {i} th config')
-                selector(frame, mlp, method_name=method_name, n_cores=n_cores, e_thresh = e_thresh)
-                if selector.select == False:
+                selector(frame, mlp, method_name=method_name, n_cores=n_cores)
+                if selector.select is False:
                     logger.info(f'select {i-1} th config')
                     frame = back_traj[i-1]
                     break
