@@ -5,7 +5,8 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from mlptrain.descriptors import soap_kernel_vector
 from mlptrain.log import logger
-
+from sklearn.neighbors import LocalOutlierFactor
+from sklearn.decomposition import PCA
 
 class SelectionMethod(ABC):
     """Active learning selection method
@@ -48,7 +49,11 @@ class SelectionMethod(ABC):
         Returns:
             (int):
         """
-
+        
+    @property
+    def check(self)  -> bool:
+        return False
+        
     def copy(self) -> 'SelectionMethod':
         return deepcopy(self)
 
@@ -187,3 +192,70 @@ class MaxAtomicEnvDistance(SelectionMethod):
     def _n_training_envs(self) -> int:
         """Number of training environments available"""
         return len(self._k_vec)
+
+def Novelty (configuration: 'mltrain.Configuration',
+             configurations:'mltrain.ConfigurationSet',
+             d_reduaction: bool = False,
+             distance_metric: str = ‘euclidean’):
+    """
+    d_reduction: if Ture, the dimensional reduction will
+    be performed before LOF.
+    distance_metric: distance metric used in LOF
+    """
+
+    m1 = soap_matrix(configurations)
+    m1 /= np.linalg.norm(m1, axis=1).reshape(len(configurations), 1)
+
+    v1 = soap_matrix(configuration)
+    v1 /= np.linalg.norm(v1, axis=1).reshape(1, -1)
+
+    if d_reduaction:
+        pca = PCA(n_components=3)
+        m1 = pca.fit_transform(m1)
+        v1 = pca.transform(v1)
+
+    clf = LocalOutlierFactor(n_neighbors=15, metric = distance_metric, novelty=True, contamination = 0.2)
+    clf.fit(m1)
+
+    new = clf.predict(v1)
+
+    return new
+
+class EnvDistance(SelectionMethod):
+    def __init__(self,
+                 pca: bool = False,
+                 distance_metric: str = ‘euclidean’):
+        """
+        Selection criteria based on LOF
+        -----------------------------------------------------------------------
+        Arguments:
+            pca: whether to do dimenstional reduction
+        """
+        super().__init__()
+        self.pca = pca
+        self.metric = distance_metric
+
+    def __call__(self, configuration, mlp, **kwargs) -> None:
+        self.mlp = mlp
+        self._configuration = configuration
+
+
+    @property
+    def select(self) -> bool:
+        metric = Novelty(self._configuration, self.mlp.training_data, self.pca, self.distance)
+        return metric == -1
+
+    @property
+    def too_large(self) -> bool:
+        return False
+
+    @property
+    def n_backtrack(self) -> int:
+        return 10
+
+    @property
+    def check(self)  -> bool:
+        if self.mlp.n_train > 30:
+            return True
+        else:
+            return False
