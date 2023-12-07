@@ -196,7 +196,7 @@ class MaxAtomicEnvDistance(SelectionMethod):
 def Novelty (configuration: 'mltrain.Configuration',
              configurations:'mltrain.ConfigurationSet',
              d_reduaction: bool = False,
-             distance_metric: str = 'euclidean'):
+             distance_metric: str = "euclidean"):
     """
     d_reduction: if Ture, the dimensional reduction will
     be performed before LOF.
@@ -224,7 +224,7 @@ def Novelty (configuration: 'mltrain.Configuration',
 class EnvDistance(SelectionMethod):
     def __init__(self,
                  pca: bool = False,
-                 distance_metric: str = ‘euclidean’):
+                 distance_metric: str = "euclidean"):
         """
         Selection criteria based on LOF
         -----------------------------------------------------------------------
