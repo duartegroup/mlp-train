@@ -410,7 +410,7 @@ def _gen_active_config(config:      'mlptrain.Configuration',
                 logger.info(f'check {i} th config')
                 selector(frame, mlp, method_name=method_name, n_cores=n_cores)
                 if selector.select is False:
-                    logger.info(f'select {i-1} th config')
+                    logger.info(f'Selecting {i-1} th configuration.')
                     frame = back_traj[i-1]
                     break
         else:
