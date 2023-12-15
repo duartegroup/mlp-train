@@ -3,7 +3,7 @@ import numpy as np
 from autode.atoms import Atom
 from mlptrain.log import logger
 from mlptrain.box import Box
-from mlptrain.training.selection import MaxAtomicEnvDistance
+from mlptrain.training.selection import AtomicEnvSimilarity
 
 mlt.Config.n_cores = 10
 mlt.Config.orca_keywords = ['wB97M-D3BJ', 'def2-TZVP','def2/J', 'RIJCOSX','EnGrad']
@@ -247,7 +247,7 @@ if __name__ == '__main__':
                                        bulk_water=True, 
                                        TS=False)
     Water_mlp.al_train(method_name='orca',
-                      selection_method=MaxAtomicEnvDistance(),
+                      selection_method=AtomicEnvSimilarity(),
                       fix_init_config=True,
                       init_configs=water_init,
                       max_active_time=5000)
