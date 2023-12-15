@@ -260,7 +260,7 @@ if __name__ == '__main__':
                                              bulk_water=True, 
                                              TS=True)
     ts_in_water_mlp.al_train(method_name='orca',
-                      selection_method=MaxAtomicEnvDistance(),
+                      selection_method=AtomicEnvSimilarity(),
                       fix_init_config=True,
                       init_configs=ts_in_water_init,
                       max_active_time=5000)
@@ -273,7 +273,7 @@ if __name__ == '__main__':
                                       bulk_water=False, 
                                       TS=True)
     ts_2water_mlp.al_train(method_name='orca',
-                      selection_method=MaxAtomicEnvDistance(),
+                      selection_method=AtomicEnvSimilarity(),
                       fix_init_config=True,
                       init_configs=ts_2water_init,
                       max_active_time=5000)
@@ -282,7 +282,7 @@ if __name__ == '__main__':
     ts_gasphase = mlt.System(ts_mol, box=Box([100, 100, 100]))
     ts_gasphase_mlp = mlt.potentials.ACE('TS_gasphase', ts_gasphase)    
     ts_gasphase_mlp.al_train(method_name='orca',
-                             selection_method=MaxAtomicEnvDistance(),
+                             selection_method=AtomicEnvSimilarity(),
                              fix_init_config=True,
                              max_active_time=5000)
 
