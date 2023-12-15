@@ -232,7 +232,7 @@ def outlier_identifier (configuration: 'mlptrain.Configuration',
     v1 = soap_matrix(configuration)
     v1 /= np.linalg.norm(v1, axis=1).reshape(1, -1)
 
-    if d_reduction:
+    if dim_reduction:
         pca = PCA(n_components=3)
         m1 = pca.fit_transform(m1)
         v1 = pca.transform(v1)
