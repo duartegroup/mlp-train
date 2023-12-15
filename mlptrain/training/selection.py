@@ -201,8 +201,8 @@ class AtomicEnvSimilarity(SelectionMethod):
 def outlier_identifier (configuration: 'mlptrain.Configuration',
                         configurations:'mlptrain.ConfigurationSet',
                         dim_reduction: bool = False,
-                        distance_metric: str = "euclidean",
-                        n_neighbors: int = 15 ):
+                        distance_metric: str = 'euclidean',
+                        n_neighbors: int = 15) -> int:
     """
     This function aimed to identify whether a new data (configuation)
     is the outlier for the existed data (configurations) by Local Outlier 
@@ -214,7 +214,7 @@ def outlier_identifier (configuration: 'mlptrain.Configuration',
     Arguments:
     
     dim_reduction: if Ture, dimensional reduction (PCA applied here) will
-                 be performed before LOF.
+                   be performed before LOF calculation.
     distance_metric: distance metric used in LOF,
                      which could be one of 'euclidean', 
                      'cosine' and 'manhattan’.
@@ -232,7 +232,7 @@ def outlier_identifier (configuration: 'mlptrain.Configuration',
     v1 = soap_matrix(configuration)
     v1 /= np.linalg.norm(v1, axis=1).reshape(1, -1)
 
-    if d_reduaction:
+    if d_reduction:
         pca = PCA(n_components=3)
         m1 = pca.fit_transform(m1)
         v1 = pca.transform(v1)
