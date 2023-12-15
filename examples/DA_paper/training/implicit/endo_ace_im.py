@@ -1,5 +1,5 @@
 import mlptrain as mlt
-from mlptrain.training.selection import MaxAtomicEnvDistance
+from mlptrain.training.selection import AtomicEnvSimilarity
 
 mlt.Config.n_cores = 10
 mlt.Config.orca_keywords = ['wB97M-D3BJ', 'def2-TZVP','def2/J', 'RIJCOSX','EnGrad', 'CPCM(water)']
@@ -16,7 +16,7 @@ if __name__ == '__main__':
     ace = mlt.potentials.ACE('endo_ace_wB97M_imwater',
                              system=system)
 
-    selector = MaxAtomicEnvDistance()
+    selector = AtomicEnvSimilarity()
     ace.al_train(method_name='orca',
                  selection_method=selector,
                  max_active_time=5000,
