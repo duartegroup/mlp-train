@@ -53,6 +53,10 @@ class SelectionMethod(ABC):
         
     @property
     def check(self)  -> bool:
+        """
+        Whether need to keep checking configuations in the MLP-MD trajectory
+        until the first configuration that will be selected by the selector is found
+        """
         return False
         
     def copy(self) -> 'SelectionMethod':
@@ -123,7 +127,7 @@ class AbsDiffE(SelectionMethod):
         return 10
 
 
-class MaxAtomicEnvDistance(SelectionMethod):
+class AtomicEnvSimilarity(SelectionMethod):
 
     def __init__(self,
                  threshold: float = 0.999):
@@ -194,14 +198,32 @@ class MaxAtomicEnvDistance(SelectionMethod):
         """Number of training environments available"""
         return len(self._k_vec)
 
-def Novelty (configuration: 'mlptrain.Configuration',
-             configurations:'mlptrain.ConfigurationSet',
-             d_reduaction: bool = False,
-             distance_metric: str = "euclidean"):
+def outlier_identifier (configuration: 'mlptrain.Configuration',
+                        configurations:'mlptrain.ConfigurationSet',
+                        dim_reduction: bool = False,
+                        distance_metric: str = "euclidean",
+                        n_neighbors: int = 15 ):
     """
-    d_reduction: if Ture, the dimensional reduction will
-    be performed before LOF.
-    distance_metric: distance metric used in LOF
+    This function aimed to identify whether a new data (configuation)
+    is the outlier for the existed data (configurations) by Local Outlier 
+    Factor (LOF). For more details about LOF method, please see the lit. 
+    Breunig, M. M., Kriegel, H.-P., Ng, R. T. & Sander, J. LOF: Identifying 
+    density-based local outliers. SIGMOD Rec. 29, 93–104 (2000).
+
+    -----------------------------------------------------------------------
+    Arguments:
+    
+    dim_reduction: if Ture, dimensional reduction (PCA applied here) will
+                 be performed before LOF.
+    distance_metric: distance metric used in LOF,
+                     which could be one of 'euclidean', 
+                     'cosine' and 'manhattan’.
+    n_neighbors: how many neighbors should be consider when compute LOF.
+
+    -----------------------------------------------------------------------
+    Returns:
+    
+    -1 for anomalies/outliers and +1 for inliers.
     """
 
     m1 = soap_matrix(configurations)
@@ -215,35 +237,48 @@ def Novelty (configuration: 'mlptrain.Configuration',
         m1 = pca.fit_transform(m1)
         v1 = pca.transform(v1)
 
-    clf = LocalOutlierFactor(n_neighbors=15, metric = distance_metric, novelty=True, contamination = 0.2)
+    clf = LocalOutlierFactor(n_neighbors=n_neighbors, metric=distance_metric, novelty=True, contamination=0.2)
+    'contamination: define the porpotional of outliner in the data, the higher, the less abnormal'
+                 
     clf.fit(m1)
 
     new = clf.predict(v1)
 
     return new
 
-class EnvDistance(SelectionMethod):
+class AtomicEnvDistance(SelectionMethod):
     def __init__(self,
                  pca: bool = False,
-                 distance_metric: str = "euclidean"):
+                 distance_metric: str = "euclidean",
+                 n_neighbors: int = 15):
         """
-        Selection criteria based on LOF
+        Selection criteria based on access whether the configuration is 
+        outlier by outlier_identifier function
         -----------------------------------------------------------------------
         Arguments:
-            pca: whether to do dimenstional reduction
+            pca: whether to do dimenstional reduction by PCA. 
+                 Because the selected distance_metric may potentially suffer from 
+                 the curse of dimensionality, the dimensionality reduction step 
+                 (using PCA) could be applied before calculating the LOF. 
+                 This would ensure good performance in high-dimensional data space.
+            the other arguments, please see details in outlier_identifier function
         """
         super().__init__()
         self.pca = pca
         self.metric = distance_metric
+        self.n_neighbors = n_neighbors
 
     def __call__(self, configuration, mlp, **kwargs) -> None:
         self.mlp = mlp
         self._configuration = configuration
 
-
     @property
     def select(self) -> bool:
-        metric = Novelty(self._configuration, self.mlp.training_data, self.pca, self.distance)
+        metric = outlier_identifier(self._configuration, 
+                                    self.mlp.training_data, 
+                                    self.pca, 
+                                    self.distance,
+                                    self.n_neighbors)
         return metric == -1
 
     @property
