@@ -402,7 +402,7 @@ def _gen_active_config(config:      'mlptrain.Configuration',
                         'to avoid un-physical structures,'
                         'do backtracking in the trajectory to'
                         'find the first configuration in '
-                        '{selector.n_backtrack} steps recognised as oulier')
+                        '{selector.n_backtrack} steps recognised as outlier')
 
             stride = max(1, len(traj)//selector.n_backtrack)
 
@@ -413,7 +413,7 @@ def _gen_active_config(config:      'mlptrain.Configuration',
             for i, frame in enumerate(back_traj):
                 logger.info(f'Starting to check {i} th configuration'
                               'to determine whether it is the first'
-                              'configurations selected by the distance selector)
+                              'configurations selected by the distance selector')
                 selector(frame, mlp, method_name=method_name, n_cores=n_cores)
                 if selector.select is False:
                     logger.info(f'Selecting {i-1} th configuration.')
