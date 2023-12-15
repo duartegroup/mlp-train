@@ -1,7 +1,7 @@
 import os
 import mlptrain as mlt
 from autode.atoms import Atom
-from mlptrain.training.selection import MaxAtomicEnvDistance
+from mlptrain.training.selection import AtomicEnvSimilarity
 here = os.path.abspath(os.path.dirname(__file__))
 
 
