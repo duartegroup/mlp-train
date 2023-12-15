@@ -64,7 +64,8 @@ class System:
                             maintaining the required min. distance between them
         """
         configuration = Configuration(charge=self.charge,
-                                      mult=self.mult)
+                                      mult=self.mult,
+                                      box=self.box)
 
         for molecule in self.molecules:
 
