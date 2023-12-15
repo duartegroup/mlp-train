@@ -411,7 +411,9 @@ def _gen_active_config(config:      'mlptrain.Configuration',
                 back_traj.append(i)
 
             for i, frame in enumerate(back_traj):
-                logger.info(f'check {i} th config')
+                logger.info(f'Starting to check {i} th configuration'
+                              'to determine whether it is the first'
+                              'configurations selected by the distance selector)
                 selector(frame, mlp, method_name=method_name, n_cores=n_cores)
                 if selector.select is False:
                     logger.info(f'Selecting {i-1} th configuration.')
