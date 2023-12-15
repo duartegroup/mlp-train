@@ -19,6 +19,7 @@ dependencies:
   - py-plumed
   - scipy
   - xtb
+  - scikit-learn
   # MACE dependencies
   - pytorch=2.0
   - openmm-torch=1.1
