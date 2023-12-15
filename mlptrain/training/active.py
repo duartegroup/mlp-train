@@ -398,7 +398,11 @@ def _gen_active_config(config:      'mlptrain.Configuration',
 
     if selector.select:
         if selector.check:
-            logger.warning('distance selector, do backtracking')
+            logger.info('currently applying distance selector,'
+                        'to avoid un-physical structures,'
+                        'do backtracking in the trajectory to'
+                        'find the first configuration in '
+                        '{selector.n_backtrack} steps recognised as oulier')
 
             stride = max(1, len(traj)//selector.n_backtrack)
 
