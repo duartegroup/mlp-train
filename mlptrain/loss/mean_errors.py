@@ -1,7 +1,6 @@
 import mlptrain
 import numpy as np
 from abc import ABC, abstractmethod
-from scipy.stats import bootstrap
 from mlptrain.loss._base import LossValue, LossFunction
 
 
@@ -22,6 +21,7 @@ class _DeltaLossFunction(LossFunction, ABC):
 
             mlp: Potential to use
         """
+        from scipy.stats import bootstrap
 
         if self.loss_type is None:
             raise NotImplementedError(f'{self} did not define loss_type')

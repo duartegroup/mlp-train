@@ -15,7 +15,6 @@ from multiprocessing import Pool
 from subprocess import Popen
 from copy import deepcopy
 from matplotlib.colors import ListedColormap
-from scipy.stats import norm
 from ase import units as ase_units
 from ase.io import read as ase_read
 from ase.io import write as ase_write
@@ -1497,6 +1496,7 @@ class Metadynamics:
                      blocksize:         Optional[int] = None,
                      ) -> None:
         """Plot 1D mean free energy surface with a confidence interval"""
+        import scipy.stats.norm
 
         logger.info('Plotting 1D FES')
 
@@ -1515,7 +1515,7 @@ class Metadynamics:
             with warnings.catch_warnings():
                 warnings.filterwarnings('ignore',
                                         message='invalid value encountered in multiply')
-                confidence_interval = norm.interval(confidence_level,
+                confidence_interval = scipy.stats.norm.interval(confidence_level,
                                                     loc=mean_fes,
                                                     scale=fes_error)
 
@@ -1555,6 +1555,7 @@ class Metadynamics:
                      blocksize:         Optional[int] = None,
                      ) -> None:
         """Plot 2D mean free energy surface with a confidence interval"""
+        import scipy.stats.norm
 
         logger.info('Plotting 2D FES')
 
@@ -1588,7 +1589,7 @@ class Metadynamics:
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore',
                                     message='invalid value encountered in multiply')
-            confidence_interval = norm.interval(confidence_level,
+            confidence_interval = scipy.stats.norm.interval(confidence_level,
                                                 loc=mean_fes,
                                                 scale=fes_error)
 
