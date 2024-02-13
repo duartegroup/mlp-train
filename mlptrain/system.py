@@ -3,7 +3,6 @@ import autode
 import numpy as np
 from typing import Union, Sequence, List
 from scipy.spatial.distance import cdist
-from scipy.stats import special_ortho_group
 from mlptrain.configurations import Configuration, ConfigurationSet
 from mlptrain.log import logger
 from mlptrain.box import Box
@@ -205,6 +204,8 @@ class System:
     @staticmethod
     def _rotate_randomly(molecule) -> None:
         """Rotate a molecule randomly around it's centroid"""
+        from scipy.stats import special_ortho_group
+
         logger.info(f'Rotating {molecule.name} about its centroid')
 
         coords, centroid = molecule.coordinates, molecule.centroid

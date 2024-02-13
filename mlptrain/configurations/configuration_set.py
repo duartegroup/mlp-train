@@ -8,7 +8,6 @@ from autode.atoms import elements, Atom
 from mlptrain.config import Config
 from mlptrain.log import logger
 from mlptrain.configurations.configuration import Configuration
-from mlptrain.configurations.plotting import parity_plot
 from mlptrain.box import Box
 
 
@@ -248,6 +247,8 @@ class ConfigurationSet(list):
         Arguments:
             *args: Strings defining the method or MLPs
         """
+        from mlptrain.configurations.plotting import parity_plot
+
         if _num_strings_in(args) > 1:
             raise NotImplementedError('Compare currently only supports a '
                                       'single reference method (string).')
