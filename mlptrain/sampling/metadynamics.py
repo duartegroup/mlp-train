@@ -1496,7 +1496,7 @@ class Metadynamics:
                      blocksize:         Optional[int] = None,
                      ) -> None:
         """Plot 1D mean free energy surface with a confidence interval"""
-        import scipy.stats.norm
+        import scipy.stats
 
         logger.info('Plotting 1D FES')
 
@@ -1555,7 +1555,7 @@ class Metadynamics:
                      blocksize:         Optional[int] = None,
                      ) -> None:
         """Plot 2D mean free energy surface with a confidence interval"""
-        import scipy.stats.norm
+        import scipy.stats
 
         logger.info('Plotting 2D FES')
 
