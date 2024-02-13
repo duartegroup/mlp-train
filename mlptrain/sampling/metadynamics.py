@@ -8,13 +8,11 @@ import shutil
 import warnings
 import numpy as np
 import multiprocessing as mp
-import matplotlib.pyplot as plt
 import autode as ade
 from typing import Optional, Sequence, Union, Tuple, List
 from multiprocessing import Pool
 from subprocess import Popen
 from copy import deepcopy
-from matplotlib.colors import ListedColormap
 from ase import units as ase_units
 from ase.io import read as ase_read
 from ase.io import write as ase_write
@@ -652,6 +650,7 @@ class Metadynamics:
             time_units: (str) Time units to be used in plotting, available
                               units: 'fs', 'ps', 'ns'
         """
+        import matplotlib.pyplot as plt
 
         filename = f'HILLS_{idx}.dat'
 
@@ -1192,6 +1191,7 @@ class Metadynamics:
                              energy_units: str
                              ) -> None:
         """Plot the standard deviation versus block size"""
+        import matplotlib.pyplot as plt
 
         data_dict.pop('CVs')
         mean_errors = [np.mean(error_grid) for error_grid in data_dict.values()]
@@ -1496,6 +1496,7 @@ class Metadynamics:
                      blocksize:         Optional[int] = None,
                      ) -> None:
         """Plot 1D mean free energy surface with a confidence interval"""
+        import matplotlib.pyplot as plt
         import scipy.stats
 
         logger.info('Plotting 1D FES')
@@ -1555,6 +1556,8 @@ class Metadynamics:
                      blocksize:         Optional[int] = None,
                      ) -> None:
         """Plot 2D mean free energy surface with a confidence interval"""
+        from matplotlib.colors import ListedColormap
+        import matplotlib.pyplot as plt
         import scipy.stats
 
         logger.info('Plotting 2D FES')
@@ -1776,6 +1779,7 @@ class Metadynamics:
         Plot the root mean square difference between free energy surfaces
         as a function of time
         """
+        import matplotlib.pyplot as plt
 
         fes_diff_grids = np.diff(fes_grids, axis=0)
         rms_diffs = [np.sqrt(np.mean(grid * grid)) for grid in fes_diff_grids]
@@ -1806,6 +1810,7 @@ class Metadynamics:
         """
         Plot multiple 1D free energy surfaces as a function of simulation time
         """
+        import matplotlib.pyplot as plt
 
         plotted_cv = self.bias.metad_cvs[0]
 
