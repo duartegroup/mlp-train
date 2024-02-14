@@ -54,8 +54,8 @@ class SelectionMethod(ABC):
     @property
     def check(self)  -> bool:
         """
-        Whether need to keep checking configuations in the MLP-MD trajectory
-        until the first configuration that will be selected by the selector is found
+        Should we keep checking configurations in the MLP-MD trajectory
+        until the first configuration that will be selected by the selector is found?
         """
         return False
         
@@ -204,21 +204,21 @@ def outlier_identifier (configuration: 'mlptrain.Configuration',
                         distance_metric: str = 'euclidean',
                         n_neighbors: int = 15) -> int:
     """
-    This function aimed to identify whether a new data (configuation)
-    is the outlier for the existed data (configurations) by Local Outlier 
-    Factor (LOF). For more details about LOF method, please see the lit. 
+    This function identifies whether a new data (configuration)
+    is the outlier in comparison with the existing data (configurations) by Local Outlier 
+    Factor (LOF). For more details about the LOF method, please see the lit. 
     Breunig, M. M., Kriegel, H.-P., Ng, R. T. & Sander, J. LOF: Identifying 
     density-based local outliers. SIGMOD Rec. 29, 93–104 (2000).
 
     -----------------------------------------------------------------------
     Arguments:
     
-    dim_reduction: if Ture, dimensional reduction (PCA applied here) will
-                   be performed before LOF calculation.
+    dim_reduction: if Ture, dimensionality reduction will
+                   be performed before LOF calculation (so far only PCA available).
     distance_metric: distance metric used in LOF,
                      which could be one of 'euclidean', 
                      'cosine' and 'manhattan’.
-    n_neighbors: how many neighbors should be consider when compute LOF.
+    n_neighbors: number of neighbors considered when computing the LOF.
 
     -----------------------------------------------------------------------
     Returns:
@@ -252,16 +252,16 @@ class AtomicEnvDistance(SelectionMethod):
                  distance_metric: str = "euclidean",
                  n_neighbors: int = 15):
         """
-        Selection criteria based on access whether the configuration is 
+        Selection criteria based on analysis whether the configuration is 
         outlier by outlier_identifier function
         -----------------------------------------------------------------------
         Arguments:
-            pca: whether to do dimenstional reduction by PCA. 
-                 Because the selected distance_metric may potentially suffer from 
+            pca: whether to do dimensionality reduction by PCA. 
+                 As the selected distance_metric may potentially suffer from 
                  the curse of dimensionality, the dimensionality reduction step 
                  (using PCA) could be applied before calculating the LOF. 
                  This would ensure good performance in high-dimensional data space.
-            the other arguments, please see details in outlier_identifier function
+            For the other arguments, please see details in the outlier_identifier function
         """
         super().__init__()
         self.pca = pca
