@@ -397,10 +397,35 @@ def _gen_active_config(config:      'mlptrain.Configuration',
     selector(traj.final_frame, mlp, method_name=method_name, n_cores=n_cores)
 
     if selector.select:
-        if traj.final_frame.energy.true is None:
-            traj.final_frame.single_point(method_name, n_cores=n_cores)
+        if selector.check:
+            logger.info('currently applying distance selector,'
+                        'to avoid un-physical structures,'
+                        'do backtracking in the trajectory to'
+                        'find the first configuration in '
+                        '{selector.n_backtrack} steps recognised as outlier')
 
-        return traj.final_frame
+            stride = max(1, len(traj)//selector.n_backtrack)
+
+            back_traj = ConfigurationSet()
+            for i in reversed(traj[::stride]):
+                back_traj.append(i)
+
+            for i, frame in enumerate(back_traj):
+                logger.info(f'Starting to check {i} th configuration'
+                              'to determine whether it is the first'
+                              'configurations selected by the distance selector')
+                selector(frame, mlp, method_name=method_name, n_cores=n_cores)
+                if selector.select is False:
+                    logger.info(f'Selecting {i-1} th configuration.')
+                    frame = back_traj[i-1]
+                    break
+        else:
+            frame = traj.final_frame
+                  
+        if frame.energy.true is None:
+            frame.single_point(method_name, n_cores=n_cores)
+
+        return frame
 
     if selector.too_large:
 

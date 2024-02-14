@@ -18,6 +18,7 @@ dependencies:
   - py-plumed
   - scipy
   - xtb
+  - scikit-learn
   - pip:
     - quippy-ase # GAP
     - ase@git+https://gitlab.com/ase/ase.git@f2615a6e9a # For PLUMED
