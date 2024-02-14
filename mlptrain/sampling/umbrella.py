@@ -4,7 +4,6 @@ import re
 import time
 import glob
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.integrate import simpson
 from typing import Optional, List, Callable, Tuple
@@ -207,6 +206,8 @@ class _Window:
     def _plot_gaussian(self, hist, bin_centres) -> None:
         """Fit a Gaussian to a histogram of data and plot the result"""
 
+        import matplotlib.pyplot as plt
+
         gaussian = _FittedGaussian()
 
         try:
@@ -246,6 +247,8 @@ class _Window:
 
             plot_gaussian:
         """
+        import matplotlib.pyplot as plt
+
         hist, bin_edges = np.histogram(self._obs_zetas,
                                        density=False,
                                        bins=np.linspace(min_zeta - 0.1*abs(min_zeta),
@@ -838,6 +841,7 @@ def _plot_and_save_free_energy(free_energies,
 
         zetas: Values of the reaction coordinate
     """
+    import matplotlib.pyplot as plt
 
     free_energies = convert_ase_energy(energy_array=free_energies, units=units)
 

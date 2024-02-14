@@ -1,7 +1,6 @@
 import os
 import mlptrain
 import numpy as np
-import matplotlib.pyplot as plt
 from typing import Sequence, List, Tuple, Dict, Optional, Union
 from copy import deepcopy
 from ase import units as ase_units
@@ -1112,6 +1111,7 @@ def plot_cv_versus_time(filename:    str,
                      multiple plots of the same CVs are generated in the same
                      directory
     """
+    import matplotlib.pyplot as plt
 
     with open(filename, 'r') as f:
         header = f.readlines()[0]
@@ -1181,6 +1181,8 @@ def plot_cv1_and_cv2(filenames:   Sequence[str],
                      multiple plots of the same CVs are generated in the same
                      directory
     """
+
+    import matplotlib.pyplot as plt
 
     cvs_names, cvs_arrays = [], []
 
