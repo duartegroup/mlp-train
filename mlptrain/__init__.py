@@ -10,7 +10,10 @@ from mlptrain.utils import convert_ase_time, convert_ase_energy
 from mlptrain import potentials
 from mlptrain import loss
 from mlptrain.training import selection
-from mlptrain.sampling.reaction_coord import AverageDistance, DifferenceDistance
+from mlptrain.sampling.reaction_coord import (
+    AverageDistance,
+    DifferenceDistance,
+)
 from mlptrain.sampling.plumed import (
     PlumedAverageCV,
     PlumedDifferenceCV,
@@ -19,30 +22,31 @@ from mlptrain.sampling.plumed import (
 
 __version__ = '1.0.0a0'
 
-__all__ = ['Configuration',
-           'ConfigurationSet',
-           'Trajectory',
-           'Config',
-           'Molecule',
-           'System',
-           'Box',
-           'Bias',
-           'PlumedBias',
-           'PlumedCalculator', 
-           'UmbrellaSampling',
-           'Metadynamics',
-           'AverageDistance',
-           'DifferenceDistance',
-           'PlumedAverageCV',
-           'PlumedDifferenceCV',
-           'PlumedCustomCV',
-           'plot_cv_versus_time',
-           'plot_cv1_and_cv2',
-           'convert_ase_time',
-           'convert_ase_energy',
-           'md',
-           'md_openmm',
-           'loss',
-           'selection',
-           'potentials'
-           ]
+__all__ = [
+    'Configuration',
+    'ConfigurationSet',
+    'Trajectory',
+    'Config',
+    'Molecule',
+    'System',
+    'Box',
+    'Bias',
+    'PlumedBias',
+    'PlumedCalculator',
+    'UmbrellaSampling',
+    'Metadynamics',
+    'AverageDistance',
+    'DifferenceDistance',
+    'PlumedAverageCV',
+    'PlumedDifferenceCV',
+    'PlumedCustomCV',
+    'plot_cv_versus_time',
+    'plot_cv1_and_cv2',
+    'convert_ase_time',
+    'convert_ase_energy',
+    'md',
+    'md_openmm',
+    'loss',
+    'selection',
+    'potentials',
+]

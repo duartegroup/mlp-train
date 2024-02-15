@@ -41,14 +41,16 @@ def test_differencedistance():
         mlt.DifferenceDistance((0, 1))
 
 
-@pytest.mark.parametrize('rs', [[(0, 1), (0, 2)], [(1, 0), (0, 2)], [(1, 0), (2, 0)]])
-def test_differencedistance_numerical_gradient(rs, h=1E-8):
+@pytest.mark.parametrize(
+    'rs', [[(0, 1), (0, 2)], [(1, 0), (0, 2)], [(1, 0), (2, 0)]]
+)
+def test_differencedistance_numerical_gradient(rs, h=1e-8):
     """Test that the analytic gradient is correct for differencedistance"""
 
-    atoms = ASEAtoms(symbols=['H', 'H', 'H'],
-                     positions=[[0.0, 0.0, 0.0],
-                                [1.0, 0.1, 0.3],
-                                [-2.0, 0.2, 0.4]])
+    atoms = ASEAtoms(
+        symbols=['H', 'H', 'H'],
+        positions=[[0.0, 0.0, 0.0], [1.0, 0.1, 0.3], [-2.0, 0.2, 0.4]],
+    )
 
     z = mlt.DifferenceDistance(*rs)
     grad = z.grad(atoms)
@@ -56,7 +58,6 @@ def test_differencedistance_numerical_gradient(rs, h=1E-8):
 
     for i in range(3):
         for j in range(3):
-
             # Shift to a new position, evaluate the energy and shift back
             atoms.positions[i, j] += h
             e_plus_h = z(atoms)
@@ -64,4 +65,4 @@ def test_differencedistance_numerical_gradient(rs, h=1E-8):
 
             num_grad_ij = (e_plus_h - e) / h
 
-            assert np.isclose(grad[i, j], num_grad_ij, atol=1E-8)
+            assert np.isclose(grad[i, j], num_grad_ij, atol=1e-8)

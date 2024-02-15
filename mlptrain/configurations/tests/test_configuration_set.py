@@ -8,7 +8,6 @@ from mlptrain.box import Box
 
 @work_in_tmp_dir()
 def test_configurations_save():
-
     configs = ConfigurationSet()
 
     # Configuration sets should be constructable from nothing
@@ -26,7 +25,6 @@ def test_configurations_save():
 
 @work_in_tmp_dir()
 def test_configurations_load_default():
-
     configs = ConfigurationSet(Configuration(atoms=[Atom('H')]))
     assert len(configs) == 1
 
@@ -44,11 +42,11 @@ def test_configurations_load_default():
 
 @work_in_tmp_dir()
 def test_configurations_load_alt_attrs():
-
-    configs = ConfigurationSet(Configuration(atoms=[Atom('H')],
-                                             charge=-1,
-                                             mult=3,
-                                             box=Box([1., 1., 1.])))
+    configs = ConfigurationSet(
+        Configuration(
+            atoms=[Atom('H')], charge=-1, mult=3, box=Box([1.0, 1.0, 1.0])
+        )
+    )
     configs.save('tmp.npz')
     new_configs = ConfigurationSet('tmp.npz')
     config = new_configs[0]
@@ -61,7 +59,6 @@ def test_configurations_load_alt_attrs():
 
 @work_in_tmp_dir()
 def test_configurations_load_with_energies_forces():
-
     config = Configuration(atoms=[Atom('H')])
     config.energy.true = -1.0
     config.energy.predicted = -0.9
@@ -76,24 +73,27 @@ def test_configurations_load_with_energies_forces():
 
     for attr in ('energy', 'forces'):
         for kind in ('predicted', 'true'):
-
-            assert np.allclose(getattr(getattr(loaded_config, attr), kind),
-                               getattr(getattr(config, attr), kind))
+            assert np.allclose(
+                getattr(getattr(loaded_config, attr), kind),
+                getattr(getattr(config, attr), kind),
+            )
 
 
 @work_in_tmp_dir()
 def test_configurations_load_xyz():
-
     configs = ConfigurationSet()
 
     with open('tmp.xyz', 'w') as xyz_file:
-        print('1',
-              'title line',
-              'H   0.0   0.0   0.0',
-              '1',
-              'title line',
-              'H   1.0   0.0   0.0',
-              sep='\n', file=xyz_file)
+        print(
+            '1',
+            'title line',
+            'H   0.0   0.0   0.0',
+            '1',
+            'title line',
+            'H   1.0   0.0   0.0',
+            sep='\n',
+            file=xyz_file,
+        )
 
     configs.load_xyz('tmp.xyz', charge=0, mult=2)
 

@@ -3,7 +3,6 @@ import mlptrain as mlt
 mlt.Config.n_cores = 10
 
 if __name__ == '__main__':
-
     # Initialise the system to train
     h2_system = mlt.System(mlt.Molecule('h2.xyz'), box=None)
 
@@ -14,12 +13,12 @@ if __name__ == '__main__':
 
     # Attach CVs to a bias and initialise it for metadynamics AL.
 
-    # By default, metadynamics bias is stored as a list of deposited 
-    # gaussians, which results in every MD step scaling linearly with 
-    # the total length of the simulation. To make the scaling constant, 
-    # the bias can be stored on a grid. This requires to specify the 
-    # bounds for the grid, and the bounds should be chosen such that 
-    # during AL the system would not leave the grid (either by using 
+    # By default, metadynamics bias is stored as a list of deposited
+    # gaussians, which results in every MD step scaling linearly with
+    # the total length of the simulation. To make the scaling constant,
+    # the bias can be stored on a grid. This requires to specify the
+    # bounds for the grid, and the bounds should be chosen such that
+    # during AL the system would not leave the grid (either by using
     # a large grid or attaching walls to constrain the system).
 
     # Other metadynamics parameters can also be set by the method,
@@ -32,14 +31,16 @@ if __name__ == '__main__':
     # Metadynamics bias starts being applied at iteration 2, at iterations 0
     # and 1 the training is performed using unbiased MD with the attached walls
     ace = mlt.potentials.ACE('hydrogen', system=h2_system)
-    ace.al_train(method_name='xtb',
-                 temp=300,
-                 max_active_iters=50,
-                 min_active_iters=10,
-                 bias_start_iter=2, 
-                 inherit_metad_bias=True,
-                 bias=bias)
+    ace.al_train(
+        method_name='xtb',
+        temp=300,
+        max_active_iters=50,
+        min_active_iters=10,
+        bias_start_iter=2,
+        inherit_metad_bias=True,
+        bias=bias,
+    )
 
-    # NOTE: The same al_train() method works with arbitrary PLUMED biases 
-    # (i.e. not only metadynamics) by initialising a PlumedBias using a 
+    # NOTE: The same al_train() method works with arbitrary PLUMED biases
+    # (i.e. not only metadynamics) by initialising a PlumedBias using a
     # PLUMED input file, but then inheritance is unavailable

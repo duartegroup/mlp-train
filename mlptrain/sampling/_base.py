@@ -28,4 +28,3 @@ class ASEConstraint(ABC):
     @abstractmethod
     def adjust_positions(self, atoms, newpositions):
         """Method required for ASE but not used in ml-train"""
-
