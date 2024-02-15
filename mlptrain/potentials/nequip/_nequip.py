@@ -11,7 +11,6 @@ from mlptrain.utils import unique_name
 
 
 class NequIP(MLPotential):
-
     def _train(self) -> None:
         """
         Train a NeQUIP potential on a set of data. Requires an .npz file
@@ -45,13 +44,14 @@ class NequIP(MLPotential):
             from nequip.dynamics.nequip_calculator import NequIPCalculator
 
         except ModuleNotFoundError:
-            raise ModuleNotFoundError('NeQUIP install not found, install it '
-                                      'here: https://github.com/mir-group/nequip')
+            raise ModuleNotFoundError(
+                'NeQUIP install not found, install it '
+                'here: https://github.com/mir-group/nequip'
+            )
 
         calculator = NequIPCalculator.from_deployed_model(
-                          f'{self.name}_deployed.pth',
-                          device='cpu'
-                    )
+            f'{self.name}_deployed.pth', device='cpu'
+        )
 
         return calculator
 
@@ -91,7 +91,7 @@ class NequIP(MLPotential):
 
         yml_file = open(filename, 'w')
 
-        train_frac = Config.nequip_params["train_fraction"]
+        train_frac = Config.nequip_params['train_fraction']
         if train_frac >= 1 or train_frac <= 0:
             raise RuntimeError('Cannot train on a training fraction ∉ [0, 1]')
 
@@ -154,7 +154,9 @@ class NequIP(MLPotential):
             'lr_scheduler_name: ReduceLROnPlateau',
             'lr_scheduler_patience: 100',
             'lr_scheduler_factor: 0.5',
-            sep='\n', file=yml_file)
+            sep='\n',
+            file=yml_file,
+        )
 
         yml_file.close()
         return None
@@ -167,14 +169,18 @@ class NequIP(MLPotential):
         if train_executable_path is None:
             raise RuntimeError('No NeQUIP install found!')
 
-        logger.info(f'Training a NeQUIP potential on '
-                    f'*{len(self.training_data)}* training data')
+        logger.info(
+            f'Training a NeQUIP potential on '
+            f'*{len(self.training_data)}* training data'
+        )
 
-        p = Popen([train_executable_path, f'{self.name}.yml'],
-                  shell=False,
-                  stdout=PIPE,
-                  stderr=PIPE,
-                  env={**os.environ, 'OMP_NUM_THREADS': str(Config.n_cores)})
+        p = Popen(
+            [train_executable_path, f'{self.name}.yml'],
+            shell=False,
+            stdout=PIPE,
+            stderr=PIPE,
+            env={**os.environ, 'OMP_NUM_THREADS': str(Config.n_cores)},
+        )
         out, err = p.communicate(timeout=None)
 
         if b'SYSTEM ABORT' in err or b'raise' in err:
@@ -186,11 +192,17 @@ class NequIP(MLPotential):
         """Deploy a NeQUIP model, i.e. save a TorchScript version of it"""
         logger.info('Deploying a NeQUIP potential')
 
-        p = Popen([shutil.which('nequip-deploy'), 'build', f'{self.name}/',
-                   f'{self.name}_deployed.pth'],
-                  shell=False,
-                  stdout=PIPE,
-                  stderr=PIPE)
+        p = Popen(
+            [
+                shutil.which('nequip-deploy'),
+                'build',
+                f'{self.name}/',
+                f'{self.name}_deployed.pth',
+            ],
+            shell=False,
+            stdout=PIPE,
+            stderr=PIPE,
+        )
         _, _ = p.communicate(timeout=None)
 
         return None
@@ -199,9 +211,9 @@ class NequIP(MLPotential):
         """Clean up the directories created by NeQUIP train"""
 
         shutil.rmtree('processed')
-        shutil.make_archive(unique_name(f'{self.name}.zip')[:-4],
-                            'zip',
-                            self.name)
+        shutil.make_archive(
+            unique_name(f'{self.name}.zip')[:-4], 'zip', self.name
+        )
         try:
             shutil.rmtree(self.name)
         except OSError:
