@@ -434,7 +434,7 @@ class ConfigurationSet(list):
             (np.ndarray): Coordinates tensor (n, n_atoms, 3),
                           where n is len(self)
         """
-        return np.array([np.asarray(c.coordinates, dtype=float) for c in self])
+        return np.array([np.asarray(c.coordinates, dtype=float) for c in self], dtype=object)
 
     @property
     def plumed_coordinates(self) -> Optional[np.ndarray]:
@@ -486,7 +486,7 @@ class ConfigurationSet(list):
         """
 
         return np.array(
-            [[atom.atomic_number for atom in c.atoms] for c in self]
+            [[atom.atomic_number for atom in c.atoms] for c in self], dtype=object
         )
 
     @property
@@ -524,7 +524,7 @@ class ConfigurationSet(list):
 
             all_forces.append(getattr(config.forces, kind))
 
-        return np.array(all_forces)
+        return np.array(all_forces, dtype=object)
 
     def _save_npz(self, filename: str) -> None:
         """Save a compressed numpy array of all the data in this set"""
