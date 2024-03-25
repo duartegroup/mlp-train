@@ -6,6 +6,7 @@ import ase
 
 import mlptrain as mlt
 from mlptrain.log import logger
+from mlptrain.utils import work_in_tmp_dir
 from mlptrain.sampling.md import (
     _convert_ase_traj,
     _get_traj_name,
@@ -32,7 +33,7 @@ except ImportError:
     _HAS_OPENMM_ML = False
 
 # Conversion factor from kJ/mol to eV
-_KJ_PER_MOL_TO_EV = ase.units.eV / (ase.units.kJ / ase.units.mol)
+_KJ_PER_MOL_TO_EV = (ase.units.kJ / ase.units.mol) / ase.units.eV
 
 
 def run_mlp_md_openmm(
@@ -135,9 +136,7 @@ def run_mlp_md_openmm(
     copied_substrings_list = list(copied_substrings)
     kept_substrings_list = list(kept_substrings)
 
-    copied_substrings_list.extend(
-        ['.state.xml', '.xml', '.json', '.pth', '.model']
-    )
+    copied_substrings_list.extend(['.xml', '.json', '.pth', '.model'])
 
     if restart:
         logger.info('Restarting MLP OpenMM MD')
@@ -169,7 +168,14 @@ def run_mlp_md_openmm(
     else:
         logger.info('Running MLP MD with OpenMM')
 
-    traj_openmm = _run_mlp_md_openmm(
+    decorator = work_in_tmp_dir(
+        copied_substrings=copied_substrings_list,
+        kept_substrings=kept_substrings_list,
+    )
+
+    _run_mlp_md_decorated = decorator(_run_mlp_md_openmm)
+
+    traj = _run_mlp_md_decorated(
         configuration=configuration,
         mlp=mlp,
         temp=temp,
@@ -183,8 +189,7 @@ def run_mlp_md_openmm(
         platform=platform,
         **kwargs,
     )
-
-    return traj_openmm
+    return traj
 
 
 def _run_mlp_md_openmm(
@@ -523,6 +528,7 @@ def _run_dynamics(
             state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
             * _KJ_PER_MOL_TO_EV
         )
+
         # TODO: Implement biased_energy when bias is implemented
         biased_energy = potential_energy
 
