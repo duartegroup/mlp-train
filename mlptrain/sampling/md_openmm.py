@@ -320,7 +320,7 @@ def _run_mlp_md_openmm(
 # ============================================================================= #
 #               Functions for running the OpenMM MD simulation                  #
 # ============================================================================= #
-def _create_openmm_topology(ase_atoms: ase.Atoms) -> app.Topology:
+def _create_openmm_topology(ase_atoms: 'ase.Atoms') -> 'app.Topology':
     """Create an OpenMM topology from an ASE atoms object."""
     logger.info('Creating the OpenMM topology')
     topology = app.Topology()
@@ -338,10 +338,10 @@ def _create_openmm_topology(ase_atoms: ase.Atoms) -> app.Topology:
 
 def _create_openmm_simulation(
     mlp: 'mlt.potentials._base.MLPotential',
-    topology: app.Topology,
+    topology: 'app.Topology',
     temp: float,
     dt: float,
-) -> app.Simulation:
+) -> 'app.Simulation':
     """Create an OpenMM simulation object."""
     logger.info('Creating the OpenMM simulation object')
 
@@ -367,8 +367,8 @@ def _create_openmm_simulation(
 
 
 def _set_momenta_and_geometry(
-    simulation: app.Simulation,
-    positions: unit.Quantity,
+    simulation: 'app.Simulation',
+    positions: 'unit.Quantity',
     temp: float,
     restart_file: Optional[str] = None,
 ) -> app.Simulation:
@@ -414,10 +414,10 @@ def _get_simulation_name(
 
 
 def _run_dynamics(
-    simulation: app.Simulation,
+    simulation: 'app.Simulation',
     simulation_name: str,
-    ase_atoms: ase.Atoms,
-    ase_traj: ase.io.trajectory.Trajectory,
+    ase_atoms: 'ase.Atoms',
+    ase_traj: 'ase.io.trajectory.Trajectory',
     traj_name: str,
     dt: float,
     interval: int,
@@ -432,7 +432,6 @@ def _run_dynamics(
         energies.append(energy)
 
     def append_biased_energy():
-        # TODO: Implement this when bias is implemented
         biased_energies.append(biased_energy)
 
     def save_trajectory():
@@ -467,7 +466,7 @@ def _run_dynamics(
             save_trajectory()
 
 
-def _get_coordinates_energy(simulation: app.Simulation) -> tuple:
+def _get_coordinates_energy(simulation: 'app.Simulation') -> tuple:
     """Get the coordinates and energy of the system from the OpenMM simulation."""
     state = simulation.context.getState(getPositions=True, getEnergy=True)
     coordinates = state.getPositions(asNumpy=True).value_in_unit(unit.angstrom)
@@ -481,9 +480,9 @@ def _get_coordinates_energy(simulation: app.Simulation) -> tuple:
 def _add_frame_to_ase_traj(
     coordinates: 'np.ndarray',
     potential_energy: float,
-    ase_atoms: ase.Atoms,
-    ase_traj: ase.io.trajectory.Trajectory,
-) -> ase.io.trajectory.Trajectory:
+    ase_atoms: 'ase.Atoms',
+    ase_traj: 'ase.io.trajectory.Trajectory',
+) -> 'ase.io.trajectory.Trajectory':
     """Add a new frame to the ASE train trajectory"""
     # Create a new ASE atoms object.
     new_ase_atoms = ase.Atoms(
