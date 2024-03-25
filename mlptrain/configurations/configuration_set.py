@@ -434,7 +434,10 @@ class ConfigurationSet(list):
             (np.ndarray): Coordinates tensor (n, n_atoms, 3),
                           where n is len(self)
         """
-        return np.array([np.asarray(c.coordinates, dtype=float) for c in self], dtype=object)
+        return np.array(
+            [np.asarray(c.coordinates, dtype=float) for c in self],
+            dtype=object,
+        )
 
     @property
     def plumed_coordinates(self) -> Optional[np.ndarray]:
@@ -486,7 +489,8 @@ class ConfigurationSet(list):
         """
 
         return np.array(
-            [[atom.atomic_number for atom in c.atoms] for c in self], dtype=object
+            [[atom.atomic_number for atom in c.atoms] for c in self],
+            dtype=object,
         )
 
     @property
