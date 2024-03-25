@@ -411,7 +411,7 @@ def _set_momenta_and_geometry(
     positions: 'unit.Quantity',
     temp: float,
     restart_file: Optional[str] = None,
-) -> app.Simulation:
+) -> 'app.Simulation':
     """Set the momenta and geometry for the OpenMM simulation."""
 
     if restart_file is not None:
