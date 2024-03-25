@@ -87,7 +87,7 @@ def run_mlp_md_openmm(
               to use in the dynamics
 
         restart_files: List of files which are needed for restarting the
-                       simulation
+                       simulation, e.g. 'simulation.state.xml', 'trajectory.traj'
 
         kept_substrings: List of substrings with which files are copied back
                          from the temporary directory
@@ -264,8 +264,12 @@ def _run_mlp_md_openmm(
         restart_file=simulation_name if restart else None,
     )
 
+    # Initialise the ASE trajectory with the last frame of the previous trajectory
     ase_traj = _initialise_traj(
-        ase_atoms=ase_atoms, restart=restart, traj_name=traj_name
+        ase_atoms=ase_atoms,
+        restart=restart,
+        traj_name=traj_name,
+        remove_last=False,
     )
 
     # If MD is restarted, energies of frames from the previous trajectory
@@ -275,21 +279,8 @@ def _run_mlp_md_openmm(
     bias_energies = deepcopy(energies)
 
     # Calculate the number of steps already performed.
-    """
     n_previous_steps = interval * len(ase_traj)
 
-    
-    simulation.reporters.append(
-        app.StateDataReporter(
-            stdout,
-            int(interval),
-            step=True,
-            potentialEnergy=True,
-            temperature=True,
-            speed=True,
-        )
-    )
-    """
     logger.info(
         f'Running OpenMM simulation for {n_steps} steps with saving interval {interval}'
     )
@@ -304,6 +295,7 @@ def _run_mlp_md_openmm(
         dt=dt,
         interval=interval,
         n_steps=n_steps,
+        n_previous_steps=n_previous_steps,
         energies=energies,
         biased_energies=biased_energies,
         **kwargs,
@@ -473,6 +465,7 @@ def _run_dynamics(
     dt: float,
     interval: int,
     n_steps: int,
+    n_previous_steps: int,
     energies: List[Optional[float]],
     biased_energies: List[Optional[float]],
     **kwargs,
@@ -514,7 +507,8 @@ def _run_dynamics(
         traj_saving_interval = 0
 
     # Run the dynamics n_steps, performing interval steps at a time.
-    for j in range(n_steps // interval):
+
+    for j in range(n_previous_steps // interval, n_steps // interval):
         logger.info(f'Step {j + 1} / {n_steps // interval}')
         simulation.step(interval)
         time = dt * interval * (j + 1)

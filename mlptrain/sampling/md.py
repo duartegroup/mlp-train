@@ -557,7 +557,10 @@ def _set_momenta_and_geometry(
 
 
 def _initialise_traj(
-    ase_atoms: 'ase.atoms.Atoms', restart: bool, traj_name: str
+    ase_atoms: 'ase.atoms.Atoms',
+    restart: bool,
+    traj_name: str,
+    remove_last: bool = True,
 ) -> 'ase.io.trajectory.Trajectory':
     """Initialise ASE trajectory object"""
 
@@ -565,9 +568,13 @@ def _initialise_traj(
         traj = ASETrajectory(traj_name, 'w', ase_atoms)
 
     else:
-        # Remove the last frame to avoid duplicate frames
         previous_traj = ASETrajectory(traj_name, 'r', ase_atoms)
-        previous_atoms = previous_traj[:-1]
+
+        if remove_last:
+            # Remove the last frame to avoid duplicate frames
+            previous_atoms = previous_traj[:-1]
+        else:
+            previous_atoms = previous_traj
 
         os.remove(traj_name)
 
