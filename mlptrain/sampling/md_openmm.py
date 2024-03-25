@@ -3,7 +3,6 @@ from copy import deepcopy
 from typing import List, Optional, Sequence, Union
 
 import ase
-import numpy as np
 
 import mlptrain as mlt
 from mlptrain.log import logger
@@ -32,6 +31,9 @@ try:
 except ImportError:
     _HAS_OPENMM_ML = False
 
+# Conversion factor from kJ/mol to eV
+_KJ_PER_MOL_TO_EV = ase.units.eV / (ase.units.kJ / ase.units.mol)
+
 
 def run_mlp_md_openmm(
     configuration: 'mlt.Configuration',
@@ -46,6 +48,7 @@ def run_mlp_md_openmm(
     restart_files: Optional[List[str]] = None,
     copied_substrings: Optional[Sequence[str]] = None,
     kept_substrings: Optional[Sequence[str]] = None,
+    platform: Optional[str] = None,
     **kwargs,
 ) -> 'mlt.Trajectory':
     """
@@ -92,6 +95,9 @@ def run_mlp_md_openmm(
         copied_substrings: List of substrings with which files are copied
                            to the temporary directory. Files required for MLPs
                            are added to the list automatically
+
+        platform: (str) OpenMM platform to use. If None, the fastest available
+                    platform is used in this order: 'CUDA', 'OpenCL', 'CPU', 'Reference'.
     ---------------
     Keyword Arguments:
 
@@ -174,6 +180,7 @@ def run_mlp_md_openmm(
         bbond_energy=bbond_energy,
         bias=bias,
         restart_files=restart_files,
+        platform=platform,
         **kwargs,
     )
 
@@ -191,6 +198,7 @@ def _run_mlp_md_openmm(
     bbond_energy: Optional[dict] = None,
     bias: Optional[Union['mlt.Bias', 'mlt.PlumedBias']] = None,
     restart_files: Optional[List[str]] = None,
+    platform: Optional[str] = None,
     **kwargs,
 ) -> 'mlt.Trajectory':
     """
@@ -216,7 +224,7 @@ def _run_mlp_md_openmm(
 
     # Set the box size if required
     if mlp.requires_non_zero_box_size and configuration.box is None:
-        logger.warning('Assuming vaccum simulation. Box size = 1000 nm^3')
+        logger.warning('Assuming vacuum simulation. Box size = 1000 nm^3')
         configuration.box = mlt.Box([100, 100, 100])
 
     # Get the ASE atoms object and positions.
@@ -231,12 +239,16 @@ def _run_mlp_md_openmm(
     # Create the OpenMM topology
     topology = _create_openmm_topology(ase_atoms)
 
+    # Get the OpenMM platform
+    platform = _get_openmm_platform(platform)
+
     # Create the OpenMM simulation object
     simulation = _create_openmm_simulation(
         mlp=mlp,
         topology=topology,
         temp=temp,
         dt=dt,
+        platform=platform,
     )
 
     # Set the initial positions and velocities
@@ -274,7 +286,7 @@ def _run_mlp_md_openmm(
     )
     """
     logger.info(
-        f'Running using OpenMM for {n_steps} steps with saving interval {interval}'
+        f'Running OpenMM simulation for {n_steps} steps with saving interval {interval}'
     )
 
     # Run the dynamics
@@ -318,7 +330,7 @@ def _run_mlp_md_openmm(
 
 
 # ============================================================================= #
-#               Functions for running the OpenMM MD simulation                  #
+#             Auxiliary functions to create the OpenMM Simulation               #
 # ============================================================================= #
 def _create_openmm_topology(ase_atoms: 'ase.Atoms') -> 'app.Topology':
     """Create an OpenMM topology from an ASE atoms object."""
@@ -336,11 +348,41 @@ def _create_openmm_topology(ase_atoms: 'ase.Atoms') -> 'app.Topology':
     return topology
 
 
+def _get_openmm_platform(platform: Optional[str]) -> 'mm.Platform':
+    """Get the OpenMM platform to use."""
+    available_platforms = [
+        mm.Platform.getPlatform(i).getName()
+        for i in range(mm.Platform.getNumPlatforms())
+    ]
+
+    if platform is not None and platform in available_platforms:
+        platform = mm.Platform.getPlatformByName(platform)
+    else:
+        platform = next(
+            (
+                p
+                for p in ['CUDA', 'OpenCL', 'CPU', 'Reference']
+                if p in available_platforms
+            ),
+            None,
+        )
+        if platform is None:
+            raise ValueError(
+                f'No suitable platform found. Available platforms are: {available_platforms}'
+            )
+        platform = mm.Platform.getPlatformByName(platform)
+
+    logger.info(f'Using the OpenMM platform: {platform.getName()}')
+
+    return platform
+
+
 def _create_openmm_simulation(
     mlp: 'mlt.potentials._base.MLPotential',
     topology: 'app.Topology',
     temp: float,
     dt: float,
+    platform: 'mm.Platform',
 ) -> 'app.Simulation':
     """Create an OpenMM simulation object."""
     logger.info('Creating the OpenMM simulation object')
@@ -352,16 +394,17 @@ def _create_openmm_simulation(
     # Use a Langevin integrator if temp>0 (NVT ensemble).
     # Otherwise, use a Verlet integrator (NVE ensemble).
     if temp > 0:
-        logger.info(f'Using Langevin integrator as temperture is {temp} K')
+        logger.info(
+            f'Using Langevin integrator (NVT) with temperture={temp} K'
+        )
         integrator = mm.LangevinMiddleIntegrator(
             temp * unit.kelvin, 1.0 / unit.picoseconds, dt * unit.femtoseconds
         )
     else:
-        logger.info(f'Using Verlet integrator as temperture is {temp} K')
+        logger.info(f'Using Verlet integrator (NVE) as temperture is {temp} K')
         integrator = mm.VerletIntegrator(dt * unit.femtoseconds)
 
-    # TODO: Add platform
-    simulation = app.Simulation(topology, system, integrator)
+    simulation = app.Simulation(topology, system, integrator, platform)
 
     return simulation
 
@@ -413,6 +456,9 @@ def _get_simulation_name(
     )
 
 
+# ============================================================================= #
+#               Auxiliary functions to run the OpenMM Simulation                #
+# ============================================================================= #
 def _run_dynamics(
     simulation: 'app.Simulation',
     simulation_name: str,
@@ -429,16 +475,32 @@ def _run_dynamics(
     """Run the MD and save frames to the mlt.Trajectory."""
 
     def append_unbiased_energy():
-        energies.append(energy)
+        """Append the unbiased potential energy to the energies list."""
+        energies.append(potential_energy)
 
     def append_biased_energy():
+        """Append the biased potential energy to the biased_energies list."""
         biased_energies.append(biased_energy)
 
     def save_trajectory():
+        """Save the ASE trajectory to a file."""
         _save_trajectory(ase_traj, traj_name, **kwargs)
 
     def save_simulation_state():
+        """Save the state of the OpenMM simulation."""
         simulation.saveState(simulation_name)
+
+    def _add_frame_to_ase_traj():
+        """Add a new frame to the ASE train trajectory"""
+        # Create a new ASE atoms object.
+        new_ase_atoms = ase.Atoms(
+            symbols=ase_atoms.get_chemical_symbols(),
+            positions=coordinates,
+            cell=ase_atoms.get_cell(),
+        )
+
+        # Append the new frame to the trajectory.
+        ase_traj.write(new_ase_atoms, energy=potential_energy)
 
     # Determine saving intervals
     if any(key in kwargs for key in ['save_fs', 'save_ps', 'save_ns']):
@@ -452,46 +514,25 @@ def _run_dynamics(
         simulation.step(interval)
         time = dt * interval * (j + 1)
 
-        # Add frame to the ASE trajectory, and save energies and trajectory.
-        coordinates, energy, biased_energy = _get_coordinates_energy(
-            simulation
+        # Get the coordinates and energy of the system from the OpenMM simulation.
+        state = simulation.context.getState(getPositions=True, getEnergy=True)
+        coordinates = state.getPositions(asNumpy=True).value_in_unit(
+            unit.angstrom
         )
+        potential_energy = (
+            state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
+            * _KJ_PER_MOL_TO_EV
+        )
+        # TODO: Implement biased_energy when bias is implemented
+        biased_energy = potential_energy
 
-        _add_frame_to_ase_traj(coordinates, energy, ase_atoms, ase_traj)
+        # Add the frame to the ASE trajectory.
+        _add_frame_to_ase_traj()
+
+        # Store the energies
         append_unbiased_energy()
         append_biased_energy()
         save_simulation_state()
 
         if traj_saving_interval > 0 and time % traj_saving_interval == 0:
             save_trajectory()
-
-
-def _get_coordinates_energy(simulation: 'app.Simulation') -> tuple:
-    """Get the coordinates and energy of the system from the OpenMM simulation."""
-    state = simulation.context.getState(getPositions=True, getEnergy=True)
-    coordinates = state.getPositions(asNumpy=True).value_in_unit(unit.angstrom)
-    energy = state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
-    energy *= 0.01036427230133138  # kilojoules_per_mole_to_eV
-    biased_energy = energy  # TODO: Implement this when bias is implemented
-
-    return coordinates, energy, biased_energy
-
-
-def _add_frame_to_ase_traj(
-    coordinates: 'np.ndarray',
-    potential_energy: float,
-    ase_atoms: 'ase.Atoms',
-    ase_traj: 'ase.io.trajectory.Trajectory',
-) -> 'ase.io.trajectory.Trajectory':
-    """Add a new frame to the ASE train trajectory"""
-    # Create a new ASE atoms object.
-    new_ase_atoms = ase.Atoms(
-        symbols=ase_atoms.get_chemical_symbols(),
-        positions=coordinates,
-        cell=ase_atoms.get_cell(),
-    )
-
-    # Append the new frame to the trajectory.
-    ase_traj.write(new_ase_atoms, energy=potential_energy)
-
-    return ase_traj
