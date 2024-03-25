@@ -168,7 +168,7 @@ def run_mlp_md_openmm(
         mlp=mlp,
         temp=temp,
         dt=dt,
-        interval=interval,  
+        interval=interval,
         init_temp=init_temp,
         fbond_energy=fbond_energy,
         bbond_energy=bbond_energy,
