@@ -20,9 +20,11 @@ dependencies:
   - scipy
   - xtb
   - scikit-learn
+  - openmm
+  - openmm-torch
+  - nnpops
   # MACE dependencies
   - pytorch=2.0
-  - openmm-torch=1.1
   - torchvision
   - torchaudio
   - torch-ema
@@ -32,10 +34,6 @@ dependencies:
   # - pytorch-cuda=11.8
   # - pytorch-cuda=12.1
   - pip:
-    # e3nn is available on conda as well, but it is a dependency of mace
-    # so needs to be installed together.
-    - e3nn
-    - mace@git+https://github.com/ACEsuit/mace.git@v0.2.0
-    # The upstream PR to openmm-ml has not been merged yet: https://github.com/openmm/openmm-ml/pull/61)
-    - openmmml@git+https://github.com/sef43/openmm-ml.git@mace
+    - mace-torch
+    - openmmml@git+https://github.com/openmm/openmm-ml.git@main
     - ase@git+https://gitlab.com/ase/ase.git@f2615a6e9a # For PLUMED
