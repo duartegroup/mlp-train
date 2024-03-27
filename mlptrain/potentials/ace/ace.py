@@ -135,7 +135,7 @@ class ACE(MLPotential):
 
         print(
             f'species = [{_str}]\n'
-            f'N = {Config.ace_params['N']}',  # maximum correlation order
+            f"N = {Config.ace_params['N']}",  # maximum correlation order
             file=inp_file,
         )
 
