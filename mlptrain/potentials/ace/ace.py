@@ -134,7 +134,8 @@ class ACE(MLPotential):
         _str = ', '.join([f':{s}' for s in self.system.unique_atomic_symbols])
 
         print(
-            f'species = [{_str}]\n' 'N = 4',  # maximum correlation order
+            f'species = [{_str}]\n'
+            f'N = {Config.ace_params['N']}',  # maximum correlation order
             file=inp_file,
         )
 
@@ -173,10 +174,10 @@ class ACE(MLPotential):
         print(
             'r0 = 1.3\n'
             f'r_in = {self._r_in_estimate:.4f}\n'  # inner cutoff of ACE, choose a little more than min dist in dataset
-            'r_cut = 4.0\n'  # outer cutoff of ACE
+            f'r_cut = {Config.ace_params['r_cut']}\n'  # outer cutoff of ACE
             '\n'
-            'deg_pair = 5\n'  # Specify the pair potential
-            'r_cut_pair = 5.0\n',
+            f'deg_pair = {Config.ace_params['deg_pair']}\n'  # Specify the pair potential
+            f'r_cut_pair = {Config.ace_params['r_cut_pair']}\n',
             file=inp_file,
         )
 
