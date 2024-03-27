@@ -843,7 +843,8 @@ try:
     from mace.calculators import MACECalculator as _MACECalculator
 
     class MACECalculator(_MACECalculator):
-        # Taken from the original MACECalculator, see
+        # Taken from the original MACE-Ase Calculator, see:
+        # https://github.com/ACEsuit/mace/blob/main/mace/calculators/mace.py
         def __init__(
             self,
             model_paths: Union[list, str],
