@@ -15,7 +15,7 @@ dependencies:
   - matplotlib-base
   - numpy
   - pytest
-  - pytest-cov
+  - pytest-cov=4
   - py-plumed
   - scipy
   - xtb
