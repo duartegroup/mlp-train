@@ -38,7 +38,13 @@ jobs:
       run: ./install_gap.sh
 
     - name: Test basic install
-      run: pytest
+      run: pytest --cov
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+          flags: python-${{ matrix.python-version }}
+          token: ${{ secrets.CODECOV_TOKEN }}
 
 
   test-mace:
