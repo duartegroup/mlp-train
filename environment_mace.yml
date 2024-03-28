@@ -15,7 +15,8 @@ dependencies:
   - dscribe=2.0
   - matplotlib-base
   - numpy
-  - pytest
+  - pytest=8
+  - pytest-cov=5
   - py-plumed
   - scipy
   - xtb
