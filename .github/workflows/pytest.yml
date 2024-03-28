@@ -38,7 +38,7 @@ jobs:
       run: ./install_gap.sh
 
     - name: Test basic install
-      run: pytest -v --cov --cov-report=xml && ls * mlptrain/*
+      run: pytest --cov --cov-report=xml
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
@@ -77,4 +77,11 @@ jobs:
       run: ./install_mace.sh
 
     - name: Test MACE install
-      run: pytest --cov
+      run: pytest --cov --cov-report=xml
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+          flags: python-${{ matrix.python-version }}-mace
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: duartegroup/mlp-train
