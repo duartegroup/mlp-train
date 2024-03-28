@@ -5,5 +5,5 @@ dist/
 *DS_store
 **/__pycache__/
 **/__MACOSX/
-.coverage
+.coverage*
 .pytest_cache
