@@ -31,7 +31,7 @@ except ModuleNotFoundError:
     pass
 
 
-def get_model_dtype(model: torch.nn.Module) -> torch.dtype:
+def get_model_dtype(model: torch.nn.Module) -> 'torch.dtype':
     """Get the dtype of the model"""
     mode_dtype = next(model.parameters()).dtype
     if mode_dtype == torch.float64:
