@@ -7,11 +7,8 @@ import time
 import shutil
 import logging
 import numpy as np
-from pathlib import Path
-from glob import glob
-from typing import Union, Optional, Dict, List
+from typing import Optional, Dict, List
 from ase.data import chemical_symbols
-from ase.calculators.calculator import Calculator
 from mlptrain.potentials._base import MLPotential
 from mlptrain.config import Config
 from mlptrain.box import Box
@@ -25,20 +22,11 @@ try:
     from e3nn import o3
     from torch.optim.swa_utils import SWALR, AveragedModel
     from mace import data, modules, tools
-    from mace.tools import torch_geometric, torch_tools, utils
+    from mace.calculators import MACECalculator
+    from mace.tools import torch_geometric
     from mace.tools.scripts_utils import create_error_table
 except ModuleNotFoundError:
     pass
-
-
-def get_model_dtype(model: 'torch.nn.Module') -> 'torch.dtype':
-    """Get the dtype of the model"""
-    mode_dtype = next(model.parameters()).dtype
-    if mode_dtype == torch.float64:
-        return 'float64'
-    if mode_dtype == torch.float32:
-        return 'float32'
-    raise ValueError(f'Unknown dtype {mode_dtype}')
 
 
 class MACE(MLPotential):
@@ -124,10 +112,7 @@ class MACE(MLPotential):
         self._run_train()
         delta_time = time.perf_counter() - start_time
 
-        logger.info(
-            f'MACE training ran in {delta_time / 60:.1f} m'
-            f'MACE dtype is {get_model_dtype(self.model)}.'
-        )
+        logger.info(f'MACE training ran in {delta_time / 60:.1f} m.')
 
         self._load_latest_epoch()
         self._print_error_table()
@@ -837,120 +822,3 @@ class MACE(MLPotential):
                 self._ema = None
 
         return self._ema
-
-
-try:
-    from mace.calculators import MACECalculator as _MACECalculator
-
-    class MACECalculator(_MACECalculator):
-        # Taken from the original MACE-Ase Calculator, see:
-        # https://github.com/ACEsuit/mace/blob/main/mace/calculators/mace.py
-        def __init__(
-            self,
-            model_paths: Union[list, str],
-            device: str,
-            energy_units_to_eV: float = 1.0,
-            length_units_to_A: float = 1.0,
-            default_dtype='',
-            charges_key='Qs',
-            model_type='MACE',
-            **kwargs,
-        ):
-            Calculator.__init__(self, **kwargs)
-            self.results = {}
-
-            self.model_type = model_type
-
-            if model_type == 'MACE':
-                self.implemented_properties = [
-                    'energy',
-                    'free_energy',
-                    'node_energy',
-                    'forces',
-                    'stress',
-                ]
-            elif model_type == 'DipoleMACE':
-                self.implemented_properties = ['dipole']
-            elif model_type == 'EnergyDipoleMACE':
-                self.implemented_properties = [
-                    'energy',
-                    'free_energy',
-                    'node_energy',
-                    'forces',
-                    'stress',
-                    'dipole',
-                ]
-            else:
-                raise ValueError(
-                    f'Give a valid model_type: [MACE, DipoleMACE, EnergyDipoleMACE], {model_type} not supported'
-                )
-
-            if 'model_path' in kwargs:
-                print('model_path argument deprecated, use model_paths')
-                model_paths = kwargs['model_path']
-
-            if isinstance(model_paths, str):
-                # Find all models that satisfy the wildcard (e.g. mace_model_*.pt)
-                model_paths_glob = glob(model_paths)
-                if len(model_paths_glob) == 0:
-                    raise ValueError(
-                        f"Couldn't find MACE model files: {model_paths}"
-                    )
-                model_paths = model_paths_glob
-            elif isinstance(model_paths, Path):
-                model_paths = [model_paths]
-            if len(model_paths) == 0:
-                raise ValueError('No mace file names supplied')
-            self.num_models = len(model_paths)
-            if len(model_paths) > 1:
-                print(f'Running committee mace with {len(model_paths)} models')
-                if model_type in ['MACE', 'EnergyDipoleMACE']:
-                    self.implemented_properties.extend(
-                        ['energies', 'energy_var', 'forces_comm', 'stress_var']
-                    )
-                elif model_type == 'DipoleMACE':
-                    self.implemented_properties.extend(['dipole_var'])
-
-            self.models = [
-                torch.load(f=model_path, map_location=device)
-                for model_path in model_paths
-            ]
-            for model in self.models:
-                model.to(
-                    device
-                )  # shouldn't be necessary but seems to help with GPU
-            r_maxs = [model.r_max.cpu() for model in self.models]
-            r_maxs = np.array(r_maxs)
-            assert np.all(
-                r_maxs == r_maxs[0]
-            ), "committee r_max are not all the same {' '.join(r_maxs)}"
-            self.r_max = float(r_maxs[0])
-
-            self.device = torch_tools.init_device(device)
-            self.energy_units_to_eV = energy_units_to_eV
-            self.length_units_to_A = length_units_to_A
-            self.z_table = utils.AtomicNumberTable(
-                [int(z) for z in self.models[0].atomic_numbers]
-            )
-            self.charges_key = charges_key
-            model_dtype = get_model_dtype(self.models[0])
-            if default_dtype == '':
-                print(
-                    f'No dtype selected, switching to {model_dtype} to match model dtype.'
-                )
-                default_dtype = model_dtype
-            if model_dtype != default_dtype:
-                print(
-                    f'Default dtype {default_dtype} does not match model dtype {model_dtype}, converting models to {default_dtype}.'
-                )
-                if default_dtype == 'float64':
-                    self.models = [model.double() for model in self.models]
-                elif default_dtype == 'float32':
-                    self.models = [model.float() for model in self.models]
-            torch_tools.set_default_dtype(default_dtype)
-            for model in self.models:
-                for param in model.parameters():
-                    param.requires_grad = False
-
-except ModuleNotFoundError:
-    pass
