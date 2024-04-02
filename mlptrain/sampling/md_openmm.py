@@ -348,12 +348,13 @@ def _create_openmm_topology(ase_atoms: 'ase.Atoms') -> 'app.Topology':
 def _get_openmm_platform(platform: Optional[str]) -> 'mm.Platform':
     """Get the OpenMM platform to use."""
     import torch
+
     available_platforms = [
         mm.Platform.getPlatform(i).getName()
         for i in range(mm.Platform.getNumPlatforms())
     ]
 
-    # OpenMM might have been built with CUDA support
+    # OpenMM might have been built with CUDA support
     # but the current system might not have a GPU available (typical in clusters)
     if 'CUDA' in available_platforms and not torch.cuda.is_available():
         available_platforms.remove('CUDA')
