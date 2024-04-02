@@ -690,6 +690,7 @@ class MACE(MLPotential):
             ],
             lr=self.args.lr,
             amsgrad=Config.mace_params['amsgrad'],
+            foreach=False if torch.get_default_dtype() == torch.float64 else True,
         )
 
         return param_options
