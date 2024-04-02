@@ -339,6 +339,7 @@ _spin_multiplicites = {
     'Ne': 1,
     'Na': 2,
     'Mg': 1,
+    'S': 3,
     'Cl': 2,
     'Ar': 1,
     'K': 2,

@@ -9,7 +9,6 @@ import logging
 import numpy as np
 from typing import Optional, Dict, List
 from ase.data import chemical_symbols
-from ase.calculators.calculator import Calculator
 from mlptrain.potentials._base import MLPotential
 from mlptrain.config import Config
 from mlptrain.box import Box
@@ -23,7 +22,8 @@ try:
     from e3nn import o3
     from torch.optim.swa_utils import SWALR, AveragedModel
     from mace import data, modules, tools
-    from mace.tools import torch_geometric, torch_tools, utils
+    from mace.calculators import MACECalculator
+    from mace.tools import torch_geometric
     from mace.tools.scripts_utils import create_error_table
 except ModuleNotFoundError:
     pass
@@ -99,7 +99,7 @@ class MACE(MLPotential):
         logger.info(
             'Training a MACE potential on '
             f'*{len(self.training_data)}* training data, '
-            f'using {n_cores} cores for training'
+            f'using {n_cores} cores for training.'
         )
 
         for config in self.training_data:
@@ -112,7 +112,7 @@ class MACE(MLPotential):
         self._run_train()
         delta_time = time.perf_counter() - start_time
 
-        logger.info(f'MACE training ran in {delta_time / 60:.1f} m')
+        logger.info(f'MACE training ran in {delta_time / 60:.1f} m.')
 
         self._load_latest_epoch()
         self._print_error_table()
@@ -136,9 +136,8 @@ class MACE(MLPotential):
         """ASE calculator for MACE potential"""
 
         calculator = MACECalculator(
-            model_path=self.filename,
+            model_paths=self.filename,
             device=Config.mace_params['calc_device'],
-            default_dtype='float64',
         )
         return calculator
 
@@ -230,7 +229,7 @@ class MACE(MLPotential):
     def _save_model(self) -> None:
         """Save the trained model"""
 
-        model_path = os.path.join(self.args.checkpoints_dir, self.filename)
+        model_paths = os.path.join(self.args.checkpoints_dir, self.filename)
 
         if Config.mace_params['save_cpu']:
             self.model.to('cpu')
@@ -238,12 +237,12 @@ class MACE(MLPotential):
         logging.info(
             f'Saving the model {self.filename} '
             f'to {self.args.checkpoints_dir} '
-            'and the current directory'
+            'and the current directory.'
         )
 
-        torch.save(self.model, model_path)
+        torch.save(self.model, model_paths)
         shutil.copyfile(
-            src=os.path.join(os.getcwd(), model_path),
+            src=os.path.join(os.getcwd(), model_paths),
             dst=os.path.join(os.getcwd(), self.filename),
         )
 
@@ -327,7 +326,7 @@ class MACE(MLPotential):
                 '--train_file',
                 f'{self.name}_data.xyz',
                 '--default_dtype',
-                'float64',
+                Config.mace_params['dtype'],
             ]
         )
         return args
@@ -826,35 +825,3 @@ class MACE(MLPotential):
                 self._ema = None
 
         return self._ema
-
-
-try:
-    from mace.calculators import MACECalculator as _MACECalculator
-
-    class MACECalculator(_MACECalculator):
-        def __init__(
-            self,
-            model_path: str,
-            device: str,
-            energy_units_to_eV: float = 1.0,
-            length_units_to_A: float = 1.0,
-            default_dtype='float64',
-            **kwargs,
-        ):
-            Calculator.__init__(self, **kwargs)
-            self.results = {}
-
-            self.model = torch.load(f=model_path, map_location=device)
-            if device == 'cuda':
-                self.model = self.model.to(device)
-
-            self.r_max = float(self.model.r_max)
-            self.device = torch_tools.init_device(device)
-            self.energy_units_to_eV = energy_units_to_eV
-            self.length_units_to_A = length_units_to_A
-            self.z_table = utils.AtomicNumberTable(
-                [int(z) for z in self.model.atomic_numbers]
-            )
-            torch_tools.set_default_dtype(default_dtype)
-except ModuleNotFoundError:
-    pass
