@@ -11,6 +11,8 @@ import ase.units
 
 here = os.path.abspath(os.path.dirname(__file__))
 
+# All tests should have 'test_openmm' in their name so that they are skipped for the GAP CI run.
+
 
 @pytest.fixture
 def h2_system_config():
@@ -101,7 +103,7 @@ def test_openmm_simulation(h2o_system_config):
     assert np.isclose(ase_pot_energy, openmm_pot_energy)
 
 
-def test_simulation_name_generation():
+def test_openmm_simulation_name_generation():
     """Test the simulation name generation."""
     name = mlt.md_openmm._get_simulation_name()
     assert name == 'simulation.state.xml'
@@ -141,7 +143,7 @@ def test_openmm_md(h2o_system_config):
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
-def test_md_restart(h2o_system_config):
+def test_openmm_md_restart(h2o_system_config):
     """Test the MD restart functionality."""
     system, config = h2o_system_config
     atoms = config.ase_atoms
@@ -171,7 +173,7 @@ def test_md_restart(h2o_system_config):
 
 
 @work_in_zipped_dir(os.path.join(here, 'data.zip'))
-def test_md_save(h2o_system_config):
+def test_openmm_md_save(h2o_system_config):
     """Test the MD save functionality."""
     system, config = h2o_system_config
     mace = mlt.potentials.MACE('water', system=system)
