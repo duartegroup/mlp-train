@@ -269,7 +269,6 @@ def _run_mlp_md_openmm(
         ase_atoms=ase_atoms,
         restart=restart,
         traj_name=traj_name,
-        remove_last=False,
     )
 
     # If MD is restarted, energies of frames from the previous trajectory
@@ -342,10 +341,14 @@ def _create_openmm_topology(ase_atoms: 'ase.Atoms') -> 'app.Topology':
         element = app.Element.getByAtomicNumber(atomic_number)
         topology.addAtom(element.name, element, residue)
 
+    topology.setPeriodicBoxVectors(
+        ase_atoms.get_cell().array * 0.1 * unit.nanometer
+    )
+
     return topology
 
 
-def _get_openmm_platform(platform: Optional[str]) -> 'mm.Platform':
+def _get_openmm_platform(platform: Optional[str] = None) -> 'mm.Platform':
     """Get the OpenMM platform to use."""
     import torch
 
@@ -495,7 +498,7 @@ def _run_dynamics(
         """Save the state of the OpenMM simulation."""
         simulation.saveState(simulation_name)
 
-    def _add_frame_to_ase_traj():
+    def add_frame_to_ase_traj():
         """Add a new frame to the ASE train trajectory"""
         # Create a new ASE atoms object.
         new_ase_atoms = ase.Atoms(
@@ -509,13 +512,21 @@ def _run_dynamics(
 
     # Determine saving intervals
     if any(key in kwargs for key in ['save_fs', 'save_ps', 'save_ns']):
-        traj_saving_interval = _traj_saving_interval(kwargs)
+        traj_saving_interval = _traj_saving_interval(dt, kwargs)
     else:
         traj_saving_interval = 0
 
-    # Run the dynamics n_steps, performing interval steps at a time.
+    # Add the initial frame to the ASE trajectory.
+    state = simulation.context.getState(getPositions=True, getEnergy=True)
+    coordinates = state.getPositions(asNumpy=True).value_in_unit(unit.angstrom)
+    potential_energy = (
+        state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
+        * _KJ_PER_MOL_TO_EV
+    )
+    add_frame_to_ase_traj()
 
-    for j in range(n_previous_steps // interval, n_steps // interval):
+    # Run the dynamics n_steps, performing interval steps at a time.
+    for j in range(n_steps // interval):
         logger.info(f'Step {j + 1} / {n_steps // interval}')
         simulation.step(interval)
         time = dt * interval * (j + 1)
@@ -534,7 +545,7 @@ def _run_dynamics(
         biased_energy = potential_energy
 
         # Add the frame to the ASE trajectory.
-        _add_frame_to_ase_traj()
+        add_frame_to_ase_traj()
 
         # Store the energies
         append_unbiased_energy()
