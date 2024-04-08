@@ -116,11 +116,29 @@ def run_mlp_md_openmm(
 
         (mlt.Trajectory):
     """
-    if any([fbond_energy, bbond_energy, bias, 'constraints' in kwargs]):
-        raise NotImplementedError(
-            "The OpenMM backend does not support the use of the 'bias', 'fbond_energy', 'bbond_energy' or 'constraints' arguments."
+    if not _HAS_OPENMM:
+        raise ImportError(
+            'OpenMM is not installed. Install it with '
+            "'conda install -c conda-forge openmm'"
         )
 
+    if not _HAS_OPENMM_ML:
+        raise ImportError(
+            'openmm-ml is not installed. Install it with '
+            "'conda install -c conda-forge openmm-ml'"
+        )
+    
+    if not isinstance(mlp, mlt.potentials.MACE):
+        raise ValueError(
+            'The OpenMM backend only supports the use of the MACE potential.'
+        )    
+    
+    if any([fbond_energy, bbond_energy, bias, 'constraints' in kwargs]):
+        raise NotImplementedError(
+            "The OpenMM backend does not support the use of the 'bias', "
+            "'fbond_energy', 'bbond_energy', or 'constraints' arguments."
+        )
+    
     restart = restart_files is not None
 
     if copied_substrings is None:
@@ -206,18 +224,6 @@ def _run_mlp_md_openmm(
     forces and OpenMM to drive dynamics
     """
     restart = restart_files is not None
-
-    if not _HAS_OPENMM:
-        raise ImportError(
-            'OpenMM is not installed. Install it with '
-            "'conda install -c conda-forge openmm'"
-        )
-
-    if not _HAS_OPENMM_ML:
-        raise ImportError(
-            'openmm-ml is not installed. Install it with '
-            "'conda install -c conda-forge openmm-ml'"
-        )
 
     # Calculate the number of steps to perform.
     n_steps = _n_simulation_steps(dt=dt, kwargs=kwargs)

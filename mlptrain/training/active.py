@@ -131,12 +131,17 @@ def train(
 
         md_program: (str) 'ASE' or 'OpenMM'
     """
-    if md_program.lower() == 'openmm' and any(
-        [bias, fbond_energy, bbond_energy, constraints]
-    ):
-        raise NotImplementedError(
-            "The OpenMM backend does not support the use of the 'bias', 'fbond_energy', 'bbond_energy' or 'constraints' arguments."
-        )
+    if md_program.lower() == 'openmm':
+        if not isinstance(mlp, mlptrain.potentials.MACE):
+            raise ValueError(
+                'The OpenMM backend only supports the use of the MACE potential.'
+            )
+        
+        if any([bias, fbond_energy, bbond_energy, constraints]):
+            raise NotImplementedError(
+                "The OpenMM backend does not support the use of the 'bias', "
+                "'fbond_energy', 'bbond_energy', or 'constraints' arguments."
+            )
 
     _check_bias(bias=bias, temp=temp, inherit_metad_bias=inherit_metad_bias)
 
