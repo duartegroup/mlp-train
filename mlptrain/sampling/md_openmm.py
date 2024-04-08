@@ -133,7 +133,14 @@ def run_mlp_md_openmm(
             'The OpenMM backend only supports the use of the MACE potential.'
         )
 
-    if any([fbond_energy, bbond_energy, bias, 'constraints' in kwargs]):
+    if any(
+        [
+            fbond_energy,
+            bbond_energy,
+            bias,
+            kwargs['constraints'] if 'constraints' in kwargs else None,
+        ]
+    ):
         raise NotImplementedError(
             "The OpenMM backend does not support the use of the 'bias', "
             "'fbond_energy', 'bbond_energy', or 'constraints' arguments."
