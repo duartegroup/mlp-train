@@ -116,14 +116,9 @@ def run_mlp_md_openmm(
 
         (mlt.Trajectory):
     """
-    if (
-        fbond_energy is not None
-        or bbond_energy is not None
-        or bias is not None
-    ):
-        # TODO: Implement bias and other types of constraints.
+    if any([fbond_energy, bbond_energy, bias, 'constraints' in kwargs]):
         raise NotImplementedError(
-            'fbond_energy, bbond_energy and bias arguments not supported yet'
+            "The OpenMM backend does not support the use of the 'bias', 'fbond_energy', 'bbond_energy' or 'constraints' arguments."
         )
 
     restart = restart_files is not None
