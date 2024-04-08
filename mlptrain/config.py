@@ -26,6 +26,13 @@ class _ConfigClass:
         'l_max': 6,  # n_max = 2 l_max
         'sigma_at': 0.5,  # Å
     }
+    # ACE params
+    ace_params = {
+        'N': 4,  # maximum correlation order
+        'r_cut': 4.0,  # outer cutoff of ACE
+        'deg_pair': 5,  # Specify the pair potential
+        'r_cut_pair': 5.0,
+    }
 
     # NeQUIP params
     nequip_params = {'cutoff': 4.0, 'train_fraction': 0.9}
@@ -60,6 +67,7 @@ class _ConfigClass:
         'amsgrad': True,
         'restart_latest': False,
         'save_cpu': True,
+        'dtype': 'float32',
     }
 
     # --------------------- Internal properties ---------------------------
