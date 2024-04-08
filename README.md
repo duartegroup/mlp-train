@@ -33,13 +33,18 @@ Each model is installed into individual conda environment:
 
 - Units are: distance (Å), energy (eV), force (eV Å$`^{-1}`$), time (fs)
 
-## Using with OpenMM (Experimental!)
+## Using with OpenMM
 
 The OpenMM backend only works with MACE at the moment. The necessary dependencies are installed automatically via conda:
 
-```console
+```
 ./install_mace.sh
 ```
+
+Depending on your machine, you might need to prefix the command above with something like `CONDA_OVERRIDE_CUDA="11.2"` in two scenarios:
+
+- To ensure an environment that is compatible with your CUDA driver.
+- To force CUDA builds to be installed, even if the installation is being done from a CPU-only machine. This is typical in a situation where you are installing from a head node without GPUs but intend to run on GPUs and want to install the CUDA builds.
 
 You should now be able to run `water_openmm.py` in `./examples` or run the jupyter notebook on Google Colab [`water_openmm_colab.ipynb`](./examples/water_openmm_colab.ipynb).
 

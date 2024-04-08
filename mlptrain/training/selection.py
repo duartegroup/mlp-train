@@ -292,7 +292,7 @@ class AtomicEnvDistance(SelectionMethod):
             self._configuration,
             self.mlp.training_data,
             self.pca,
-            self.distance,
+            self.metric,
             self.n_neighbors,
         )
         return metric == -1
