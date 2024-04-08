@@ -127,18 +127,18 @@ def run_mlp_md_openmm(
             'openmm-ml is not installed. Install it with '
             "'conda install -c conda-forge openmm-ml'"
         )
-    
+
     if not isinstance(mlp, mlt.potentials.MACE):
         raise ValueError(
             'The OpenMM backend only supports the use of the MACE potential.'
-        )    
-    
+        )
+
     if any([fbond_energy, bbond_energy, bias, 'constraints' in kwargs]):
         raise NotImplementedError(
             "The OpenMM backend does not support the use of the 'bias', "
             "'fbond_energy', 'bbond_energy', or 'constraints' arguments."
         )
-    
+
     restart = restart_files is not None
 
     if copied_substrings is None:

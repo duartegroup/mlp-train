@@ -136,7 +136,7 @@ def train(
             raise ValueError(
                 'The OpenMM backend only supports the use of the MACE potential.'
             )
-        
+
         if any([bias, fbond_energy, bbond_energy, constraints]):
             raise NotImplementedError(
                 "The OpenMM backend does not support the use of the 'bias', "
