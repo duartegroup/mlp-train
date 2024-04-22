@@ -40,10 +40,18 @@ class ACE(MLPotential):
         p = Popen(
             [shutil.which('julia'), f'{self.name}.jl'],
             shell=False,
+            encoding='utf-8',
             stdout=PIPE,
             stderr=PIPE,
         )
         out, err = p.communicate(timeout=None)
+
+        filename_ace_out = 'ACE_output.out'
+
+        with open(filename_ace_out, 'a') as f:
+            f.write(f'ACE training output:\n{out}')
+            if err:
+                f.write(f'ACE training error:\n{err}')
 
         delta_time = time() - start_time
         logger.info(f'ACE training ran in {delta_time / 60:.1f} m')
@@ -51,11 +59,15 @@ class ACE(MLPotential):
         if any(
             (
                 delta_time < 0.01,
-                b'SYSTEM ABORT' in err,
+                'SYSTEM ABORT' in err,
+                p.returncode != 0,
                 not os.path.exists(f'{self.name}.json'),
             )
         ):
-            raise RuntimeError(f'ACE train errored with:\n{err.decode()}\n')
+            raise RuntimeError(
+                f'ACE train errored with a return code:\n{p.returncode}\n'
+                f'and error:\n{err}\n'
+            )
 
         for filename in (f'{self.name}_data.xyz', f'{self.name}.jl'):
             os.remove(filename)
@@ -246,7 +258,7 @@ class ACE(MLPotential):
             '             asmerrs=true, weights=weights)\n'
             'save_dict(save_name,'
             '           Dict("IP" => write_dict(IP), "info" => lsqinfo))\n'
-            'rmse_table(lsqinfo["errors"])\n'
+            '#rmse_table(lsqinfo["errors"])\n'
             'println("The L2 norm of the fit is ", round(norm(lsqinfo["c"]), digits=2))\n',
             file=inp_file,
         )
