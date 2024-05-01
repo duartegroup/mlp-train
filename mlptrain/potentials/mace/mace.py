@@ -2,6 +2,7 @@ import ase
 import mlptrain
 import argparse
 import os
+import gc
 import ast
 import time
 import shutil
@@ -120,6 +121,10 @@ class MACE(MLPotential):
         self._reset_train_objs()
 
         os.remove(f'{self.name}_data.xyz')
+
+        gc.collect()
+        torch.cuda.empty_cache()
+
         return None
 
     @property
