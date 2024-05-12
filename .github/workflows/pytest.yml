@@ -66,7 +66,7 @@ jobs:
 
     - uses: julia-actions/setup-julia@v2
       with:
-        version: '1.6.9'
+        version: '1.6'
 
     - name: Hello world from Julia
       run: julia -e 'println("Hello, World!")'
