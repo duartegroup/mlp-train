@@ -68,9 +68,6 @@ jobs:
       with:
         version: '1.6'
 
-    - name: Hello world from Julia
-      run: julia -e 'println("Hello, World!")'
-
     - uses: mamba-org/setup-micromamba@v1
       with:
         environment-file: environment_ace.yml
