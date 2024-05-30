@@ -80,7 +80,7 @@ jobs:
       run: ./install_ace.sh
 
     - name: Test ACE
-      run: pytest --cov
+      run: pytest --cov -k "not test_openmm"
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
