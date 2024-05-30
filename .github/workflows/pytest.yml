@@ -10,20 +10,20 @@ jobs:
   test:
     name: GAP (${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    
+
     strategy:
       fail-fast: true
       matrix:
-        os: ["ubuntu-latest"]
+        os: ["ubuntu-22.04"]
         python-version: ["3.9"]
-      
+
     defaults:
       run:
         shell: bash -l {0}
-        
+
     steps:
     - uses: actions/checkout@v4
-        
+
     - uses: mamba-org/setup-micromamba@v1
       with:
         # the create command looks like this:
@@ -47,24 +47,65 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: duartegroup/mlp-train
 
+  test-ace:
+    name: ACE (${{ matrix.python-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: true
+      matrix:
+        os: ["ubuntu-22.04"]
+        python-version: ["3.9"]
+
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: julia-actions/setup-julia@v2
+      with:
+        version: '1.6'
+
+    - uses: mamba-org/setup-micromamba@v1
+      with:
+        environment-file: environment_ace.yml
+        environment-name: gha-test-env
+        cache-environment: true
+        create-args: >-
+          python=${{ matrix.python-version }}
+
+    - name: ACE install
+      run: ./install_ace.sh
+
+    - name: Test ACE
+      run: pytest --cov -k "not test_openmm"
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+          flags: python-${{ matrix.python-version }}-ace
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: duartegroup/mlp-train
 
   test-mace:
     name: MACE (${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    
+
     strategy:
       fail-fast: true
       matrix:
-        os: ["ubuntu-latest"]
+        os: ["ubuntu-22.04"]
         python-version: ["3.9"]
-      
+
     defaults:
       run:
         shell: bash -l {0}
-        
+
     steps:
     - uses: actions/checkout@v4
-        
+
     - uses: mamba-org/setup-micromamba@v1
       with:
         environment-file: environment_mace.yml
