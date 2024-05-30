@@ -6,6 +6,9 @@ on:
     branches: [main]
   pull_request:
 
+env:
+  FORCE_COLOR: 1
+
 jobs:
   test:
     name: GAP (${{ matrix.python-version }}, ${{ matrix.os }})
