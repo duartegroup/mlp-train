@@ -210,17 +210,14 @@ class MACE(MLPotential):
 
         logging.info('Generating error table')
 
-        all_collections = [
-            ('train', self.train_configs),
-            ('valid', self.valid_configs),
-        ]
+        all_collections = {
+            'training': self.train_loader, 
+            'validation': self.valid_loader,
+        }
 
         table = create_error_table(
             table_type=Config.mace_params['error_table'],
-            all_data_loaders={
-+                'training': self.train_loader,
-+                'validation': self.valid_loader,
-+            },
+            all_data_loaders=all_collections,
             model=self.model,
             loss_fn=self.loss_fn,
             output_args=self.output_args,
