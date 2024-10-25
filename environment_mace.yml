@@ -25,6 +25,7 @@ dependencies:
   - openmm-torch
   - nnpops
   - openmm-ml
+  - git
   - pip:
-    - ase@git+https://gitlab.com/ase/ase.git@f2615a6e9a # For PLUMED
+    - ase@git+https://gitlab.com/ase/ase.git # For PLUMED
     - mace-torch

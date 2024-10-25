@@ -1,3 +1,4 @@
+from bz2 import compress
 import os
 import ase
 import mlptrain
@@ -20,6 +21,7 @@ from mlptrain.box import Box
 from mlptrain.utils import work_in_tmp_dir
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.io.trajectory import Trajectory as ASETrajectory
+from ase.md.nptberendsen import NPTBerendsen
 from ase.md.langevin import Langevin
 from ase.md.verlet import VelocityVerlet
 from ase.io import read
@@ -32,6 +34,8 @@ def run_mlp_md(
     temp: float,
     dt: float,
     interval: int,
+    pressure: Optional[float] = None,
+    compress: Optional[float] = None,
     init_temp: Optional[float] = None,
     fbond_energy: Optional[dict] = None,
     bbond_energy: Optional[dict] = None,
@@ -63,6 +67,13 @@ def run_mlp_md(
         dt: (float) Time-step in fs
 
         interval: (int) Interval between saving the geometry
+    
+        pressure: pressure in bar to run Berendsen NPT MD, temperature 
+              and pressure must also be specified in order to run NPT dynamics.
+
+        compressibility: compressibility in bar^-1 to run Berendsen NPT MD, 
+              temperature and pressure must also be specified in order to 
+              run NPT dynamics.
 
         bbond_energy: (dict | None) Additional energy to add to a breaking
                          bond. e.g. bbond_energy={(0, 1), 0.1} Adds 0.1 eV
@@ -153,6 +164,8 @@ def run_mlp_md(
         temp=temp,
         dt=dt,
         interval=interval,
+        pressure=pressure,
+        compress=compress,
         init_temp=init_temp,
         fbond_energy=fbond_energy,
         bbond_energy=bbond_energy,
@@ -169,6 +182,8 @@ def _run_mlp_md(
     temp: float,
     dt: float,
     interval: int,
+    pressure: Optional[float] = None,
+    compress: Optional[float] = None,
     init_temp: Optional[float] = None,
     fbond_energy: Optional[dict] = None,
     bbond_energy: Optional[dict] = None,
@@ -246,6 +261,8 @@ def _run_mlp_md(
         traj_name=traj_name,
         interval=interval,
         temp=temp,
+        pressure=pressure,
+        compress=compress,
         dt=dt,
         dt_ase=dt_ase,
         n_steps=n_steps,
@@ -339,14 +356,25 @@ def _run_dynamics(
     n_steps: int,
     energies: List,
     biased_energies: List,
+    pressure: Optional[float] = None,
+    compress: Optional[float] = None,
     **kwargs,
 ) -> None:
     """Initialise dynamics object and run dynamics"""
 
+    if all([value is not None for value in [pressure, compress]]) and temp > 0: 
+        # Run NPT dynamics if pressure and compressibility are specified
+        pressure = convert_pressure_to_ase_units(pressure)
+        compress = convert_compressibility_to_ase_units(compress)
+        dyn = NPTBerendsen(ase_atoms, dt_ase, temperature_K=temp,
+                            pressure_au=pressure, compressibility_au=compress)
+        logger.info(f"Initialising NPT Berendsen dynamics at {pressure} bar and {temp} K")
     if temp > 0:  # Default Langevin NVT
         dyn = Langevin(ase_atoms, dt_ase, temperature_K=temp, friction=0.02)
+        logger.info(f"Initialising NVT Langevin dynamics at {temp} K")
     else:  # Otherwise NVE
         dyn = VelocityVerlet(ase_atoms, dt_ase)
+        logger.info(f"Initialising NVE dynamics")
 
     def append_unbiased_energy():
         energies.append(ase_atoms.calc.get_potential_energy(ase_atoms))
@@ -668,3 +696,19 @@ def _remove_colvar_duplicate_frames(
                 f.write(line)
 
     return None
+
+def convert_pressure_to_ase_units(
+        pressure: float, 
+) -> float:
+    """
+    Converts pressure given in bar to ase units of eV/A^3
+    """
+    return pressure * 0.000006241509
+
+def convert_compressibility_to_ase_units(
+        compressibility: float, 
+) -> float:
+    """
+    Converts pressure given in bar^-1 to ase units of A^3/eV
+    """
+    return compressibility * 160217.66531138544
