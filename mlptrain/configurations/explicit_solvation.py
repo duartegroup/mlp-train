@@ -1,6 +1,8 @@
 import numpy as np
 from typing import List
+from autode.atoms import Atom
 import mlptrain as mlt
+from mlptrain.log import logger
 from mlptrain.box import Box
 
 def from_ase_to_autode(atoms):

@@ -3,6 +3,7 @@ from mlptrain.box import Box
 from mlptrain.training.selection import AtomicEnvSimilarity
 from mlptrain.configurations.explicit_solvation import generate_init_configs, sample_randomly_from_configset
 
+
 mlt.Config.n_cores = 10
 mlt.Config.orca_keywords = [
     'wB97M-D3BJ',
