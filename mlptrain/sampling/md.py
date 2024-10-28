@@ -1,4 +1,3 @@
-from bz2 import compress
 import os
 import ase
 import mlptrain
@@ -67,12 +66,12 @@ def run_mlp_md(
         dt: (float) Time-step in fs
 
         interval: (int) Interval between saving the geometry
-    
-        pressure: pressure in bar to run Berendsen NPT MD, temperature 
+
+        pressure: pressure in bar to run Berendsen NPT MD, temperature
               and pressure must also be specified in order to run NPT dynamics.
 
-        compressibility: compressibility in bar^-1 to run Berendsen NPT MD, 
-              temperature and pressure must also be specified in order to 
+        compress: compressibility in bar^-1 to run Berendsen NPT MD,
+              temperature and pressure must also be specified in order to
               run NPT dynamics.
 
         bbond_energy: (dict | None) Additional energy to add to a breaking
@@ -362,19 +361,26 @@ def _run_dynamics(
 ) -> None:
     """Initialise dynamics object and run dynamics"""
 
-    if all([value is not None for value in [pressure, compress]]) and temp > 0: 
+    if all([value is not None for value in [pressure, compress]]) and temp > 0:
         # Run NPT dynamics if pressure and compressibility are specified
         pressure = convert_pressure_to_ase_units(pressure)
         compress = convert_compressibility_to_ase_units(compress)
-        dyn = NPTBerendsen(ase_atoms, dt_ase, temperature_K=temp,
-                            pressure_au=pressure, compressibility_au=compress)
-        logger.info(f"Initialising NPT Berendsen dynamics at {pressure} bar and {temp} K")
+        dyn = NPTBerendsen(
+            ase_atoms,
+            dt_ase,
+            temperature_K=temp,
+            pressure_au=pressure,
+            compressibility_au=compress,
+        )
+        logger.info(
+            f'Initialising NPT Berendsen dynamics at {pressure} bar and {temp} K'
+        )
     if temp > 0:  # Default Langevin NVT
         dyn = Langevin(ase_atoms, dt_ase, temperature_K=temp, friction=0.02)
-        logger.info(f"Initialising NVT Langevin dynamics at {temp} K")
+        logger.info(f'Initialising NVT Langevin dynamics at {temp} K')
     else:  # Otherwise NVE
         dyn = VelocityVerlet(ase_atoms, dt_ase)
-        logger.info(f"Initialising NVE dynamics")
+        logger.info('Initialising NVE dynamics')
 
     def append_unbiased_energy():
         energies.append(ase_atoms.calc.get_potential_energy(ase_atoms))
@@ -697,16 +703,18 @@ def _remove_colvar_duplicate_frames(
 
     return None
 
+
 def convert_pressure_to_ase_units(
-        pressure: float, 
+    pressure: float,
 ) -> float:
     """
     Converts pressure given in bar to ase units of eV/A^3
     """
     return pressure * 0.000006241509
 
+
 def convert_compressibility_to_ase_units(
-        compressibility: float, 
+    compressibility: float,
 ) -> float:
     """
     Converts pressure given in bar^-1 to ase units of A^3/eV
