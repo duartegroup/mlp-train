@@ -47,7 +47,9 @@ def run_mlp_md(
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics. The function is executed in a temporary
-    directory.
+    directory. NPT simulations are currently only implemented in production runs
+    and not in active learning.
+
 
     ---------------------------------------------------------------------------
     Arguments:
@@ -375,7 +377,7 @@ def _run_dynamics(
         logger.info(
             f'Initialising NPT Berendsen dynamics at {pressure} bar and {temp} K'
         )
-    if temp > 0:  # Default Langevin NVT
+    elif temp > 0:  # Default Langevin NVT
         dyn = Langevin(ase_atoms, dt_ase, temperature_K=temp, friction=0.02)
         logger.info(f'Initialising NVT Langevin dynamics at {temp} K')
     else:  # Otherwise NVE
