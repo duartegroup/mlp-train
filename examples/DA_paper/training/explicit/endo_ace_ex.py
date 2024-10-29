@@ -1,7 +1,7 @@
 import mlptrain as mlt
 from mlptrain.box import Box
 from mlptrain.training.selection import AtomicEnvSimilarity
-from mlptrain.configurations.explicit_solvation import generate_init_configs, sample_randomly_from_configset
+from mlptrain.configurations.explicit_solvation import generate_init_solv_configs, sample_randomly_from_configset
 
 
 mlt.Config.n_cores = 10
@@ -17,11 +17,13 @@ if __name__ == '__main__':
     water_mol = mlt.Molecule(name='h2o.xyz')
     ts_mol = mlt.Molecule(name='cis_endo_TS_wB97M.xyz')
 
+    TS_info = ('cis_endo_TS_wB97M.xyz', 0, 1)
+
     # generate sub training set of pure water system by AL training
     water_system = mlt.System(water_mol, box=Box([100, 100, 100]))
     water_system.add_molecules(water_mol, num=26)
     Water_mlp = mlt.potentials.ACE('water_sys', water_system)
-    water_init = generate_init_configs(n=10, bulk_water=True, TS=False)
+    water_init = generate_init_solv_configs(n=10, solvent_mol=water_mol, bulk_solvent=True, include_TS=False)
     Water_mlp.al_train(
         method_name='orca',
         selection_method=AtomicEnvSimilarity(),
@@ -34,7 +36,7 @@ if __name__ == '__main__':
     ts_in_water = mlt.System(ts_mol, box=Box([100, 100, 100]))
     ts_in_water.add_molecules(water_mol, num=40)
     ts_in_water_mlp = mlt.potentials.ACE('TS_in_water', ts_in_water)
-    ts_in_water_init = generate_init_configs(n=10, bulk_water=True, TS=True)
+    ts_in_water_init = generate_init_solv_configs(n=10, solvent_mol=water_mol, bulk_solvent=True, include_TS=True, TS_info=TS_info)
     ts_in_water_mlp.al_train(
         method_name='orca',
         selection_method=AtomicEnvSimilarity(),
@@ -47,7 +49,7 @@ if __name__ == '__main__':
     ts_2water = mlt.System(ts_mol, box=Box([100, 100, 100]))
     ts_2water.add_molecules(water_mol, num=2)
     ts_2water_mlp = mlt.potentials.ACE('TS_2water', ts_2water)
-    ts_2water_init = generate_init_configs(n=10, bulk_water=False, TS=True)
+    ts_2water_init = generate_init_solv_configs(n=10, solvent_mol=water_mol, bulk_solvent=False, include_TS=True, TS_info=TS_info)
     ts_2water_mlp.al_train(
         method_name='orca',
         selection_method=AtomicEnvSimilarity(),

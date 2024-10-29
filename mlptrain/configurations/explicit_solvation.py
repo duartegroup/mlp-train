@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List
+from typing import List, Tuple
 from autode.atoms import Atom
 import mlptrain as mlt
 from mlptrain.log import logger
@@ -230,58 +230,74 @@ def solvation(solute_config: mlt.Configuration,
     return solvation
 
 
-def generate_init_configs(n: int, bulk_water: bool = True, TS: bool = True) -> mlt.ConfigurationSet:
+def generate_init_solv_configs(n: int,
+                               solvent_mol: mlt.Molecule,
+                               bulk_solvent: bool = True,
+                               include_TS: bool = True,
+                               TS_info: Tuple[str, int, int] = None) -> mlt.ConfigurationSet:
     """
     Generate initial configuration to train potential.
-    It can generate three sets (pure water, TS immersed in water and TS bounded two water molecules)
-    of initial configuration by modifying the boolean variables.
+    It can generate three sets (pure solvent, TS immersed in solvent and TS bounded two solvent molecules)
+    of initial configuration by modifying the boolean variables:
+
+    Three possible options:
+    1. bulk_solvent = True, include_TS = False --> bulk solvent only
+    2. bulk_solvent = True, include_TS = True  --> TS immersed in explicit solvent
+    3. bulk_solvent = False, include_TS = True --> TS bounded to two solvent molecules only
 
     -----------------------------------------------------------------------
     Arguments:
         n: number of init_configs
-        bulk_water: whether to include a solution
-        TS: whether to include the TS of the reaction in the system
+        solvent_mol: mlt.Molecule object for explicit solvent molecule to add
+        bulk_solvent: whether to include a solution
+        include_TS: whether to include the TS of the reaction in the system
+        TS_info: tuple of (file path, charge, spin multiplicity) for TS configuration
     Returns:
         (mlt.ConfigurationSet): initial set of configurations
     """
 
-    # initalise config set and load TS in box
-    init_configs = mlt.ConfigurationSet()
-    TS = mlt.ConfigurationSet()
-    TS.load_xyz(filename='cis_endo_TS_wB97M.xyz', charge=0, mult=1)
-    TS = TS[0]
-    TS.box = Box([11, 11, 11])
-    TS.charge = 0
-    TS.mult = 1
+    # load TS in box
+    TS: mlt.Configuration = None
+    if include_TS:
+        assert TS_info is not None, "If include TS is set to true, a TS file must be provided..."
 
-    if bulk_water:
-        # TS immersed in a water box
-        if TS:
-            water_mol = mlt.Molecule(name='h2o.xyz')
-            water_system = mlt.System(water_mol, box=Box([11, 11, 11]))
-            water_system.add_molecules(water_mol, num=43)
+        TS_file_path, TS_charge, TS_mult = TS_info
+        TS_config_set = mlt.ConfigurationSet()
+        TS_config_set.load_xyz(filename=TS_file_path, charge=TS_charge, mult=TS_mult)
+        TS = TS_config_set[0]
+        TS.box = Box([11, 11, 11])
+        TS.charge = TS_charge
+        TS.mult = TS_mult
+
+    init_configs = mlt.ConfigurationSet()
+
+    if bulk_solvent:
+
+        # TS immersed in a solvent box
+        if include_TS:
+            solvent_system = mlt.System(solvent_mol, box=Box([11, 11, 11]))
+            solvent_system.add_molecules(solvent_mol, num=43)
             for i in range(n):
                 solvated = solvation(
                     solute_config=TS,
-                    solvent_config=water_system.random_configuration(),
+                    solvent_config=solvent_system.random_configuration(),
                     apm=3,
                     radius=1.7,
                 )
                 init_configs.append(solvated)
 
-        # pure water box
+        # pure solvent box
         else:
-            water_mol = mlt.Molecule(name='h2o.xyz')
-            water_system = mlt.System(water_mol, box=Box([9.32, 9.32, 9.32]))
-            water_system.add_molecules(water_mol, num=26)
+            solvent_system = mlt.System(solvent_mol, box=Box([9.32, 9.32, 9.32]))
+            solvent_system.add_molecules(solvent_mol, num=26)
 
             for i in range(n):
-                pure_water = water_system.random_configuration()
+                pure_water = solvent_system.random_configuration()
                 init_configs.append(pure_water)
 
-    # TS bounded with two water molecules at carbonyl group to form hydrogen bond
+    # TS bounded with two solvent molecules (in case of water and DA reaction, at carbonyl group to form hydrogen bond)
     else:
-        assert TS is True, 'cannot generate initial configuration'
+        assert include_TS, "If bulk_solvent is false, the TS must be included..."
         for i in range(n):
             TS_with_water = add_water(solute=TS, n=2)
             init_configs.append(TS_with_water)
@@ -290,6 +306,7 @@ def generate_init_configs(n: int, bulk_water: bool = True, TS: bool = True) -> m
     # the box is needed for ACE potential
     for config in init_configs:
         config.box = Box([100, 100, 100])
+
     return init_configs
 
 
