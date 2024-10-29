@@ -211,7 +211,7 @@ class MACE(MLPotential):
         logging.info('Generating error table')
 
         all_collections = {
-            'training': self.train_loader, 
+            'training': self.train_loader,
             'validation': self.valid_loader,
         }
 
