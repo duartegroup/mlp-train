@@ -28,5 +28,5 @@ dependencies:
   - git
   - openmm-ml
   - pip:
-    - ase@git+https://gitlab.com/ase/ase.git # For PLUMED
+    - ase@git+https://gitlab.com/ase/ase.git@f2615a6e9a # For PLUMED
     - mace-torch
