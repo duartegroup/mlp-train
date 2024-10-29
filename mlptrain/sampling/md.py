@@ -47,8 +47,8 @@ def run_mlp_md(
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics. The function is executed in a temporary
-    directory. NPT simulations are currently only implemented in production runs
-    and not in active learning.
+    directory. Note that NPT simulations are currently only implemented in
+    production runs and not in active learning.
 
 
     ---------------------------------------------------------------------------
