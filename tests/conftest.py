@@ -1,8 +1,10 @@
 import mlptrain as mlt
+import pytest
 from autode.atoms import Atom
 
 
-def _h2():
+@pytest.fixture
+def h2():
     """Dihydrogen molecule"""
     atoms = [
         Atom('H', -0.80952, 2.49855, 0.0),
@@ -11,7 +13,8 @@ def _h2():
     return mlt.Molecule(atoms=atoms, charge=0, mult=1)
 
 
-def _h2o():
+@pytest.fixture
+def h2o():
     """Water molecule"""
     atoms = [
         Atom('H', 2.32670, 0.51322, 0.0),
@@ -19,3 +22,19 @@ def _h2o():
         Atom('O', 1.35670, 0.51322, 0.0),
     ]
     return mlt.Molecule(atoms=atoms, charge=0, mult=1)
+
+
+@pytest.fixture
+def h2_configuration(h2):
+    system = mlt.System(h2, box=[50, 50, 50])
+    config = system.random_configuration()
+
+    return config
+
+
+@pytest.fixture
+def h2o_configuration(h2o):
+    system = mlt.System(h2o, box=[50, 50, 50])
+    config = system.random_configuration()
+
+    return config
