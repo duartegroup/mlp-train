@@ -27,7 +27,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - uses: mamba-org/setup-micromamba@v1
+    - uses: mamba-org/setup-micromamba@v2
       with:
         # the create command looks like this:
         # `micromamba create -n test-env python=3.9 -f environment.yml`
@@ -71,7 +71,7 @@ jobs:
       with:
         version: '1.6'
 
-    - uses: mamba-org/setup-micromamba@v1
+    - uses: mamba-org/setup-micromamba@v2
       with:
         environment-file: environment_ace.yml
         environment-name: gha-test-env
@@ -109,7 +109,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - uses: mamba-org/setup-micromamba@v1
+    - uses: mamba-org/setup-micromamba@v2
       with:
         environment-file: environment_mace.yml
         environment-name: gha-test-env
