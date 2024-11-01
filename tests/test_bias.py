@@ -4,7 +4,7 @@ import numpy as np
 import mlptrain as mlt
 from mlptrain.utils import work_in_tmp_dir
 from .test_potential import TestPotential
-from .molecules import _h2
+from .data.molecules import _h2
 
 mlt.Config.n_cores = 1
 here = os.path.abspath(os.path.dirname(__file__))

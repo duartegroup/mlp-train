@@ -3,8 +3,8 @@ import numpy as np
 import mlptrain as mlt
 from ase.io.trajectory import Trajectory as ASETrajectory
 from .test_potential import TestPotential
-from .molecules import _h2, _h2o
-from .utils import work_in_zipped_dir
+from .data.molecules import _h2, _h2o
+from .data.utils import work_in_zipped_dir
 
 mlt.Config.n_cores = 2
 here = os.path.abspath(os.path.dirname(__file__))
@@ -56,7 +56,7 @@ def _run_metadynamics(
     )
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_run_metadynamics():
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
@@ -112,7 +112,7 @@ def test_run_metadynamics():
     assert os.path.exists('fes_convergence/fes_convergence.pdf')
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_run_metadynamics_restart():
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
@@ -144,7 +144,7 @@ def test_run_metadynamics_restart():
     assert len(trajectory) == 51 + 51 - 1
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_run_metadynamics_with_inherited_bias():
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
@@ -165,7 +165,7 @@ def test_run_metadynamics_with_inherited_bias():
     assert os.path.exists('fes_raw.npy')
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_run_metadynamics_with_component():
     cv1 = mlt.PlumedCustomCV('plumed_cv_dist.dat', 'x')
     metad = mlt.Metadynamics(cv1)
@@ -180,7 +180,7 @@ def test_run_metadynamics_with_component():
         )
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_run_metadynamics_with_additional_cvs():
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     cv2 = mlt.PlumedAverageCV('cv2', (2, 1))
@@ -222,7 +222,7 @@ def test_run_metadynamics_with_additional_cvs():
     ]
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_estimate_width():
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
@@ -246,7 +246,7 @@ def test_estimate_width():
     assert os.path.exists(os.path.join(plots_directory, 'cv1_config1.pdf'))
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_try_multiple_biasfactors():
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
@@ -277,7 +277,7 @@ def test_try_multiple_biasfactors():
         assert os.path.exists(os.path.join(plots_dir, f'cv1_biasf{biasf}.pdf'))
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_block_analysis():
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)

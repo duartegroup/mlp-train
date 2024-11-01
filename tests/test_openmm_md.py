@@ -4,8 +4,8 @@ import mlptrain as mlt
 import pytest
 from ase.io.trajectory import Trajectory as ASETrajectory
 
-from .molecules import _h2, _h2o
-from .utils import work_in_zipped_dir
+from .data.molecules import _h2, _h2o
+from .data.utils import work_in_zipped_dir
 
 import ase.units
 
@@ -28,7 +28,7 @@ def h2o_system_config():
     return system, config
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_openmm_topology(h2_system_config, h2o_system_config):
     """Test the creation of an OpenMM Topology from an ASE Atoms object."""
     # H2 molecule
@@ -58,7 +58,7 @@ def test_openmm_topology(h2_system_config, h2o_system_config):
     )
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_openmm_simulation(h2o_system_config):
     """Test the OpenMM Simulation object."""
     # H2O molecule
@@ -116,7 +116,7 @@ def test_openmm_simulation_name_generation():
     assert name == state_file
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_openmm_md(h2o_system_config):
     """Test the OpenMM MD simulation."""
     # H2O molecule
@@ -142,7 +142,7 @@ def test_openmm_md(h2o_system_config):
     assert len(traj) == 11
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_openmm_md_restart(h2o_system_config):
     """Test the MD restart functionality."""
     system, config = h2o_system_config
@@ -172,7 +172,7 @@ def test_openmm_md_restart(h2o_system_config):
     assert len(final_trajectory) == 1001 + 11 - 1
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_openmm_md_save(h2o_system_config):
     """Test the MD save functionality."""
     system, config = h2o_system_config

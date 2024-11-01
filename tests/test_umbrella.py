@@ -6,7 +6,7 @@ import pytest
 
 import mlptrain as mlt
 from .test_potential import TestPotential
-from .utils import work_in_zipped_dir
+from .data.utils import work_in_zipped_dir
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -19,7 +19,9 @@ def _h2_umbrella():
 
 def _h2_pulled_traj():
     traj = mlt.ConfigurationSet()
-    traj.load_xyz(os.path.join(here, 'data', 'h2_traj.xyz'), charge=0, mult=1)
+    traj.load_xyz(
+        os.path.join(here, 'data/data', 'h2_traj.xyz'), charge=0, mult=1
+    )
 
     return traj
 
@@ -33,7 +35,7 @@ def _h2_sparse_traj():
     return sparse_traj
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_run_umbrella():
     umbrella = _h2_umbrella()
     traj = _h2_pulled_traj()
@@ -83,7 +85,7 @@ def test_run_umbrella():
 
 # TODO: This tests fails on GHA with MACE install,
 # need to investigate more, for now skipping.
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 @pytest.mark.skip(reason='Test fails on GHA with MACE')
 def test_umbrella_parallel():
     execution_time = {}
@@ -112,7 +114,7 @@ def test_umbrella_parallel():
     assert execution_time[2] < execution_time[1]
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_umbrella_sparse_traj():
     umbrella = _h2_umbrella()
     traj = _h2_sparse_traj()
@@ -168,7 +170,7 @@ def test_umbrella_sparse_traj():
     assert starting_frame == closest_frame
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_umbrella_save_load():
     umbrella = _h2_umbrella()
     traj = _h2_pulled_traj()

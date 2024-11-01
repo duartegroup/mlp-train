@@ -1,7 +1,7 @@
 import os
 import pytest
 import mlptrain as mlt
-from .utils import work_in_zipped_dir
+from .data.utils import work_in_zipped_dir
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -55,7 +55,7 @@ def test_plumed_cv_from_atom_groups():
         mlt.PlumedDifferenceCV('', ((0, 1), (2, 3), (4, 5)))
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_plumed_cv_from_file():
     cv1 = mlt.PlumedCustomCV(
         'plumed_cv_custom.dat', component='spath', units='Å'
@@ -147,7 +147,7 @@ def test_plumed_bias_from_cvs():
             assert value is None
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_plumed_bias_from_file():
     bias = mlt.PlumedBias(filename='plumed_bias.dat')
 
@@ -190,7 +190,7 @@ def test_plumed_bias_from_file():
     ]
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_plumed_plot():
     colvar1 = 'test_plumed_plot/colvar1.dat'
     colvar2 = 'test_plumed_plot/colvar2.dat'

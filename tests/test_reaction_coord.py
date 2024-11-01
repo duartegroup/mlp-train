@@ -3,7 +3,7 @@ import pytest
 
 import mlptrain as mlt
 from ase.atoms import Atoms as ASEAtoms
-from .molecules import _h2o
+from .data.molecules import _h2o
 
 
 def test_differencedistance():

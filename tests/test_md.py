@@ -4,8 +4,8 @@ import mlptrain as mlt
 from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.constraints import Hookean
 from .test_potential import TestPotential
-from .molecules import _h2, _h2o
-from .utils import work_in_zipped_dir
+from .data.molecules import _h2, _h2o
+from .data.utils import work_in_zipped_dir
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -24,7 +24,7 @@ def _h2o_configuration():
     return config
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_md_full_plumed_input():
     bias = mlt.PlumedBias(filename='plumed_bias_nopath.dat')
 
@@ -43,7 +43,7 @@ def test_md_full_plumed_input():
     assert os.path.exists('HILLS.dat')
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_md_restart():
     atoms = _h2_configuration().ase_atoms
     initial_trajectory = ASETrajectory('md_restart.traj', 'r', atoms)
@@ -70,7 +70,7 @@ def test_md_restart():
     assert len(final_trajectory) == 1001 + 101 - 1
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_md_save():
     mlt.md.run_mlp_md(
         configuration=_h2_configuration(),
@@ -96,7 +96,7 @@ def test_md_save():
     assert len(traj_200fs) == 20 + 1
 
 
-@work_in_zipped_dir(os.path.join(here, 'data.zip'))
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_md_traj_attachments():
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     bias = mlt.PlumedBias(cvs=cv1)
