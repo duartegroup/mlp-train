@@ -3,15 +3,12 @@ import pytest
 
 import mlptrain as mlt
 from ase.atoms import Atoms as ASEAtoms
-from .data.molecules import _h2o
 
 
-def test_differencedistance():
+def test_differencedistance(h2o_configuration):
     """Test the DifferenceDistance class for reaction coordinate"""
 
-    system = mlt.System(_h2o(), box=[50, 50, 50])
-
-    config = system.random_configuration()
+    config = h2o_configuration
     atoms = config.ase_atoms
 
     diff_dist = mlt.DifferenceDistance((0, 1), (0, 2))
