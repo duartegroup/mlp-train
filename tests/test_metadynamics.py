@@ -1,70 +1,59 @@
 import os
 import numpy as np
 import mlptrain as mlt
+import pytest
 from ase.io.trajectory import Trajectory as ASETrajectory
 from .test_potential import TestPotential
-from .data.molecules import _h2, _h2o
 from .data.utils import work_in_zipped_dir
 
 mlt.Config.n_cores = 2
 here = os.path.abspath(os.path.dirname(__file__))
 
 
-def _h2_configuration():
-    system = mlt.System(_h2(), box=[50, 50, 50])
-    config = system.random_configuration()
-
-    return config
-
-
-def _h2o_configuration():
-    system = mlt.System(_h2o(), box=[50, 50, 50])
-    config = system.random_configuration()
-
-    return config
-
-
-def _run_metadynamics(
-    metadynamics,
-    n_runs,
-    configuration=None,
-    al_iter=None,
-    save_sep=False,
-    all_to_xyz=False,
-    restart=False,
-    **kwargs,
-):
-    if configuration is None:
-        configuration = _h2_configuration()
-
-    metadynamics.run_metadynamics(
-        configuration=configuration,
-        mlp=TestPotential('1D'),
-        temp=300,
-        dt=1,
-        interval=10,
-        pace=100,
-        width=0.05,
-        height=0.1,
-        biasfactor=3,
-        al_iter=al_iter,
-        n_runs=n_runs,
-        save_sep=save_sep,
-        all_to_xyz=all_to_xyz,
-        restart=restart,
+@pytest.fixture
+def run_metadynamics():
+    def _run_metadynamics(
+        metad,
+        n_runs,
+        configuration,
+        al_iter=None,
+        save_sep=False,
+        all_to_xyz=False,
+        restart=False,
         **kwargs,
-    )
+    ):
+        metad.run_metadynamics(
+            configuration=configuration,
+            mlp=TestPotential('1D'),
+            temp=300,
+            dt=1,
+            interval=10,
+            pace=100,
+            width=0.05,
+            height=0.1,
+            biasfactor=3,
+            al_iter=al_iter,
+            n_runs=n_runs,
+            save_sep=save_sep,
+            all_to_xyz=all_to_xyz,
+            restart=restart,
+            **kwargs,
+        )
+
+    return _run_metadynamics
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_run_metadynamics():
+def test_run_metadynamics(h2_configuration, run_metadynamics):
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
     n_runs = 4
 
     assert metad.bias is not None
 
-    _run_metadynamics(metad, n_runs, all_to_xyz=True, save_fs=200, fs=500)
+    run_metadynamics(
+        metad, n_runs, h2_configuration, all_to_xyz=True, save_fs=200, fs=500
+    )
 
     assert os.path.exists('trajectories')
     assert os.path.exists('trajectories/combined_trajectory.xyz')
@@ -113,14 +102,14 @@ def test_run_metadynamics():
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_run_metadynamics_restart():
+def test_run_metadynamics_restart(h2_configuration, run_metadynamics):
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
     n_runs = 4
 
-    _run_metadynamics(metad, n_runs, fs=500)
+    run_metadynamics(metad, n_runs, h2_configuration, fs=500)
 
-    _run_metadynamics(metad, n_runs, restart=True, fs=500)
+    run_metadynamics(metad, n_runs, h2_configuration, restart=True, fs=500)
 
     n_steps = len(
         np.loadtxt('plumed_files/metadynamics/colvar_cv1_1.dat', usecols=0)
@@ -145,14 +134,18 @@ def test_run_metadynamics_restart():
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_run_metadynamics_with_inherited_bias():
+def test_run_metadynamics_with_inherited_bias(
+    h2_configuration, run_metadynamics
+):
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
     n_runs = 4
 
-    _run_metadynamics(metad, n_runs, al_iter=3, fs=500)
+    run_metadynamics(metad, n_runs, h2_configuration, al_iter=3, fs=500)
 
-    _run_metadynamics(metad, n_runs, al_iter=3, restart=True, fs=500)
+    run_metadynamics(
+        metad, n_runs, h2_configuration, al_iter=3, restart=True, fs=500
+    )
 
     metad_dir = 'plumed_files/metadynamics'
     for idx in range(1, n_runs + 1):
@@ -166,12 +159,12 @@ def test_run_metadynamics_with_inherited_bias():
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_run_metadynamics_with_component():
+def test_run_metadynamics_with_component(h2_configuration, run_metadynamics):
     cv1 = mlt.PlumedCustomCV('plumed_cv_dist.dat', 'x')
     metad = mlt.Metadynamics(cv1)
     n_runs = 4
 
-    _run_metadynamics(metad, n_runs, fs=100)
+    run_metadynamics(metad, n_runs, h2_configuration, fs=100)
 
     metad_dir = 'plumed_files/metadynamics'
     for idx in range(1, n_runs + 1):
@@ -181,7 +174,9 @@ def test_run_metadynamics_with_component():
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_run_metadynamics_with_additional_cvs():
+def test_run_metadynamics_with_additional_cvs(
+    h2o_configuration, run_metadynamics
+):
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     cv2 = mlt.PlumedAverageCV('cv2', (2, 1))
     cv2.attach_upper_wall(location=3.0, kappa=150.0)
@@ -194,9 +189,9 @@ def test_run_metadynamics_with_additional_cvs():
     assert metad.n_cvs == 1
 
     n_runs = 1
-    _run_metadynamics(
+    run_metadynamics(
         metad,
-        configuration=_h2o_configuration(),
+        configuration=h2o_configuration,
         n_runs=n_runs,
         write_plumed_setup=True,
         fs=100,
@@ -223,12 +218,12 @@ def test_run_metadynamics_with_additional_cvs():
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_estimate_width():
+def test_estimate_width(h2_configuration):
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
 
     width = metad.estimate_width(
-        configurations=_h2_configuration(),
+        configurations=h2_configuration,
         mlp=TestPotential('1D'),
         plot=True,
         fs=100,
@@ -247,13 +242,13 @@ def test_estimate_width():
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_try_multiple_biasfactors():
+def test_try_multiple_biasfactors(h2_configuration):
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
     biasfactors = range(5, 11, 5)
 
     metad.try_multiple_biasfactors(
-        configuration=_h2_configuration(),
+        configuration=h2_configuration,
         mlp=TestPotential('1D'),
         temp=300,
         interval=10,
@@ -278,7 +273,7 @@ def test_try_multiple_biasfactors():
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_block_analysis():
+def test_block_analysis(h2_configuration):
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
     dt = 1
@@ -288,7 +283,7 @@ def test_block_analysis():
     start_time = 0.5
 
     metad.run_metadynamics(
-        configuration=_h2_configuration(),
+        configuration=h2_configuration,
         mlp=TestPotential('1D'),
         temp=300,
         dt=dt,

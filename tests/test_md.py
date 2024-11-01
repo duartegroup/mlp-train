@@ -4,32 +4,17 @@ import mlptrain as mlt
 from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.constraints import Hookean
 from .test_potential import TestPotential
-from .data.molecules import _h2, _h2o
 from .data.utils import work_in_zipped_dir
 
 here = os.path.abspath(os.path.dirname(__file__))
 
 
-def _h2_configuration():
-    system = mlt.System(_h2(), box=[50, 50, 50])
-    config = system.random_configuration()
-
-    return config
-
-
-def _h2o_configuration():
-    system = mlt.System(_h2o(), box=[50, 50, 50])
-    config = system.random_configuration()
-
-    return config
-
-
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_md_full_plumed_input():
+def test_md_full_plumed_input(h2o_configuration):
     bias = mlt.PlumedBias(filename='plumed_bias_nopath.dat')
 
     mlt.md.run_mlp_md(
-        configuration=_h2o_configuration(),
+        configuration=h2o_configuration,
         mlp=TestPotential('1D'),
         temp=300,
         dt=1,
@@ -44,12 +29,12 @@ def test_md_full_plumed_input():
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_md_restart():
-    atoms = _h2_configuration().ase_atoms
+def test_md_restart(h2_configuration):
+    atoms = h2_configuration.ase_atoms
     initial_trajectory = ASETrajectory('md_restart.traj', 'r', atoms)
 
     mlt.md.run_mlp_md(
-        configuration=_h2_configuration(),
+        configuration=h2_configuration,
         mlp=TestPotential('1D'),
         temp=300,
         dt=1,
@@ -71,9 +56,9 @@ def test_md_restart():
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_md_save():
+def test_md_save(h2_configuration):
     mlt.md.run_mlp_md(
-        configuration=_h2_configuration(),
+        configuration=h2_configuration,
         mlp=TestPotential('1D'),
         temp=300,
         dt=1,
@@ -97,14 +82,14 @@ def test_md_save():
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_md_traj_attachments():
+def test_md_traj_attachments(h2o_configuration):
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     bias = mlt.PlumedBias(cvs=cv1)
 
     hookean_constraint = Hookean(a1=1, a2=2, k=100, rt=0.5)
 
     traj = mlt.md.run_mlp_md(
-        configuration=_h2o_configuration(),
+        configuration=h2o_configuration,
         mlp=TestPotential('1D'),
         temp=300,
         dt=1,

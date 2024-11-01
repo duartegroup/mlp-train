@@ -4,7 +4,6 @@ import numpy as np
 import mlptrain as mlt
 from mlptrain.utils import work_in_tmp_dir
 from .test_potential import TestPotential
-from .data.molecules import _h2
 
 mlt.Config.n_cores = 1
 here = os.path.abspath(os.path.dirname(__file__))
@@ -21,8 +20,8 @@ def _get_avg_dists(atoms, atom_pair_list):
 
 
 @work_in_tmp_dir()
-def test_bias():
-    system = mlt.System(_h2(), box=[50, 50, 50])
+def test_bias(h2):
+    system = mlt.System(h2, box=[50, 50, 50])
     pot = TestPotential('1D')
 
     config = system.random_configuration()

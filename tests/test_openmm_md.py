@@ -4,7 +4,6 @@ import mlptrain as mlt
 import pytest
 from ase.io.trajectory import Trajectory as ASETrajectory
 
-from .data.molecules import _h2, _h2o
 from .data.utils import work_in_zipped_dir
 
 import ase.units
@@ -15,15 +14,15 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 
 @pytest.fixture
-def h2_system_config():
-    system = mlt.System(_h2(), box=[50, 50, 50])
+def h2_system_config(h2):
+    system = mlt.System(h2, box=[50, 50, 50])
     config = system.random_configuration()
     return system, config
 
 
 @pytest.fixture
-def h2o_system_config():
-    system = mlt.System(_h2o(), box=[50, 50, 50])
+def h2o_system_config(h2o):
+    system = mlt.System(h2o, box=[50, 50, 50])
     config = system.random_configuration()
     return system, config
 
