@@ -10,7 +10,7 @@ repos:
       - id: check-shebang-scripts-are-executable
       - id: check-added-large-files
         args: ['--maxkb=500', '--enforce-all']
-        exclude: mlptrain/sampling/tests/data.zip
+        exclude: tests/data/data.zip
       - id: check-yaml
       - id: check-toml
 
