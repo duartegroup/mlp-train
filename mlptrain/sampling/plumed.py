@@ -1032,6 +1032,7 @@ class PlumedDifferenceCV(_PlumedCV):
             ]
         )
 
+
 class PlumedCNCV(mlt.sampling.plumed._PlumedCV):
     def __init__(self, name: str, ref: float, atom_groups: Sequence = None):
         """
@@ -1044,8 +1045,7 @@ class PlumedCNCV(mlt.sampling.plumed._PlumedCV):
 
             name: (str) Name of the collective variable
 
-            ref: (float) Reference values to distinguish different states, like 
-                         reactant state and product state
+            ref: (float) Reference values to distinguish different states
 
             atom_groups: (Sequence[Sequence[int]]) List of atom index sequences
                                                 which are used to generate DOFs
@@ -1057,15 +1057,15 @@ class PlumedCNCV(mlt.sampling.plumed._PlumedCV):
 
         self.ref = ref
 
-        func = f"(1-({self.dof_names[0]}/{self.ref})^6)/(1-({self.dof_names[0]}/{self.ref})^12)"
+        func = f'(1-({self.dof_names[0]}/{self.ref})^6)/(1-({self.dof_names[0]}/{self.ref})^12)'
 
         self.setup.extend(
             [
-                f"{self.name}: "
-                f"CUSTOM ARG={self.dof_sequence} "
-                f"VAR={self.dof_sequence} "
-                f"FUNC={func} "
-                f"PERIODIC=NO"
+                f'{self.name}: '
+                f'CUSTOM ARG={self.dof_sequence} '
+                f'VAR={self.dof_sequence} '
+                f'FUNC={func} '
+                f'PERIODIC=NO'
             ]
         )
 
