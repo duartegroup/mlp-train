@@ -1033,7 +1033,7 @@ class PlumedDifferenceCV(_PlumedCV):
         )
 
 
-class PlumedCNCV(mlt.sampling.plumed._PlumedCV):
+class PlumedCNCV(_PlumedCV):
     def __init__(self, name: str, ref: float, atom_groups: Sequence = None):
         """
         PLUMED collective variable as a coordinattion number,
@@ -1068,6 +1068,7 @@ class PlumedCNCV(mlt.sampling.plumed._PlumedCV):
                 f'PERIODIC=NO'
             ]
         )
+
 
 class PlumedCustomCV(_PlumedCV):
     """Class used to initialise a PLUMED collective variable from a file"""
