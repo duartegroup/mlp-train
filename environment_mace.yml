@@ -21,7 +21,7 @@ dependencies:
   - scipy
   - xtb
   - scikit-learn
-  - openmmi=8.1.2
+  - openmm=8.1.2
   - openmm-torch=1.4
   - nnpops
   - openmm-ml=1.2
