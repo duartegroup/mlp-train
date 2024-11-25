@@ -2,16 +2,23 @@ from autode.wrappers.keywords import GradientKeywords
 
 
 class _ConfigClass:
-    """mlptrain configuration"""
+    """
+    MLP training configurations
+
+    This class contains default parameters for electronic structure computations and training of available MLPs.
+    Default settings for electronic structures is None to avoid accidentally running the wrong level of theory.
+    The desired level can be specified by, e.g.
+    ```
+    from mlptrain.config import Config
+
+    Config.orca_keywords = ['PBE', 'def2-SVP', 'EnGrad']
+    Config.gaussian_keywords = ['PBEPBE', 'Def2SVP', 'Force(NoStep)', 'integral=ultrafinegrid']
+    ```
+    """
 
     n_cores = 4
-    _orca_keywords = ['PBE', 'def2-SVP', 'EnGrad']
-    _gaussian_keywords = [
-        'PBEPBE',
-        'Def2SVP',
-        'Force(NoStep)',
-        'integral=ultrafinegrid',
-    ]
+    _orca_keywords = None
+    _gaussian_keywords = None
 
     # Default parameters for a GAP potential
     gap_default_params = {
@@ -87,7 +94,7 @@ class _ConfigClass:
 
     @gaussian_keywords.setter
     def gaussian_keywords(self, value):
-        """ORCA keywords must be gradient"""
+        """Gaussian keywords must be gradient"""
         self._gaussian_keywords = value
 
 
