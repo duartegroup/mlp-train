@@ -6,51 +6,69 @@ class _ConfigClass:
 
     n_cores = 4
     _orca_keywords = ['PBE', 'def2-SVP', 'EnGrad']
-    _gaussian_keywords = ['PBEPBE', 'Def2SVP', 'Force(NoStep)', 'integral=ultrafinegrid']
+    _gaussian_keywords = [
+        'PBEPBE',
+        'Def2SVP',
+        'Force(NoStep)',
+        'integral=ultrafinegrid',
+    ]
 
     # Default parameters for a GAP potential
-    gap_default_params = {'sigma_E': 10**(-4.0),        # eV
-                          'sigma_F': 10**(-2.0)}        # eV Å-1
+    gap_default_params = {
+        'sigma_E': 10 ** (-4.0),  # eV
+        'sigma_F': 10 ** (-2.0),
+    }  # eV Å-1
 
     # Default SOAP parameters
-    gap_default_soap_params = {'cutoff':   4.0,         # Å
-                               'n_sparse': 1000,
-                               'l_max':    6,           # n_max = 2 l_max
-                               'sigma_at': 0.5          # Å
-                               }
+    gap_default_soap_params = {
+        'cutoff': 4.0,  # Å
+        'n_sparse': 1000,
+        'l_max': 6,  # n_max = 2 l_max
+        'sigma_at': 0.5,  # Å
+    }
+    # ACE params
+    ace_params = {
+        'N': 4,  # maximum correlation order
+        'r_cut': 4.0,  # outer cutoff of ACE
+        'deg_pair': 5,  # Specify the pair potential
+        'r_cut_pair': 5.0,
+    }
 
     # NeQUIP params
-    nequip_params = {'cutoff': 4.0,
-                     'train_fraction': 0.9}
+    nequip_params = {'cutoff': 4.0, 'train_fraction': 0.9}
 
     # MACE params
 
     try:
         import torch
+
         mace_device = 'cuda' if torch.cuda.is_available() else 'cpu'
     except ImportError:
         mace_device = 'cpu'
 
-    mace_params = {'valid_fraction': 0.1,
-                   'config_type_weights': '{"Default":1.0}',
-                   'model': 'MACE',
-                   'loss': 'weighted',
-                   'energy_weight': 1.0,
-                   'forces_weight': 5.0,
-                   'hidden_irreps': '128x0e + 128x1o',
-                   'batch_size': 10,
-                   'r_max': 5,
-                   'correlation': 3,
-                   'device': mace_device ,
-                   'calc_device': 'cpu',
-                   'error_table': 'TotalMAE',
-                   'swa': True,
-                   'start_swa': 800,
-                   'ema': False,
-                   'ema_decay': 0.99,
-                   'amsgrad': True,
-                   'restart_latest': False,
-                   'save_cpu': True}
+    mace_params = {
+        'valid_fraction': 0.1,
+        'config_type_weights': '{"Default":1.0}',
+        'model': 'MACE',
+        'loss': 'weighted',
+        'energy_weight': 1.0,
+        'forces_weight': 5.0,
+        'hidden_irreps': '128x0e + 128x1o',
+        'batch_size': 10,
+        'r_max': 5.0,
+        'correlation': 3,
+        'device': mace_device,
+        'calc_device': 'cpu',
+        'error_table': 'TotalMAE',
+        'swa': True,
+        'start_swa': 800,
+        'ema': False,
+        'ema_decay': 0.99,
+        'amsgrad': True,
+        'restart_latest': False,
+        'save_cpu': True,
+        'dtype': 'float32',
+    }
 
     # --------------------- Internal properties ---------------------------
 

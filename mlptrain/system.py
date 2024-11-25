@@ -3,7 +3,6 @@ import autode
 import numpy as np
 from typing import Union, Sequence, List
 from scipy.spatial.distance import cdist
-from scipy.stats import special_ortho_group
 from mlptrain.configurations import Configuration, ConfigurationSet
 from mlptrain.log import logger
 from mlptrain.box import Box
@@ -13,9 +12,9 @@ from mlptrain.molecule import Molecule
 class System:
     """System with molecules but without any coordinates"""
 
-    def __init__(self,
-                 *args: Molecule,
-                 box:   Union[Box, Sequence[float], None]):
+    def __init__(
+        self, *args: Molecule, box: Union[Box, Sequence[float], None]
+    ):
         """
         System containing a set of molecules.
 
@@ -38,11 +37,12 @@ class System:
         else:
             self.box = box if isinstance(box, Box) else Box(box)
 
-    def random_configuration(self,
-                             min_dist:     float = 2.0,
-                             with_intra:   bool = False,
-                             intra_sigma:  float = 0.01
-                             ) -> 'mlptrain.Configuration':
+    def random_configuration(
+        self,
+        min_dist: float = 2.0,
+        with_intra: bool = False,
+        intra_sigma: float = 0.01,
+    ) -> 'mlptrain.Configuration':
         """
         Generate a random configuration of this system, where all the molecules
         in the system have been randomised
@@ -63,31 +63,34 @@ class System:
             (RuntimeError): If all the molecules cannot be randomised while
                             maintaining the required min. distance between them
         """
-        configuration = Configuration(charge=self.charge,
-                                      mult=self.mult)
+        configuration = Configuration(
+            charge=self.charge, mult=self.mult, box=self.box
+        )
 
         for molecule in self.molecules:
-
             if with_intra:
-                logger.info(f'Adding random normal displacement with '
-                            f'σ={intra_sigma} Å')
+                logger.info(
+                    f'Adding random normal displacement with '
+                    f'σ={intra_sigma} Å'
+                )
                 molecule.random_normal_jiggle(sigma=intra_sigma)
 
             self._shift_to_midpoint(molecule)
             if configuration.n_atoms > 0:
                 self._rotate_randomly(molecule)
-                self._shift_randomly(molecule,
-                                     coords=configuration.coordinates,
-                                     min_dist=min_dist)
+                self._shift_randomly(
+                    molecule,
+                    coords=configuration.coordinates,
+                    min_dist=min_dist,
+                )
 
             configuration.atoms += molecule.atoms.copy()
 
         return configuration
 
-    def random_configurations(self,
-                              num: int,
-                              **kwargs
-                              ) -> 'mlptrain.ConfigurationSet':
+    def random_configurations(
+        self, num: int, **kwargs
+    ) -> 'mlptrain.ConfigurationSet':
         """
         Generate a number of random configurations of this system
 
@@ -125,13 +128,13 @@ class System:
             return self.random_configuration(with_intra=False)
 
         else:
-            raise NotImplementedError("A single configuration for a system "
-                                      "with > 1 molecule(s) is not implemented"
-                                      " Call random_configuration()")
+            raise NotImplementedError(
+                'A single configuration for a system '
+                'with > 1 molecule(s) is not implemented'
+                ' Call random_configuration()'
+            )
 
-    def add_molecule(self,
-                     molecule: 'mlptrain.Molecule'
-                     ) -> None:
+    def add_molecule(self, molecule: 'mlptrain.Molecule') -> None:
         """
         Add a molecule to this system
 
@@ -143,10 +146,9 @@ class System:
         self.molecules.append(molecule)
         return None
 
-    def add_molecules(self,
-                      molecule: 'mlptrain.Molecule',
-                      num:      int = 1
-                      ) -> None:
+    def add_molecules(
+        self, molecule: 'mlptrain.Molecule', num: int = 1
+    ) -> None:
         """
         Add multiple versions of a molecule to this sytem
 
@@ -204,6 +206,8 @@ class System:
     @staticmethod
     def _rotate_randomly(molecule) -> None:
         """Rotate a molecule randomly around it's centroid"""
+        from scipy.stats import special_ortho_group
+
         logger.info(f'Rotating {molecule.name} about its centroid')
 
         coords, centroid = molecule.coordinates, molecule.centroid
@@ -214,7 +218,9 @@ class System:
 
         return None
 
-    def _shift_randomly(self, molecule, coords, min_dist, max_iters=500) -> None:
+    def _shift_randomly(
+        self, molecule, coords, min_dist, max_iters=500
+    ) -> None:
         """
         Shift a molecule such that that there more than min_dist between
         each of a molecule's coordinates and a current set
@@ -236,12 +242,13 @@ class System:
             max_delta = np.max(np.max(_coords, axis=0) - np.array([a, b, c]))
             return np.min(_coords) > 0.0 and max_delta < 0
 
-        for i in range(1, max_iters+1):
-
+        for i in range(1, max_iters + 1):
             m_coords = np.copy(molecule_coords)
-            vec = [np.random.uniform(-a/2, a/2),    # Random translation vector
-                   np.random.uniform(-b/2, b/2),
-                   np.random.uniform(-c/2, c/2)]
+            vec = [
+                np.random.uniform(-a / 2, a / 2),  # Random translation vector
+                np.random.uniform(-b / 2, b / 2),
+                np.random.uniform(-c / 2, c / 2),
+            ]
 
             # Shift by 0.1 increments in the random direction
             vec = 0.1 * np.array(vec) / np.linalg.norm(vec)
@@ -254,9 +261,11 @@ class System:
                 break
 
             if i == max_iters:
-                raise RuntimeError(f'Failed to shift {molecule.formula} to a '
-                                   f'random location in the box. '
-                                   f'Tried {max_iters} times')
+                raise RuntimeError(
+                    f'Failed to shift {molecule.formula} to a '
+                    f'random location in the box. '
+                    f'Tried {max_iters} times'
+                )
 
         molecule.coordinates = m_coords
         return

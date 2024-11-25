@@ -1,7 +1,6 @@
 import mlptrain
 import numpy as np
 from abc import ABC, abstractmethod
-from scipy.stats import bootstrap
 from mlptrain.loss._base import LossValue, LossFunction
 
 
@@ -10,10 +9,12 @@ class _DeltaLossFunction(LossFunction, ABC):
 
     loss_type = None
 
-    def __call__(self,
-                 configurations: 'mlptrain.ConfigurationSet',
-                 mlp:            'mlptrain.potentials.MLPotential',
-                 **kwargs) -> LossValue:
+    def __call__(
+        self,
+        configurations: 'mlptrain.ConfigurationSet',
+        mlp: 'mlptrain.potentials.MLPotential',
+        **kwargs,
+    ) -> LossValue:
         """Calculate the value of the loss
 
         -----------------------------------------------------------------------
@@ -22,6 +23,7 @@ class _DeltaLossFunction(LossFunction, ABC):
 
             mlp: Potential to use
         """
+        from scipy.stats import bootstrap
 
         if self.loss_type is None:
             raise NotImplementedError(f'{self} did not define loss_type')
@@ -41,14 +43,15 @@ class _DeltaLossFunction(LossFunction, ABC):
         """Evaluate E_true - E_predicted along a set of configurations"""
 
         for idx, configuration in enumerate(cfgs):
-
             if configuration.energy.true is None:
                 if self.method_name is not None:
                     configuration.single_point(method=self.method_name)
 
                 else:
-                    raise RuntimeError(f'Cannot compute loss for configuration '
-                                       f'{idx}, a true energy was not present')
+                    raise RuntimeError(
+                        f'Cannot compute loss for configuration '
+                        f'{idx}, a true energy was not present'
+                    )
 
             if configuration.energy.predicted is None:
                 mlp.predict(configuration)
@@ -62,13 +65,12 @@ class _DeltaLossFunction(LossFunction, ABC):
 
 
 class RMSEValue(LossValue):
-
     def __repr__(self):
         return f'RMSE({float.__repr__(self)}{self._err_str})'
 
 
 class RMSE(_DeltaLossFunction):
-    """ RMSE = √(1/N Σ_i (y_i^predicted - y_i^true)^2)"""
+    """RMSE = √(1/N Σ_i (y_i^predicted - y_i^true)^2)"""
 
     loss_type = RMSEValue
 
@@ -78,13 +80,12 @@ class RMSE(_DeltaLossFunction):
 
 
 class MADValue(LossValue):
-
     def __repr__(self):
         return f'MAD({float.__repr__(self)}{self._err_str})'
 
 
 class MAD(LossFunction):
-    """ MAD = 1/N √(Σ_i |y_i^predicted - y_i^true|)"""
+    """MAD = 1/N √(Σ_i |y_i^predicted - y_i^true|)"""
 
     loss_type = MADValue
 

@@ -16,8 +16,6 @@ if ! which julia; then
 fi
 
 source create_conda_environment.sh
-# NOTE: `conda activate` does not work in scripts, we use `conda run` below.
-# https://stackoverflow.com/a/72395091
 
 echo "* Adding required registries and packages to Julia *"
 echo "using Pkg
@@ -30,8 +28,10 @@ Pkg.add(\"IJulia\")
 Pkg.add(\"ASE\")" > add_julia_pkgs.jl
 julia add_julia_pkgs.jl
 
+# NOTE: `conda activate` does not work in scripts, need to use `conda run`, see:
+# https://stackoverflow.com/a/72395091
 echo "* Setting up Python-Julia integration *"
-conda run -n ${CONDA_ENV_NAME} python -c "import julia; julia.install()"
+$CONDA_EXE run -n ${CONDA_ENV_NAME} python -c "import julia; julia.install()"
 
 echo "* Pointing PyCall to the version of Python in the new env *"
 

@@ -5,9 +5,11 @@ from typing import Optional
 class Forces:
     """Forces in units of eV / Å"""
 
-    def __init__(self,
-                 predicted: Optional[np.ndarray] = None,
-                 true:      Optional[np.ndarray] = None):
+    def __init__(
+        self,
+        predicted: Optional[np.ndarray] = None,
+        true: Optional[np.ndarray] = None,
+    ):
         """
         Forces
 
@@ -43,5 +45,3 @@ class Forces:
             raise ValueError('Cannot calculate ∆F. Shape mismatch')
 
         return self.true - self.predicted
-
-

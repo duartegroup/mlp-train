@@ -16,12 +16,13 @@ from mlptrain.configurations.calculate import run_autode
 class Configuration(AtomCollection):
     """Configuration of atoms"""
 
-    def __init__(self,
-                 atoms:  Union[autode.atoms.Atoms, List[Atom], None] = None,
-                 charge: int = 0,
-                 mult:   int = 1,
-                 box:    Optional[Box] = None
-                 ):
+    def __init__(
+        self,
+        atoms: Union[autode.atoms.Atoms, List[Atom], None] = None,
+        charge: int = 0,
+        mult: int = 1,
+        box: Optional[Box] = None,
+    ):
         """
         Set of atoms perhaps in a periodic box with an overall charge and
         spin multiplicity
@@ -45,8 +46,8 @@ class Configuration(AtomCollection):
         # Collective variable values (obtained using PLUMED)
         self.plumed_coordinates: Optional[np.ndarray] = None
 
-        self.time: Optional[float] = None   # Time in a trajectory
-        self.n_ref_evals = 0                # Number of reference evaluations
+        self.time: Optional[float] = None  # Time in a trajectory
+        self.n_ref_evals = 0  # Number of reference evaluations
 
     @property
     def ase_atoms(self) -> 'ase.atoms.Atoms':
@@ -58,18 +59,18 @@ class Configuration(AtomCollection):
         Returns:
             (ase.atoms.Atoms): ASE atoms
         """
-        _atoms = ase.atoms.Atoms(symbols=[atom.label for atom in self.atoms],
-                       positions=self.coordinates,
-                       pbc=self.box is not None)
+        _atoms = ase.atoms.Atoms(
+            symbols=[atom.label for atom in self.atoms],
+            positions=self.coordinates,
+            pbc=self.box is not None,
+        )
 
         if self.box is not None:
             _atoms.set_cell(cell=self.box.size)
 
         return _atoms
 
-    def update_attr_from(self,
-                         configuration: 'Configuration'
-                         ) -> None:
+    def update_attr_from(self, configuration: 'Configuration') -> None:
         """
         Update system attributes from a configuration
 
@@ -84,12 +85,13 @@ class Configuration(AtomCollection):
 
         return None
 
-    def save_xyz(self,
-                 filename:  str,
-                 append:    bool = False,
-                 true:      bool = False,
-                 predicted: bool = False
-                 ) -> None:
+    def save_xyz(
+        self,
+        filename: str,
+        append: bool = False,
+        true: bool = False,
+        predicted: bool = False,
+    ) -> None:
         """
         Print this configuration as an extended xyz file where the first 4
         columns are the atom symbol, x, y, z and, if this configuration
@@ -108,11 +110,13 @@ class Configuration(AtomCollection):
         """
         # logger.info(f'Saving configuration to {filename}')
 
-        a, b, c = [0., 0., 0.] if self.box is None else self.box.size
+        a, b, c = [0.0, 0.0, 0.0] if self.box is None else self.box.size
 
         if true and predicted:
-            raise ValueError('Cannot save both predicted and true '
-                             f'quantities to {filename}')
+            raise ValueError(
+                'Cannot save both predicted and true '
+                f'quantities to {filename}'
+            )
 
         if not (true or predicted):
             prop_str = ''
@@ -131,12 +135,14 @@ class Configuration(AtomCollection):
             filename += '.xyz'
 
         with open(filename, 'a' if append else 'w') as exyz_file:
-            print(f'{len(self.atoms)}\n'
-                  f'Lattice="{a:.6f} 0.000000 0.000000 '
-                  f'0.000000 {b:.6f} 0.000000 '
-                  f'0.000000 0.000000 {c:.6f}" '
-                  f'{prop_str}',
-                  file=exyz_file)
+            print(
+                f'{len(self.atoms)}\n'
+                f'Lattice="{a:.6f} 0.000000 0.000000 '
+                f'0.000000 {b:.6f} 0.000000 '
+                f'0.000000 0.000000 {c:.6f}" '
+                f'{prop_str}',
+                file=exyz_file,
+            )
 
             for i, atom in enumerate(self.atoms):
                 x, y, z = atom.coord
@@ -150,10 +156,11 @@ class Configuration(AtomCollection):
 
         return None
 
-    def single_point(self,
-                     method:  Union[str, 'mlptrain.potentials._base.MLPotential'],
-                     n_cores: int = 1
-                     ) -> None:
+    def single_point(
+        self,
+        method: Union[str, 'mlptrain.potentials._base.MLPotential'],
+        n_cores: int = 1,
+    ) -> None:
         """
         Run a single point energy and gradient (force) evaluation using
         either a reference method defined by a string (e.g. 'orca') or a
@@ -176,22 +183,25 @@ class Configuration(AtomCollection):
             method.predict(self)
 
         else:
-            raise ValueError(f'Cannot use {method} to predict energies and '
-                             f'forces')
+            raise ValueError(
+                f'Cannot use {method} to predict energies and ' f'forces'
+            )
 
         return None
 
     def __eq__(self, other) -> bool:
         """Another configuration is identical to this one"""
-        eq = (isinstance(other, Configuration)
-              and other.n_atoms == self.n_atoms
-              and other.mult == self.mult
-              and other.charge == self.charge
-              and other.box == self.box)
+        eq = (
+            isinstance(other, Configuration)
+            and other.n_atoms == self.n_atoms
+            and other.mult == self.mult
+            and other.charge == self.charge
+            and other.box == self.box
+        )
 
         if eq and self.n_atoms > 0:
             rmsd = np.linalg.norm(self.coordinates - other.coordinates)
-            return eq and rmsd < 1E-10
+            return eq and rmsd < 1e-10
         return eq
 
     def copy(self) -> 'Configuration':

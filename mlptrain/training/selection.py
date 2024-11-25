@@ -5,12 +5,15 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from mlptrain.descriptors import soap_kernel_vector
 from mlptrain.log import logger
+from mlptrain.descriptors import soap_matrix
+from sklearn.neighbors import LocalOutlierFactor
+from sklearn.decomposition import PCA
 
 
 class SelectionMethod(ABC):
     """Active learning selection method
 
-                    NOTE: Should execute in serial
+    NOTE: Should execute in serial
     """
 
     def __init__(self):
@@ -20,11 +23,12 @@ class SelectionMethod(ABC):
         self._configuration: Optional['mlptrain.Configuration'] = None
 
     @abstractmethod
-    def __call__(self,
-                 configuration: 'mlptrain.Configuration',
-                 mlp:           'mlptrain.potentials.MLPotential',
-                 **kwargs
-                 ) -> None:
+    def __call__(
+        self,
+        configuration: 'mlptrain.Configuration',
+        mlp: 'mlptrain.potentials.MLPotential',
+        **kwargs,
+    ) -> None:
         """Evaluate the selector"""
 
     @property
@@ -49,14 +53,20 @@ class SelectionMethod(ABC):
             (int):
         """
 
+    @property
+    def check(self) -> bool:
+        """
+        Should we keep checking configurations in the MLP-MD trajectory
+        until the first configuration that will be selected by the selector is found?
+        """
+        return False
+
     def copy(self) -> 'SelectionMethod':
         return deepcopy(self)
 
 
 class AbsDiffE(SelectionMethod):
-
-    def __init__(self,
-                 e_thresh: float = 0.1):
+    def __init__(self, e_thresh: float = 0.1):
         """
         Selection method based on the absolute difference between the
         true and predicted total energies.
@@ -86,14 +96,17 @@ class AbsDiffE(SelectionMethod):
         self._configuration = configuration
 
         if method_name is None:
-            raise ValueError('Evaluating the absolute difference requires a '
-                             'method name but None was present')
+            raise ValueError(
+                'Evaluating the absolute difference requires a '
+                'method name but None was present'
+            )
 
         if configuration.energy.predicted is None:
             self._configuration.single_point(mlp)
 
-        self._configuration.single_point(method_name,
-                                         n_cores=kwargs.get('n_cores', 1))
+        self._configuration.single_point(
+            method_name, n_cores=kwargs.get('n_cores', 1)
+        )
         return None
 
     @property
@@ -117,10 +130,8 @@ class AbsDiffE(SelectionMethod):
         return 10
 
 
-class MaxAtomicEnvDistance(SelectionMethod):
-
-    def __init__(self,
-                 threshold: float = 0.999):
+class AtomicEnvSimilarity(SelectionMethod):
+    def __init__(self, threshold: float = 0.999):
         """
         Selection criteria based on the maximum distance between any of the
         training set and a new configuration. Evaluated based on the similarity
@@ -139,10 +150,12 @@ class MaxAtomicEnvDistance(SelectionMethod):
         self.threshold = float(threshold)
         self._k_vec = np.array([])
 
-    def __call__(self,
-                 configuration: 'mlptrain.Configuration',
-                 mlp:           'mlptrain.potentials.MLPotential',
-                 **kwargs) -> None:
+    def __call__(
+        self,
+        configuration: 'mlptrain.Configuration',
+        mlp: 'mlptrain.potentials.MLPotential',
+        **kwargs,
+    ) -> None:
         """
         Evaluate the selection criteria
 
@@ -155,9 +168,9 @@ class MaxAtomicEnvDistance(SelectionMethod):
         if len(mlp.training_data) == 0:
             return None
 
-        self._k_vec = soap_kernel_vector(configuration,
-                                         configurations=mlp.training_data,
-                                         zeta=8)
+        self._k_vec = soap_kernel_vector(
+            configuration, configurations=mlp.training_data, zeta=8
+        )
         return None
 
     @property
@@ -187,3 +200,114 @@ class MaxAtomicEnvDistance(SelectionMethod):
     def _n_training_envs(self) -> int:
         """Number of training environments available"""
         return len(self._k_vec)
+
+
+def outlier_identifier(
+    configuration: 'mlptrain.Configuration',
+    configurations: 'mlptrain.ConfigurationSet',
+    dim_reduction: bool = False,
+    distance_metric: str = 'euclidean',
+    n_neighbors: int = 15,
+) -> int:
+    """
+    This function identifies whether a new data (configuration)
+    is the outlier in comparison with the existing data (configurations) by Local Outlier
+    Factor (LOF). For more details about the LOF method, please see the lit.
+    Breunig, M. M., Kriegel, H.-P., Ng, R. T. & Sander, J. LOF: Identifying
+    density-based local outliers. SIGMOD Rec. 29, 93–104 (2000).
+
+    -----------------------------------------------------------------------
+    Arguments:
+
+    dim_reduction: if Ture, dimensionality reduction will
+                   be performed before LOF calculation (so far only PCA available).
+    distance_metric: distance metric used in LOF,
+                     which could be one of 'euclidean',
+                     'cosine' and 'manhattan’.
+    n_neighbors: number of neighbors considered when computing the LOF.
+
+    -----------------------------------------------------------------------
+    Returns:
+
+    -1 for anomalies/outliers and +1 for inliers.
+    """
+
+    m1 = soap_matrix(configurations)
+    m1 /= np.linalg.norm(m1, axis=1).reshape(len(configurations), 1)
+
+    v1 = soap_matrix(configuration)
+    v1 /= np.linalg.norm(v1, axis=1).reshape(1, -1)
+
+    if dim_reduction:
+        pca = PCA(n_components=3)
+        m1 = pca.fit_transform(m1)
+        v1 = pca.transform(v1)
+
+    clf = LocalOutlierFactor(
+        n_neighbors=n_neighbors,
+        metric=distance_metric,
+        novelty=True,
+        contamination=0.2,
+    )
+    'contamination: define the porpotional of outliner in the data, the higher, the less abnormal'
+
+    clf.fit(m1)
+
+    new = clf.predict(v1)
+
+    return new
+
+
+class AtomicEnvDistance(SelectionMethod):
+    def __init__(
+        self,
+        pca: bool = False,
+        distance_metric: str = 'euclidean',
+        n_neighbors: int = 15,
+    ):
+        """
+        Selection criteria based on analysis whether the configuration is
+        outlier by outlier_identifier function
+        -----------------------------------------------------------------------
+        Arguments:
+            pca: whether to do dimensionality reduction by PCA.
+                 As the selected distance_metric may potentially suffer from
+                 the curse of dimensionality, the dimensionality reduction step
+                 (using PCA) could be applied before calculating the LOF.
+                 This would ensure good performance in high-dimensional data space.
+            For the other arguments, please see details in the outlier_identifier function
+        """
+        super().__init__()
+        self.pca = pca
+        self.metric = distance_metric
+        self.n_neighbors = n_neighbors
+
+    def __call__(self, configuration, mlp, **kwargs) -> None:
+        self.mlp = mlp
+        self._configuration = configuration
+
+    @property
+    def select(self) -> bool:
+        metric = outlier_identifier(
+            self._configuration,
+            self.mlp.training_data,
+            self.pca,
+            self.metric,
+            self.n_neighbors,
+        )
+        return metric == -1
+
+    @property
+    def too_large(self) -> bool:
+        return False
+
+    @property
+    def n_backtrack(self) -> int:
+        return 10
+
+    @property
+    def check(self) -> bool:
+        if self.mlp.n_train > 30:
+            return True
+        else:
+            return False
