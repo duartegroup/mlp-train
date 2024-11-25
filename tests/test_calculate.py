@@ -179,7 +179,6 @@ def test_method_and_keywords_invalid():
         _method_and_keywords('invalid_method')
 
 
-@pytest.mark.xfail
 def test_orca_keywords_success(set_config):
     """Test _orca_keywords retrieves the ORCA keywords from Config"""
     keywords = _orca_keywords()
@@ -195,7 +194,6 @@ def test_orca_keywords_no_config():
         _orca_keywords()
 
 
-@pytest.mark.xfail
 def test_gaussian_keywords_success(set_config):
     """Test _gaussian_keywords retrieves the Gaussian keywords from Config"""
     keywords = _gaussian_keywords()
