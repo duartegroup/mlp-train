@@ -1068,7 +1068,7 @@ class PlumedCNCV(_PlumedCV):
                 f'PERIODIC=NO'
             ]
         )
-        
+
 
 class PlumedCustomCV(_PlumedCV):
     """Class used to initialise a PLUMED collective variable from a file"""
