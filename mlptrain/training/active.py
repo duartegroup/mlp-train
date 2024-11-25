@@ -135,11 +135,11 @@ def train(
         md_program: (str) 'ASE' or 'OpenMM'
 
         pbc: (bool) If True, MLP-MD propagates with periodic boundary conditions.
-              The solvent should be therefore placed ina box and not sphere.
+              The solvent should be therefore placed in a box and not a sphere.
               The training data are still treated as clusters in
               electronic structure computations.
 
-        box_size: (List | None) Size of the box where MLP-MD propogated.
+        box_size: (List | None) Size of the box where MLP-MD propagated.
     """
     if md_program.lower() == 'openmm':
         if not isinstance(mlp, mlptrain.potentials.MACE):
