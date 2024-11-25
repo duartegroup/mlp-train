@@ -14,6 +14,7 @@ from mlptrain.sampling.md import run_mlp_md
 from mlptrain.training.selection import SelectionMethod, AbsDiffE
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.log import logger
+from mlptrain.box import Box
 
 
 def train(
@@ -38,6 +39,8 @@ def train(
     constraints: Optional[List] = None,
     bias: Optional = None,
     md_program: str = 'ASE',
+    pbc: bool = False,
+    box_size: Optional[list] = None,
 ) -> None:
     """
     Train a system using active learning, by propagating dynamics using ML
@@ -130,6 +133,13 @@ def train(
               dynamics
 
         md_program: (str) 'ASE' or 'OpenMM'
+
+        pbc: (bool) If True, MLP-MD propagates with periodic boundary conditions.
+              The solvent should be therefore placed ina box and not sphere.
+              The training data are still treated as clusters in
+              electronic structure computations.
+
+        box_size: (List | None) Size of the box where MLP-MD propogated.
     """
     if md_program.lower() == 'openmm':
         if not isinstance(mlp, mlptrain.potentials.MACE):
@@ -144,6 +154,9 @@ def train(
             )
 
     _check_bias(bias=bias, temp=temp, inherit_metad_bias=inherit_metad_bias)
+
+    if pbc and box_size is None:
+        raise ValueError('For PBC in MD, the box_size cannot be None')
 
     if restart_iter is not None:
         _initialise_restart(
@@ -179,6 +192,10 @@ def train(
     for iteration in range(max_active_iters):
         if restart_iter is not None and iteration <= restart_iter:
             continue
+        if isinstance(bias, PlumedBias) and iteration > bias_start_iter:
+            extra_time = 0
+        else:
+            extra_time = mlp.training_data.t_min(-n_configs_iter)
 
         previous_n_train = mlp.n_train
 
@@ -203,13 +220,15 @@ def train(
             bbond_energy=bbond_energy,
             fbond_energy=fbond_energy,
             init_temp=init_active_temp,
-            extra_time=mlp.training_data.t_min(-n_configs_iter),
+            extra_time=extra_time,
             constraints=constraints,
             bias=deepcopy(bias),
             inherit_metad_bias=inherit_metad_bias,
             bias_start_iter=bias_start_iter,
             iteration=iteration,
             md_program=md_program,
+            pbc=pbc,
+            box_size=box_size,
         )
 
         # Active learning finds no configurations
@@ -399,6 +418,9 @@ def _gen_active_config(
         else kwargs.pop('init_active_temp')
     )
 
+    pbc = False if 'pbc' not in kwargs else kwargs.pop('pbc')
+    box_size = None if 'box_size' not in kwargs else kwargs.pop('box_size')
+
     if extra_time > 0:
         logger.info(f'Running an extra {extra_time:.1f} fs of MD')
 
@@ -410,6 +432,8 @@ def _gen_active_config(
     ):
         kwargs = _modify_kwargs_for_metad_bias_inheritance(kwargs)
 
+    if pbc:
+        config.box = Box(box_size)
     if kwargs['md_program'].lower() == 'openmm':
         traj = run_mlp_md_openmm(
             config,
@@ -435,6 +459,8 @@ def _gen_active_config(
 
     traj.t0 = curr_time  # Increment the initial time (t0)
 
+    for frame in traj:
+        frame.box = Box([100, 100, 100])
     # Evaluate the selector on the final frame
     selector(traj.final_frame, mlp, method_name=method_name, n_cores=n_cores)
 
@@ -584,6 +610,7 @@ def _gen_and_set_init_training_configs(
             config = mlp.system.random_configuration(
                 min_dist=dist, with_intra=True
             )
+            config.box = Box([100, 100, 100])
             init_configs.append(config)
 
         except RuntimeError:
@@ -592,7 +619,7 @@ def _gen_and_set_init_training_configs(
     logger.info(f'Added {num} configurations with min dist = {dist:.3f} Å')
     init_configs.single_point(method_name)
     mlp.training_data += init_configs
-    return None
+    return init_configs
 
 
 def _initialise_restart(
