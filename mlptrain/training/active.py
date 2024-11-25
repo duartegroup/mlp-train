@@ -16,6 +16,7 @@ from mlptrain.configurations import ConfigurationSet
 from mlptrain.log import logger
 from mlptrain.box import Box
 
+
 def train(
     mlp: 'mlptrain.potentials._base.MLPotential',
     method_name: str,
@@ -39,9 +40,8 @@ def train(
     bias: Optional = None,
     md_program: str = 'ASE',
     pbc: bool = False,
-    box_size: Optional[list] = None
-    ) -> None:
-
+    box_size: Optional[list] = None,
+) -> None:
     """
     Train a system using active learning, by propagating dynamics using ML
     driven molecular dynamics (MD) and adding configurations based on some
@@ -138,7 +138,7 @@ def train(
               The solvent should be therefore placed ina box and not sphere.
               The training data are still treated as clusters in
               electronic structure computations.
-              
+
         box_size: (List | None) Size of the box where MLP-MD propogated.
     """
     if md_program.lower() == 'openmm':
@@ -155,9 +155,9 @@ def train(
 
     _check_bias(bias=bias, temp=temp, inherit_metad_bias=inherit_metad_bias)
 
-    if pbc:
-        assert box_size is not None, "to propagate with PBC, box_size cannot be None"
-                    
+    if pbc and box_size is None:
+        raise ValueError('For PBC in MD, the box_size cannot be None')
+
     if restart_iter is not None:
         _initialise_restart(
             mlp=mlp,
@@ -171,7 +171,7 @@ def train(
         _gen_and_set_init_training_configs(
             mlp=mlp, method_name=method_name, num=n_init_configs
         )
-        
+
     else:
         init_config = init_configs[0]
         _set_init_training_configs(
@@ -195,8 +195,8 @@ def train(
         if isinstance(bias, PlumedBias) and iteration > bias_start_iter:
             extra_time = 0
         else:
-            extra_time=mlp.training_data.t_min(-n_configs_iter)
-                  
+            extra_time = mlp.training_data.t_min(-n_configs_iter)
+
         previous_n_train = mlp.n_train
 
         init_config_iter = _update_init_config(
@@ -220,7 +220,7 @@ def train(
             bbond_energy=bbond_energy,
             fbond_energy=fbond_energy,
             init_temp=init_active_temp,
-            extra_time= extra_time,
+            extra_time=extra_time,
             constraints=constraints,
             bias=deepcopy(bias),
             inherit_metad_bias=inherit_metad_bias,
@@ -228,7 +228,7 @@ def train(
             iteration=iteration,
             md_program=md_program,
             pbc=pbc,
-            box_size=box_size
+            box_size=box_size,
         )
 
         # Active learning finds no configurations
@@ -460,7 +460,7 @@ def _gen_active_config(
     traj.t0 = curr_time  # Increment the initial time (t0)
 
     for frame in traj:
-          frame.box = Box([100,100,100])
+        frame.box = Box([100, 100, 100])
     # Evaluate the selector on the final frame
     selector(traj.final_frame, mlp, method_name=method_name, n_cores=n_cores)
 
