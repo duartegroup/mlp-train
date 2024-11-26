@@ -1,5 +1,6 @@
 import mlptrain
 import os
+import re
 import numpy as np
 from time import time
 from multiprocessing import Pool
@@ -7,6 +8,8 @@ from typing import Optional, List, Union
 from autode.atoms import elements, Atom
 from mlptrain.config import Config
 from mlptrain.log import logger
+from mlptrain.forces import Forces
+from mlptrain.energy import Energy
 from mlptrain.configurations.configuration import Configuration
 from mlptrain.box import Box
 
@@ -321,8 +324,7 @@ class ConfigurationSet(list):
         self, filename: str, charge: int, mult: int, box: Optional[Box] = None
     ) -> None:
         """
-        Load configurations from a .xyz file. Will not load any energies or
-        forces
+        Load configurations from a .xyz file with energies, box size and forces if specified.
 
         -----------------------------------------------------------------------
         Arguments:
@@ -332,28 +334,69 @@ class ConfigurationSet(list):
 
             mult: Total spin multiplicity
 
-            box: Box or None, if the configurations are in vacuum
+            box: Box or None, if the configurations are in vacuum (or box dimensions included in file)
         """
-        file_lines = open(filename, 'r', errors='ignore').readlines()
-        atoms = []
 
         def is_xyz_line(_l):
             return len(_l.split()) in (4, 7) and _l.split()[0] in elements
 
-        def append_configuration(_atoms):
-            self.append(Configuration(_atoms, charge, mult, box))
-            return None
+        with open(filename, 'r', errors='ignore') as xyz_file:
+            # get first num atoms line
+            line = xyz_file.readline()
+            while line:
+                # load everything for a single configuration in this loop
+                energy, atoms, forces = None, [], []
+                num_atoms = int(line)
 
-        for idx, line in enumerate(file_lines):
-            if is_xyz_line(line):
-                atoms.append(Atom(*line.split()[:4]))
+                # get comments / property line
+                line = xyz_file.readline()
 
-            elif len(atoms) > 0:
-                append_configuration(atoms)
-                atoms.clear()
+                # get dictionary of properties and values (matching key=value with regex)
+                pattern = r'(\w+)=("[^"]*"|\S+)'
+                config_info = re.findall(pattern, line)
+                config_info_dict = {
+                    key: value.strip('"') for key, value in config_info
+                }
 
-        if len(atoms) > 0:
-            append_configuration(atoms)
+                # if using extended xyz format, get properties
+                if len(config_info) > 1:
+                    # get and override box, and get energy
+                    lattice_info = [
+                        float(x)
+                        for x in re.findall(
+                            '[0-9]+', config_info_dict['Lattice']
+                        )
+                    ]
+                    box = Box(
+                        [lattice_info[0], lattice_info[8], lattice_info[16]]
+                    )
+                    energy = float(config_info_dict['energy'])
+
+                # get atom lines
+                for _ in range(num_atoms):
+                    line = xyz_file.readline()
+                    assert is_xyz_line(
+                        line
+                    ), f'There was an error in parsing your xyz file at the following line: {line}'
+                    line_split = line.split()
+                    atoms.append(Atom(*line_split[:4]))
+
+                    # add forces to forces dict in configuration
+                    if len(line_split) > 4:
+                        force = tuple([float(x) for x in line_split[4:]])
+                        assert (
+                            len(force) == 3
+                        ), f'Force is not a 3D vector: {force}'
+                        forces.append(force)
+
+                # create configuration, add forces, energy and append it to config set
+                configuration = Configuration(atoms, charge, mult, box)
+                configuration.forces = Forces(true=np.array(forces))
+                configuration.energy = Energy(true=energy)
+                self.append(configuration)
+
+                # get num atoms line for next config
+                line = xyz_file.readline()
 
         return None
 
@@ -524,7 +567,7 @@ class ConfigurationSet(list):
 
             all_forces.append(getattr(config.forces, kind))
 
-        return np.array(all_forces)
+        return np.array(all_forces, dtype=object)
 
     def _save_npz(self, filename: str) -> None:
         """Save a compressed numpy array of all the data in this set"""
