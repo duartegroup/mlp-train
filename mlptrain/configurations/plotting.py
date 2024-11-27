@@ -19,7 +19,7 @@ mpl.rcParams['axes.linewidth'] = 1.2
 
 
 def parity_plot(
-    config_set: 'mlptrain.ConfigurationSet', name: str = 'paritiy'
+    config_set: 'mlptrain.ConfigurationSet', name: str = 'parity'
 ) -> None:
     """
     Plot parity plots of energies, forces and temporal differences (if present)

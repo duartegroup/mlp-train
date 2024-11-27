@@ -70,6 +70,9 @@ def test_configurations_load_with_energies_forces():
     loaded_config = ConfigurationSet('tmp.npz')[0]
 
     assert loaded_config.energy.true is not None
+    assert loaded_config.energy.predicted is not None
+    assert loaded_config.forces.true is not None
+    assert loaded_config.forces.predicted is not None
 
     for attr in ('energy', 'forces'):
         for kind in ('predicted', 'true'):
@@ -105,12 +108,16 @@ def test_configurations_load_xyz():
 
 @work_in_tmp_dir()
 def test_configurations_load_xyz_with_energies_forces():
+    """
+    Test loading an xyz file for a config set wth variable energies,
+    forces and box sizes.
+    """
     configs = ConfigurationSet()
 
     with open('tmp.xyz', 'w') as xyz_file:
         print(
             '22',
-            'Lattice="100.000000 0.000000 0.000000 0.000000 100.000000 0.000000 0.000000 0.000000 100.000000" '
+            'Lattice="20.000000 0.000000 0.000000 0.000000 20.000000 0.000000 0.000000 0.000000 20.000000" '
             'energy=-11580.70167936 Properties=species:S:1:pos:R:3:forces:R:3',
             'C   0.15752   1.16848   1.24910   -0.98713   -0.42563   -0.93123',
             'C  -0.79522   0.20206   1.91812   -2.38781    2.65485   -0.38040',
@@ -135,7 +142,7 @@ def test_configurations_load_xyz_with_energies_forces():
             'H   0.31973  -0.52220  -3.55093    0.22722    0.31219    0.27423',
             'H   1.62607  -0.41397  -2.36310    0.46565   -0.16544    0.01173',
             '18',
-            'Lattice="100.000000 0.000000 0.000000 0.000000 100.000000 0.000000 0.000000 0.000000 100.000000" '
+            'Lattice="18.000000 0.000000 0.000000 0.000000 18.000000 0.000000 0.000000 0.000000 18.000000" '
             'energy=-11581.02323085 Properties=species:S:1:pos:R:3:forces:R:3',
             'C  -0.14388   0.58514   1.72503   -0.26651    0.13421    1.07021',
             'C   0.04181  -0.85624   1.27377   -1.15828    0.33661    0.32617',
@@ -164,40 +171,18 @@ def test_configurations_load_xyz_with_energies_forces():
     assert len(configs) == 2
 
     # check loading properties line
+    energies = [-11580.70167936, -11581.02323085]
+    num_atoms = [22, 18]
+    box_sizes = [(20, 20, 20), (18, 18, 18)]
     for i in range(2):
         config = configs[i]
-        assert config.box == Box([100, 100, 100])
+        assert config.box == Box(box_sizes[i])
         assert config.charge == 0
         assert config.mult == 1
-        assert config.energy.true is not None
+        assert config.energy.true == energies[i]
+        assert len(config.atoms) == num_atoms[i]
         assert len(config.forces.true) > 0
 
     # check config set force and energy loading
-    print('True Forces: \n', configs.true_forces)
-    print('True Energies: \n', configs.true_energies)
-
-    configs.save_xyz('final_tmp.xyz', true=True)
-    with open('final_tmp.xyz', 'r') as final_file:
-        print('Reloaded File w Forces and Energies: \n', final_file.read())
-
-    configs_2 = ConfigurationSet()
-
-    # check config with no properties
-    with open('tmp2.xyz', 'w') as xyz_file:
-        print(
-            '1',
-            'title line',
-            'H   0.0   0.0   0.0',
-            '1',
-            'title line',
-            'H   1.0   0.0   0.0',
-            sep='\n',
-            file=xyz_file,
-        )
-
-    configs_2.load_xyz('tmp2.xyz', charge=0, mult=1)
-    configs_2.save_xyz('final_tmp2.xyz')
-    with open('final_tmp2.xyz', 'r') as final_file:
-        print(
-            'Reloaded File With No Energies and Forces: \n', final_file.read()
-        )
+    assert len(configs.true_forces) > 0
+    assert len(configs.true_energies) > 0

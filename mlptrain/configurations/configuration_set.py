@@ -51,13 +51,13 @@ class ConfigurationSet(list):
         return [c.energy.true for c in self]
 
     @property
-    def true_forces(self) -> Optional[np.ndarray]:
+    def true_forces(self) -> Optional[List[np.ndarray]]:
         """
-        True force tensor. shape = (N, n_atoms, 3)
+        List of true config forces. List of np.ndarray with shape: (n_atoms, 3)
 
         -----------------------------------------------------------------------
         Returns:
-            (np.ndarray | None)
+            (List[np.ndarray] | None)
         """
         return self._forces('true')
 
@@ -328,13 +328,14 @@ class ConfigurationSet(list):
 
         -----------------------------------------------------------------------
         Arguments:
-            filename:
+            filename: name of the input .xyz file
 
-            charge: Total charge on the configuration
+            charge: total charge on all configurations in the set
 
-            mult: Total spin multiplicity
+            mult: total spin multiplicity on all configurations in the set
 
-            box: Box or None, if the configurations are in vacuum (or box dimensions included in file)
+            box: optionally specify a Box or None, if the configurations
+                 are in vacuum (or box dimensions included in file)
         """
 
         def is_xyz_line(_l):
@@ -342,6 +343,7 @@ class ConfigurationSet(list):
 
         with open(filename, 'r', errors='ignore') as xyz_file:
             # get first num atoms line
+            line_id = 1
             line = xyz_file.readline()
             while line:
                 # load everything for a single configuration in this loop
@@ -349,6 +351,7 @@ class ConfigurationSet(list):
                 num_atoms = int(line)
 
                 # get comments / property line
+                line_id += 1
                 line = xyz_file.readline()
 
                 # get dictionary of properties and values (matching key=value with regex)
@@ -374,10 +377,11 @@ class ConfigurationSet(list):
 
                 # get atom lines
                 for _ in range(num_atoms):
+                    line_id += 1
                     line = xyz_file.readline()
                     assert is_xyz_line(
                         line
-                    ), f'There was an error in parsing your xyz file at the following line: {line}'
+                    ), f'There was an error in parsing your xyz file on line: {line_id}'
                     line_split = line.split()
                     atoms.append(Atom(*line_split[:4]))
 
@@ -396,6 +400,7 @@ class ConfigurationSet(list):
                 self.append(configuration)
 
                 # get num atoms line for next config
+                line_id += 1
                 line = xyz_file.readline()
 
         return None
@@ -556,8 +561,8 @@ class ConfigurationSet(list):
         """Total spin multiplicities of all configurations in this set"""
         return np.array([c.mult for c in self])
 
-    def _forces(self, kind: str) -> Optional[np.ndarray]:
-        """True or predicted forces. Returns a 3D tensor"""
+    def _forces(self, kind: str) -> Optional[List[np.ndarray]]:
+        """True or predicted forces. Returns a list of np.ndarrays."""
 
         all_forces = []
         for config in self:
@@ -567,7 +572,7 @@ class ConfigurationSet(list):
 
             all_forces.append(getattr(config.forces, kind))
 
-        return np.array(all_forces, dtype=object)
+        return all_forces
 
     def _save_npz(self, filename: str) -> None:
         """Save a compressed numpy array of all the data in this set"""
