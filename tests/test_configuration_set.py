@@ -181,8 +181,11 @@ def test_configurations_load_xyz_with_energies_forces():
         assert config.mult == 1
         assert config.energy.true == energies[i]
         assert len(config.atoms) == num_atoms[i]
+        assert len(config.coordinates) == num_atoms[i]
         assert len(config.forces.true) > 0
 
     # check config set force and energy loading
     assert len(configs.true_forces) > 0
     assert len(configs.true_energies) > 0
+    assert len(configs._coordinates) > 0
+    assert len(configs.plumed_coordinates) > 0

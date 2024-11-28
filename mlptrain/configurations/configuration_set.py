@@ -272,11 +272,18 @@ class ConfigurationSet(list):
 
         else:
             for arg in args:
+                # if is an mlp model with a 'predict' function
                 if hasattr(arg, 'predict'):
                     arg.predict(self)
 
+                # if is a string reference to a QM calculation method
                 elif isinstance(arg, str):
-                    self.single_point(method=arg)
+                    # if true energies and forces do not already exist for this config set
+                    if (
+                        len(self.true_energies) == 0
+                        and len(self.true_forces) == 0
+                    ):
+                        self.single_point(method=arg)
 
                 else:
                     raise ValueError(f'Cannot compare using {arg}')
@@ -482,7 +489,8 @@ class ConfigurationSet(list):
             (np.ndarray): Coordinates tensor (n, n_atoms, 3),
                           where n is len(self)
         """
-        return np.array([np.asarray(c.coordinates, dtype=float) for c in self])
+        # return np.array([np.asarray(c.coordinates, dtype=float) for c in self])
+        return [np.asarray(c.coordinates, dtype=float) for c in self]
 
     @property
     def plumed_coordinates(self) -> Optional[np.ndarray]:
@@ -521,7 +529,8 @@ class ConfigurationSet(list):
             if coords is None:
                 all_coordinates[i] = np.array([np.nan for _ in range(n_cvs)])
 
-        return np.array(all_coordinates)
+        # return np.array(all_coordinates)
+        return len(all_coordinates)
 
     @property
     def _atomic_numbers(self) -> np.ndarray:
@@ -576,6 +585,8 @@ class ConfigurationSet(list):
 
     def _save_npz(self, filename: str) -> None:
         """Save a compressed numpy array of all the data in this set"""
+
+        # TODO: here, this needs to be fixed for multi-length force vectors (for configs with differing sizes)
 
         np.savez(
             filename,
