@@ -283,7 +283,15 @@ class ConfigurationSet(list):
                         len(self.true_energies) == 0
                         and len(self.true_forces) == 0
                     ):
+                        logger.info(
+                            f'Running single point calcs with method {arg}'
+                        )
                         self.single_point(method=arg)
+                    else:
+                        logger.info(
+                            f'Not using method {arg}, true energies and forces '
+                            f'are already defined'
+                        )
 
                 else:
                     raise ValueError(f'Cannot compare using {arg}')
@@ -489,8 +497,10 @@ class ConfigurationSet(list):
             (np.ndarray): Coordinates tensor (n, n_atoms, 3),
                           where n is len(self)
         """
-        # return np.array([np.asarray(c.coordinates, dtype=float) for c in self])
-        return [np.asarray(c.coordinates, dtype=float) for c in self]
+        return np.array(
+            [np.asarray(c.coordinates, dtype=float) for c in self],
+            dtype=object,
+        )
 
     @property
     def plumed_coordinates(self) -> Optional[np.ndarray]:
@@ -527,10 +537,11 @@ class ConfigurationSet(list):
 
         for i, coords in enumerate(all_coordinates):
             if coords is None:
-                all_coordinates[i] = np.array([np.nan for _ in range(n_cvs)])
+                all_coordinates[i] = np.array(
+                    [np.nan for _ in range(n_cvs)], dtype=float
+                )
 
-        # return np.array(all_coordinates)
-        return len(all_coordinates)
+        return np.array(all_coordinates, dtype=object)
 
     @property
     def _atomic_numbers(self) -> np.ndarray:
@@ -543,7 +554,8 @@ class ConfigurationSet(list):
         """
 
         return np.array(
-            [[atom.atomic_number for atom in c.atoms] for c in self]
+            [[atom.atomic_number for atom in c.atoms] for c in self],
+            dtype=object,
         )
 
     @property
@@ -570,8 +582,8 @@ class ConfigurationSet(list):
         """Total spin multiplicities of all configurations in this set"""
         return np.array([c.mult for c in self])
 
-    def _forces(self, kind: str) -> Optional[List[np.ndarray]]:
-        """True or predicted forces. Returns a list of np.ndarrays."""
+    def _forces(self, kind: str) -> Optional[np.ndarray]:
+        """True or predicted forces. Returns a 3D np.ndarray."""
 
         all_forces = []
         for config in self:
@@ -581,12 +593,10 @@ class ConfigurationSet(list):
 
             all_forces.append(getattr(config.forces, kind))
 
-        return all_forces
+        return np.array(all_forces, dtype=object)
 
     def _save_npz(self, filename: str) -> None:
         """Save a compressed numpy array of all the data in this set"""
-
-        # TODO: here, this needs to be fixed for multi-length force vectors (for configs with differing sizes)
 
         np.savez(
             filename,
@@ -616,14 +626,18 @@ class ConfigurationSet(list):
             box = Box(size=data['L'][i])
 
             config = Configuration(
-                atoms=_atoms_from_z_r(data['Z'][i], coords),
+                atoms=_atoms_from_z_r(
+                    data['Z'][i], np.array(coords, dtype=float)
+                ),
                 charge=int(data['C'][i]),
                 mult=int(data['M'][i]),
                 box=None if box.has_zero_volume else box,
             )
 
             if data['R_plumed'].ndim > 0:
-                config.plumed_coordinates = data['R_plumed'][i]
+                config.plumed_coordinates = np.array(
+                    data['R_plumed'][i], dtype=float
+                )
 
             if data['E_true'].ndim > 0:
                 config.energy.true = data['E_true'][i]
@@ -638,10 +652,12 @@ class ConfigurationSet(list):
                 config.energy.inherited_bias = data['E_inherited_bias'][i]
 
             if data['F_true'].ndim > 0:
-                config.forces.true = data['F_true'][i]
+                config.forces.true = np.array(data['F_true'][i], dtype=float)
 
             if data['F_predicted'].ndim > 0:
-                config.forces.predicted = data['F_predicted'][i]
+                config.forces.predicted = np.array(
+                    data['F_predicted'][i], dtype=float
+                )
 
             self.append(config)
 

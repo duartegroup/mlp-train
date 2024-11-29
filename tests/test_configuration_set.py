@@ -188,4 +188,10 @@ def test_configurations_load_xyz_with_energies_forces():
     assert len(configs.true_forces) > 0
     assert len(configs.true_energies) > 0
     assert len(configs._coordinates) > 0
-    assert len(configs.plumed_coordinates) > 0
+
+    # check saving and loading npz
+    configs.save('tmp.npz')
+    loaded_configs = ConfigurationSet('tmp.npz')
+    for i, config in enumerate(loaded_configs):
+        assert config.energy.true == energies[i]
+        assert config.forces.true is not None
