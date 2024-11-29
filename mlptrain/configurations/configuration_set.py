@@ -336,10 +336,16 @@ class ConfigurationSet(list):
         return None
 
     def load_xyz(
-        self, filename: str, charge: int, mult: int, box: Optional[Box] = None
+        self,
+        filename: str,
+        charge: int,
+        mult: int,
+        box: Optional[Box] = None,
+        load_energies: bool = False,
+        load_forces: bool = False,
     ) -> None:
         """
-        Load configurations from a .xyz file with energies, box size and forces if specified.
+        Load configurations from a .xyz file with optional box, energies and forces if specified.
 
         -----------------------------------------------------------------------
         Arguments:
@@ -350,7 +356,11 @@ class ConfigurationSet(list):
             mult: total spin multiplicity on all configurations in the set
 
             box: optionally specify a Box or None, if the configurations
-                 are in vacuum (or box dimensions included in file)
+                 are in vacuum (or if 'Lattice' is specified in extended .xyz)
+
+            load_energies: bool - whether to load 'true' configurational energies or not
+
+            load_forces: bool - whether to load 'true' forces from atom lines or not
         """
 
         def is_xyz_line(_l):
@@ -377,18 +387,33 @@ class ConfigurationSet(list):
                 }
 
                 # if using extended xyz format, get properties
+                config_box = box
                 if len(config_info) > 1:
-                    # get and override box, and get energy
-                    lattice_info = [
-                        float(x)
-                        for x in re.findall(
-                            '[0-9]+', config_info_dict['Lattice']
+                    if (
+                        box is None
+                        and config_info_dict.get('Lattice') is not None
+                    ):
+                        # set box size from xyz properties line if it is specified
+                        lattice_info = [
+                            float(x)
+                            for x in re.findall(
+                                '[0-9]+', config_info_dict['Lattice']
+                            )
+                        ]
+
+                        config_box = Box(
+                            [
+                                lattice_info[0],
+                                lattice_info[8],
+                                lattice_info[16],
+                            ]
                         )
-                    ]
-                    box = Box(
-                        [lattice_info[0], lattice_info[8], lattice_info[16]]
-                    )
-                    energy = float(config_info_dict['energy'])
+
+                    if load_energies:
+                        assert (
+                            config_info_dict.get('energy') is not None
+                        ), "Property 'energy' not specified on properties line..."
+                        energy = float(config_info_dict['energy'])
 
                 # get atom lines
                 for _ in range(num_atoms):
@@ -400,16 +425,17 @@ class ConfigurationSet(list):
                     line_split = line.split()
                     atoms.append(Atom(*line_split[:4]))
 
-                    # add forces to forces dict in configuration
-                    if len(line_split) > 4:
-                        force = tuple([float(x) for x in line_split[4:]])
-                        assert (
-                            len(force) == 3
-                        ), f'Force is not a 3D vector: {force}'
-                        forces.append(force)
+                    if load_forces:
+                        # add forces to forces dict in configuration
+                        if len(line_split) > 4:
+                            force = tuple([float(x) for x in line_split[4:]])
+                            assert (
+                                len(force) == 3
+                            ), f'Force is not a 3D vector: {force}'
+                            forces.append(force)
 
                 # create configuration, add forces, energy and append it to config set
-                configuration = Configuration(atoms, charge, mult, box)
+                configuration = Configuration(atoms, charge, mult, config_box)
                 configuration.forces = Forces(true=np.array(forces))
                 configuration.energy = Energy(true=energy)
                 self.append(configuration)

@@ -166,7 +166,9 @@ def test_configurations_load_xyz_with_energies_forces():
             file=xyz_file,
         )
 
-    configs.load_xyz('tmp.xyz', charge=0, mult=1)
+    configs.load_xyz(
+        'tmp.xyz', charge=0, mult=1, load_energies=True, load_forces=True
+    )
 
     assert len(configs) == 2
 
