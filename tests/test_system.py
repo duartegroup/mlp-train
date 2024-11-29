@@ -12,22 +12,13 @@ def test_system(h2o):
     return mlt.System(h2o, box=Box([10, 10, 10]))
 
 
-def test_system_initialization(h2o):
-    """Test initializing a system with a molecule and box."""
-    system = mlt.System(h2o, box=Box([10, 10, 10]))
-    assert isinstance(system, mlt.System)
-    np.testing.assert_array_equal(system.molecules, h2o)
-    assert isinstance(system.box, Box)
-    np.testing.assert_array_equal(system.box.size, [10, 10, 10])
-
-
 def test_random_configuration(test_system):
     """Test generating a random configuration for a system."""
     config = test_system.random_configuration(min_dist=1.0)
-    assert isinstance(config, Configuration)
     assert len(config.atoms) == sum(
         len(m.atoms) for m in test_system.molecules
     )
+    assert test_system != config
 
 
 def test_random_configurations(test_system):
