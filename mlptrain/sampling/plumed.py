@@ -1034,13 +1034,20 @@ class PlumedDifferenceCV(_PlumedCV):
 
 
 class PlumedCNCV(_PlumedCV):
-    def __init__(self, name: str, ref: float, n: int, m: int, atom_groups: Sequence = None):
+    def __init__(
+        self,
+        name: str,
+        ref: float,
+        n: int,
+        m: int,
+        atom_groups: Sequence = None,
+    ):
         """
         PLUMED collective variable as a coordination number (CN) between two atoms or groups of atoms
-
+        
         e.g. [(0, 2)] gives ζ =[1-(r_02/r_ref)^6]/ [1-(r_02/r_ref)^12]
         
-        which corresponds to the CN between atoms 0 and 2. To ensure that the CN has continuous derivatives,  we use a rational switching function consistently with PLUMED. 
+        which corresponds to the CN between atoms 0 and 2. To ensure that the CN has continuous derivatives,  we use a rational switching function consistently with PLUMED.
         More information: https://www.plumed.org/doc-v2.9/user-doc/html/_c_o_o_r_d_i_n_a_t_i_o_n.html
 
         -----------------------------------------------------------------------
