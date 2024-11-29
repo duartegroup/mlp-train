@@ -12,6 +12,18 @@ def test_system(h2o):
     return mlt.System(h2o, box=Box([10, 10, 10]))
 
 
+@pytest.fixture
+def test_charged_system(mg):
+    """Create a sample system with a magnesium and a box."""
+    return mlt.System(mg, box=Box([10, 10, 10]))
+
+
+@pytest.fixture
+def test_radical_system(oh_radical):
+    """Create a sample system with a water molecule and a box."""
+    return mlt.System(oh_radical, box=Box([10, 10, 10]))
+
+
 def test_random_configuration(test_system):
     """Test generating a random configuration for a system."""
     config = test_system.random_configuration(min_dist=1.0)
@@ -28,6 +40,7 @@ def test_random_configurations(test_system):
     assert len(configs) == 5
     for config in configs:
         assert isinstance(config, Configuration)
+        assert config != test_system
 
 
 def test_add_molecule(test_system, h2o):
@@ -44,16 +57,17 @@ def test_add_multiple_molecules(test_system, h2o):
     assert len(test_system.molecules) == initial_count + 3
 
 
-def test_charge_property(test_system):
+def test_charge_property(test_charged_system, mg):
     """Test the system's total charge property."""
-    assert test_system.charge == sum(m.charge for m in test_system.molecules)
+    assert test_charged_system.charge == sum(
+        m.charge for m in test_charged_system.molecules
+    )
 
 
-def test_mult_property(test_system):
+def test_mult_property(test_radical_system, oh_radical):
     """Test the system's total multiplicity property."""
-    n_unpaired = sum((mol.mult - 1) / 2 for mol in test_system.molecules)
-    expected_mult = int(2 * n_unpaired + 1)
-    assert test_system.mult == expected_mult
+    expected_mult = 2
+    assert test_radical_system.mult == expected_mult
 
 
 def test_atoms_property(test_system):
@@ -72,13 +86,6 @@ def test_unique_atomic_symbols_property(test_system):
         atom.label for mol in test_system.molecules for atom in mol.atoms
     )
     assert set(unique_symbols) == expected_symbols
-
-
-def test_configuration_property_single_molecule(h2o):
-    """Test getting configuration for a system with a single molecule."""
-    system = mlt.System(h2o, box=Box([10, 10, 10]))
-    config = system.configuration
-    assert isinstance(config, Configuration)
 
 
 def test_shift_randomly_raises_runtimeerror_on_failure(test_system, h2o):

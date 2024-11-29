@@ -14,6 +14,17 @@ def h2():
 
 
 @pytest.fixture
+def h2o():
+    """Water molecule"""
+    atoms = [
+        Atom('H', 2.32670, 0.51322, 0.0),
+        Atom('H', 1.03337, 0.70894, -0.89333),
+        Atom('O', 1.35670, 0.51322, 0.0),
+    ]
+    return mlt.Molecule(atoms=atoms, charge=0, mult=1)
+
+
+@pytest.fixture
 def h2_configuration(h2):
     system = mlt.System(h2, box=[50, 50, 50])
     config = system.random_configuration()
@@ -30,11 +41,19 @@ def h2o_configuration(h2o):
 
 
 @pytest.fixture
-def h2o():
-    """Water molecule"""
+def mg():
+    "Magnesium cation 2+"
     atoms = [
-        Atom('H', 2.32670, 0.51322, 0.0),
-        Atom('H', 1.03337, 0.70894, -0.89333),
-        Atom('O', 1.35670, 0.51322, 0.0),
+        Atom('Mg', 0.0, 0.0, 0.0),
     ]
-    return mlt.Molecule(atoms=atoms, charge=0, mult=1)
+    return mlt.Molecule(atoms=atoms, charge=+2, mult=1)
+
+
+@pytest.fixture
+def oh_radical():
+    "OH radiacal species"
+    atoms = [
+        Atom('O', 1.35670, 0.51322, 0.0),
+        Atom('H', 2.32670, 0.51322, 0.0),
+    ]
+    return mlt.Molecule(atoms=atoms, charge=0, mult=2)
