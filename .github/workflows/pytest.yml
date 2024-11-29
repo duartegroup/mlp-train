@@ -6,25 +6,28 @@ on:
     branches: [main]
   pull_request:
 
+env:
+  FORCE_COLOR: 1
+
 jobs:
   test:
     name: GAP (${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    
+
     strategy:
       fail-fast: true
       matrix:
-        os: ["ubuntu-latest"]
+        os: ["ubuntu-22.04"]
         python-version: ["3.9"]
-      
+
     defaults:
       run:
         shell: bash -l {0}
-        
+
     steps:
     - uses: actions/checkout@v4
-        
-    - uses: mamba-org/setup-micromamba@v1
+
+    - uses: mamba-org/setup-micromamba@v2
       with:
         # the create command looks like this:
         # `micromamba create -n test-env python=3.9 -f environment.yml`
@@ -38,7 +41,7 @@ jobs:
       run: ./install_gap.sh
 
     - name: Test basic install
-      run: pytest --cov -k "not test_openmm"
+      run: pytest --cov=mlptrain -k "not test_openmm"
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
@@ -47,25 +50,66 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: duartegroup/mlp-train
 
+  test-ace:
+    name: ACE (${{ matrix.python-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: true
+      matrix:
+        os: ["ubuntu-22.04"]
+        python-version: ["3.9"]
+
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: julia-actions/setup-julia@v2
+      with:
+        version: '1.6'
+
+    - uses: mamba-org/setup-micromamba@v2
+      with:
+        environment-file: environment_ace.yml
+        environment-name: gha-test-env
+        cache-environment: true
+        create-args: >-
+          python=${{ matrix.python-version }}
+
+    - name: ACE install
+      run: ./install_ace.sh
+
+    - name: Test ACE
+      run: pytest --cov=mlptrain -k "not test_openmm"
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+          flags: python-${{ matrix.python-version }}-ace
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: duartegroup/mlp-train
 
   test-mace:
     name: MACE (${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    
+
     strategy:
       fail-fast: true
       matrix:
-        os: ["ubuntu-latest"]
+        os: ["ubuntu-22.04"]
         python-version: ["3.9"]
-      
+
     defaults:
       run:
         shell: bash -l {0}
-        
+
     steps:
     - uses: actions/checkout@v4
-        
-    - uses: mamba-org/setup-micromamba@v1
+
+    - uses: mamba-org/setup-micromamba@v2
       with:
         environment-file: environment_mace.yml
         environment-name: gha-test-env
@@ -77,7 +121,7 @@ jobs:
       run: ./install_mace.sh
 
     - name: Test MACE install
-      run: pytest --cov
+      run: pytest --cov=mlptrain
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4

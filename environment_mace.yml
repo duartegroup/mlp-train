@@ -21,10 +21,11 @@ dependencies:
   - scipy
   - xtb
   - scikit-learn
-  - openmm
-  - openmm-torch
+  - openmm=8.1.2
+  - openmm-torch=1.4
   - nnpops
+  - openmm-ml=1.2
+  - git
   - pip:
-    - openmmml@git+https://github.com/openmm/openmm-ml.git@main
     - ase@git+https://gitlab.com/ase/ase.git@f2615a6e9a # For PLUMED
-    - mace-torch
+    - mace-torch==0.3.6

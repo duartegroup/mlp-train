@@ -2,6 +2,7 @@ import ase
 import mlptrain
 import argparse
 import os
+import gc
 import ast
 import time
 import shutil
@@ -120,6 +121,10 @@ class MACE(MLPotential):
         self._reset_train_objs()
 
         os.remove(f'{self.name}_data.xyz')
+
+        gc.collect()
+        torch.cuda.empty_cache()
+
         return None
 
     @property
@@ -205,17 +210,14 @@ class MACE(MLPotential):
 
         logging.info('Generating error table')
 
-        all_collections = [
-            ('train', self.train_configs),
-            ('valid', self.valid_configs),
-        ]
+        all_collections = {
+            'training': self.train_loader,
+            'validation': self.valid_loader,
+        }
 
         table = create_error_table(
             table_type=Config.mace_params['error_table'],
-            all_collections=all_collections,
-            z_table=self.z_table,
-            r_max=Config.mace_params['r_max'],
-            valid_batch_size=self.valid_batch_size,
+            all_data_loaders=all_collections,
             model=self.model,
             loss_fn=self.loss_fn,
             output_args=self.output_args,
