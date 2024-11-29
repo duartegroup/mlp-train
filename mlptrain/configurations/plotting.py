@@ -19,7 +19,7 @@ mpl.rcParams['axes.linewidth'] = 1.2
 
 
 def parity_plot(
-    config_set: 'mlptrain.ConfigurationSet', name: str = 'parity'
+    config_set: 'mlptrain.ConfigurationSet', name: str = 'paritiy'
 ) -> None:
     """
     Plot parity plots of energies, forces and temporal differences (if present)
@@ -131,33 +131,14 @@ def _add_force_component_plot(config_set, axis) -> None:
         plt.get_cmap('Purples'),
     ]
 
-    # get the min and max force components in any of (x, y, z) directions for plotting
-    min_true_f = min(
-        [np.min(config_forces) for config_forces in config_set.true_forces]
+    min_f = min(
+        [np.min(config_set.true_forces), np.min(config_set.predicted_forces)]
     )
 
-    min_pred_f = min(
-        [
-            np.min(config_forces)
-            for config_forces in config_set.predicted_forces
-        ]
+    max_f = min(
+        [np.max(config_set.true_forces), np.max(config_set.predicted_forces)]
     )
 
-    max_true_f = max(
-        [np.max(config_forces) for config_forces in config_set.true_forces]
-    )
-
-    max_pred_f = max(
-        [
-            np.max(config_forces)
-            for config_forces in config_set.predicted_forces
-        ]
-    )
-
-    min_f = min([min_true_f, min_pred_f])
-    max_f = min([max_true_f, max_pred_f])
-
-    # create histogram for each cartesian dimension
     for idx, k in enumerate(['x', 'y', 'z']):
         xs, ys = [], []
         for config in config_set:
@@ -167,7 +148,7 @@ def _add_force_component_plot(config_set, axis) -> None:
         axis.hist2d(
             xs,
             ys,
-            bins=40,  # 40
+            bins=40,
             label='$F_{x}$',
             cmap=cmaps[idx],
             norm=mpl.colors.LogNorm(),
