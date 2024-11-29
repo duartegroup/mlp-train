@@ -1036,7 +1036,7 @@ class PlumedDifferenceCV(_PlumedCV):
 class PlumedCNCV(_PlumedCV):
     def __init__(self, name: str, ref: float, atom_groups: Sequence = None):
         """
-        PLUMED collective variable as a coordinattion number,
+        PLUMED collective variable as a coordination number (CN) between two atoms or groups of atoms
 
         e.g. [(0, 2)] gives ζ =[1-(r_02/r_ref)^6]/ [1-(r_02/r_ref)^12]
 
