@@ -1047,7 +1047,8 @@ class PlumedCNCV(_PlumedCV):
 
         e.g. [(0, 2)] gives ζ =[1-(r_02/r_ref)^n]/ [1-(r_02/r_ref)^m]
 
-        which corresponds to the CN between atoms 0 and 2. To ensure that the CN has continuous derivatives,  we use a rational switching function consistently with PLUMED.
+        which corresponds to the CN between atoms 0 and 2. To ensure that the CN has continuous derivatives,  
+        we use a rational switching function consistent with PLUMED.
         More information: https://www.plumed.org/doc-v2.9/user-doc/html/_c_o_o_r_d_i_n_a_t_i_o_n.html
 
         -----------------------------------------------------------------------
