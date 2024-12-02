@@ -51,13 +51,13 @@ class ConfigurationSet(list):
         return [c.energy.true for c in self]
 
     @property
-    def true_forces(self) -> Optional[List[np.ndarray]]:
+    def true_forces(self) -> Optional[np.ndarray]:
         """
         List of true config forces. List of np.ndarray with shape: (n_atoms, 3)
 
         -----------------------------------------------------------------------
         Returns:
-            (List[np.ndarray] | None)
+            (np.ndarray | None)
         """
         return self._forces('true')
 
@@ -268,6 +268,7 @@ class ConfigurationSet(list):
         name = self._comparison_name(*args)
 
         if os.path.exists(f'{name}.npz'):
+            logger.info(f'Loading energies and forces from {name}.npz')
             self.load(f'{name}.npz')
 
         else:
@@ -279,9 +280,12 @@ class ConfigurationSet(list):
                 # if is a string reference to a QM calculation method
                 elif isinstance(arg, str):
                     # if true energies and forces do not already exist for this config set
+                    non_null_true_energies = [
+                        x for x in self.true_energies if x is not None
+                    ]
                     if (
-                        len(self.true_energies) == 0
-                        and len(self.true_forces) == 0
+                        len(non_null_true_energies) == 0
+                        and self.true_forces.size == 0
                     ):
                         logger.info(
                             f'Running single point calcs with method {arg}'
@@ -747,6 +751,23 @@ class ConfigurationSet(list):
 
         logger.info(f'Calculations done in {(time() - start_time) / 60:.1f} m')
         return None
+
+    def __str__(self):
+        return (
+            f'ConfigurationSet Summary:\n'
+            f'  Coords Dimensions:          {self._coordinates.shape if self._coordinates is not None else None}\n'
+            f'  Plumed Coords Dimensions:   {self.plumed_coordinates.shape if self.plumed_coordinates is not None else None}\n'
+            f'  Has True Energies:          {bool(len(self.true_energies) > 0)}\n'
+            f'  Has Predicted Energies:     {bool(len(self.predicted_energies))}\n'
+            f'  Has Bias Energies:          {any(x is not None for x in self.bias_energies)}\n'
+            f'  Has Inherit. Bias Energies: {any(x is not None for x in self.inherited_bias_energies)}\n'
+            f'  True Forces Dim:            {self.true_forces.shape}\n'
+            f'  Predicted Forces Dim:       {self.predicted_forces.shape}\n'
+            f'  Atomic Numbers Dim:         {self._atomic_numbers.shape}\n'
+            f'  Unique Box Sizes:           {np.unique(self._box_sizes)}\n'
+            f'  Unique Charges:             {np.unique(self._charges)}\n'
+            f'  Unique Multiplicities:      {np.unique(self._multiplicities)}'
+        )
 
     @staticmethod
     def _comparison_name(*args):
