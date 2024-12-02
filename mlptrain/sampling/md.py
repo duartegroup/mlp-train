@@ -707,21 +707,3 @@ def _remove_colvar_duplicate_frames(
                 f.write(line)
 
     return None
-
-
-def convert_pressure_to_ase_units(
-    pressure: float,
-) -> float:
-    """
-    Converts pressure given in bar to ase units of eV/A^3
-    """
-    return pressure * 0.000006241509
-
-
-def convert_compressibility_to_ase_units(
-    compressibility: float,
-) -> float:
-    """
-    Converts pressure given in bar^-1 to ase units of A^3/eV
-    """
-    return compressibility * 160217.66531138544
