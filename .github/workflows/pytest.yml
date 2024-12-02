@@ -44,7 +44,7 @@ jobs:
       run: pytest --cov=mlptrain -k "not test_openmm"
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
           flags: python-${{ matrix.python-version }}
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -86,7 +86,7 @@ jobs:
       run: pytest --cov=mlptrain -k "not test_openmm"
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
           flags: python-${{ matrix.python-version }}-ace
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -124,7 +124,7 @@ jobs:
       run: pytest --cov=mlptrain
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
           flags: python-${{ matrix.python-version }}-mace
           token: ${{ secrets.CODECOV_TOKEN }}
