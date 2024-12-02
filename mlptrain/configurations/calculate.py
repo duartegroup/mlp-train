@@ -87,7 +87,7 @@ def _method_and_keywords(
 def _orca_keywords() -> 'autode.wrappers.keywords.Keywords':
     """Keywords e.g. functional and basis set to use for an ORCA calculation"""
 
-    if Config.orca_keywords is None:
+    if len(Config.orca_keywords) == 0:
         raise ValueError(
             'For ORCA training GTConfig.orca_keywords must be'
             ' set. e.g.\nmlt.Config.orca_keywords '
@@ -101,7 +101,7 @@ def _gaussian_keywords() -> 'autode.wrappers.keywords.Keywords':
     """Keywords e.g. functional and basis set to use for an Gaussian
     calculation, either Gaussian09 or Gaussian16"""
 
-    if Config.gaussian_keywords is None:
+    if len(Config.gaussian_keywords) == 0:
         raise ValueError(
             'To train with Gaussian QM calculations '
             'mlt.Config.gaussian_keywords must be set.'
