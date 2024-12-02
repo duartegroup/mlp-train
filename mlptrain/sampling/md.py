@@ -368,14 +368,14 @@ def _run_dynamics(
 
     if all([value is not None for value in [pressure, compress]]) and temp > 0:
         # Run NPT dynamics if pressure and compressibility are specified
-        pressure = pressure * ase_units.bar
-        compress = compress / ase_units.bar
+        pressure_au = pressure * ase_units.bar
+        compress_au = compress / ase_units.bar
         dyn = NPTBerendsen(
             ase_atoms,
             dt_ase,
             temperature_K=temp,
-            pressure_au=pressure,
-            compressibility_au=compress,
+            pressure_au=pressure_au,
+            compressibility_au=compress_au,
         )
         logger.info(
             f'Initialising NPT Berendsen dynamics at {pressure} bar and {temp} K'
