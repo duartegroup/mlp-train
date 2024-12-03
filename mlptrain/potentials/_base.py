@@ -358,4 +358,5 @@ _spin_multiplicites = {
     'Br': 2,
     'Kr': 1,
     'I': 2,
+    'Pd': 1,
 }
