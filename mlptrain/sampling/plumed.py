@@ -1033,6 +1033,61 @@ class PlumedDifferenceCV(_PlumedCV):
         )
 
 
+class PlumedCNCV(_PlumedCV):
+    def __init__(
+        self,
+        name: str,
+        ref: float,
+        n: int = 6,
+        m: int = 12,
+        atom_groups: Sequence = None,
+    ):
+        """
+        PLUMED collective variable as a coordination number (CN) between two atoms or groups of atoms
+
+        e.g. [(0, 2)] gives ζ =[1-(r_02/r_ref)^n]/ [1-(r_02/r_ref)^m]
+
+        which corresponds to the CN between atoms 0 and 2.
+        To ensure that the CN has continuous derivatives,
+        we use a rational switching function consistent with PLUMED.
+        More information: https://www.plumed.org/doc-v2.9/user-doc/html/_c_o_o_r_d_i_n_a_t_i_o_n.html
+
+        -----------------------------------------------------------------------
+        Arguments:
+
+            name: (str) Name of the collective variable
+
+            ref: (float) Reference values to distinguish different states
+
+            n, m: (int) Parameters used to adjust the shape of the function
+
+            atom_groups: (Sequence[Sequence[int]]) List of atom index sequences
+                                                which are used to generate DOFs
+        """
+
+        super().__init__(name=name, atom_groups=atom_groups)
+
+        self._set_units()
+
+        self.ref = ref
+
+        self.n = n
+
+        self.m = m
+
+        func = f'(1-({self.dof_names[0]}/{self.ref})^{self.n})/(1-({self.dof_names[0]}/{self.ref})^{self.m})'
+
+        self.setup.extend(
+            [
+                f'{self.name}: '
+                f'CUSTOM ARG={self.dof_sequence} '
+                f'VAR={self.dof_sequence} '
+                f'FUNC={func} '
+                f'PERIODIC=NO'
+            ]
+        )
+
+
 class PlumedCustomCV(_PlumedCV):
     """Class used to initialise a PLUMED collective variable from a file"""
 
