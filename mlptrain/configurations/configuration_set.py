@@ -350,6 +350,7 @@ class ConfigurationSet(list):
     ) -> None:
         """
         Load configurations from a .xyz file with optional box, energies and forces if specified.
+        Note: this currently assumes that all configurations have the same charge and multiplicity.
 
         -----------------------------------------------------------------------
         Arguments:
