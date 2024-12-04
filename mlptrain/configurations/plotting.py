@@ -19,7 +19,7 @@ mpl.rcParams['axes.linewidth'] = 1.2
 
 
 def parity_plot(
-    config_set: 'mlptrain.ConfigurationSet', name: str = 'paritiy'
+    config_set: 'mlptrain.ConfigurationSet', name: str = 'parity'
 ) -> None:
     """
     Plot parity plots of energies, forces and temporal differences (if present)
@@ -131,13 +131,31 @@ def _add_force_component_plot(config_set, axis) -> None:
         plt.get_cmap('Purples'),
     ]
 
-    min_f = min(
-        [np.min(config_set.true_forces), np.min(config_set.predicted_forces)]
+    # get the min and max force components in any of (x, y, z) directions for plotting
+    min_true_f = min(
+        [np.min(config_forces) for config_forces in config_set.true_forces]
     )
 
-    max_f = min(
-        [np.max(config_set.true_forces), np.max(config_set.predicted_forces)]
+    min_pred_f = min(
+        [
+            np.min(config_forces)
+            for config_forces in config_set.predicted_forces
+        ]
     )
+
+    max_true_f = max(
+        [np.max(config_forces) for config_forces in config_set.true_forces]
+    )
+
+    max_pred_f = max(
+        [
+            np.max(config_forces)
+            for config_forces in config_set.predicted_forces
+        ]
+    )
+
+    min_f = min([min_true_f, min_pred_f])
+    max_f = min([max_true_f, max_pred_f])
 
     for idx, k in enumerate(['x', 'y', 'z']):
         xs, ys = [], []
