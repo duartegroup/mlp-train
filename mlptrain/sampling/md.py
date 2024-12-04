@@ -50,6 +50,9 @@ def run_mlp_md(
     directory. Note that NPT simulations are currently only implemented in
     production runs and not in active learning.
 
+    directory. Note that NPT simulations are currently only implemented in
+    production runs and not in active learning.
+
 
     ---------------------------------------------------------------------------
     Arguments:
@@ -365,14 +368,14 @@ def _run_dynamics(
 
     if all([value is not None for value in [pressure, compress]]) and temp > 0:
         # Run NPT dynamics if pressure and compressibility are specified
-        pressure = convert_pressure_to_ase_units(pressure)
-        compress = convert_compressibility_to_ase_units(compress)
+        pressure_au = pressure * ase_units.bar
+        compress_au = compress / ase_units.bar
         dyn = NPTBerendsen(
             ase_atoms,
             dt_ase,
             temperature_K=temp,
-            pressure_au=pressure,
-            compressibility_au=compress,
+            pressure_au=pressure_au,
+            compressibility_au=compress_au,
         )
         logger.info(
             f'Initialising NPT Berendsen dynamics at {pressure} bar and {temp} K'
@@ -704,21 +707,3 @@ def _remove_colvar_duplicate_frames(
                 f.write(line)
 
     return None
-
-
-def convert_pressure_to_ase_units(
-    pressure: float,
-) -> float:
-    """
-    Converts pressure given in bar to ase units of eV/A^3
-    """
-    return pressure * 0.000006241509
-
-
-def convert_compressibility_to_ase_units(
-    compressibility: float,
-) -> float:
-    """
-    Converts pressure given in bar^-1 to ase units of A^3/eV
-    """
-    return compressibility * 160217.66531138544
