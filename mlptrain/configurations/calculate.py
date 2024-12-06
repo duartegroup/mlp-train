@@ -22,7 +22,7 @@ def run_autode(
         n_cores: Number of cores to use for the calculation
     """
     from autode.species import Species
-    from autode.calculation import Calculation
+    from autode.calculations import Calculation
     from autode.exceptions import CouldNotGetProperty
 
     method, kwds = _method_and_keywords(method_name=method_name.lower())
@@ -43,12 +43,12 @@ def run_autode(
     calc.run()
 
     try:
-        configuration.forces.true = -calc.get_gradients().to('eV Å^-1')
+        configuration.forces.true = -calc.molecule.gradient.to('eV Å^-1')
 
     except CouldNotGetProperty:
         logger.error('Failed to set forces')
 
-    energy = calc.get_energy()
+    energy = calc.molecule.energy
     if energy is None:
         logger.error('Failed to calculate the energy')
         if calc.output.exists:
@@ -57,7 +57,7 @@ def run_autode(
         return None
 
     configuration.energy.true = energy.to('eV')
-    configuration.partial_charges = calc.get_atomic_charges()
+    configuration.partial_charges = calc.molecule.atomic_charges
     return None
 
 
