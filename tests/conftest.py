@@ -38,3 +38,22 @@ def h2o_configuration(h2o):
     config = system.random_configuration()
 
     return config
+
+
+@pytest.fixture
+def mg():
+    "Magnesium cation 2+"
+    atoms = [
+        Atom('Mg', 0.0, 0.0, 0.0),
+    ]
+    return mlt.Molecule(atoms=atoms, charge=+2, mult=1)
+
+
+@pytest.fixture
+def oh_radical():
+    "OH radiacal species"
+    atoms = [
+        Atom('O', 1.35670, 0.51322, 0.0),
+        Atom('H', 2.32670, 0.51322, 0.0),
+    ]
+    return mlt.Molecule(atoms=atoms, charge=0, mult=2)
