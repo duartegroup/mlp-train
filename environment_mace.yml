@@ -9,7 +9,7 @@ dependencies:
   - pip
   - pre-commit
   - ase
-  - autode=1.1
+  - autode=1.4.4
   - coloredlogs
   - cython
   - dscribe=2.0
