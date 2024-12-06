@@ -1,5 +1,6 @@
 import mlptrain
 import os
+import re
 import numpy as np
 from time import time
 from multiprocessing import Pool
@@ -7,6 +8,8 @@ from typing import Optional, List, Union
 from autode.atoms import elements, Atom
 from mlptrain.config import Config
 from mlptrain.log import logger
+from mlptrain.forces import Forces
+from mlptrain.energy import Energy
 from mlptrain.configurations.configuration import Configuration
 from mlptrain.box import Box
 
@@ -50,7 +53,7 @@ class ConfigurationSet(list):
     @property
     def true_forces(self) -> Optional[np.ndarray]:
         """
-        True force tensor. shape = (N, n_atoms, 3)
+        List of true config forces. List of np.ndarray with shape: (n_atoms, 3)
 
         -----------------------------------------------------------------------
         Returns:
@@ -265,15 +268,34 @@ class ConfigurationSet(list):
         name = self._comparison_name(*args)
 
         if os.path.exists(f'{name}.npz'):
+            logger.info(f'Loading energies and forces from {name}.npz')
             self.load(f'{name}.npz')
 
         else:
             for arg in args:
+                # if is an mlp model with a 'predict' function
                 if hasattr(arg, 'predict'):
                     arg.predict(self)
 
+                # if is a string reference to a QM calculation method
                 elif isinstance(arg, str):
-                    self.single_point(method=arg)
+                    # if true energies and forces do not already exist for this config set
+                    non_null_true_energies = [
+                        x for x in self.true_energies if x is not None
+                    ]
+                    if (
+                        len(non_null_true_energies) == 0
+                        and self.true_forces.size == 0
+                    ):
+                        logger.info(
+                            f'Running single point calcs with method {arg}'
+                        )
+                        self.single_point(method=arg)
+                    else:
+                        logger.info(
+                            f'Not using method {arg}, true energies and forces '
+                            f'are already defined'
+                        )
 
                 else:
                     raise ValueError(f'Cannot compare using {arg}')
@@ -318,42 +340,114 @@ class ConfigurationSet(list):
         return None
 
     def load_xyz(
-        self, filename: str, charge: int, mult: int, box: Optional[Box] = None
+        self,
+        filename: str,
+        charge: int,
+        mult: int,
+        box: Optional[Box] = None,
+        load_energies: bool = False,
+        load_forces: bool = False,
     ) -> None:
         """
-        Load configurations from a .xyz file. Will not load any energies or
-        forces
+        Load configurations from a .xyz file with optional box, energies and forces if specified.
+        Note: this currently assumes that all configurations have the same charge and multiplicity.
 
         -----------------------------------------------------------------------
         Arguments:
-            filename:
+            filename: name of the input .xyz file
 
-            charge: Total charge on the configuration
+            charge: total charge on all configurations in the set
 
-            mult: Total spin multiplicity
+            mult: total spin multiplicity on all configurations in the set
 
-            box: Box or None, if the configurations are in vacuum
+            box: optionally specify a Box or None, if the configurations
+                 are in vacuum (or if 'Lattice' is specified in extended .xyz)
+
+            load_energies: bool - whether to load 'true' configurational energies or not
+
+            load_forces: bool - whether to load 'true' forces from atom lines or not
         """
-        file_lines = open(filename, 'r', errors='ignore').readlines()
-        atoms = []
 
         def is_xyz_line(_l):
             return len(_l.split()) in (4, 7) and _l.split()[0] in elements
 
-        def append_configuration(_atoms):
-            self.append(Configuration(_atoms, charge, mult, box))
-            return None
+        with open(filename, 'r', errors='ignore') as xyz_file:
+            # get first num atoms line
+            line_id = 1
+            line = xyz_file.readline()
+            while line:
+                # load everything for a single configuration in this loop
+                energy, atoms, forces = None, [], []
+                num_atoms = int(line)
 
-        for idx, line in enumerate(file_lines):
-            if is_xyz_line(line):
-                atoms.append(Atom(*line.split()[:4]))
+                # get comments / property line
+                line_id += 1
+                line = xyz_file.readline()
 
-            elif len(atoms) > 0:
-                append_configuration(atoms)
-                atoms.clear()
+                # get dictionary of properties and values (matching key=value with regex)
+                pattern = r'(\w+)=("[^"]*"|\S+)'
+                config_info = re.findall(pattern, line)
+                config_info_dict = {
+                    key: value.strip('"') for key, value in config_info
+                }
 
-        if len(atoms) > 0:
-            append_configuration(atoms)
+                # if using extended xyz format, get properties
+                config_box = box
+                if len(config_info) > 1:
+                    if (
+                        box is None
+                        and config_info_dict.get('Lattice') is not None
+                    ):
+                        # set box size from xyz properties line if it is specified
+                        lattice_info = [
+                            float(x)
+                            for x in re.findall(
+                                '[0-9]+', config_info_dict['Lattice']
+                            )
+                        ]
+
+                        config_box = Box(
+                            [
+                                lattice_info[0],
+                                lattice_info[8],
+                                lattice_info[16],
+                            ]
+                        )
+
+                    if load_energies:
+                        assert (
+                            config_info_dict.get('energy') is not None
+                        ), "Property 'energy' not specified on properties line..."
+                        energy = float(config_info_dict['energy'])
+
+                # get atom lines
+                for _ in range(num_atoms):
+                    line_id += 1
+                    line = xyz_file.readline()
+                    assert is_xyz_line(
+                        line
+                    ), f'There was an error in parsing your xyz file on line: {line_id}'
+                    line_split = line.split()
+                    atoms.append(Atom(*line_split[:4]))
+
+                    if load_forces:
+                        # add forces to forces dict in configuration
+                        if len(line_split) > 4:
+                            force = tuple([float(x) for x in line_split[4:]])
+                            assert (
+                                len(force) == 3
+                            ), f'Force is not a 3D vector: {force}'
+                            forces.append(force)
+
+                # create configuration, add forces, energy and append it to config set
+                configuration = Configuration(atoms, charge, mult, config_box)
+                configuration.forces = Forces(true=np.array(forces))
+                configuration.energy = Energy(true=energy)
+                self.append(configuration)
+
+                # get num atoms line for next config
+                line_id += 1
+                line = xyz_file.readline()
 
         return None
 
@@ -434,7 +528,10 @@ class ConfigurationSet(list):
             (np.ndarray): Coordinates tensor (n, n_atoms, 3),
                           where n is len(self)
         """
-        return np.array([np.asarray(c.coordinates, dtype=float) for c in self])
+        return np.array(
+            [np.asarray(c.coordinates, dtype=float) for c in self],
+            dtype=object,
+        )
 
     @property
     def plumed_coordinates(self) -> Optional[np.ndarray]:
@@ -471,9 +568,11 @@ class ConfigurationSet(list):
 
         for i, coords in enumerate(all_coordinates):
             if coords is None:
-                all_coordinates[i] = np.array([np.nan for _ in range(n_cvs)])
+                all_coordinates[i] = np.array(
+                    [np.nan for _ in range(n_cvs)], dtype=float
+                )
 
-        return np.array(all_coordinates)
+        return np.array(all_coordinates, dtype=object)
 
     @property
     def _atomic_numbers(self) -> np.ndarray:
@@ -486,7 +585,8 @@ class ConfigurationSet(list):
         """
 
         return np.array(
-            [[atom.atomic_number for atom in c.atoms] for c in self]
+            [[atom.atomic_number for atom in c.atoms] for c in self],
+            dtype=object,
         )
 
     @property
@@ -514,7 +614,7 @@ class ConfigurationSet(list):
         return np.array([c.mult for c in self])
 
     def _forces(self, kind: str) -> Optional[np.ndarray]:
-        """True or predicted forces. Returns a 3D tensor"""
+        """True or predicted forces. Returns a 3D np.ndarray."""
 
         all_forces = []
         for config in self:
@@ -524,7 +624,7 @@ class ConfigurationSet(list):
 
             all_forces.append(getattr(config.forces, kind))
 
-        return np.array(all_forces)
+        return np.array(all_forces, dtype=object)
 
     def _save_npz(self, filename: str) -> None:
         """Save a compressed numpy array of all the data in this set"""
@@ -557,14 +657,18 @@ class ConfigurationSet(list):
             box = Box(size=data['L'][i])
 
             config = Configuration(
-                atoms=_atoms_from_z_r(data['Z'][i], coords),
+                atoms=_atoms_from_z_r(
+                    data['Z'][i], np.array(coords, dtype=float)
+                ),
                 charge=int(data['C'][i]),
                 mult=int(data['M'][i]),
                 box=None if box.has_zero_volume else box,
             )
 
             if data['R_plumed'].ndim > 0:
-                config.plumed_coordinates = data['R_plumed'][i]
+                config.plumed_coordinates = np.array(
+                    data['R_plumed'][i], dtype=float
+                )
 
             if data['E_true'].ndim > 0:
                 config.energy.true = data['E_true'][i]
@@ -579,10 +683,12 @@ class ConfigurationSet(list):
                 config.energy.inherited_bias = data['E_inherited_bias'][i]
 
             if data['F_true'].ndim > 0:
-                config.forces.true = data['F_true'][i]
+                config.forces.true = np.array(data['F_true'][i], dtype=float)
 
             if data['F_predicted'].ndim > 0:
-                config.forces.predicted = data['F_predicted'][i]
+                config.forces.predicted = np.array(
+                    data['F_predicted'][i], dtype=float
+                )
 
             self.append(config)
 
@@ -646,6 +752,23 @@ class ConfigurationSet(list):
 
         logger.info(f'Calculations done in {(time() - start_time) / 60:.1f} m')
         return None
+
+    def __str__(self):
+        return (
+            f'ConfigurationSet Summary:\n'
+            f'  Coords Dimensions:          {self._coordinates.shape if self._coordinates is not None else None}\n'
+            f'  Plumed Coords Dimensions:   {self.plumed_coordinates.shape if self.plumed_coordinates is not None else None}\n'
+            f'  Has True Energies:          {any(x is not None for x in self.true_energies)}\n'
+            f'  Has Predicted Energies:     {any(x is not None for x in self.predicted_energies)}\n'
+            f'  Has Bias Energies:          {any(x is not None for x in self.bias_energies)}\n'
+            f'  Has Inherit. Bias Energies: {any(x is not None for x in self.inherited_bias_energies)}\n'
+            f'  True Forces Dim:            {self.true_forces.shape}\n'
+            f'  Predicted Forces Dim:       {self.predicted_forces.shape}\n'
+            f'  Atomic Numbers Dim:         {self._atomic_numbers.shape}\n'
+            f'  Unique Box Sizes:           {np.unique(self._box_sizes)}\n'
+            f'  Unique Charges:             {np.unique(self._charges)}\n'
+            f'  Unique Multiplicities:      {np.unique(self._multiplicities)}'
+        )
 
     @staticmethod
     def _comparison_name(*args):
