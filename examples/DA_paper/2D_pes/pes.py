@@ -129,7 +129,7 @@ class MLPEST(ElectronicStructureMethod):
         """
         Execute the calculation
         Arguments:
-            calc (autode.calculation.Calculation):
+            calc (autode.calculations.Calculation):
         """
         from ase.io.trajectory import Trajectory as ASETrajectory
         from ase.optimize import BFGS
