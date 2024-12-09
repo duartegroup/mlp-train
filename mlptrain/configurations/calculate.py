@@ -57,7 +57,7 @@ def run_autode(
         return None
 
     configuration.energy.true = energy.to('eV')
-    configuration.partial_charges = calc.molecule.point_charges
+    configuration.partial_charges = calc.molecule.partial_charges
     return None
 
 
