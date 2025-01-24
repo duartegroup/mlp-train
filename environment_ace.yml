@@ -4,11 +4,11 @@ name: mlptrain-ace
 channels:
   - conda-forge
 dependencies:
-  - python=3.9
+  - python=3.10
   - pip
   - pre-commit
   - ase
-  - autode=1.3.3
+  - autode=1.4.5
   - coloredlogs
   - cython
   - dscribe=2.0
