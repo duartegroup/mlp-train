@@ -138,6 +138,41 @@ def test_configurations_load_with_energies_forces():
 
 
 @work_in_tmp_dir()
+def test_configurations_load_with_energies_forces_diff_sizes(
+    h2o_configuration,
+):
+    config1 = Configuration(atoms=[Atom('H')])
+    config1.energy.true = -1.0
+    config1.energy.predicted = -0.9
+
+    config1.forces.true = 1.1 * np.ones(shape=(1, 3))
+    config1.forces.predicted = 1.105 * np.ones(shape=(1, 3))
+
+    config2 = h2o_configuration
+    config2.energy.true = -3.0
+    config2.energy.predicted = -2.8
+
+    config2.forces.true = 1.5 * np.ones(shape=(3, 3))
+    config2.forces.predicted = 1.502 * np.ones(shape=(3, 3))
+
+    ConfigurationSet(config1, config2).save('tmp.npz')
+    loaded_configs = ConfigurationSet('tmp.npz')
+
+    for config in loaded_configs:
+        assert config.energy.true is not None
+        assert config.energy.predicted is not None
+        assert config.forces.true is not None
+        assert config.forces.predicted is not None
+
+    for attr in ('energy', 'forces'):
+        for kind in ('predicted', 'true'):
+            assert np.allclose(
+                getattr(getattr(loaded_configs[0], attr), kind),
+                getattr(getattr(config1, attr), kind),
+            )
+
+
+@work_in_tmp_dir()
 def test_configurations_load_xyz():
     configs = ConfigurationSet()
 
