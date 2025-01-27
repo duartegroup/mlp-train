@@ -654,7 +654,6 @@ class ConfigurationSet(list):
         data = np.load(filename, allow_pickle=True)
 
         for i, coords in enumerate(data['R']):
-            print(i)
             box = Box(size=data['L'][i])
 
             config = Configuration(
