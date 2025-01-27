@@ -6,6 +6,8 @@ from mlptrain.configurations import ConfigurationSet, Configuration
 from mlptrain.utils import work_in_tmp_dir
 from mlptrain.box import Box
 
+here = os.path.abspath(os.path.dirname(__file__))
+
 
 @pytest.fixture
 def config_set_xyz_with_energies_forces():
@@ -197,7 +199,8 @@ def test_configurations_load_xyz():
 
 
 def test_configurations_load_numpy_compatibility():
-    data = ConfigurationSet('data/water_al.npz')
+    file_path = os.path.join(here, 'data', 'water_al.npz')
+    data = ConfigurationSet(file_path)
 
     for config in data:
         assert config.box is not None
