@@ -196,6 +196,18 @@ def test_configurations_load_xyz():
         assert config.mult == 2
 
 
+def test_configurations_load_numpy_compatibility():
+    data = ConfigurationSet('data/water_al.npz')
+
+    for config in data:
+        assert config.box is not None
+        assert config.charge is not None
+        assert config.mult is not None
+        assert config.energy.true is not None
+        assert config.forces.true is not None
+        assert config.coordinates is not None
+
+
 @work_in_tmp_dir()
 def test_configurations_load_xyz_with_energies_forces(
     config_set_xyz_with_energies_forces,
