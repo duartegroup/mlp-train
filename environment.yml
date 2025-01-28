@@ -13,7 +13,7 @@ dependencies:
   - cython
   - dscribe=2.0
   - matplotlib-base
-  - numpy=1.24
+  - numpy<2
   - pytest=8
   - pytest-cov=5
   - py-plumed
