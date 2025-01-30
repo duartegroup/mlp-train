@@ -1,19 +1,19 @@
 import mlptrain as mlt
 
-mlt.Config.n_cores = 10
-mlt.Config.orca_keywords = ['PBE0', 'def2-SVP', 'EnGrad']
+# mlt.Config.orca_keywords = ['PBE0', 'def2-SVP', 'EnGrad']
 
 
 if __name__ == '__main__':
-    system = mlt.System(mlt.Molecule('ts_pbe0.xyz'), box=None)
+    system = mlt.System(mlt.Molecule('da_ts.xyz'), box=None)
     gap = mlt.potentials.GAP('da', system=system)
 
     gap.al_train(
-        method_name='orca',
+        method_name='xtb',
         temp=300,  # K
-        selection_method=mlt.selection.MaxAtomicEnvDistance(),
+        selection_method=mlt.selection.AtomicEnvSimilarity(),
         max_active_time=200,  # fs
         fix_init_config=True,
+        n_configs_iter=1,
     )
 
     # Run some dynamics with the potential
@@ -27,4 +27,4 @@ if __name__ == '__main__':
     )
 
     # and compare, plotting a parity plots and E_true, ∆E and ∆F
-    trajectory.compare(gap, 'orca')
+    trajectory.compare(gap, 'xtb')
