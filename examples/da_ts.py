@@ -1,6 +1,6 @@
 import mlptrain as mlt
 
-# mlt.Config.orca_keywords = ['PBE0', 'def2-SVP', 'EnGrad']
+mlt.Config.orca_keywords = ['PBE0', 'def2-SVP', 'EnGrad']
 
 
 if __name__ == '__main__':
@@ -27,4 +27,4 @@ if __name__ == '__main__':
     )
 
     # and compare, plotting a parity plots and E_true, ∆E and ∆F
-    trajectory.compare(gap, 'xtb')
+    trajectory.compare(gap, 'orca')
