@@ -1,5 +1,6 @@
 import mlptrain as mlt
 
+mlt.Config.n_cores = 10
 mlt.Config.orca_keywords = ['PBE0', 'def2-SVP', 'EnGrad']
 
 
@@ -8,12 +9,11 @@ if __name__ == '__main__':
     gap = mlt.potentials.GAP('da', system=system)
 
     gap.al_train(
-        method_name='xtb',
+        method_name='orca',
         temp=300,  # K
         selection_method=mlt.selection.AtomicEnvSimilarity(),
         max_active_time=200,  # fs
         fix_init_config=True,
-        n_configs_iter=1,
     )
 
     # Run some dynamics with the potential
