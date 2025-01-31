@@ -161,7 +161,7 @@ if __name__ == '__main__':
     bias = mlt.PlumedBias(cvs=(r_1, r_2, diff_r))
     bias.initialise_for_metad_al(width=0.05, cvs=diff_r, biasfactor=70)
 
-    selector = mlt.selection.MaxAtomicEnvDistance(threshold=0.9996)
+    selector = mlt.selection.AtomicEnvSimilarity(threshold=0.9996)
 
     system_gas = mlt.System(
         mlt.Molecule('gly_gas.xyz', charge=1, mult=1), box=None
