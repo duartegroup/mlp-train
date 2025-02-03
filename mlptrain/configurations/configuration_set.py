@@ -664,23 +664,38 @@ class ConfigurationSet(list):
                 mult=int(data['M'][i]),
                 box=None if box.has_zero_volume else box,
             )
-
-            if data['R_plumed'].ndim > 0:
-                config.plumed_coordinates = np.array(
-                    data['R_plumed'][i], dtype=float
+            try:
+                """This part is here to ensure compatibility of npz files created before plumed interface was implemented. """
+                if data['R_plumed'].ndim > 0:
+                    config.plumed_coordinates = np.array(
+                        data['R_plumed'][i], dtype=float
+                    )
+            except KeyError:
+                logger.info(
+                    'Missing R_plumed key. Setting plumed_coordinates to None.'
                 )
+                config.plumed_coordinates = None
 
             if data['E_true'].ndim > 0:
                 config.energy.true = data['E_true'][i]
 
             if data['E_predicted'].ndim > 0:
                 config.energy.predicted = data['E_predicted'][i]
+            try:
+                if data['E_bias'].ndim > 0:
+                    config.energy.bias = data['E_bias'][i]
+            except KeyError:
+                logger.info('Missing E_bias key. Setting energy bias to None')
+                config.energy.bias = None
 
-            if data['E_bias'].ndim > 0:
-                config.energy.bias = data['E_bias'][i]
-
-            if data['E_inherited_bias'].ndim > 0:
-                config.energy.inherited_bias = data['E_inherited_bias'][i]
+            try:
+                if data['E_inherited_bias'].ndim > 0:
+                    config.energy.inherited_bias = data['E_inherited_bias'][i]
+            except KeyError:
+                logger.info(
+                    'Missing E_inherited_bias key. Setting energy inherited bias to None.'
+                )
+                config.energy.inherited_bias = None
 
             if data['F_true'].ndim > 0:
                 config.forces.true = np.array(data['F_true'][i], dtype=float)

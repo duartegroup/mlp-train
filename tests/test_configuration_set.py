@@ -6,6 +6,8 @@ from mlptrain.configurations import ConfigurationSet, Configuration
 from mlptrain.utils import work_in_tmp_dir
 from mlptrain.box import Box
 
+here = os.path.abspath(os.path.dirname(__file__))
+
 
 @pytest.fixture
 def config_set_xyz_with_energies_forces():
@@ -138,6 +140,42 @@ def test_configurations_load_with_energies_forces():
 
 
 @work_in_tmp_dir()
+def test_configurations_load_with_energies_forces_diff_sizes(
+    h2o_configuration,
+):
+    """Test ability of mlptrain to load dataset containing structures of different sizes. The energies and forces are artifical."""
+
+    config1 = Configuration(atoms=[Atom('H')])
+    config1.energy.true = -1.0
+    config1.energy.predicted = -0.9
+
+    config1.forces.true = 1.1 * np.ones(shape=(1, 3))
+    config1.forces.predicted = 1.105 * np.ones(shape=(1, 3))
+
+    config2 = h2o_configuration
+    config2.energy.true = -3.0
+    config2.energy.predicted = -2.8
+
+    config2.forces.true = 1.5 * np.ones(shape=(3, 3))
+    config2.forces.predicted = 1.502 * np.ones(shape=(3, 3))
+
+    ConfigurationSet(config1, config2).save('tmp.npz')
+    loaded_configs = ConfigurationSet('tmp.npz')
+
+    for config in loaded_configs:
+        assert config.energy.true is not None
+        assert config.energy.predicted is not None
+        assert config.forces.true is not None
+        assert config.forces.predicted is not None
+
+    loaded_conf = loaded_configs[0]
+    assert np.allclose(loaded_conf.energy.true, config1.energy.true)
+    assert np.allclose(loaded_conf.energy.predicted, config1.energy.predicted)
+    assert np.allclose(loaded_conf.forces.true, config1.forces.true)
+    assert np.allclose(loaded_conf.forces.predicted, config1.forces.predicted)
+
+
+@work_in_tmp_dir()
 def test_configurations_load_xyz():
     configs = ConfigurationSet()
 
@@ -159,6 +197,26 @@ def test_configurations_load_xyz():
     for config in configs:
         assert config.charge == 0
         assert config.mult == 2
+
+
+def test_configurations_load_numpy_compatibility():
+    """Test compatibility of mlp-train and npz files created with old version of numpy/autodE.
+
+    The file was created with autode==1.1.3, numpy==1.23.5 and mlptrain commit fc51272.
+    This commit is the parent from the Plumed integration commit 6a0298c.
+    """
+
+    file_path = os.path.join(here, 'data', 'water_01_preplumed.npz')
+    data = ConfigurationSet(file_path)
+    assert len(data) == 2
+    assert data[0].n_atoms != data[1].n_atoms
+    for config in data:
+        assert config.box.volume == 1000000.0
+        assert config.charge == 0
+        assert config.mult == 1
+        assert config.energy.true is not None
+        assert config.forces.true is not None
+        assert config.coordinates is not None
 
 
 @work_in_tmp_dir()
