@@ -204,7 +204,8 @@ def test_configurations_load_numpy_compatibility():
 
     file_path = os.path.join(here, 'data', 'water_01.npz')
     data = ConfigurationSet(file_path)
-
+    assert len(data) == 2
+    assert data[0].n_atoms != data[1].n_atoms
     for config in data:
         assert config.box is not None
         assert config.charge is not None
