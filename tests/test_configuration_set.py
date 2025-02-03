@@ -143,6 +143,8 @@ def test_configurations_load_with_energies_forces():
 def test_configurations_load_with_energies_forces_diff_sizes(
     h2o_configuration,
 ):
+    """Test ability of mlptrain to load dataset containing structures of different sizes. The energies and forces are artifical."""
+
     config1 = Configuration(atoms=[Atom('H')])
     config1.energy.true = -1.0
     config1.energy.predicted = -0.9
@@ -199,7 +201,9 @@ def test_configurations_load_xyz():
 
 
 def test_configurations_load_numpy_compatibility():
-    file_path = os.path.join(here, 'data', 'water_al.npz')
+    """Test compatibility of mlp-train and npz files created with old version of numpy/autodE."""
+
+    file_path = os.path.join(here, 'data', 'water_01.npz')
     data = ConfigurationSet(file_path)
 
     for config in data:

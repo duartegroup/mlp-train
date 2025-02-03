@@ -665,6 +665,7 @@ class ConfigurationSet(list):
                 box=None if box.has_zero_volume else box,
             )
             try:
+                """This part is here to ensure compatibility of npz files created before plumed interface was implemented. """
                 if data['R_plumed'].ndim > 0:
                     config.plumed_coordinates = np.array(
                         data['R_plumed'][i], dtype=float
