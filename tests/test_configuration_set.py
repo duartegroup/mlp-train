@@ -200,7 +200,11 @@ def test_configurations_load_xyz():
 
 
 def test_configurations_load_numpy_compatibility():
-    """Test compatibility of mlp-train and npz files created with old version of numpy/autodE."""
+    """Test compatibility of mlp-train and npz files created with old version of numpy/autodE.
+    
+    The file was created with autode==1.1.3, numpy==1.23.5 and mlptrain commit fc51272.
+    This commit is the parent from the Plumed integration commit 6a0298c.
+    """
 
     file_path = os.path.join(here, 'data', 'water_01_preplumed.npz')
     data = ConfigurationSet(file_path)
