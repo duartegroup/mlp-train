@@ -43,7 +43,7 @@ def train(
     md_program: str = 'ASE',
     pbc: bool = False,
     box_size: Optional[list] = None,
-    keep_AL_traj: bool = False,
+    keep_al_traj: bool = False,
 ) -> None:
     """
     Train a system using active learning, by propagating dynamics using ML
@@ -144,7 +144,7 @@ def train(
 
         box_size: (List | None) Size of the box where MLP-MD propagated.
 
-        keep_AL_traj: (bool) If True, MLP-MD trajectories generated during AL phase are saved into new folder.
+        keep_al_traj: (bool) If True, MLP-MD trajectories generated during AL phase are saved into new folder.
     """
     if md_program.lower() == 'openmm':
         if not isinstance(mlp, mlptrain.potentials.MACE):
@@ -160,7 +160,7 @@ def train(
 
     _check_bias(bias=bias, temp=temp, inherit_metad_bias=inherit_metad_bias)
 
-    if keep_AL_traj is True:
+    if keep_al_traj is True:
         os.makedirs('al_trajectories', exist_ok=True)
 
     if pbc and box_size is None:
@@ -237,7 +237,7 @@ def train(
             md_program=md_program,
             pbc=pbc,
             box_size=box_size,
-            keep_AL_traj=keep_AL_traj,
+            keep_al_traj=keep_al_traj,
         )
 
         # Active learning finds no configurations
@@ -349,7 +349,7 @@ def _add_active_configs(
         f'datasets/' f'dataset_after_iter_{kwargs["iteration"]}.npz'
     )
 
-    if kwargs.get('keep_AL_traj') is True:
+    if kwargs.get('keep_al_traj') is True:
         for traj_id in range(n_configs):
             traj_name = f'trajectory_{traj_id}.traj'
             xyz_name = (
