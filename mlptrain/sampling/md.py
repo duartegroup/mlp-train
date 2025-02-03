@@ -130,7 +130,7 @@ def run_mlp_md(
 
     copied_substrings_list.extend(['.xml', '.json', '.pth', '.model'])
 
-    if kwargs.get('keep_al_traj') is True:
+    if kwargs.get('keep_al_trajs') is True:
         kept_substrings_list.extend(['.traj'])
 
     if restart:
