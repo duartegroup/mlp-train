@@ -7,6 +7,8 @@ from copy import deepcopy
 from typing import Optional, Union, List
 from subprocess import Popen
 from ase import units as ase_units
+from ase.io import write as ase_write
+from ase.io.trajectory import Trajectory as ASETrajectory
 from mlptrain.config import Config
 from mlptrain.sampling import PlumedBias
 from mlptrain.sampling.md_openmm import run_mlp_md_openmm
@@ -349,9 +351,11 @@ def _add_active_configs(
 
     if kwargs['keep_AL_traj'] is True:
         for idx in range(n_configs):
+            traj_name = f'trajectory_{idx}.traj'
+            _save_ase_traj_as_xyz(traj_name)
             shutil.move(
-                src=f'trajectory_{idx}.traj',
-                dst=f'al_trajectories/trajectory_{kwargs["iteration"]}_{idx}.traj',
+                src=f'trajectory_{idx}.xyz',
+                dst=f'al_trajectories/trajectory_{kwargs["iteration"]}_{idx}.xyz',
             )
 
     return None
@@ -635,6 +639,20 @@ def _gen_and_set_init_training_configs(
     init_configs.single_point(method_name)
     mlp.training_data += init_configs
     return init_configs
+
+
+def _save_ase_traj_as_xyz(traj_name: str) -> None:
+    """
+    Convert ASE trajectory to xyz format.
+    """
+
+    ase_traj = ASETrajectory(traj_name, 'r')
+    traj_baseline = traj_name.removesuffix('.traj')
+    ase_write(f'{traj_baseline}.xyz', ase_traj, 'xyz')
+
+    os.remove(traj_name)
+
+    return None
 
 
 def _initialise_restart(
