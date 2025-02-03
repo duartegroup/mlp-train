@@ -207,9 +207,9 @@ def test_configurations_load_numpy_compatibility():
     assert len(data) == 2
     assert data[0].n_atoms != data[1].n_atoms
     for config in data:
-        assert config.box is not None
-        assert config.charge is not None
-        assert config.mult is not None
+        assert config.box.volume == 1000000.0
+        assert config.charge == 0
+        assert config.mult == 1
         assert config.energy.true is not None
         assert config.forces.true is not None
         assert config.coordinates is not None
