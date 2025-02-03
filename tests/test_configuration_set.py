@@ -168,12 +168,11 @@ def test_configurations_load_with_energies_forces_diff_sizes(
         assert config.forces.true is not None
         assert config.forces.predicted is not None
 
-    for attr in ('energy', 'forces'):
-        for kind in ('predicted', 'true'):
-            assert np.allclose(
-                getattr(getattr(loaded_configs[0], attr), kind),
-                getattr(getattr(config1, attr), kind),
-            )
+    loaded_conf = loaded_configs[0]
+    assert np.allclose(loaded_conf.energy.true, config1.energy.true)
+    assert np.allclose(loaded_conf.energy.predicted, config1.energy.predicted)
+    assert np.allclose(loaded_conf.forces.true, config1.forces.true)
+    assert np.allclose(loaded_conf.forces.predicted, config1.forces.predicted)
 
 
 @work_in_tmp_dir()
