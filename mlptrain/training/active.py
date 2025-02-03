@@ -644,14 +644,14 @@ def _gen_and_set_init_training_configs(
 
 def _save_ase_traj_as_xyz(
     traj_name: str,
-    trajf_name: str,
+    xyz_name: str,
 ) -> None:
     """
     Convert ASE trajectory to xyz format.
     """
 
     ase_traj = ASETrajectory(traj_name, 'r')
-    ase_write(trajf_name, ase_traj, 'xyz')
+    ase_write(xyz_name, ase_traj, 'xyz')
 
     return None
 
