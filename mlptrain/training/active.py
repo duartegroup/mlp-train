@@ -349,14 +349,15 @@ def _add_active_configs(
         f'datasets/' f'dataset_after_iter_{kwargs["iteration"]}.npz'
     )
 
-    if kwargs['keep_AL_traj'] is True:
-        for idx in range(n_configs):
-            traj_name = f'trajectory_{idx}.traj'
-            _save_ase_traj_as_xyz(traj_name)
-            shutil.move(
-                src=f'trajectory_{idx}.xyz',
-                dst=f'al_trajectories/trajectory_{kwargs["iteration"]}_{idx}.xyz',
+    if kwargs.get('keep_AL_traj') is True:
+        for traj_id in range(n_configs):
+            traj_name = f'trajectory_{traj_id}.traj'
+            xyz_name = (
+                f'al_trajectories/traj_iter{kwargs["iteration"]}_{traj_id}.xyz'
             )
+            _save_ase_traj_as_xyz(traj_name, xyz_name)
+
+            os.remove(traj_name)
 
     return None
 
@@ -641,16 +642,16 @@ def _gen_and_set_init_training_configs(
     return init_configs
 
 
-def _save_ase_traj_as_xyz(traj_name: str) -> None:
+def _save_ase_traj_as_xyz(
+    traj_name: str,
+    trajf_name: str,
+) -> None:
     """
     Convert ASE trajectory to xyz format.
     """
 
     ase_traj = ASETrajectory(traj_name, 'r')
-    traj_baseline = traj_name.removesuffix('.traj')
-    ase_write(f'{traj_baseline}.xyz', ase_traj, 'xyz')
-
-    os.remove(traj_name)
+    ase_write(trajf_name, ase_traj, 'xyz')
 
     return None
 
