@@ -347,6 +347,13 @@ def _add_active_configs(
         f'datasets/' f'dataset_after_iter_{kwargs["iteration"]}.npz'
     )
 
+    if kwargs['keep_AL_traj'] is True:
+        for idx in range(n_configs):
+            shutil.move(
+                src=f'trajectory_{idx}.traj',
+                dst=f'al_trajectories/trajectory_{kwargs["iteration"]}_{idx}.traj',
+            )
+
     return None
 
 

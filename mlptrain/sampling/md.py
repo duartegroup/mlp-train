@@ -180,6 +180,7 @@ def run_mlp_md(
         restart_files=restart_files,
         **kwargs,
     )
+
     return traj
 
 
@@ -243,7 +244,6 @@ def _run_mlp_md(
         ase_atoms=ase_atoms,
         restart=restart,
         traj_name=traj_name,
-        **kwargs,
     )
 
     # If MD is restarted, energies of frames from the previous trajectory
