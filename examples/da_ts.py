@@ -5,13 +5,13 @@ mlt.Config.orca_keywords = ['PBE0', 'def2-SVP', 'EnGrad']
 
 
 if __name__ == '__main__':
-    system = mlt.System(mlt.Molecule('ts_pbe0.xyz'), box=None)
+    system = mlt.System(mlt.Molecule('da_ts.xyz'), box=None)
     gap = mlt.potentials.GAP('da', system=system)
 
     gap.al_train(
         method_name='orca',
         temp=300,  # K
-        selection_method=mlt.selection.MaxAtomicEnvDistance(),
+        selection_method=mlt.selection.AtomicEnvSimilarity(),
         max_active_time=200,  # fs
         fix_init_config=True,
     )
