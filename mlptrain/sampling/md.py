@@ -130,6 +130,9 @@ def run_mlp_md(
 
     copied_substrings_list.extend(['.xml', '.json', '.pth', '.model'])
 
+    if kwargs.get('keep_al_trajs') is True:
+        kept_substrings_list.extend(['.traj'])
+
     if restart:
         logger.info('Restarting MLP MD')
 
@@ -177,6 +180,7 @@ def run_mlp_md(
         restart_files=restart_files,
         **kwargs,
     )
+
     return traj
 
 
@@ -237,7 +241,9 @@ def _run_mlp_md(
     )
 
     ase_traj = _initialise_traj(
-        ase_atoms=ase_atoms, restart=restart, traj_name=traj_name
+        ase_atoms=ase_atoms,
+        restart=restart,
+        traj_name=traj_name,
     )
 
     # If MD is restarted, energies of frames from the previous trajectory

@@ -158,6 +158,9 @@ def run_mlp_md_openmm(
 
     copied_substrings_list.extend(['.xml', '.json', '.pth', '.model'])
 
+    if kwargs.get('keep_al_trajs') is True:
+        kept_substrings_list.extend(['.traj'])
+
     if restart:
         logger.info('Restarting MLP OpenMM MD')
 

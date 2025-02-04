@@ -7,6 +7,8 @@ from copy import deepcopy
 from typing import Optional, Union, List
 from subprocess import Popen
 from ase import units as ase_units
+from ase.io import write as ase_write
+from ase.io.trajectory import Trajectory as ASETrajectory
 from mlptrain.config import Config
 from mlptrain.sampling import PlumedBias
 from mlptrain.sampling.md_openmm import run_mlp_md_openmm
@@ -41,6 +43,7 @@ def train(
     md_program: str = 'ASE',
     pbc: bool = False,
     box_size: Optional[list] = None,
+    keep_al_trajs: bool = False,
 ) -> None:
     """
     Train a system using active learning, by propagating dynamics using ML
@@ -140,6 +143,8 @@ def train(
               electronic structure computations.
 
         box_size: (List | None) Size of the box where MLP-MD propagated.
+
+        keep_al_trajs: (bool) If True, MLP-MD trajectories generated during AL phase are saved into new folder.
     """
     if md_program.lower() == 'openmm':
         if not isinstance(mlp, mlptrain.potentials.MACE):
@@ -154,6 +159,9 @@ def train(
             )
 
     _check_bias(bias=bias, temp=temp, inherit_metad_bias=inherit_metad_bias)
+
+    if keep_al_trajs is True:
+        os.makedirs('al_trajectories', exist_ok=True)
 
     if pbc and box_size is None:
         raise ValueError('For PBC in MD, the box_size cannot be None')
@@ -229,6 +237,7 @@ def train(
             md_program=md_program,
             pbc=pbc,
             box_size=box_size,
+            keep_al_trajs=keep_al_trajs,
         )
 
         # Active learning finds no configurations
@@ -340,6 +349,16 @@ def _add_active_configs(
         f'datasets/' f'dataset_after_iter_{kwargs["iteration"]}.npz'
     )
 
+    if kwargs.get('keep_al_trajs') is True:
+        for traj_id in range(n_configs):
+            traj_name = f'trajectory_{traj_id}.traj'
+            xyz_name = (
+                f'al_trajectories/traj_iter{kwargs["iteration"]}_{traj_id}.xyz'
+            )
+            _save_ase_traj_as_xyz(traj_name, xyz_name)
+
+            os.remove(traj_name)
+
     return None
 
 
@@ -434,6 +453,7 @@ def _gen_active_config(
 
     if pbc:
         config.box = Box(box_size)
+
     if kwargs['md_program'].lower() == 'openmm':
         traj = run_mlp_md_openmm(
             config,
@@ -620,6 +640,20 @@ def _gen_and_set_init_training_configs(
     init_configs.single_point(method_name)
     mlp.training_data += init_configs
     return init_configs
+
+
+def _save_ase_traj_as_xyz(
+    traj_name: str,
+    xyz_name: str,
+) -> None:
+    """
+    Convert ASE trajectory to xyz format.
+    """
+
+    ase_traj = ASETrajectory(traj_name, 'r')
+    ase_write(xyz_name, ase_traj, 'xyz')
+
+    return None
 
 
 def _initialise_restart(
