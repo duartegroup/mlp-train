@@ -5,11 +5,17 @@ build:
   tools:
     python: "3.10"
 
-python:
-  install:
-    - requirements: docs/requirements.txt
-    - method: pip
-      path: .
+#python:
+#  install:
+#    - requirements: docs/requirements.txt
+#    - method: pip
+#      path: .
 
 sphinx:
   configuration: docs/conf.py
+
+# Optionally build your docs in additional formats such as PDF and ePub
+# formats:
+#    - pdf
+#    - epub
+
