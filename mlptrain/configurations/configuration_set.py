@@ -280,11 +280,15 @@ class ConfigurationSet(list):
                 # if is a string reference to a QM calculation method
                 elif isinstance(arg, str):
                     # if true energies and forces do not already exist for this config set
-                    if self.has_a_none_energy:
+                    if all(c.energy.true is None for c in self):
                         logger.info(
                             f'Running single point calcs with method {arg}'
                         )
                         self.single_point(method=arg)
+                    elif self.has_a_none_energy:
+                        raise ValueError(
+                            'Data set contains mix of labelled and non-labelled data!'
+                        )
                     else:
                         logger.info(
                             f'Not using method {arg}, true energies and forces '
