@@ -1,10 +1,14 @@
 from abc import ABC, abstractmethod
 import numpy as np
 import logging
+import mlptrain as mlp
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
+
 
 class DescriptorBase(ABC):
     """Abstract base class for molecular feature descriptors."""
@@ -17,12 +21,10 @@ class DescriptorBase(ABC):
             name (str): Name of the descriptor. e.g., "ace_descriptor","soap_descriptor","mace_descriptor"
         """
         self.name = str(name)
-        logger.info(f"Initialized {self.name} descriptor.")
-
+        logger.info(f'Initialized {self.name} descriptor.')
 
     @abstractmethod
-    def compute(self, 
-                configurations: "mlptrain.ConfigurationSet")-> np.ndarray:
+    def compute(self, configurations: mlp.ConfigurationSet) -> np.ndarray:
         """
         Compute descriptor representation for a given molecular configuration.
 
@@ -33,8 +35,11 @@ class DescriptorBase(ABC):
         """
         pass
 
+
 @abstractmethod
-def kernel_vector(self, configuration, configurations, zeta: int = 4) -> np.ndarray:
+def kernel_vector(
+    self, configuration, configurations, zeta: int = 4
+) -> np.ndarray:
     """
     Calculate the kernel matrix between a set of configurations where the
     kernel is:
@@ -56,15 +61,16 @@ def kernel_vector(self, configuration, configurations, zeta: int = 4) -> np.ndar
     """
     pass
 
+
 def normalize(self, vector: np.ndarray) -> np.ndarray:
-        """
-        Normalize a feature vector to unit norm.
+    """
+    Normalize a feature vector to unit norm.
 
-        Arguments:
-            vector (np.ndarray): Input vector.
+    Arguments:
+        vector (np.ndarray): Input vector.
 
-        Returns:
-            np.ndarray: Normalized vector.
-        """
-        norm = np.linalg.norm(vector)
-        return vector if norm == 0 else vector / norm
+    Returns:
+        np.ndarray: Normalized vector.
+    """
+    norm = np.linalg.norm(vector)
+    return vector if norm == 0 else vector / norm
