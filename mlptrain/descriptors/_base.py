@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 from typing import Union
-import mlptrain.log as logger
+from mlptrain.log import logger
 import mlptrain as mlt
 
 
