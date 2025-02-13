@@ -212,7 +212,7 @@ class ACE(MLPotential):
 
         print(
             '@info("Training Error Table")\n'
-            'ACEpotentials.liner_errors(data_set, model; data_keys...);\n',
+            'ACEpotentials.linear_errors(data_set, model; data_keys...);\n',
             file=inp_file,
         )
 
