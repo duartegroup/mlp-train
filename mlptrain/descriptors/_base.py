@@ -1,16 +1,11 @@
 from abc import ABC, abstractmethod
 import numpy as np
-import logging
-import mlptrain as mlp
-
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+from typing import Union
+import mlptrain.log as logger
+import mlptrain as mlptrain
 
 
-class DescriptorBase(ABC):
+class Descriptor(ABC):
     """Abstract base class for molecular feature descriptors."""
 
     def __init__(self, name: str):
@@ -24,7 +19,12 @@ class DescriptorBase(ABC):
         logger.info(f'Initialized {self.name} descriptor.')
 
     @abstractmethod
-    def compute(self, configurations: mlp.ConfigurationSet) -> np.ndarray:
+    def compute_representation(
+        self,
+        configurations: Union[
+            mlptrain.Configuration, mlptrain.ConfigurationSet
+        ],
+    ) -> np.ndarray:
         """
         Compute descriptor representation for a given molecular configuration.
 
@@ -33,44 +33,46 @@ class DescriptorBase(ABC):
         Returns:
             np.ndarray: The computed descriptor representation as a vector/matrix.
         """
-        pass
 
-
-@abstractmethod
-def kernel_vector(
-    self, configuration, configurations, zeta: int = 4
-) -> np.ndarray:
-    """
-    Calculate the kernel matrix between a set of configurations where the
-    kernel is:
-
-    .. math::
+    @abstractmethod
+    def kernel_vector(
+        self, configuration, configurations, zeta: int = 4
+    ) -> np.ndarray:
+        """Calculate the kernel matrix between a set of configurations where the  kernel is: .. math::
 
         K(p_a, p_b) = (p_a . p_b / (p_a.p_a x p_b.p.b)^1/2 )^ζ
 
-    ---------------------------------------------------------------------------
-    Arguments:
-        configuration:
+        ---------------------------------------------------------------------------
+        Arguments:
+            configuration:
 
-        configurations:
+            configurations:
 
-        zeta: Power to raise the kernel matrix to
+            zeta: Power to raise the kernel matrix to
 
-    Returns:
-        (np.ndarray): Vector, shape = len(configurations)
-    """
-    pass
+        Returns:
+            (np.ndarray): Vector, shape = len(configurations)"""
 
+    def normalize(self, vector: np.ndarray) -> np.ndarray:
+        """
+        Normalize a feature vector to unit norm.
 
-def normalize(self, vector: np.ndarray) -> np.ndarray:
-    """
-    Normalize a feature vector to unit norm.
+        Arguments:
+            vector (np.ndarray): Input vector.
 
-    Arguments:
-        vector (np.ndarray): Input vector.
+        Returns:
+            np.ndarray: Normalized vector.
+        """
+        norm = np.linalg.norm(vector)
+        return vector if norm == 0 else vector / norm
 
-    Returns:
-        np.ndarray: Normalized vector.
-    """
-    norm = np.linalg.norm(vector)
-    return vector if norm == 0 else vector / norm
+    def average(self, average_method: str = 'no_average'):
+        """
+        Compute the average of the descriptor representation to accommodate systems of different sizes.
+
+        Arguments:
+            average_method (str): Specifies the averaging method:
+                              - "inner" (default), "outer", or "no_average" for soap_descriptor
+                              - "average" or "no_average" (default) for ace_descriptor
+                              - No parameter needed for mace_descriptor
+        """
