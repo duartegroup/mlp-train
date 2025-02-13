@@ -135,10 +135,7 @@ class ACE(MLPotential):
         inp_file = open(filename, 'w')
 
         print(
-            'using IPFitting, ACE, JuLIP, LinearAlgebra\n'
-            'using JuLIP.MLIPs: combine, SumIP\n'
-            'using ACE: z2i, i2z, order\n'
-            f'BLAS.set_num_threads({Config.n_cores})\n',  # number of threads for the LSQ solver
+            'using ExtXYZ\n' 'using ACEpotentials\n',
             file=inp_file,
         )
 
@@ -147,53 +144,19 @@ class ACE(MLPotential):
 
         print(
             f'species = [{_str}]\n'
-            f"N = {Config.ace_params['N']}",  # maximum correlation order
-            file=inp_file,
-        )
-
-        for species in self.system.unique_atomic_symbols:
-            print(f'z{species} = AtomicNumber(:{species})', file=inp_file)
-
-        # maximum degrees for each correlation order
-        print(
-            'Dd = Dict("default" => 10,\n' '1 => 20,\n' '2 => 16,\n',
-            file=inp_file,
-        )
-
-        for species in self.system.unique_atomic_symbols:
-            if species == 'H':
-                logger.warning('Not adding basis functions on H')
-
-            print(
-                f'(3, z{species}) => {16 if species != "H" else 0},',
-                f'(4, z{species}) => {12 if species != "H" else 0},',
-                file=inp_file,
-            )
-
-        print(')', file=inp_file)
-
-        # for the basis function specified by (n, l)
-        # degree = n_weight * n + l_weight * l
-        # n_weights
-        print(
-            'Dn = Dict( "default" => 1.0 )\n'
-            'Dl = Dict( "default" => 1.5 )',  # l_weights
-            sep='\n',
+            f"correlation_order = {Config.ace_params['correlation_order']}\n"  # maximum correlation order (body order - 1)
+            f"total_degree = {Config.ace_params['total_degree']}",  # maximum total polynomial degree used for the basis
             file=inp_file,
         )
 
         # r0 is a typical length scale for the distance transform
         print(
-            'r0 = 1.3\n'
-            f'r_in = {self._r_in_estimate:.4f}\n'  # inner cutoff of ACE, choose a little more than min dist in dataset
             f"r_cut = {Config.ace_params['r_cut']}\n"  # outer cutoff of ACE
-            '\n'
-            f"deg_pair = {Config.ace_params['deg_pair']}\n"  # Specify the pair potential
-            f"r_cut_pair = {Config.ace_params['r_cut_pair']}\n",
+            '\n',
             file=inp_file,
         )
 
-        print('Vref = OneBody(', file=inp_file)
+        print('Eref = Dict(', file=inp_file)
         for symbol in self.system.unique_atomic_symbols:
             print(
                 f':{symbol} => {self.atomic_energies[symbol]},', file=inp_file
@@ -202,10 +165,9 @@ class ACE(MLPotential):
 
         # load the training data
         print(
-            f'train_data = IPFitting.Data.read_xyz("{self.name}_data.xyz",\n'
-            '                                     energy_key="energy",\n'
-            '                                     force_key="forces",\n'
-            '                                     virial_key="dummy");\n',
+            f'data_file = "{self.name}_data.xyz"\n'
+            f'data_set = ExtXYZ.load(data_file)\n'
+            f'data_keys = (energy_key = "energy", force_key = "forces", virial_key = "dummy")\n',
             file=inp_file,
         )
 
@@ -213,53 +175,49 @@ class ACE(MLPotential):
         print(
             'weights = Dict(\n'
             '       "default" => Dict("E" => 20.0, "F" => 1.0 , "V" => 0.0 )\n'
-            '        );\n'
-            'dbname = ""\n',  # change this to something to save the design matrix
+            '        );\n',
             file=inp_file,
         )
 
-        # specify the least squares solver, there are many implemented in IPFitting,
-        # here are two examples with sensible defaults
-
-        # Iterative LSQR with Laplacian scaling
         print(
-            'damp = 0.1 # weight in front of ridge penalty, range 0.5 - 0.01\n'
-            'rscal = 2.0 # power of Laplacian scaling of basis functions,  range is 1-4\n'
-            'solver = (:itlsq, (damp, rscal, 1e-6, identity))\n'
-            # simple riddge regression
-            # r = 1.05 # how much of the training error to sacrifise for regularisation
-            # solver = (:rid, r)
-            f'save_name = "{filename.replace(".jl", ".json")}"\n',
+            'model = acemodel(elements = species,\n'
+            '                   rcut = r_cut,\n'
+            '                   order = correlation_order,\n'
+            '                   totaldegree = total_degree,\n'
+            '                   Eref = Eref\n',
+            '                   );',
             file=inp_file,
         )
 
-        ######################################################################
+        # Available solvers: QR, BLR, LSQR, RRQR,
+        # information can be found here:
+
+        if Config.ace_params['solver'] == 'QR':
+            print('solver = ACEfit.QR(lambda = 1e-1)\n', file=inp_file)
+        elif Config.ace_params['solver'] == 'LSQR':
+            print(
+                'solver = ACEfit.LSQR(damp = 1e-4, atol = 1e-6)\n',
+                file=inp_file,
+            )
+        else:
+            raise NotImplementedError(
+                'The solver is not supported. Available options are QR or LSQR.'
+            )
 
         print(
-            'Deg = ACE.RPI.SparsePSHDegreeM(Dn, Dl, Dd)\n'
-            # construction of a basic basis for site energies
-            'Bsite = rpi_basis(species = species,\n'
-            '                   N = N,\n'
-            '                   r0 = r0,\n'
-            '                   D = Deg,\n'
-            '                   rin = r_in, rcut = r_cut,\n'  # domain for radial basis (cf documentation)
-            '                   maxdeg = 1.0,\n'  # maxdeg increases the entire basis size;
-            '                   pin = 2)\n'  # require smooth inner cutoff
-            # pair potential basis
-            'Bpair = pair_basis(species = species, r0 = r0, maxdeg = deg_pair,\n'
-            '                   rcut = r_cut_pair, rin = 0.0,\n'
-            '                   pin = 0 )   # pin = 0 means no inner cutoff\n'
-            'B = JuLIP.MLIPs.IPSuperBasis([Bpair, Bsite]);\n'
-            'println("The total number of basis functions is")\n'
-            '@show length(B)\n'
-            'dB = LsqDB(dbname, B, train_data);\n'
-            'IP, lsqinfo = IPFitting.Lsq.lsqfit(dB, Vref=Vref,\n'
-            '             solver=solver,\n'
-            '             asmerrs=true, weights=weights)\n'
-            'save_dict(save_name,'
-            '           Dict("IP" => write_dict(IP), "info" => lsqinfo))\n'
-            '#rmse_table(lsqinfo["errors"])\n'
-            'println("The L2 norm of the fit is ", round(norm(lsqinfo["c"]), digits=2))\n',
+            'acefit!(model, data_set;\n'
+            '        solver = solver, data_keys...);\n',
+            file=inp_file,
+        )
+
+        print(
+            '@info("Training Error Table")\n'
+            'ACEpotentials.liner_errors(data_set, model; data_keys...);\n',
+            file=inp_file,
+        )
+
+        print(
+            f'save_potential("{self.name}.json", model)',
             file=inp_file,
         )
 

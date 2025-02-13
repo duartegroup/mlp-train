@@ -35,10 +35,10 @@ class _ConfigClass:
     }
     # ACE params
     ace_params = {
-        'N': 4,  # maximum correlation order
+        'correlation_order': 4,  # maximum correlation order (body order - 1)
         'r_cut': 4.0,  # outer cutoff of ACE
-        'deg_pair': 5,  # Specify the pair potential
-        'r_cut_pair': 5.0,
+        'solver': 'LSQR',  # Solver for ridge regression problem. QR or LSQR
+        'total_degree': 8,  # maximum total polynomial degree used for the basis
     }
 
     # NeQUIP params
