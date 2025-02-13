@@ -21,7 +21,8 @@ echo "* Adding required registries and packages to Julia *"
 echo "using Pkg
 Pkg.Registry.add(\"General\")
 Pkg.Registry.add(RegistrySpec(url=\"https://github.com/ACEsuit/ACEregistry\"))
-Pkg.add(\"ACEpotentials\")" > add_julia_pkgs.jl
+Pkg.add(\"ACEpotentials\")
+Pkg.add(\"ExtXYZ\")" > add_julia_pkgs.jl
 julia add_julia_pkgs.jl
 
 # NOTE: `conda activate` does not work in scripts, need to use `conda run`, see:
