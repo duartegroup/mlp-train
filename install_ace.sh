@@ -25,6 +25,7 @@ Pkg.add(PackageSpec(name=\"ACEpotentials\",version=\"0.6.9\"))
 Pkg.add(\"JuLIP\")
 Pkg.add(\"PrettyTables\")
 Pkg.add(\"ExtXYZ\")
+Pkg.add(\"ACE\")
 Pkg.add(\"ASE\")" > add_julia_pkgs.jl
 
 julia add_julia_pkgs.jl
