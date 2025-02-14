@@ -63,14 +63,3 @@ class Descriptor(ABC):
         """
         norm = np.linalg.norm(vector)
         return vector if norm == 0 else vector / norm
-
-    def average(self, average_method: str = 'no_average'):
-        """
-        Compute the average of the descriptor representation to accommodate systems of different sizes.
-
-        Arguments:
-            average_method (str): Specifies the averaging method:
-                              - "inner" (default), "outer", or "no_average" for soap_descriptor
-                              - "average" or "no_average" (default) for ace_descriptor
-                              - No parameter needed for mace_descriptor
-        """
