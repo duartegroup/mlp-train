@@ -22,7 +22,8 @@ echo "using Pkg
 Pkg.Registry.add(\"General\")
 Pkg.Registry.add(RegistrySpec(url=\"https://github.com/ACEsuit/ACEregistry\"))
 Pkg.add(PackageSpec(name=\"ACEpotentials\",version=\"0.6.9\"))
-Pkg.add(PackageSpec(name=\"JuLIP\",version=\"0.14.2\"))
+Pkg.add(\"JuLIP\")
+Pkg.add(\"PrettyTables\")
 Pkg.add(\"ExtXYZ\")
 Pkg.add(\"ASE\")" > add_julia_pkgs.jl
 
