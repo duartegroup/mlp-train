@@ -18,7 +18,7 @@ jobs:
       fail-fast: true
       matrix:
         os: ["ubuntu-22.04"]
-        python-version: ["3.9"]
+        python-version: ["3.10"]
 
     defaults:
       run:
@@ -30,7 +30,7 @@ jobs:
     - uses: mamba-org/setup-micromamba@v2
       with:
         # the create command looks like this:
-        # `micromamba create -n test-env python=3.9 -f environment.yml`
+        # `micromamba create -n test-env python=3.10 -f environment.yml`
         environment-file: environment.yml
         environment-name: gha-test-env
         cache-environment: true
@@ -58,7 +58,7 @@ jobs:
       fail-fast: true
       matrix:
         os: ["ubuntu-22.04"]
-        python-version: ["3.9"]
+        python-version: ["3.10"]
 
     defaults:
       run:
@@ -100,7 +100,7 @@ jobs:
       fail-fast: true
       matrix:
         os: ["ubuntu-22.04"]
-        python-version: ["3.9"]
+        python-version: ["3.10"]
 
     defaults:
       run:
