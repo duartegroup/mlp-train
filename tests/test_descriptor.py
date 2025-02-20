@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from mlptrain.descriptor.soap_descriptor import (
+from mlptrain.descriptor import (
     SoapDescriptor,
     soap_matrix,
     soap_kernel_vector,
