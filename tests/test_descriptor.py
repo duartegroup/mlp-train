@@ -1,55 +1,73 @@
 import numpy as np
 import pytest
-from mlptrain.descriptor import (
-    SoapDescriptor,
-    soap_matrix,
-    soap_kernel_vector,
-)
+from ase.build import molecule
+from mlptrain.descriptor import SoapDescriptor
+from mlptrain import Configuration, ConfigurationSet
 
 
-def test_imports():
-    """Test that soap_matrix and soap_kernel_vector can be imported and are callable."""
-    assert callable(soap_matrix)
-    assert callable(soap_kernel_vector)
+# Fixtures for configurations
+@pytest.fixture
+def simple_molecule():
+    from ase.build import molecule
 
-
-def test_soap_descriptor_initialization():
-    """Test the initialization of the SoapDescriptor class."""
-    soap_desc = SoapDescriptor(
-        elements=['H', 'O'], r_cut=5.0, n_max=6, l_max=6, average='inner'
-    )
-    assert soap_desc.elements == ['H', 'O']
-    assert soap_desc.r_cut == 5.0
-    assert soap_desc.n_max == 6
-    assert soap_desc.l_max == 6
-    assert soap_desc.average == 'inner'
+    return Configuration(ase_atoms=molecule('H2O'))
 
 
 @pytest.fixture
-def mock_configuration():
-    """Mock configuration for testing."""
-
-    class MockConfiguration:
-        # Simulate the necessary properties and methods
-        def __init__(self):
-            self.ase_atoms = np.array([])
-
-    return MockConfiguration()
+def configuration_set(simple_molecule):
+    # Create a configuration set with duplicates of the simple molecule
+    return ConfigurationSet([simple_molecule, simple_molecule])
 
 
-def test_compute_representation(mock_configuration):
-    """Test compute_representation with a mock configuration."""
-    soap_desc = SoapDescriptor(elements=['H', 'O'])
-    # Simulating a configuration set with empty ASE atoms
-    result = soap_desc.compute_representation([mock_configuration])
-    assert isinstance(result, np.ndarray)
-    assert result.shape == (1, 0)
+def test_soap_descriptor_initialization():
+    """Test initialization of SoapDescriptor with and without elements."""
+    # With elements
+    descriptor_with = SoapDescriptor(
+        elements=['H', 'O'], r_cut=5.0, n_max=6, l_max=6
+    )
+    assert descriptor_with.elements == ['H', 'O']
+    # Without elements (should handle dynamic element setup)
+    descriptor_without = SoapDescriptor()
+    assert descriptor_without.elements is None
 
 
-def test_kernel_vector(mock_configuration):
-    """Test kernel_vector computation."""
-    soap_desc = SoapDescriptor(elements=['H', 'O'])
-    result = soap_desc.kernel_vector(mock_configuration, [mock_configuration])
-    assert isinstance(result, np.ndarray)
-    # Check the result shape
-    assert result.shape == (1,)
+def test_compute_representation(simple_molecule):
+    """Test computation of SOAP representation for a simple molecule."""
+    descriptor = SoapDescriptor(
+        elements=['H', 'O'], r_cut=5.0, n_max=6, l_max=6
+    )
+    representation = descriptor.compute_representation(simple_molecule)
+    assert representation.shape == (
+        1,
+        descriptor.n_max * descriptor.l_max * len(descriptor.elements) ** 2,
+    )
+
+
+def test_kernel_vector_identical_molecules(configuration_set):
+    """Test kernel vector calculation where both molecules are identical."""
+    descriptor = SoapDescriptor(
+        elements=['H', 'O'], r_cut=5.0, n_max=6, l_max=6
+    )
+    kernel_vector = descriptor.kernel_vector(
+        configuration_set[0], configuration_set, zeta=4
+    )
+    # Kernel between identical molecules should be close to 1 due to normalization
+    np.testing.assert_allclose(
+        kernel_vector, np.ones(len(configuration_set)), atol=1e-5
+    )
+
+
+def test_kernel_vector_different_molecules():
+    """Test kernel vector calculation with different molecules."""
+    # Different molecules: water and methane
+    water = Configuration(ase_atoms=molecule('H2O'))
+    methane = Configuration(ase_atoms=molecule('CH4'))
+    config_set = ConfigurationSet([water, methane])
+
+    descriptor = SoapDescriptor(
+        elements=['H', 'C', 'O'], r_cut=5.0, n_max=6, l_max=6
+    )
+    kernel_vector = descriptor.kernel_vector(water, config_set, zeta=4)
+    # Check values are reasonable; they should not be 1 since molecules differ
+    assert not np.allclose(kernel_vector, np.ones(len(config_set)), atol=1e-5)
+
