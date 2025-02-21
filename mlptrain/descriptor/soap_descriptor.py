@@ -3,6 +3,7 @@ import mlptrain
 from typing import Union, Optional, Sequence
 from dscribe.descriptors import SOAP
 from mlptrain.descriptor._base import Descriptor
+from _base import normalize
 
 
 class SoapDescriptor(Descriptor):
@@ -39,7 +40,7 @@ class SoapDescriptor(Descriptor):
         average: Optional[str] = 'inner',
     ):
         """Initialize SOAP descriptor with given parameters."""
-        super().__init__(name='soap_descriptor')
+        super().__init__(name='SoapDescriptor')
         self.elements = elements
         self.r_cut = r_cut
         self.n_max = n_max
@@ -64,13 +65,32 @@ class SoapDescriptor(Descriptor):
             mlptrain.Configuration, mlptrain.ConfigurationSet
         ],
     ) -> np.ndarray:
-        """Compute the SOAP descriptor matrix for given configurations."""
+        """C   Create a SOAP vector using dscribe (https://github.com/SINGROUP/dscribe)
+        for a set of configurations
 
-        # Convert single configuration into a list
+        soap_vector(config)           -> [[v0, v1, ..]]
+
+        soap_vector(config1, config2) -> [[v0, v1, ..],
+                                      [u0, u1, ..]]
+
+        soap_vector(configset)        -> [[v0, v1, ..], ..]
+
+        ---------------------------------------------------------------------------
+         Arguments:
+        args: Configurations to use
+
+
+        Returns:
+         (np.ndarray): shape = (m, n) for m total configurations"""
+
         if isinstance(configurations, mlptrain.Configuration):
-            configurations = [configurations]
+            configurations = np.append([configurations])
         elif isinstance(configurations, mlptrain.ConfigurationSet):
-            configurations = configurations.configurations
+            configurations = configurations.extend([c for c in configurations])
+        else:
+            raise ValueError(
+                f'Could not calculate a SOAP vector for {configurations}'
+            )
 
         # Dynamically set elements if not provided
         if self.soap is None:
@@ -95,24 +115,34 @@ class SoapDescriptor(Descriptor):
     def kernel_vector(
         self,
         configuration: mlptrain.Configuration,
-        configurations: Union[
-            mlptrain.Configuration, mlptrain.ConfigurationSet
-        ],
-        zeta=4,
+        configurations: mlptrain.ConfigurationSet,
+        zeta: int = 4,
     ) -> np.ndarray:
-        """Compute SOAP kernel similarity vector."""
+        """Calculate the kernel matrix between a set of configurations where the
+        kernel is:
 
-        # Ensure configurations are a list
-        if isinstance(configurations, mlptrain.Configuration):
-            configurations = [configurations]
-        elif isinstance(configurations, mlptrain.ConfigurationSet):
-            configurations = configurations.configurations
+        .. math::
+
+            K(p_a, p_b) = (p_a . p_b / (p_a.p_a x p_b.p_b)^1/2 )^ζ
+
+        ---------------------------------------------------------------------------
+        Arguments:
+            configuration:
+
+            configurations:
+
+            zeta: Power to raise the kernel matrix to
+
+        Returns:
+            (np.ndarray): Vector, shape = len(configurations)"""
 
         v1 = self.compute_representation(configuration)[0]
         m1 = self.compute_representation(configurations)
 
-        # Normalize vectors
-        v1 /= np.linalg.norm(v1)
-        m1 /= np.linalg.norm(m1, axis=1, keepdims=True)
+        # Normalize vectors using the defined normalize function from base.py
+        v1 = normalize(v1)
+        m1 = np.array([normalize(vec) for vec in m1])
 
-        return np.power(np.dot(m1, v1), zeta)
+        # Compute the kernel using the normalized vectors
+        kernel_values = np.power(np.dot(m1, v1), zeta)
+        return kernel_values
