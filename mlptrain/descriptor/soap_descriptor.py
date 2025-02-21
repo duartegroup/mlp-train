@@ -3,7 +3,7 @@ import mlptrain
 from typing import Union, Optional, Sequence
 from dscribe.descriptors import SOAP
 from mlptrain.descriptor._base import Descriptor
-from _base import normalize
+from mlptrain.descriptor._base import normalize
 
 
 class SoapDescriptor(Descriptor):
