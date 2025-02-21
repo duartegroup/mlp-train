@@ -70,4 +70,3 @@ def test_kernel_vector_different_molecules():
     kernel_vector = descriptor.kernel_vector(water, config_set, zeta=4)
     # Check values are reasonable; they should not be 1 since molecules differ
     assert not np.allclose(kernel_vector, np.ones(len(config_set)), atol=1e-5)
-
