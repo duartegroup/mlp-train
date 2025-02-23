@@ -68,7 +68,9 @@ def test_kernel_vector_identical_molecules(configuration_set):
 
 def test_kernel_vector_different_molecules():
     """Test kernel vector calculation with different molecules."""
-    water_instance = water()  # Call the function to get a Configuration instance
+    water_instance = (
+        water()
+    )  # Call the function to get a Configuration instance
     methane = Configuration(
         atoms=[  # Define methane similarly
             Atom('C', 0, 0, 0),
@@ -79,7 +81,6 @@ def test_kernel_vector_different_molecules():
         ]
     )
     config_set = ConfigurationSet(water_instance, methane)  # Proper unpacking
-
 
     descriptor = SoapDescriptor(
         elements=['H', 'C', 'O'], r_cut=5.0, n_max=6, l_max=6
