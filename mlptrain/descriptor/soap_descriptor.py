@@ -86,11 +86,9 @@ class SoapDescriptor(Descriptor):
             configurations = [
                 configurations
             ]  # Convert to list if it's a single Configuration
-        elif isinstance(configurations, mlptrain.ConfigurationSet):
-            configurations = configurations.extend([c for c in configurations])
-        else:
+        elif not isinstance(configurations, mlptrain.ConfigurationSet):
             raise ValueError(
-                f'Could not calculate a SOAP vector for {configurations}'
+                f'Unsupported configuration type: {type(configurations)}'
             )
 
         # Dynamically set elements if not provided
