@@ -83,13 +83,13 @@ class SoapDescriptor(Descriptor):
          (np.ndarray): shape = (m, n) for m total configurations"""
 
         if isinstance(configurations, mlptrain.Configuration):
-            configurations = np.append([configurations])
+            configurations = [configurations]  # Convert to list if it's a single Configuration
         elif isinstance(configurations, mlptrain.ConfigurationSet):
             configurations = configurations.extend([c for c in configurations])
         else:
             raise ValueError(
                 f'Could not calculate a SOAP vector for {configurations}'
-            )
+            )    
 
         # Dynamically set elements if not provided
         if self.soap is None:

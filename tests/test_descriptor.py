@@ -25,7 +25,7 @@ def simple_molecule():
 @pytest.fixture
 def configuration_set(simple_molecule):
     """Fixture to create a ConfigurationSet containing duplicates of a simple molecule."""
-    return ConfigurationSet([simple_molecule, simple_molecule])
+    return ConfigurationSet(*[simple_molecule, simple_molecule])
 
 
 def test_soap_descriptor_initialization():
@@ -68,6 +68,7 @@ def test_kernel_vector_identical_molecules(configuration_set):
 
 def test_kernel_vector_different_molecules():
     """Test kernel vector calculation with different molecules."""
+    water_instance = water()  # Call the function to get a Configuration instance
     methane = Configuration(
         atoms=[  # Define methane similarly
             Atom('C', 0, 0, 0),
@@ -77,7 +78,8 @@ def test_kernel_vector_different_molecules():
             Atom('H', 0, -1, 0),
         ]
     )
-    config_set = ConfigurationSet([water, methane])
+    config_set = ConfigurationSet(water_instance, methane)  # Proper unpacking
+
 
     descriptor = SoapDescriptor(
         elements=['H', 'C', 'O'], r_cut=5.0, n_max=6, l_max=6
