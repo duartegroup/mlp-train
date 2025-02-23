@@ -1,21 +1,30 @@
 import numpy as np
 import pytest
-from ase.build import molecule
+from autode.atoms import Atom
 from mlptrain.descriptor import SoapDescriptor
 from mlptrain import Configuration, ConfigurationSet
+
+
+def water():
+    """Function to create a water molecule Configuration."""
+    atoms = [
+        Atom('O', 0.0, 0.0, 0.0),  # Oxygen at the origin
+        Atom('H', 0.9572, 0.0, 0.0),  # Hydrogen 1
+        Atom('H', -0.239006, 0.926627, 0.0),  # Hydrogen 2
+    ]
+    return Configuration(atoms=atoms)
 
 
 # Fixtures for configurations
 @pytest.fixture
 def simple_molecule():
-    from ase.build import molecule
-
-    return Configuration(ase_atoms=molecule('H2O'))
+    """Fixture to return a simple water molecule Configuration."""
+    return water()
 
 
 @pytest.fixture
 def configuration_set(simple_molecule):
-    # Create a configuration set with duplicates of the simple molecule
+    """Fixture to create a ConfigurationSet containing duplicates of a simple molecule."""
     return ConfigurationSet([simple_molecule, simple_molecule])
 
 
@@ -60,8 +69,16 @@ def test_kernel_vector_identical_molecules(configuration_set):
 def test_kernel_vector_different_molecules():
     """Test kernel vector calculation with different molecules."""
     # Different molecules: water and methane
-    water = Configuration(ase_atoms=molecule('H2O'))
-    methane = Configuration(ase_atoms=molecule('CH4'))
+    water = water()  # Use your water function
+    methane = Configuration(
+        atoms=[  # Define methane similarly
+            Atom('C', 0, 0, 0),
+            Atom('H', 1, 0, 0),
+            Atom('H', -1, 0, 0),
+            Atom('H', 0, 1, 0),
+            Atom('H', 0, -1, 0),
+        ]
+    )
     config_set = ConfigurationSet([water, methane])
 
     descriptor = SoapDescriptor(
