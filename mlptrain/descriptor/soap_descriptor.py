@@ -138,10 +138,8 @@ class SoapDescriptor(Descriptor):
         v1 = self.compute_representation(configuration)[0]
         m1 = self.compute_representation(configurations)
 
-        # Normalize vectors using the defined normalize function from base.py
-        v1 = Descriptor.normalize(v1)
-        m1 = np.array([Descriptor.normalize(vec) for vec in m1])
+        # Normalize vectors
+        v1 /= np.linalg.norm(v1)
+        m1 /= np.linalg.norm(m1, axis=1, keepdims=True)
 
-        # Compute the kernel using the normalized vectors
-        kernel_values = np.power(np.dot(m1, v1), zeta)
-        return kernel_values
+        return np.power(np.dot(m1, v1), zeta)
