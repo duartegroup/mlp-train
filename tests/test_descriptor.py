@@ -68,8 +68,6 @@ def test_kernel_vector_identical_molecules(configuration_set):
 
 def test_kernel_vector_different_molecules():
     """Test kernel vector calculation with different molecules."""
-    # Different molecules: water and methane
-    water = water()  # Use your water function
     methane = Configuration(
         atoms=[  # Define methane similarly
             Atom('C', 0, 0, 0),
