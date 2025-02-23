@@ -3,7 +3,6 @@ import mlptrain
 from typing import Union, Optional, Sequence
 from dscribe.descriptors import SOAP
 from mlptrain.descriptor._base import Descriptor
-from mlptrain.descriptor._base import normalize
 
 
 class SoapDescriptor(Descriptor):
@@ -140,8 +139,8 @@ class SoapDescriptor(Descriptor):
         m1 = self.compute_representation(configurations)
 
         # Normalize vectors using the defined normalize function from base.py
-        v1 = normalize(v1)
-        m1 = np.array([normalize(vec) for vec in m1])
+        v1 = Descriptor.normalize(v1)
+        m1 = np.array([Descriptor.normalize(vec) for vec in m1])
 
         # Compute the kernel using the normalized vectors
         kernel_values = np.power(np.dot(m1, v1), zeta)
