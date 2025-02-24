@@ -139,7 +139,7 @@ class Configuration(AtomCollection):
         # by getting the smiles from autode's solvent database, creating a molecule object and optimising it
         # with xtb, then get the density from the density database
         elif solvent_name is not None:
-            solvent = get_solvent(solvent_name)
+            solvent = get_solvent(solvent_name, kind='implicit')
             solvent_smiles = solvent.smiles
             solvent_molecule = ade.Molecule(smiles=solvent_smiles)
             solvent_molecule.optimise(method=ade.methods.XTB())
