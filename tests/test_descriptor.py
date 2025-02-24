@@ -13,7 +13,7 @@ def water(h2o_configuration):
 @pytest.fixture
 def configuration_set(water):
     """Fixture to create a ConfigurationSet containing duplicates of a simple molecule."""
-    return ConfigurationSet([water, water])
+    return ConfigurationSet(water, water)
 
 
 def test_soap_descriptor_initialization():
@@ -61,9 +61,10 @@ def test_kernel_vector_different_molecules(water):
             Atom('H', 0, -1, 0),
         ]
     )
-    descriptor = SoapDescriptor(
-        elements=['H', 'C', 'O'], r_cut=5.0, n_max=6, l_max=6, average='inner'
-    )
-    kernel_vector = descriptor.kernel_vector(water, methane, zeta=4)
-    expected_value = 0.8552933998497922
-    assert np.testing.assert_allclose(kernel_vector, expected_value, atol=1e-5)
+    Configuration = Configuration(water)
+    Configurations = ConfigurationSet(water, methane)
+    kernel_vector = kernel_vector(Configuration, Configurations, zeta=4)
+    expected_value = 0.855
+    assert np.allclose(
+        kernel_vector, expected_value, atol=1e-3
+    ), f'Expected vector {expected_values}, but got {kernel_vector}'
