@@ -169,6 +169,7 @@ class Configuration(AtomCollection):
         single_sol_volume = (solvent_mass / 6.02214e23) / (
             solvent_density / 1e24
         )
+
         solvent_number = int(np.round((box_size**3) / single_sol_volume, 0))
 
         self.k_d_tree_insertion(
@@ -452,12 +453,12 @@ def build_cKDTree(coords: np.ndarray) -> cKDTree:
     return cKDTree(coords)
 
 
-def get_max_mol_distance(conf):
+def get_max_mol_distance(conf_atoms: List[Atom]) -> float:
     return max(
         [
             dist(atom1.coordinate, atom2.coordinate)
-            for atom1 in conf
-            for atom2 in conf
+            for atom1 in conf_atoms
+            for atom2 in conf_atoms
         ]
     )
 
