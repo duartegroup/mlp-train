@@ -6,15 +6,9 @@ import numpy as np
 
 
 @pytest.fixture
-def water():
-    """Fixture to create a water molecule."""
-    return Configuration(
-        atoms=[
-            Atom('O', 1.35670, 0.51322, 0.0),
-            Atom('H', 1.03337, 0.70894, -0.89333),
-            Atom('H', -0.239006, 0.926627, 0.0),
-        ]
-    )
+def water(h2o):
+    """Fixture to create a Configuration instance for water."""
+    return Configuration(h2o)
 
 
 @pytest.fixture
@@ -77,7 +71,7 @@ def test_kernel_vector_different_molecules(water, methane):
     )
     configurations = ConfigurationSet(water, methane)
     kernel_vector = descriptor.kernel_vector(water, configurations, zeta=4)
-    expected_value = [1.0, 0.35745]
+    expected_value = [1.0, 0.3177]
     assert np.allclose(
         kernel_vector, expected_value, atol=1e-3
     ), f'Expected vector {expected_value}, but got {kernel_vector}'
