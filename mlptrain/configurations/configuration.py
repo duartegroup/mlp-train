@@ -31,9 +31,9 @@ class Configuration(AtomCollection):
         """
         Set of atoms perhaps in a periodic box with an overall charge and
         spin multiplicity.
-        
+
         May contain a list with the indices of each first atom of a molecule, if there are several.
-        When adding several different molecules to a configuration, one can add the 
+        When adding several different molecules to a configuration, one can add the
         starting index of each molecule to this list. e.g. a list of three waters
         would be [0, 3, 6]. This list gets updated when the solvate function is called.
 
@@ -42,9 +42,9 @@ class Configuration(AtomCollection):
             atoms:
             charge:
             mult:
-            box: Optional box, if None 
+            box: Optional box, if None
             mol_list: List[int] = None
-        
+
         """
         super().__init__(atoms=atoms)
 
@@ -52,7 +52,7 @@ class Configuration(AtomCollection):
         self.mult = mult
         self.box = box
 
-        self.energy = Energy()  
+        self.energy = Energy()
         self.forces = Forces()
 
         # Collective variable values (obtained using PLUMED)
@@ -81,7 +81,7 @@ class Configuration(AtomCollection):
             _atoms.set_cell(cell=self.box.size)
 
         return _atoms
-    
+
     def solvate(
         self,
         box_size: float = None,
@@ -89,53 +89,52 @@ class Configuration(AtomCollection):
         solvent_name: str = None,
         solvent_density: float = None,
         solvent_molecule: ade.Molecule = None,
-        threshold: float = 1.8
+        threshold: float = 1.8,
     ) -> None:
-        """Solvate the configuration of a solute using solvent molecules. 
+        """Solvate the configuration of a solute using solvent molecules.
         The box size can be specified manually in Å or it can be calculated automatically
         by adding a buffer distance to the maximum distance between any two atoms in the solute.
         The solvent can be specified either by name, if it is already contained
         in the solvent database or by providing an autode Molecule object, in which
         case the density of the solvent must also be provided.
-        
+
         ___________________________________________________________________________
-        
+
         Arguments:
-        
+
         box_size: float = None
             The size of the box in Å. If None, the box size will be calculated automatically.
-            
+
         buffer_distance: float = 10
             The distance in Å to be added to the maximum distance between any two atoms in the solute.
-        
+
         solvent_name: str = None
             The name of the solvent contained in the solvent database.
-        
+
         solvent_molecule: autode.Molecule = None
             The autode Molecule object representing the solvent, if provided explicitly by the user.
-        
+
         solvent_density: float = None
             The density which must be provided along with the solvent molecule.
-        
+
         threshold: float = 1.8
             The distance in Å below which two atoms are considered to be in contact.
-            
+
         ___________________________________________________________________________
-        
+
         """
         # Calculate the box size if not provided, based on the maximum distance between any two atoms in the solute
         # and the buffer distance
         if box_size is None:
-            get_max_mol_distance = lambda conf: max([dist(atom1.coordinate, atom2.coordinate) for atom1 in conf for atom2 in conf])
             box_size = get_max_mol_distance(self.atoms) + buffer_distance
-        
+
         # Assume cubic box
-        self.box = Box([box_size]*3)
-        
+        self.box = Box([box_size] * 3)
+
         # If both the solvent name and the solvent molecule and density are provided, stop checking
         if None not in (solvent_density, solvent_molecule):
             pass
-        
+
         # If the solvent name is provided, get the solvent molecule and density from the solvent database
         # by getting the smiles from autode's solvent database, creating a molecule object and optimising it
         # with xtb, then get the density from the density database
@@ -143,110 +142,123 @@ class Configuration(AtomCollection):
             solvent = get_solvent(solvent_name)
             solvent_smiles = solvent.smiles
             solvent_molecule = ade.Molecule(smiles=solvent_smiles)
-            solvent_molecule.optimise(method = ade.methods.XTB())
-            get_density = lambda name: solvent_densities[name]
-            solvent_density = get_density(solvent_name)
-    
+            solvent_molecule.optimise(method=ade.methods.XTB())
+            solvent_density = solvent_densities[solvent.name]
+
         else:
             # If neither the solvent name nor the solvent molecule and density are provided, raise an error
-            raise ValueError("Either the solvent name or the solvent molecule and density must be provided")
-        
-        #Move solute to the box middle
-        solute_com = self.com
-        for (n, atom) in enumerate(self.atoms):
-            atom.coordinate = atom.coordinate - solute_com + (box_size/2)
-        
-        #Move the solvent to the box origin, so that the random vectors added later are all within the box
-        solvent_com = solvent_molecule.com
-        for (n, atom) in enumerate(solvent_molecule.atoms):
-            atom.coordinate = atom.coordinate - solvent_com
-        
-        #Calculate the number of solvent molecules to be inserted
-        solvent_mass = sum([atom.mass for atom in solvent_molecule.atoms])
-        #calculate the theoretical volume a single molecule should take up at its experimentally determined density 
-        # by finding the mass of a single molecule in g, dividing by the density in g/cm^3 and then converting 
-        # to nm by multiplying by 1e24 to get Å
-        single_sol_volume = (solvent_mass / 6.02214e23) / (solvent_density/1e24)
-        solvent_number = int(np.round((box_size**3) / single_sol_volume, 0))
-        
-        self.k_d_tree_insertion(solvent_molecule, box_size, threshold, solvent_number)
+            raise ValueError(
+                'Either the solvent name or the solvent molecule and density must be provided'
+            )
 
-        
-        
+        # Move solute to the box middle
+        solute_com = self.com
+        for n, atom in enumerate(self.atoms):
+            atom.coordinate = atom.coordinate - solute_com + (box_size / 2)
+
+        # Move the solvent to the box origin, so that the random vectors added later are all within the box
+        solvent_com = solvent_molecule.com
+        for n, atom in enumerate(solvent_molecule.atoms):
+            atom.coordinate = atom.coordinate - solvent_com
+
+        # Calculate the number of solvent molecules to be inserted
+        solvent_mass = sum([atom.mass for atom in solvent_molecule.atoms])
+        # calculate the theoretical volume a single molecule should take up at its experimentally determined density
+        # by finding the mass of a single molecule in g, dividing by the density in g/cm^3 and then converting
+        # to nm by multiplying by 1e24 to get Å
+        single_sol_volume = (solvent_mass / 6.02214e23) / (
+            solvent_density / 1e24
+        )
+        solvent_number = int(np.round((box_size**3) / single_sol_volume, 0))
+
+        self.k_d_tree_insertion(
+            solvent_molecule, box_size, threshold, solvent_number
+        )
+
     def k_d_tree_insertion(
         self,
         solvent_molecule: ade.Molecule,
         box_size: float,
         threshold: float,
-        n_solvent: int
+        n_solvent: int,
     ) -> np.ndarray:
         """Insert solvent molecules into the box using a k-d tree to check for collisions.
         Implemented according to the algorithm described in the paper:
-        
+
         "https://chemrxiv.org/engage/chemrxiv/article-details/678621ccfa469535b9ea8786"
-        
+
         ___________________________________________________________________________
-        
+
         Arguments:
-        
+
         solvent_molecule: autode.Molecule
             The molecule representing the solvent to be inserted.
-            
+
         box_size: float
             The size of the box in Å. A cubic box is assumed, and boxes where the three box
             vectors are not equal are not supported.
-        
+
         threshold: float
             The distance in Å below which two atoms are considered to be in contact.
-        
+
         n_solvent: int
             The number of solvent molecules to be inserted.
-        
-        ___________________________________________________________________________    
+
+        ___________________________________________________________________________
         """
-        
+
         # Get the coordinates of the solute in the middle of the box
         system_coords = np.array([atom.coordinate for atom in self.atoms])
         # Get the coordinates of the single isolated solvent molecule
-        solvent_coords = np.array([atom.coordinate for atom in solvent_molecule.atoms])
+        solvent_coords = np.array(
+            [atom.coordinate for atom in solvent_molecule.atoms]
+        )
         # Initialise a list to keep track of the inserted solvent molecules
         mol_list = [0, len(solvent_coords)]
-        
+
         for i in range(n_solvent):
             # Build a k-d tree from the system coordinates in order to query the nearest neighbours later
             existing_tree = build_cKDTree(system_coords)
             inserted = False
             attempt = 0
-            
+
             # Try to insert the solvent molecule into the box with a maximum of 1000 attempts
             while not inserted and attempt < 1000:
                 attempt += 1
-                
+
                 # Generate a random rotation matrix and a random translation vector
                 rot_matrix = random_rotation()
                 rot_solvent = np.dot(solvent_coords, rot_matrix)
                 translation = random_vector_in_box(box_size)
-                
+
                 # Translate the rotated solvent molecule and check if it is within the box
                 trial_coords = rot_solvent + translation
-                if not np.all(([np.all(coord<box_size) and np.all(coord>0) for coord in trial_coords])):
+                if not np.all(
+                    (
+                        [
+                            np.all(coord < box_size) and np.all(coord > 0)
+                            for coord in trial_coords
+                        ]
+                    )
+                ):
                     continue
-                
+
                 # Query the nearest neighbours of the trial coordinates and check if they are within the threshold
                 # If they are, add them to the system coordinates and update the mol_list
                 distances, indeces = existing_tree.query(trial_coords)
                 if all(distances > threshold):
                     solvent_translated = deepcopy(solvent_molecule)
-                    for (n, atom) in enumerate(solvent_translated.atoms):
+                    for n, atom in enumerate(solvent_translated.atoms):
                         atom.coordinate = trial_coords[n]
                     self.atoms.extend(solvent_translated.atoms)
-                    system_coords = np.concatenate((system_coords, trial_coords))
+                    system_coords = np.concatenate(
+                        (system_coords, trial_coords)
+                    )
                     inserted = True
                     mol_list.append(len(self.atoms))
-        
+
         self.mol_list = mol_list
         return system_coords
-    
 
     def update_attr_from(self, configuration: 'Configuration') -> None:
         """
@@ -385,30 +397,70 @@ class Configuration(AtomCollection):
     def copy(self) -> 'Configuration':
         return deepcopy(self)
 
-    
+
 def random_rotation() -> np.ndarray:
     """Generate a random rotation matrix"""
-    
+
     theta = random.random() * 360
     kappa = random.random() * 360
     gamma = random.random() * 360
-    
+
     rot_matrix = np.eye(3)
-    rot_matrix = np.dot(rot_matrix, np.array([[1, 0, 0], [0, np.cos(theta), -np.sin(theta)], [0, np.sin(theta), np.cos(theta)]]))
-    rot_matrix = np.dot(rot_matrix, np.array([[np.cos(kappa), 0, np.sin(kappa)], [0, 1, 0], [-np.sin(kappa), 0, np.cos(kappa)]]))
-    rot_matrix = np.dot(rot_matrix, np.array([[np.cos(gamma), -np.sin(gamma), 0], [np.sin(gamma), np.cos(gamma), 0], [0, 0, 1]]))
-    
+    rot_matrix = np.dot(
+        rot_matrix,
+        np.array(
+            [
+                [1, 0, 0],
+                [0, np.cos(theta), -np.sin(theta)],
+                [0, np.sin(theta), np.cos(theta)],
+            ]
+        ),
+    )
+    rot_matrix = np.dot(
+        rot_matrix,
+        np.array(
+            [
+                [np.cos(kappa), 0, np.sin(kappa)],
+                [0, 1, 0],
+                [-np.sin(kappa), 0, np.cos(kappa)],
+            ]
+        ),
+    )
+    rot_matrix = np.dot(
+        rot_matrix,
+        np.array(
+            [
+                [np.cos(gamma), -np.sin(gamma), 0],
+                [np.sin(gamma), np.cos(gamma), 0],
+                [0, 0, 1],
+            ]
+        ),
+    )
+
     return rot_matrix
 
-def random_vector_in_box(box_size: float) -> np.ndarray: 
+
+def random_vector_in_box(box_size: float) -> np.ndarray:
     """Generate a random vector in a box"""
-    
+
     return np.array([random.random() * box_size for i in range(3)])
-                    
+
+
 def build_cKDTree(coords: np.ndarray) -> cKDTree:
     """Build a cKDTree from a set of coordinates"""
-    
+
     return cKDTree(coords)
+
+
+def get_max_mol_distance(conf):
+    return max(
+        [
+            dist(atom1.coordinate, atom2.coordinate)
+            for atom1 in conf
+            for atom2 in conf
+        ]
+    )
+
 
 solvent_densities = {
     'water': 1.0,
@@ -563,5 +615,5 @@ solvent_densities = {
     'quinoline': 1.09,
     'argon': 0.001784,
     'krypton': 0.003733,
-    'xenon': 0.005894
+    'xenon': 0.005894,
 }
