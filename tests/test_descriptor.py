@@ -5,13 +5,9 @@ from mlptrain import Configuration, ConfigurationSet
 import numpy as np
 
 
-def water():
-    atoms = [
-        Atom('O', 0.0, 0.0, 0.0),
-        Atom('H', 0.9572, 0.0, 0.0),
-        Atom('H', -0.239006, 0.926627, 0.0),
-    ]
-    return Configuration(atoms=atoms)
+@pytest.fixture
+def water(h2o):
+    return h2o
 
 
 @pytest.fixture
@@ -71,13 +67,11 @@ def test_kernel_vector_different_molecules():
             Atom('H', 0, -1, 0),
         ]
     )
-    config_set = ConfigurationSet(water_instance, methane)
+    config_set = ConfigurationSet([water_instance, methane])
+
     descriptor = SoapDescriptor(
         elements=['H', 'C', 'O'], r_cut=5.0, n_max=6, l_max=6, average='inner'
     )
-    kernel_vector = descriptor.kernel_vector(
-        water_instance, config_set, zeta=4
-    )
-
+    kernel_vector = descriptor.kernel_vector(water_instance, methane, zeta=4)
     expected_value = 0.8552933998497922
     assert np.testing.assert_allclose(kernel_vector, expected_value, atol=1e-5)

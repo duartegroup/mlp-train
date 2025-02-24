@@ -6,29 +6,7 @@ from mlptrain.descriptor._base import Descriptor
 
 
 class SoapDescriptor(Descriptor):
-    """
-    SOAP Descriptor Representation.
-
-    Initializes a SOAP descriptor for computing the Smooth Overlap of Atomic Positions (SOAP) representation.
-
-    Arguments:
-        elements (Optional[Sequence[str]]): Atomic species (e.g., `['H', 'O']`) for which the SOAP descriptor is computed.
-            If `None`, elements will be inferred from input configurations.
-        r_cut (float): Cutoff radius (Å) for considering atomic neighbors, defining the spatial range for SOAP calculations.
-        n_max (int): Number of radial basis functions, affecting the resolution in the radial direction.
-        l_max (int): Maximum degree of spherical harmonics, controlling the angular resolution.
-        average (Optional[str]): Averaging mode for the SOAP descriptor:
-            - `"inner"` (default): Averages SOAP vectors before computing the power spectrum.
-            - `"outer"`: Computes the power spectrum for each atom, then averages.
-            - `None`: No averaging, returns per-atom descriptors.
-
-    Returns:
-        np.ndarray: SOAP descriptor matrix of shape `(m, n)`, where:
-            - `m` is the number of input configurations.
-            - `n` is the descriptor dimensionality, dependent on `n_max` and `l_max`.
-
-
-    """
+    """SOAP Descriptor Representation."""
 
     def __init__(
         self,
@@ -64,7 +42,7 @@ class SoapDescriptor(Descriptor):
             mlptrain.Configuration, mlptrain.ConfigurationSet
         ],
     ) -> np.ndarray:
-        """C   Create a SOAP vector using dscribe (https://github.com/SINGROUP/dscribe)
+        """Create a SOAP vector using dscribe (https://github.com/SINGROUP/dscribe)
         for a set of configurations
 
         soap_vector(config)           -> [[v0, v1, ..]]
@@ -75,12 +53,15 @@ class SoapDescriptor(Descriptor):
         soap_vector(configset)        -> [[v0, v1, ..], ..]
 
         ---------------------------------------------------------------------------
-         Arguments:
+        Arguments:
         args: Configurations to use
 
 
         Returns:
-         (np.ndarray): shape = (m, n) for m total configurations"""
+        np.ndarray: SOAP descriptor matrix of shape `(m, n)`, where:
+            - `m` is the number of input configurations.
+            - `n` is the descriptor dimensionality, dependent on `n_max` and `l_max`.
+        """
 
         if isinstance(configurations, mlptrain.Configuration):
             configurations = [
