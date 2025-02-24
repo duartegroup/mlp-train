@@ -6,9 +6,9 @@ import numpy as np
 
 
 @pytest.fixture
-def water(h2o):
+def water(h2o_configuration):
     """Fixture to create a Configuration instance for water."""
-    return Configuration(h2o)
+    return h2o_configuration
 
 
 @pytest.fixture
