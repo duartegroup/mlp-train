@@ -67,8 +67,6 @@ def test_kernel_vector_different_molecules():
             Atom('H', 0, -1, 0),
         ]
     )
-    config_set = ConfigurationSet([water_instance, methane])
-
     descriptor = SoapDescriptor(
         elements=['H', 'C', 'O'], r_cut=5.0, n_max=6, l_max=6, average='inner'
     )
