@@ -64,7 +64,7 @@ def test_kernel_vector_identical_molecules(configuration_set):
     assert np.allclose(kernel_vector, np.ones_like(kernel_vector), atol=1e-5)
 
 
-def test_kernel_vector_different_molecules(water):
+def test_kernel_vector_different_molecules(water, methane):
     descriptor = SoapDescriptor(
         elements=['H', 'C', 'O'], r_cut=5.0, n_max=6, l_max=6, average='inner'
     )
