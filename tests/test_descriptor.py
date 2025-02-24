@@ -2,10 +2,10 @@ import pytest
 from autode.atoms import Atom
 from mlptrain.descriptor import SoapDescriptor
 from mlptrain import Configuration, ConfigurationSet
+import numpy as np
 
 
 def water():
-    """Function to create a water molecule Configuration."""
     atoms = [
         Atom('O', 0.0, 0.0, 0.0),
         Atom('H', 0.9572, 0.0, 0.0),
@@ -14,10 +14,8 @@ def water():
     return Configuration(atoms=atoms)
 
 
-# Fixtures for configurations
 @pytest.fixture
 def simple_molecule():
-    """Fixture to return a simple water molecule Configuration."""
     return water()
 
 
@@ -59,15 +57,11 @@ def test_kernel_vector_identical_molecules(configuration_set):
     kernel_vector = descriptor.kernel_vector(
         configuration_set[0], configuration_set, zeta=4
     )
-    assert (
-        kernel_vector is not None
-    )  # Example assertion, adjust based on expected values
+    assert np.allclose(kernel_vector, np.ones_like(kernel_vector), atol=1e-5)
 
 
 def test_kernel_vector_different_molecules():
-    water_instance = (
-        water()
-    )  # Ensure water() is called to get a Configuration instance
+    water_instance = water()
     methane = Configuration(
         atoms=[
             Atom('C', 0, 0, 0),
@@ -79,11 +73,11 @@ def test_kernel_vector_different_molecules():
     )
     config_set = ConfigurationSet(water_instance, methane)
     descriptor = SoapDescriptor(
-        elements=['H', 'C', 'O'], r_cut=5.0, n_max=6, l_max=6
+        elements=['H', 'C', 'O'], r_cut=5.0, n_max=6, l_max=6, average='inner'
     )
     kernel_vector = descriptor.kernel_vector(
         water_instance, config_set, zeta=4
     )
-    assert (
-        kernel_vector is not None
-    )  # Example assertion, adjust based on expected values
+
+    expected_value = 0.8552933998497922
+    assert np.testing.assert_allclose(kernel_vector, expected_value, atol=1e-5)
