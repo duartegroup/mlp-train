@@ -11,6 +11,19 @@ def water(h2o_configuration):
 
 
 @pytest.fixture
+def methane():
+    """Fixture to create a Configuration instance for methane."""
+    atoms = [
+        Atom('C', 0, 0, 0),
+        Atom('H', 1, 0, 0),
+        Atom('H', -1, 0, 0),
+        Atom('H', 0, 1, 0),
+        Atom('H', 0, -1, 0),
+    ]
+    return Configuration(atoms=atoms)
+
+
+@pytest.fixture
 def configuration_set(water):
     """Fixture to create a ConfigurationSet containing duplicates of a simple molecule."""
     return ConfigurationSet(water, water)
@@ -52,19 +65,12 @@ def test_kernel_vector_identical_molecules(configuration_set):
 
 
 def test_kernel_vector_different_molecules(water):
-    methane = Configuration(
-        atoms=[
-            Atom('C', 0, 0, 0),
-            Atom('H', 1, 0, 0),
-            Atom('H', -1, 0, 0),
-            Atom('H', 0, 1, 0),
-            Atom('H', 0, -1, 0),
-        ]
+    descriptor = SoapDescriptor(
+        elements=['H', 'C', 'O'], r_cut=5.0, n_max=6, l_max=6, average='inner'
     )
-    Configuration = Configuration(water)
-    Configurations = ConfigurationSet(water, methane)
-    kernel_vector = kernel_vector(Configuration, Configurations, zeta=4)
-    expected_value = 0.855
+    configurations = ConfigurationSet(water, methane)
+    kernel_vector = descriptor.kernel_vector(water, configurations, zeta=4)
+    expected_value = 0.3574593050368792
     assert np.allclose(
         kernel_vector, expected_value, atol=1e-3
-    ), f'Expected vector {expected_values}, but got {kernel_vector}'
+    ), f'Expected vector {expected_value}, but got {kernel_vector}'
