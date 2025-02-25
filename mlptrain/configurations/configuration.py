@@ -89,24 +89,36 @@ class Configuration(AtomCollection):
         solvent_name: str = None,
         solvent_density: float = None,
         solvent_molecule: ade.Molecule = None,
-        threshold: float = 1.8,
+        contact_threshold: float = 1.8,
     ) -> None:
-        """Solvate the configuration of a solute using solvent molecules.
+        """Solvate the configuration of a solute using solvent molecules. Currently solvent mixtures are not supported.
         The box size can be specified manually in Å or it can be calculated automatically
-        by adding a buffer distance to the maximum distance between any two atoms in the solute.
+        by adding a buffer distance (in Å) to the maximum distance between any two atoms in the solute.
+
         The solvent can be specified either by name, if it is already contained
-        in the solvent database or by providing an autode Molecule object, in which
-        case the density of the solvent must also be provided.
+        in the solvent database. With this option, the solvent will be optimised
+        by XTB and the density will be extracted from the database.
+
+        Another option is to providing an autode Molecule object of a pre-optimised solvent molecule
+        of your choosing, in which case the density of the solvent (in g/cm^3)
+        must also be provided. This can also serve to provide non-standard solvents
+        and densities.
+
+        The contact threshold is the distance in Å below which two atoms
+        are considered to be in contact, when placing the solvents in the box.
 
         ___________________________________________________________________________
 
         Arguments:
 
         box_size: float = None
-            The size of the box in Å. If None, the box size will be calculated automatically.
+            The size of the box in Å. If None, the box size will be calculated automatically. This is done
+            by calculating the maximum distance between any two atoms in the solute and adding a buffer distance,
+            which is specified by the buffer_distance argument.
 
         buffer_distance: float = 10
-            The distance in Å to be added to the maximum distance between any two atoms in the solute.
+            The distance in Å to be added to the maximum distance between any two atoms in the solute, to calculate
+            the box size. This argument is only used if the box_size is not provided.
 
         solvent_name: str = None
             The name of the solvent contained in the solvent database.
@@ -115,9 +127,9 @@ class Configuration(AtomCollection):
             The autode Molecule object representing the solvent, if provided explicitly by the user.
 
         solvent_density: float = None
-            The density which must be provided along with the solvent molecule.
+            The density, in g/cm^3 which must be provided along with the solvent molecule.
 
-        threshold: float = 1.8
+        contact_threshold: float = 1.8
             The distance in Å below which two atoms are considered to be in contact.
 
         ___________________________________________________________________________
@@ -126,12 +138,12 @@ class Configuration(AtomCollection):
         # Calculate the box size if not provided, based on the maximum distance between any two atoms in the solute
         # and the buffer distance
         if box_size is None:
-            box_size = get_max_mol_distance(self.atoms) + buffer_distance
+            box_size = _get_max_mol_distance(self.atoms) + buffer_distance
 
         # Assume cubic box
         self.box = Box([box_size] * 3)
 
-        # If both the solvent name and the solvent molecule and density are provided, stop checking
+        # If both solvent molecule and density are provided, stop checking
         if None not in (solvent_density, solvent_molecule):
             pass
 
@@ -146,12 +158,12 @@ class Configuration(AtomCollection):
             solvent_density = solvent_densities[solvent.name]
 
         else:
-            # If neither the solvent name nor the solvent molecule and density are provided, raise an error
+            # If neither the solvent name nor the combination of solvent molecule and density are provided, raise an error
             raise ValueError(
-                'Either the solvent name or the solvent molecule and density must be provided'
+                'Either the solvent name or the combination of solvent molecule and density must be provided'
             )
 
-        # Move solute to the box middle
+        # Move solute to the box center
         solute_com = self.com
         for n, atom in enumerate(self.atoms):
             atom.coordinate = atom.coordinate - solute_com + (box_size / 2)
@@ -163,24 +175,30 @@ class Configuration(AtomCollection):
 
         # Calculate the number of solvent molecules to be inserted
         solvent_mass = sum([atom.mass for atom in solvent_molecule.atoms])
-        # calculate the theoretical volume a single molecule should take up at its experimentally determined density
-        # by finding the mass of a single molecule in g, dividing by the density in g/cm^3 and then converting
-        # to nm by multiplying by 1e24 to get Å
-        single_sol_volume = (solvent_mass / 6.02214e23) / (
-            solvent_density / 1e24
-        )
-
+        # Calculate the volume of a single solvent molecule by first calculating the mass of a single molecule: m = M/N_a
+        single_mol_mass = solvent_mass / 6.02214e23
+        # 1e24 is used to convert the density from g/cm^3 to g/Å^3 (1e24 Å^3 = 1 cm^3, 1e8 Å = 1 cm)
+        density_in_angstrom = solvent_density / 1e24
+        # Then calculate the volume in Å^3 of a single molecule by dividing the mass by the density
+        single_sol_volume = (single_mol_mass) / (density_in_angstrom)
+        # Number of solvent molecules that would fit into the box without the solute
         solvent_number = int(np.round((box_size**3) / single_sol_volume, 0))
 
+        logger.info(
+            f'Attempting to add {solvent_number} solvent molecules'
+            f'with the formula {solvent_molecule.formula} to a cubic'
+            f'box with a side length of {box_size:.2f} Å'
+        )
+
         self.k_d_tree_insertion(
-            solvent_molecule, box_size, threshold, solvent_number
+            solvent_molecule, box_size, contact_threshold, solvent_number
         )
 
     def k_d_tree_insertion(
         self,
         solvent_molecule: ade.Molecule,
         box_size: float,
-        threshold: float,
+        contact_threshold: float,
         n_solvent: int,
     ) -> np.ndarray:
         """Insert solvent molecules into the box using a k-d tree to check for collisions.
@@ -199,7 +217,7 @@ class Configuration(AtomCollection):
             The size of the box in Å. A cubic box is assumed, and boxes where the three box
             vectors are not equal are not supported.
 
-        threshold: float
+        contact_threshold: float
             The distance in Å below which two atoms are considered to be in contact.
 
         n_solvent: int
@@ -208,18 +226,23 @@ class Configuration(AtomCollection):
         ___________________________________________________________________________
         """
 
-        # Get the coordinates of the solute in the middle of the box
+        # Get the coordinates of the solute in the center of the box
         system_coords = np.array([atom.coordinate for atom in self.atoms])
         # Get the coordinates of the single isolated solvent molecule
         solvent_coords = np.array(
             [atom.coordinate for atom in solvent_molecule.atoms]
         )
-        # Initialise a list to keep track of the inserted solvent molecules
-        mol_list = [0, len(solvent_coords)]
+        # Initialise a list to keep track of the inserted solvent molecules, with each element
+        # being the index of the first atom of a molecule
+        mol_list = [0, len(system_coords)]
+        # Initialise a count of the solvents inserted into the box. The ideal solvent number is
+        # the number of solvent molecules that fit into the box, but this number might not be reached
+        # because the solute might be in the way of some of the solvent molecules
+        solvents_inserted = 0
 
         for i in range(n_solvent):
             # Build a k-d tree from the system coordinates in order to query the nearest neighbours later
-            existing_tree = build_cKDTree(system_coords)
+            existing_tree = _build_cKDTree(system_coords)
             inserted = False
             attempt = 0
 
@@ -227,10 +250,14 @@ class Configuration(AtomCollection):
             while not inserted and attempt < 1000:
                 attempt += 1
 
-                # Generate a random rotation matrix and a random translation vector
-                rot_matrix = random_rotation()
+                # Generate a random rotation matrix and a random translation vector which
+                # depends on a seed number that is the product of the current iteration (number of solvent
+                # being added) to the third power and the attempt number. This is to avoid
+                # the same solvent molecule being inserted multiple times in the same orientation
+                seed_number = i**3 * attempt
+                rot_matrix = _random_rotation(seed_number)
                 rot_solvent = np.dot(solvent_coords, rot_matrix)
-                translation = random_vector_in_box(box_size)
+                translation = _random_vector_in_box(box_size, seed_number)
 
                 # Translate the rotated solvent molecule and check if it is within the box
                 trial_coords = rot_solvent + translation
@@ -244,21 +271,29 @@ class Configuration(AtomCollection):
                 ):
                     continue
 
-                # Query the nearest neighbours of the trial coordinates and check if they are within the threshold
+                # Query the nearest neighbours of the trial coordinates and check if they are within the contact_threshold
                 # If they are, add them to the system coordinates and update the mol_list
                 distances, indeces = existing_tree.query(trial_coords)
-                if all(distances > threshold):
+                if all(distances > contact_threshold):
                     solvent_translated = deepcopy(solvent_molecule)
+
                     for n, atom in enumerate(solvent_translated.atoms):
                         atom.coordinate = trial_coords[n]
+
                     self.atoms.extend(solvent_translated.atoms)
                     system_coords = np.concatenate(
                         (system_coords, trial_coords)
                     )
                     inserted = True
                     mol_list.append(len(self.atoms))
+                    solvents_inserted += 1
 
-        self.mol_list = mol_list
+        logger.info(
+            f'Inserted {solvents_inserted} solvent molecules into the box'
+        )
+
+        # remove the last element of the mol_list, as this is the index of the last atom in the system
+        self.mol_list = mol_list[:-1]
         return system_coords
 
     def update_attr_from(self, configuration: 'Configuration') -> None:
@@ -399,11 +434,13 @@ class Configuration(AtomCollection):
         return deepcopy(self)
 
 
-def random_rotation() -> np.ndarray:
+def _random_rotation(seed: int) -> np.ndarray:
     """Generate a random rotation matrix"""
-
+    random.seed(seed)
     theta = random.random() * 360
+    random.seed(seed * 2)
     kappa = random.random() * 360
+    random.seed(seed * 3)
     gamma = random.random() * 360
 
     rot_matrix = np.eye(3)
@@ -441,19 +478,19 @@ def random_rotation() -> np.ndarray:
     return rot_matrix
 
 
-def random_vector_in_box(box_size: float) -> np.ndarray:
+def _random_vector_in_box(box_size: float, seed: int) -> np.ndarray:
     """Generate a random vector in a box"""
-
+    random.seed(seed)
     return np.array([random.random() * box_size for i in range(3)])
 
 
-def build_cKDTree(coords: np.ndarray) -> cKDTree:
+def _build_cKDTree(coords: np.ndarray) -> cKDTree:
     """Build a cKDTree from a set of coordinates"""
 
     return cKDTree(coords)
 
 
-def get_max_mol_distance(conf_atoms: List[Atom]) -> float:
+def _get_max_mol_distance(conf_atoms: List[Atom]) -> float:
     return max(
         [
             dist(atom1.coordinate, atom2.coordinate)
@@ -463,158 +500,161 @@ def get_max_mol_distance(conf_atoms: List[Atom]) -> float:
     )
 
 
+# Solvent densities were taken from the CRC handbook
+# CRC Handbook of Chemistry and Physics, 97th ed.; Haynes, W. M., Ed.;
+# CRC Press: Boca Raton, FL, 2016; ISBN 978-1-4987-5429-3.
 solvent_densities = {
-    'water': 1.0,
-    'dichloromethane': 1.33,
-    'acetone': 0.79,
-    'acetonitrile': 0.786,
-    'benzene': 0.874,
-    'trichloromethane': 1.49,
-    'cs2': 1.26,
-    'dmf': 0.944,
-    'dmso': 1.10,
-    'diethyl ether': 0.713,
-    'methanol': 0.791,
-    'hexane': 0.655,
-    'thf': 0.889,
-    'toluene': 0.867,
-    'acetic acid': 1.05,
-    '1-butanol': 0.81,
-    '2-butanol': 0.808,
-    'ethanol': 0.789,
-    'heptane': 0.684,
-    'pentane': 0.626,
-    '1-propanol': 0.803,
-    'pyridine': 0.982,
-    'ethyl acetate': 0.902,
-    'cyclohexane': 0.779,
-    'carbon tetrachloride': 1.59,
-    'chlorobenzene': 1.11,
-    '1,2-dichlorobenzene': 1.30,
-    'n,n-dimethylacetamide': 0.937,
-    'dioxane': 1.03,
-    '1,2-ethanediol': 1.11,
-    'decane': 0.73,
-    'dibromomethane': 2.50,
-    'dibutylether': 0.764,
-    '1-bromopropane': 1.35,
-    '2-bromopropane': 1.31,
-    '1-chlorohexane': 0.88,
-    '1-chloropentane': 0.88,
-    '1-chloropropane': 0.89,
-    'diethylamine': 0.707,
-    '1-decanol': 0.83,
-    'diiodomethane': 3.33,
-    '1-fluorooctane': 0.88,
-    '1-heptanol': 0.82,
-    '1-hexanol': 0.814,
-    '1-hexene': 0.673,
-    '1-hexyne': 0.715,
-    '1-iodobutane': 1.62,
-    '1-iodohexadecane': 1.26,
-    '1-iodopentane': 1.52,
-    '1-iodopropane': 1.75,
-    'dipropylamine': 0.738,
-    'n-dodecane': 0.75,
-    '1-nitropropane': 1.00,
-    'ethanethiol': 0.839,
-    '1-nonanol': 0.83,
-    '1-octanol': 0.83,
-    '1-pentanol': 0.814,
-    '1-pentene': 0.64,
-    'ethyl benzene': 0.867,
-    '2,2,2-trifluoroethanol': 1.39,
-    'fluorobenzene': 1.02,
-    '2,2,4-trimethylpentane': 0.69,
-    'formamide': 1.13,
-    '2,4-dimethylpentane': 0.67,
-    '2,4-dimethylpyridine': 0.93,
-    '2,6-dimethylpyridine': 0.93,
-    'n-hexadecane': 0.77,
-    'dimethyl disulfide': 1.06,
-    'ethyl methanoate': 0.92,
-    'ethyl phenyl ether': 0.97,
-    'formic acid': 1.22,
-    'hexanoic acid': 0.93,
-    '2-chlorobutane': 0.87,
-    '2-heptanone': 0.81,
-    '2-hexanone': 0.81,
-    '2-methoxyethanol': 0.96,
-    '2-methyl-1-propanol': 0.80,
-    '2-methyl-2-propanol': 0.79,
-    '2-methylpentane': 0.65,
-    '2-methylpyridine': 0.95,
-    '2-nitropropane': 1.00,
-    '2-octanone': 0.82,
-    '2-pentanone': 0.81,
-    'iodobenzene': 1.83,
-    'iodoethane': 1.93,
-    'iodomethane': 2.28,
-    'isopropylbenzene': 0.86,
-    'p-isopropyltoluene': 0.86,
-    'mesitylene': 0.86,
-    'methyl benzoate': 1.09,
-    'methyl butanoate': 0.90,
-    'methyl ethanoate': 0.93,
-    'methyl methanoate': 0.97,
-    'methyl propanoate': 0.91,
-    'n-methylaniline': 0.99,
-    'methylcyclohexane': 0.77,
-    'n-methylformamide (e/z mixture)': 1.01,
-    'nitrobenzene': 1.20,
-    'nitroethane': 1.05,
-    'nitromethane': 1.14,
-    'o-nitrotoluene': 1.16,
-    'n-nonane': 0.72,
-    'n-octane': 0.70,
-    'n-pentadecane': 0.77,
-    'pentanal': 0.81,
-    'pentanoic acid': 0.94,
-    'pentyl ethanoate': 0.88,
-    'pentyl amine': 0.74,
-    'perfluorobenzene': 1.61,
-    'propanal': 0.81,
-    'propanoic acid': 0.99,
-    'propanenitrile': 0.78,
-    'propyl ethanoate': 0.89,
-    'propyl amine': 0.72,
-    'tetrachloroethene': 1.62,
-    'tetrahydrothiophene-s,s-dioxide': 1.26,
-    'tetralin': 0.97,
-    'thiophene': 1.06,
-    'thiophenol': 1.07,
-    'tributylphosphate': 0.98,
-    'trichloroethene': 1.46,
-    'triethylamine': 0.73,
-    'n-undecane': 0.74,
-    'xylene mixture': 0.86,
-    'm-xylene': 0.86,
-    'o-xylene': 0.88,
-    'p-xylene': 0.86,
-    '2-propanol': 0.785,
-    '2-propen-1-ol': 0.85,
-    'e-2-pentene': 0.65,
-    '3-methylpyridine': 0.96,
-    '3-pentanone': 0.81,
-    '4-heptanone': 0.81,
-    '4-methyl-2-pentanone': 0.80,
-    '4-methylpyridine': 0.96,
-    '5-nonanone': 0.82,
-    'benzyl alcohol': 1.04,
-    'butanoic acid': 0.96,
-    'butanenitrile': 0.80,
-    'butyl ethanoate': 0.88,
-    'butylamine': 0.74,
-    'n-butylbenzene': 0.86,
-    'sec-butylbenzene': 0.86,
-    'tert-butylbenzene': 0.86,
-    'o-chlorotoluene': 1.08,
-    'm-cresol': 1.03,
-    'o-cresol': 1.07,
-    'cyclohexanone': 0.95,
-    'isoquinoline': 1.10,
-    'quinoline': 1.09,
-    'argon': 0.001784,
-    'krypton': 0.003733,
-    'xenon': 0.005894,
+    'water': 1.0,  # CRC handbook
+    'dichloromethane': 1.33,  # CRC handbook
+    'acetone': 0.79,  # CRC handbook
+    'acetonitrile': 0.786,  # CRC handbook
+    'benzene': 0.874,  # CRC handbook
+    'trichloromethane': 1.49,  # CRC handbook
+    'cs2': 1.26,  # CRC handbook
+    'dmf': 0.944,  # CRC handbook
+    'dmso': 1.10,  # CRC handbook
+    'diethyl ether': 0.713,  # CRC handbook
+    'methanol': 0.791,  # CRC handbook
+    'hexane': 0.655,  # CRC handbook
+    'thf': 0.889,  # CRC handbook
+    'toluene': 0.867,  # CRC handbook
+    'acetic acid': 1.05,  # CRC handbook
+    '1-butanol': 0.81,  # CRC handbook
+    '2-butanol': 0.808,  # CRC handbook
+    'ethanol': 0.789,  # CRC handbook
+    'heptane': 0.684,  # CRC handbook
+    'pentane': 0.626,  # CRC handbook
+    '1-propanol': 0.803,  # CRC handbook
+    'pyridine': 0.982,  # CRC handbook
+    'ethyl acetate': 0.902,  # CRC handbook
+    'cyclohexane': 0.779,  # CRC handbook
+    'carbon tetrachloride': 1.59,  # CRC handbook
+    'chlorobenzene': 1.11,  # CRC handbook
+    '1,2-dichlorobenzene': 1.30,  # CRC handbook
+    'n,n-dimethylacetamide': 0.937,  # CRC handbook
+    'dioxane': 1.03,  # CRC handbook
+    '1,2-ethanediol': 1.11,  # CRC handbook
+    'decane': 0.73,  # CRC handbook
+    'dibromomethane': 2.50,  # CRC handbook
+    'dibutylether': 0.764,  # CRC handbook
+    '1-bromopropane': 1.35,  # CRC handbook
+    '2-bromopropane': 1.31,  # CRC handbook
+    '1-chlorohexane': 0.88,  # CRC handbook
+    '1-chloropentane': 0.88,  # CRC handbook
+    '1-chloropropane': 0.89,  # CRC handbook
+    'diethylamine': 0.707,  # CRC handbook
+    '1-decanol': 0.83,  # CRC handbook
+    'diiodomethane': 3.33,  # CRC handbook
+    '1-fluorooctane': 0.88,  # CRC handbook
+    '1-heptanol': 0.82,  # CRC handbook
+    '1-hexanol': 0.814,  # CRC handbook
+    '1-hexene': 0.673,  # CRC handbook
+    '1-hexyne': 0.715,  # CRC handbook
+    '1-iodobutane': 1.62,  # CRC handbook
+    '1-iodohexadecane': 1.26,  # CRC handbook
+    '1-iodopentane': 1.52,  # CRC handbook
+    '1-iodopropane': 1.75,  # CRC handbook
+    'dipropylamine': 0.738,  # CRC handbook
+    'n-dodecane': 0.75,  # CRC handbook
+    '1-nitropropane': 1.00,  # CRC handbook
+    'ethanethiol': 0.839,  # CRC handbook
+    '1-nonanol': 0.83,  # CRC handbook
+    '1-octanol': 0.83,  # CRC handbook
+    '1-pentanol': 0.814,  # CRC handbook
+    '1-pentene': 0.64,  # CRC handbook
+    'ethyl benzene': 0.867,  # CRC handbook
+    '2,2,2-trifluoroethanol': 1.39,  # CRC handbook
+    'fluorobenzene': 1.02,  # CRC handbook
+    '2,2,4-trimethylpentane': 0.69,  # CRC handbook
+    'formamide': 1.13,  # CRC handbook
+    '2,4-dimethylpentane': 0.67,  # CRC handbook
+    '2,4-dimethylpyridine': 0.93,  # CRC handbook
+    '2,6-dimethylpyridine': 0.93,  # CRC handbook
+    'n-hexadecane': 0.77,  # CRC handbook
+    'dimethyl disulfide': 1.06,  # CRC handbook
+    'ethyl methanoate': 0.92,  # CRC handbook
+    'ethyl phenyl ether': 0.97,  # CRC handbook
+    'formic acid': 1.22,  # CRC handbook
+    'hexanoic acid': 0.93,  # CRC handbook
+    '2-chlorobutane': 0.87,  # CRC handbook
+    '2-heptanone': 0.81,  # CRC handbook
+    '2-hexanone': 0.81,  # CRC handbook
+    '2-methoxyethanol': 0.96,  # CRC handbook
+    '2-methyl-1-propanol': 0.80,  # CRC handbook
+    '2-methyl-2-propanol': 0.79,  # CRC handbook
+    '2-methylpentane': 0.65,  # CRC handbook
+    '2-methylpyridine': 0.95,  # CRC handbook
+    '2-nitropropane': 1.00,  # CRC handbook
+    '2-octanone': 0.82,  # CRC handbook
+    '2-pentanone': 0.81,  # CRC handbook
+    'iodobenzene': 1.83,  # CRC handbook
+    'iodoethane': 1.93,  # CRC handbook
+    'iodomethane': 2.28,  # CRC handbook
+    'isopropylbenzene': 0.86,  # CRC handbook
+    'p-isopropyltoluene': 0.86,  # CRC handbook
+    'mesitylene': 0.86,  # CRC handbook
+    'methyl benzoate': 1.09,  # CRC handbook
+    'methyl butanoate': 0.90,  # CRC handbook
+    'methyl ethanoate': 0.93,  # CRC handbook
+    'methyl methanoate': 0.97,  # CRC handbook
+    'methyl propanoate': 0.91,  # CRC handbook
+    'n-methylaniline': 0.99,  # CRC handbook
+    'methylcyclohexane': 0.77,  # CRC handbook
+    'n-methylformamide (e/z mixture)': 1.01,  # CRC handbook
+    'nitrobenzene': 1.20,  # CRC handbook
+    'nitroethane': 1.05,  # CRC handbook
+    'nitromethane': 1.14,  # CRC handbook
+    'o-nitrotoluene': 1.16,  # CRC handbook
+    'n-nonane': 0.72,  # CRC handbook
+    'n-octane': 0.70,  # CRC handbook
+    'n-pentadecane': 0.77,  # CRC handbook
+    'pentanal': 0.81,  # CRC handbook
+    'pentanoic acid': 0.94,  # CRC handbook
+    'pentyl ethanoate': 0.88,  # CRC handbook
+    'pentyl amine': 0.74,  # CRC handbook
+    'perfluorobenzene': 1.61,  # CRC handbook
+    'propanal': 0.81,  # CRC handbook
+    'propanoic acid': 0.99,  # CRC handbook
+    'propanenitrile': 0.78,  # CRC handbook
+    'propyl ethanoate': 0.89,  # CRC handbook
+    'propyl amine': 0.72,  # CRC handbook
+    'tetrachloroethene': 1.62,  # CRC handbook
+    'tetrahydrothiophene-s,s-dioxide': 1.26,  # CRC handbook
+    'tetralin': 0.97,  # CRC handbook
+    'thiophene': 1.06,  # CRC handbook
+    'thiophenol': 1.07,  # CRC handbook
+    'tributylphosphate': 0.98,  # CRC handbook
+    'trichloroethene': 1.46,  # CRC handbook
+    'triethylamine': 0.73,  # CRC handbook
+    'n-undecane': 0.74,  # CRC handbook
+    'xylene mixture': 0.86,  # CRC handbook
+    'm-xylene': 0.86,  # CRC handbook
+    'o-xylene': 0.88,  # CRC handbook
+    'p-xylene': 0.86,  # CRC handbook
+    '2-propanol': 0.785,  # CRC handbook
+    '2-propen-1-ol': 0.85,  # CRC handbook
+    'e-2-pentene': 0.65,  # CRC handbook
+    '3-methylpyridine': 0.96,  # CRC handbook
+    '3-pentanone': 0.81,  # CRC handbook
+    '4-heptanone': 0.81,  # CRC handbook
+    '4-methyl-2-pentanone': 0.80,  # CRC handbook
+    '4-methylpyridine': 0.96,  # CRC handbook
+    '5-nonanone': 0.82,  # CRC handbook
+    'benzyl alcohol': 1.04,  # CRC handbook
+    'butanoic acid': 0.96,  # CRC handbook
+    'butanenitrile': 0.80,  # CRC handbook
+    'butyl ethanoate': 0.88,  # CRC handbook
+    'butylamine': 0.74,  # CRC handbook
+    'n-butylbenzene': 0.86,  # CRC handbook
+    'sec-butylbenzene': 0.86,  # CRC handbook
+    'tert-butylbenzene': 0.86,  # CRC handbook
+    'o-chlorotoluene': 1.08,  # CRC handbook
+    'm-cresol': 1.03,  # CRC handbook
+    'o-cresol': 1.07,  # CRC handbook
+    'cyclohexanone': 0.95,  # CRC handbook
+    'isoquinoline': 1.10,  # CRC handbook
+    'quinoline': 1.09,  # CRC handbook
+    'argon': 0.001784,  # CRC handbook
+    'krypton': 0.003733,  # CRC handbook
+    'xenon': 0.005894,  # CRC handbook
 }
