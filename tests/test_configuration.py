@@ -19,8 +19,8 @@ def test_equality():
 
 def test_random_vector_in_box():
     vector = _random_vector_in_box(10, 0)
-    assert vector <= 10
-    assert vector >= 0
+    assert all(v <= 10 for v in vector)
+    assert all(v >= 0 for v in vector)
 
 
 def test_get_max_mol_distance(h2o_configuration):
