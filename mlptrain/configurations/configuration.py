@@ -453,7 +453,7 @@ def build_cKDTree(coords: np.ndarray) -> cKDTree:
     return cKDTree(coords)
 
 
-def get_max_mol_distance(conf_atoms: List[Atom]) -> float:
+def _get_max_mol_distance(conf_atoms: List[Atom]) -> float:
     return max(
         [
             dist(atom1.coordinate, atom2.coordinate)
