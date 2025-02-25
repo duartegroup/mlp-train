@@ -18,7 +18,7 @@ def test_equality():
 
 
 def test_random_vector_in_box():
-    vector = _random_vector_in_box(10)
+    vector = _random_vector_in_box(10, 0)
     assert vector <= 10
     assert vector >= 0
 
