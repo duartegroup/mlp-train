@@ -90,6 +90,7 @@ class Configuration(AtomCollection):
         solvent_density: float = None,
         solvent_molecule: ade.Molecule = None,
         contact_threshold: float = 1.8,
+        random_seed: int = 42
     ) -> None:
         """Solvate the configuration of a solute using solvent molecules. Currently solvent mixtures are not supported.
         The box size can be specified manually in Å or it can be calculated automatically
@@ -131,6 +132,10 @@ class Configuration(AtomCollection):
 
         contact_threshold: float = 1.8
             The distance in Å below which two atoms are considered to be in contact.
+            
+        random_seed: int = 42
+            The seed number used to generate random vectors for the rotation and translation of the solvent molecules.
+            This is to avoid the same solvent molecule being inserted multiple times in the same orientation.
 
         ___________________________________________________________________________
 
@@ -155,7 +160,15 @@ class Configuration(AtomCollection):
             solvent_smiles = solvent.smiles
             solvent_molecule = ade.Molecule(smiles=solvent_smiles)
             solvent_molecule.optimise(method=ade.methods.XTB())
-            solvent_density = solvent_densities[solvent.name]
+            
+            if solvent.name not in solvent_densities.keys():
+                raise ValueError(
+                    f'The density of {solvent.name} is not in the database'
+                    f'Please use provide the solvent molecule and density explicitly'
+                )
+            else:
+                solvent_density = solvent_densities[solvent.name]
+            
 
         else:
             # If neither the solvent name nor the combination of solvent molecule and density are provided, raise an error
@@ -191,7 +204,7 @@ class Configuration(AtomCollection):
         )
 
         self.k_d_tree_insertion(
-            solvent_molecule, box_size, contact_threshold, solvent_number
+            solvent_molecule, box_size, contact_threshold, solvent_number, random_seed
         )
 
     def k_d_tree_insertion(
@@ -200,6 +213,7 @@ class Configuration(AtomCollection):
         box_size: float,
         contact_threshold: float,
         n_solvent: int,
+        random_seed: int
     ) -> np.ndarray:
         """Insert solvent molecules into the box using a k-d tree to check for collisions.
         Implemented according to the algorithm described in the paper:
@@ -239,6 +253,7 @@ class Configuration(AtomCollection):
         # the number of solvent molecules that fit into the box, but this number might not be reached
         # because the solute might be in the way of some of the solvent molecules
         solvents_inserted = 0
+        seeded_random = random.Random(random_seed)
 
         for i in range(n_solvent):
             # Build a k-d tree from the system coordinates in order to query the nearest neighbours later
@@ -254,10 +269,17 @@ class Configuration(AtomCollection):
                 # depends on a seed number that is the product of the current iteration (number of solvent
                 # being added) to the third power and the attempt number. This is to avoid
                 # the same solvent molecule being inserted multiple times in the same orientation
-                seed_number = i**3 * attempt
-                rot_matrix = _random_rotation(seed_number)
+                rot_matrix = _random_rotation(
+                                            seeded_random.random(),
+                                            seeded_random.random(),
+                                            seeded_random.random()
+                                            )
                 rot_solvent = np.dot(solvent_coords, rot_matrix)
-                translation = _random_vector_in_box(box_size, seed_number)
+                translation = _random_vector_in_box(box_size,
+                                                    seeded_random.random(),
+                                                    seeded_random.random(),
+                                                    seeded_random.random()
+                                                    )
 
                 # Translate the rotated solvent molecule and check if it is within the box
                 trial_coords = rot_solvent + translation
@@ -434,14 +456,13 @@ class Configuration(AtomCollection):
         return deepcopy(self)
 
 
-def _random_rotation(seed: int) -> np.ndarray:
+def _random_rotation(r1: float,
+                     r2: float,
+                     r3: float) -> np.ndarray:
     """Generate a random rotation matrix"""
-    random.seed(seed)
-    theta = random.random() * 360
-    random.seed(seed * 2)
-    kappa = random.random() * 360
-    random.seed(seed * 3)
-    gamma = random.random() * 360
+    theta = r1 * 360
+    kappa = r2 * 360
+    gamma = r3 * 360
 
     rot_matrix = np.eye(3)
     rot_matrix = np.dot(
@@ -478,10 +499,14 @@ def _random_rotation(seed: int) -> np.ndarray:
     return rot_matrix
 
 
-def _random_vector_in_box(box_size: float, seed: int) -> np.ndarray:
+def _random_vector_in_box(
+    box_size: float,
+    r1: float,
+    r2: float,
+    r3: float,
+    ) -> np.ndarray:
     """Generate a random vector in a box"""
-    random.seed(seed)
-    return np.array([random.random() * box_size for i in range(3)])
+    return np.array([r * box_size for r in [r1, r2, r3] ])
 
 
 def _build_cKDTree(coords: np.ndarray) -> cKDTree:
@@ -501,160 +526,136 @@ def _get_max_mol_distance(conf_atoms: List[Atom]) -> float:
 
 
 # Solvent densities were taken from the CRC handbook
+# Temperatures at which the densities were measured are also provided
+# The densities are in g/cm^3, temperatures in K
 # CRC Handbook of Chemistry and Physics, 97th ed.; Haynes, W. M., Ed.;
 # CRC Press: Boca Raton, FL, 2016; ISBN 978-1-4987-5429-3.
 solvent_densities = {
-    'water': 1.0,  # CRC handbook
-    'dichloromethane': 1.33,  # CRC handbook
-    'acetone': 0.79,  # CRC handbook
-    'acetonitrile': 0.786,  # CRC handbook
-    'benzene': 0.874,  # CRC handbook
-    'trichloromethane': 1.49,  # CRC handbook
-    'cs2': 1.26,  # CRC handbook
-    'dmf': 0.944,  # CRC handbook
-    'dmso': 1.10,  # CRC handbook
-    'diethyl ether': 0.713,  # CRC handbook
-    'methanol': 0.791,  # CRC handbook
-    'hexane': 0.655,  # CRC handbook
-    'thf': 0.889,  # CRC handbook
-    'toluene': 0.867,  # CRC handbook
-    'acetic acid': 1.05,  # CRC handbook
-    '1-butanol': 0.81,  # CRC handbook
-    '2-butanol': 0.808,  # CRC handbook
-    'ethanol': 0.789,  # CRC handbook
-    'heptane': 0.684,  # CRC handbook
-    'pentane': 0.626,  # CRC handbook
-    '1-propanol': 0.803,  # CRC handbook
-    'pyridine': 0.982,  # CRC handbook
-    'ethyl acetate': 0.902,  # CRC handbook
-    'cyclohexane': 0.779,  # CRC handbook
-    'carbon tetrachloride': 1.59,  # CRC handbook
-    'chlorobenzene': 1.11,  # CRC handbook
-    '1,2-dichlorobenzene': 1.30,  # CRC handbook
-    'n,n-dimethylacetamide': 0.937,  # CRC handbook
-    'dioxane': 1.03,  # CRC handbook
-    '1,2-ethanediol': 1.11,  # CRC handbook
-    'decane': 0.73,  # CRC handbook
-    'dibromomethane': 2.50,  # CRC handbook
-    'dibutylether': 0.764,  # CRC handbook
-    '1-bromopropane': 1.35,  # CRC handbook
-    '2-bromopropane': 1.31,  # CRC handbook
-    '1-chlorohexane': 0.88,  # CRC handbook
-    '1-chloropentane': 0.88,  # CRC handbook
-    '1-chloropropane': 0.89,  # CRC handbook
-    'diethylamine': 0.707,  # CRC handbook
-    '1-decanol': 0.83,  # CRC handbook
-    'diiodomethane': 3.33,  # CRC handbook
-    '1-fluorooctane': 0.88,  # CRC handbook
-    '1-heptanol': 0.82,  # CRC handbook
-    '1-hexanol': 0.814,  # CRC handbook
-    '1-hexene': 0.673,  # CRC handbook
-    '1-hexyne': 0.715,  # CRC handbook
-    '1-iodobutane': 1.62,  # CRC handbook
-    '1-iodohexadecane': 1.26,  # CRC handbook
-    '1-iodopentane': 1.52,  # CRC handbook
-    '1-iodopropane': 1.75,  # CRC handbook
-    'dipropylamine': 0.738,  # CRC handbook
-    'n-dodecane': 0.75,  # CRC handbook
-    '1-nitropropane': 1.00,  # CRC handbook
-    'ethanethiol': 0.839,  # CRC handbook
-    '1-nonanol': 0.83,  # CRC handbook
-    '1-octanol': 0.83,  # CRC handbook
-    '1-pentanol': 0.814,  # CRC handbook
-    '1-pentene': 0.64,  # CRC handbook
-    'ethyl benzene': 0.867,  # CRC handbook
-    '2,2,2-trifluoroethanol': 1.39,  # CRC handbook
-    'fluorobenzene': 1.02,  # CRC handbook
-    '2,2,4-trimethylpentane': 0.69,  # CRC handbook
-    'formamide': 1.13,  # CRC handbook
-    '2,4-dimethylpentane': 0.67,  # CRC handbook
-    '2,4-dimethylpyridine': 0.93,  # CRC handbook
-    '2,6-dimethylpyridine': 0.93,  # CRC handbook
-    'n-hexadecane': 0.77,  # CRC handbook
-    'dimethyl disulfide': 1.06,  # CRC handbook
-    'ethyl methanoate': 0.92,  # CRC handbook
-    'ethyl phenyl ether': 0.97,  # CRC handbook
-    'formic acid': 1.22,  # CRC handbook
-    'hexanoic acid': 0.93,  # CRC handbook
-    '2-chlorobutane': 0.87,  # CRC handbook
-    '2-heptanone': 0.81,  # CRC handbook
-    '2-hexanone': 0.81,  # CRC handbook
-    '2-methoxyethanol': 0.96,  # CRC handbook
-    '2-methyl-1-propanol': 0.80,  # CRC handbook
-    '2-methyl-2-propanol': 0.79,  # CRC handbook
-    '2-methylpentane': 0.65,  # CRC handbook
-    '2-methylpyridine': 0.95,  # CRC handbook
-    '2-nitropropane': 1.00,  # CRC handbook
-    '2-octanone': 0.82,  # CRC handbook
-    '2-pentanone': 0.81,  # CRC handbook
-    'iodobenzene': 1.83,  # CRC handbook
-    'iodoethane': 1.93,  # CRC handbook
-    'iodomethane': 2.28,  # CRC handbook
-    'isopropylbenzene': 0.86,  # CRC handbook
-    'p-isopropyltoluene': 0.86,  # CRC handbook
-    'mesitylene': 0.86,  # CRC handbook
-    'methyl benzoate': 1.09,  # CRC handbook
-    'methyl butanoate': 0.90,  # CRC handbook
-    'methyl ethanoate': 0.93,  # CRC handbook
-    'methyl methanoate': 0.97,  # CRC handbook
-    'methyl propanoate': 0.91,  # CRC handbook
-    'n-methylaniline': 0.99,  # CRC handbook
-    'methylcyclohexane': 0.77,  # CRC handbook
-    'n-methylformamide (e/z mixture)': 1.01,  # CRC handbook
-    'nitrobenzene': 1.20,  # CRC handbook
-    'nitroethane': 1.05,  # CRC handbook
-    'nitromethane': 1.14,  # CRC handbook
-    'o-nitrotoluene': 1.16,  # CRC handbook
-    'n-nonane': 0.72,  # CRC handbook
-    'n-octane': 0.70,  # CRC handbook
-    'n-pentadecane': 0.77,  # CRC handbook
-    'pentanal': 0.81,  # CRC handbook
-    'pentanoic acid': 0.94,  # CRC handbook
-    'pentyl ethanoate': 0.88,  # CRC handbook
-    'pentyl amine': 0.74,  # CRC handbook
-    'perfluorobenzene': 1.61,  # CRC handbook
-    'propanal': 0.81,  # CRC handbook
-    'propanoic acid': 0.99,  # CRC handbook
-    'propanenitrile': 0.78,  # CRC handbook
-    'propyl ethanoate': 0.89,  # CRC handbook
-    'propyl amine': 0.72,  # CRC handbook
-    'tetrachloroethene': 1.62,  # CRC handbook
-    'tetrahydrothiophene-s,s-dioxide': 1.26,  # CRC handbook
-    'tetralin': 0.97,  # CRC handbook
-    'thiophene': 1.06,  # CRC handbook
-    'thiophenol': 1.07,  # CRC handbook
-    'tributylphosphate': 0.98,  # CRC handbook
-    'trichloroethene': 1.46,  # CRC handbook
-    'triethylamine': 0.73,  # CRC handbook
-    'n-undecane': 0.74,  # CRC handbook
-    'xylene mixture': 0.86,  # CRC handbook
-    'm-xylene': 0.86,  # CRC handbook
-    'o-xylene': 0.88,  # CRC handbook
-    'p-xylene': 0.86,  # CRC handbook
-    '2-propanol': 0.785,  # CRC handbook
-    '2-propen-1-ol': 0.85,  # CRC handbook
-    'e-2-pentene': 0.65,  # CRC handbook
-    '3-methylpyridine': 0.96,  # CRC handbook
-    '3-pentanone': 0.81,  # CRC handbook
-    '4-heptanone': 0.81,  # CRC handbook
-    '4-methyl-2-pentanone': 0.80,  # CRC handbook
-    '4-methylpyridine': 0.96,  # CRC handbook
-    '5-nonanone': 0.82,  # CRC handbook
-    'benzyl alcohol': 1.04,  # CRC handbook
-    'butanoic acid': 0.96,  # CRC handbook
-    'butanenitrile': 0.80,  # CRC handbook
-    'butyl ethanoate': 0.88,  # CRC handbook
-    'butylamine': 0.74,  # CRC handbook
-    'n-butylbenzene': 0.86,  # CRC handbook
-    'sec-butylbenzene': 0.86,  # CRC handbook
-    'tert-butylbenzene': 0.86,  # CRC handbook
-    'o-chlorotoluene': 1.08,  # CRC handbook
-    'm-cresol': 1.03,  # CRC handbook
-    'o-cresol': 1.07,  # CRC handbook
-    'cyclohexanone': 0.95,  # CRC handbook
-    'isoquinoline': 1.10,  # CRC handbook
-    'quinoline': 1.09,  # CRC handbook
-    'argon': 0.001784,  # CRC handbook
-    'krypton': 0.003733,  # CRC handbook
-    'xenon': 0.005894,  # CRC handbook
+    'water': 1.0,  # 298K
+    'dichloromethane': 1.33,  # 293K
+    'acetone': 0.79,  # 293K
+    'acetonitrile': 0.786,  # 293K
+    'benzene': 0.874,  # 293K
+    'trichloromethane': 1.49,  # 293K
+    'cs2': 1.26,  # 293K
+    'dmf': 0.944,  # 298K
+    'dmso': 1.10,  # 298K
+    'diethyl ether': 0.713,  # 298K
+    'methanol': 0.791,  # 293K
+    'hexane': 0.655,  # 293K
+    'thf': 0.889,  # 298K
+    'toluene': 0.867,  # 293
+    'acetic acid': 1.05,  # 293K
+    '1-butanol': 0.81,  # 293K
+    '2-butanol': 0.808,  # 293K
+    'ethanol': 0.789,  # 293K
+    'heptane': 0.684,  # 293K
+    'pentane': 0.626,  # 293K
+    '1-propanol': 0.803,  # 293K
+    'pyridine': 0.982,  # 293K
+    'ethyl acetate': 0.902,  # 293K
+    'cyclohexane': 0.779,  # 293K
+    'carbon tetrachloride': 1.59,  # 293K
+    'chlorobenzene': 1.11,  # 293K
+    '1,2-dichlorobenzene': 1.30,  # 293K
+    'n,n-dimethylacetamide': 0.937,  # 298K
+    'dioxane': 1.03,  # 293K
+    '1,2-ethanediol': 1.11,  # 293K
+    'decane': 0.73,  # 293K
+    'dibromomethane': 2.50,  # 293K
+    'dibutylether': 0.764,  # 293K
+    '1-bromopropane': 1.35,  # 293K
+    '2-bromopropane': 1.31,  # 293K
+    '1-chloropentane': 0.88,  # 293K
+    '1-chloropropane': 0.89,  # 293K
+    'diethylamine': 0.707,  # 293K
+    '1-decanol': 0.83,  # 293K
+    'diiodomethane': 3.33,  # 293K
+    '1-heptanol': 0.82,  # 293K
+    '1-hexanol': 0.814,  # 293K
+    '1-hexene': 0.667,  # 298K
+    '1-iodopropane': 1.75,  # 293K
+    'dipropylamine': 0.74,  # 293K
+    'n-dodecane': 0.75,  # 293K
+    '1-nitropropane': 1.00,  # 298K
+    'ethanethiol': 0.83,  # 298K
+    '1-nonanol': 0.83,  # 293K
+    '1-octanol': 0.83,  # 293K
+    '1-pentanol': 0.814,  # 293K
+    '1-pentene': 0.64,  # 293K
+    'ethyl benzene': 0.87,  # 293K
+    'fluorobenzene': 1.02,  # 293K
+    '2,2,4-trimethylpentane': 0.69,  # 293K
+    'formamide': 1.13,  # 293K
+    '2,6-dimethylpyridine': 0.93,  # 293K
+    'dimethyl disulfide': 0.85,  # 293K
+    'formic acid': 1.22,  # 293K
+    'hexanoic acid': 0.93,  # 293K
+    '2-chlorobutane': 0.87,  # 293K
+    '2-heptanone': 0.81,  # 293K
+    '2-hexanone': 0.81,  # 293K
+    '2-methoxyethanol': 0.96,  # 293K
+    '2-methyl-1-propanol': 0.80,  # 293K
+    '2-methyl-2-propanol': 0.79,  # 293K
+    '2-methylpentane': 0.65,  # 298K
+    '2-methylpyridine': 0.94,  # 293K
+    '2-nitropropane': 0.98,  # 298K
+    '2-octanone': 0.82,  # 293K
+    '2-pentanone': 0.81,  # 293K
+    'iodobenzene': 1.83,  # 293K
+    'iodoethane': 1.94,  # 293K
+    'iodomethane': 2.28,  # 293K
+    'isopropylbenzene': 0.86,  # 293K
+    'methyl benzoate': 1.09,  # 298K
+    'methyl butanoate': 0.90,  # 293K
+    'methyl ethanoate': 0.93,  # 293K
+    'methyl methanoate': 0.97,  # 293K
+    'methyl propanoate': 0.92,  # 293K
+    'n-methylaniline': 0.99,  # 293K
+    'methylcyclohexane': 0.77,  # 293K
+    'n-methylformamide (e/z mixture)': 1.01,  # 293K
+    'nitrobenzene': 1.20,  # 292K
+    'nitroethane': 1.05,  # 298K
+    'nitromethane': 1.14,  # 293K
+    'o-nitrotoluene': 1.16,  # 292K
+    'n-nonane': 0.72,  # 293K
+    'n-octane': 0.70,  # 293K
+    'pentanal': 0.81,  # 293K
+    'pentanoic acid': 0.94,  # 293K
+    'pentyl ethanoate': 0.88,  # 293K
+    'pentyl amine': 0.75,  # 293K
+    'perfluorobenzene': 1.61,  # 293K
+    'propanal': 0.87,  # 298K
+    'propanoic acid': 0.99,  # 298K
+    'propanenitrile': 0.78,  # 298K
+    'propyl ethanoate': 0.89,  # 293K
+    'propyl amine': 0.72,  # 293K
+    'tetrachloroethene': 1.62,  # 293K
+    'thiophene': 1.06,  # 293K
+    'thiophenol': 1.07,  # 293K
+    'trichloroethene': 1.46,  # 293K
+    'triethylamine': 0.73,  # 293K
+    'n-undecane': 0.74,  # 293K
+    'm-xylene': 0.86,  # 293K
+    'o-xylene': 0.88,  # 293K
+    'p-xylene': 0.86,  # 293K
+    '2-propanol': 0.79,  # 293K
+    'e-2-pentene': 0.65,  # 298K
+    '3-methylpyridine': 0.96,  # 293K
+    '3-pentanone': 0.81,  # 298
+    '4-heptanone': 0.81,  # 293K
+    '4-methyl-2-pentanone': 0.80,  # 298
+    '4-methylpyridine': 0.96,  # 293
+    'benzyl alcohol': 1.04,  # 293
+    'butanoic acid': 0.96,  # 298
+    'butyl ethanoate': 0.88,  # 293
+    'butylamine': 0.74,  # 293
+    'n-butylbenzene': 0.86,  # 293
+    'tert-butylbenzene': 0.87,  # 293
+    'o-chlorotoluene': 1.08,  # 293
+    'm-cresol': 1.03,  # 293
+    'o-cresol': 1.03,  # 308K
+    'cyclohexanone': 0.95,  # 293
+    'isoquinoline': 1.10,  # 303K
+    'quinoline': 1.09,  # 288K
 }
