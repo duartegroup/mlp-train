@@ -90,7 +90,7 @@ class Configuration(AtomCollection):
         solvent_density: float = None,
         solvent_molecule: ade.Molecule = None,
         contact_threshold: float = 1.8,
-        random_seed: int = 42
+        random_seed: int = 42,
     ) -> None:
         """Solvate the configuration of a solute using solvent molecules. Currently solvent mixtures are not supported.
         The box size can be specified manually in Å or it can be calculated automatically
@@ -132,7 +132,7 @@ class Configuration(AtomCollection):
 
         contact_threshold: float = 1.8
             The distance in Å below which two atoms are considered to be in contact.
-            
+
         random_seed: int = 42
             The seed number used to generate random vectors for the rotation and translation of the solvent molecules.
             This is to avoid the same solvent molecule being inserted multiple times in the same orientation.
@@ -160,7 +160,7 @@ class Configuration(AtomCollection):
             solvent_smiles = solvent.smiles
             solvent_molecule = ade.Molecule(smiles=solvent_smiles)
             solvent_molecule.optimise(method=ade.methods.XTB())
-            
+
             if solvent.name not in solvent_densities.keys():
                 raise ValueError(
                     f'The density of {solvent.name} is not in the database'
@@ -168,7 +168,6 @@ class Configuration(AtomCollection):
                 )
             else:
                 solvent_density = solvent_densities[solvent.name]
-            
 
         else:
             # If neither the solvent name nor the combination of solvent molecule and density are provided, raise an error
@@ -204,7 +203,11 @@ class Configuration(AtomCollection):
         )
 
         self.k_d_tree_insertion(
-            solvent_molecule, box_size, contact_threshold, solvent_number, random_seed
+            solvent_molecule,
+            box_size,
+            contact_threshold,
+            solvent_number,
+            random_seed,
         )
 
     def k_d_tree_insertion(
@@ -213,7 +216,7 @@ class Configuration(AtomCollection):
         box_size: float,
         contact_threshold: float,
         n_solvent: int,
-        random_seed: int
+        random_seed: int,
     ) -> np.ndarray:
         """Insert solvent molecules into the box using a k-d tree to check for collisions.
         Implemented according to the algorithm described in the paper:
@@ -270,16 +273,17 @@ class Configuration(AtomCollection):
                 # being added) to the third power and the attempt number. This is to avoid
                 # the same solvent molecule being inserted multiple times in the same orientation
                 rot_matrix = _random_rotation(
-                                            seeded_random.random(),
-                                            seeded_random.random(),
-                                            seeded_random.random()
-                                            )
+                    seeded_random.random(),
+                    seeded_random.random(),
+                    seeded_random.random(),
+                )
                 rot_solvent = np.dot(solvent_coords, rot_matrix)
-                translation = _random_vector_in_box(box_size,
-                                                    seeded_random.random(),
-                                                    seeded_random.random(),
-                                                    seeded_random.random()
-                                                    )
+                translation = _random_vector_in_box(
+                    box_size,
+                    seeded_random.random(),
+                    seeded_random.random(),
+                    seeded_random.random(),
+                )
 
                 # Translate the rotated solvent molecule and check if it is within the box
                 trial_coords = rot_solvent + translation
@@ -456,9 +460,7 @@ class Configuration(AtomCollection):
         return deepcopy(self)
 
 
-def _random_rotation(r1: float,
-                     r2: float,
-                     r3: float) -> np.ndarray:
+def _random_rotation(r1: float, r2: float, r3: float) -> np.ndarray:
     """Generate a random rotation matrix"""
     theta = r1 * 360
     kappa = r2 * 360
@@ -504,9 +506,9 @@ def _random_vector_in_box(
     r1: float,
     r2: float,
     r3: float,
-    ) -> np.ndarray:
+) -> np.ndarray:
     """Generate a random vector in a box"""
-    return np.array([r * box_size for r in [r1, r2, r3] ])
+    return np.array([r * box_size for r in [r1, r2, r3]])
 
 
 def _build_cKDTree(coords: np.ndarray) -> cKDTree:
