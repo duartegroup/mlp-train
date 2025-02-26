@@ -17,13 +17,16 @@ def test_equality():
 
     assert config1 != config2
 
+
 seeded_random = random.Random()
+
+
 def test_random_vector_in_box():
     vector = _random_vector_in_box(
         10,
         seeded_random.random(),
         seeded_random.random(),
-        seeded_random.random()
+        seeded_random.random(),
     )
     assert all(v <= 10 for v in vector)
     assert all(v >= 0 for v in vector)
