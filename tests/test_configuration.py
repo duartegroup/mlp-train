@@ -54,36 +54,36 @@ def test_solvate(h2o_configuration, h2o_solvated_with_h2o):
 
 def test_wrong_solvent_name_raises_not_found(h2o_configuration):
     with pytest.raises(SolventNotFound):
-        h2o_configuration(solvent_name='solvo_solverson')
+        h2o_configuration.solvate(solvent_name='solvo_solverson')
 
 
 def test_no_inputs_for_solvate(h2o_configuration):
     with pytest.raises(ValueError):
-        h2o_configuration()
+        h2o_configuration.solvate()
 
 
 def test_only_molecule_for_solvate(h2o_configuration, h2o):
     with pytest.raises(ValueError):
-        h2o_configuration(molecule=h2o)
+        h2o_configuration.solvate(molecule=h2o)
 
 
 def test_only_density_for_solvate(h2o_configuration):
     with pytest.raises(ValueError):
-        h2o_configuration(solvent_density=1)
+        h2o_configuration.solvate(solvent_density=1)
 
 
 def test_only_too_many_inputs_for_solvate(h2o_configuration, h2o):
     with pytest.raises(ValueError):
-        h2o_configuration(
+        h2o_configuration.solvate(
             solvent_name='water', solvent_density=1, molecule=h2o
         )
 
 
 def test_negative_density_for_solvate(h2o_configuration):
     with pytest.raises(ValueError):
-        h2o_configuration(solvent_name='water', solvent_density=-1)
+        h2o_configuration.solvate(solvent_name='water', solvent_density=-1)
 
 
 def test_no_atoms_in_solvent_molecule(h2o_configuration, empty_molecule):
     with pytest.raises(ValueError):
-        h2o_configuration(solvent_density=1, molecule=empty_molecule)
+        h2o_configuration.solvate(solvent_density=1, molecule=empty_molecule)
