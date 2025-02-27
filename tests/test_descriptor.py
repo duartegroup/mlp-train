@@ -18,12 +18,6 @@ def methane():
     return Configuration(atoms=atoms)
 
 
-@pytest.fixture
-def same_configuration_set(h2o_configuration):
-    """Fixture to create a ConfigurationSet containing duplicates of a simple molecule."""
-    return ConfigurationSet(h2o_configuration, h2o_configuration)
-
-
 def test_soap_descriptor_initialization():
     """Test initialization of SoapDescriptor with and without elements."""
     # With elements
@@ -49,12 +43,11 @@ def test_compute_representation(h2o_configuration):
     ), f'Expected shape (1, 546), but got {representation.shape}'
 
 
-def test_kernel_vector_identical_molecules(same_configuration_set):
+def test_kernel_vector_identical_molecules(h2o_configuration):
     descriptor = SoapDescriptor(
         elements=['H', 'O'], r_cut=5.0, n_max=6, l_max=6
     )
-    kernel_vector = descriptor.kernel_vector(
-        same_configuration_set[0], same_configuration_set, zeta=4
+    kernel_vector = descriptor.kernel_vector(h2o_configuration, h2o_configuration, zeta=4
     )
     assert np.allclose(kernel_vector, np.ones_like(kernel_vector), atol=1e-5)
 
