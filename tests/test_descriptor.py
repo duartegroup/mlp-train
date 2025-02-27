@@ -47,7 +47,8 @@ def test_kernel_vector_identical_molecules(h2o_configuration):
     descriptor = SoapDescriptor(
         elements=['H', 'O'], r_cut=5.0, n_max=6, l_max=6
     )
-    kernel_vector = descriptor.kernel_vector(h2o_configuration, h2o_configuration, zeta=4
+    kernel_vector = descriptor.kernel_vector(
+        h2o_configuration, h2o_configuration, zeta=4
     )
     assert np.allclose(kernel_vector, np.ones_like(kernel_vector), atol=1e-5)
 
