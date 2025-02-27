@@ -52,16 +52,3 @@ class Descriptor(ABC):
 
         Returns:
             (np.ndarray): Vector, shape = len(configurations)"""
-
-    def normalize(self, vector: np.ndarray) -> np.ndarray:
-        """
-        Normalize a feature vector to unit norm.
-
-        Arguments:
-            vector (np.ndarray): Input vector.
-
-        Returns:
-            np.ndarray: Normalized vector.
-        """
-        norm = np.linalg.norm(vector)
-        return vector if norm == 0 else vector / norm
