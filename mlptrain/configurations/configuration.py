@@ -148,14 +148,28 @@ class Configuration(AtomCollection):
         # Assume cubic box
         self.box = Box([box_size] * 3)
 
+        if None not in (solvent_density, solvent_molecule, solvent_name):
+            raise ValueError(
+                'Either the solvent name or the combination of solvent molecule and density must be provided.'
+                'You shoult not provide all three.'
+            )
+
         # If both solvent molecule and density are provided, stop checking
-        if None not in (solvent_density, solvent_molecule):
-            pass
+        elif None not in (solvent_density, solvent_molecule):
+            if solvent_molecule.atoms is None:
+                raise ValueError('The solvent molecule must contain atoms')
+            if solvent_density <= 0:
+                raise ValueError(
+                    'The density of the solvent must be greater than 0'
+                )
 
         # If the solvent name is provided, get the solvent molecule and density from the solvent database
         # by getting the smiles from autode's solvent database, creating a molecule object and optimising it
         # with xtb, then get the density from the density database
         elif solvent_name is not None:
+            logger.info(
+                f'Finding solvent with the name {solvent_name} in autodE solvent database'
+            )
             solvent = get_solvent(solvent_name, kind='implicit')
             solvent_smiles = solvent.smiles
             solvent_molecule = ade.Molecule(smiles=solvent_smiles)
@@ -168,6 +182,9 @@ class Configuration(AtomCollection):
                 )
             else:
                 solvent_density = solvent_densities[solvent.name]
+                logger.info(
+                    f'Found solvent {solvent.name} with density {solvent_density} g/cm^3'
+                )
 
         else:
             # If neither the solvent name nor the combination of solvent molecule and density are provided, raise an error

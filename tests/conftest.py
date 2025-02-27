@@ -225,3 +225,10 @@ def oh_radical():
         Atom('H', 2.32670, 0.51322, 0.0),
     ]
     return mlt.Molecule(atoms=atoms, charge=0, mult=2)
+
+
+@pytest.fixture
+def empty_molecule():
+    "OH radiacal species"
+    molecule = mlt.Molecule()
+    return molecule

@@ -1,4 +1,5 @@
 from autode.atoms import Atom
+from autode.exceptions import SolventNotFound
 from mlptrain.configurations.configuration import (
     Configuration,
     _random_vector_in_box,
@@ -6,6 +7,8 @@ from mlptrain.configurations.configuration import (
 )
 import numpy as np
 import random
+import pytest
+from repos.mlp_train_fix_table_issue.tests.conftest import h2o
 
 
 def test_equality():
@@ -48,3 +51,38 @@ def test_solvate(h2o_configuration, h2o_solvated_with_h2o):
             for i, atom in enumerate(h2o_configuration.atoms)
         ]
     )
+
+
+def test_wrong_solvent_name_raises_not_found():
+    with pytest.raises(SolventNotFound):
+        h2o.solvate(solvent_name='solvo_solverson')
+
+
+def test_no_inputs_for_solvate():
+    with pytest.raises(ValueError):
+        h2o.solvate()
+
+
+def test_only_molecule_for_solvate():
+    with pytest.raises(ValueError):
+        h2o.solvate(molecule=h2o)
+
+
+def test_only_density_for_solvate():
+    with pytest.raises(ValueError):
+        h2o.solvate(solvent_density=1)
+
+
+def test_only_too_many_inputs_for_solvate():
+    with pytest.raises(ValueError):
+        h2o.solvate(solvent_name='water', solvent_density=1, molecule=h2o)
+
+
+def test_negative_density_for_solvate():
+    with pytest.raises(ValueError):
+        h2o.solvate(solvent_name='water', solvent_density=-1)
+
+
+def test_no_atoms_in_solvent_molecule(empty_molecule):
+    with pytest.raises(ValueError):
+        h2o.solvate(solvent_density=1, molecule=empty_molecule)
