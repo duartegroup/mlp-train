@@ -168,7 +168,7 @@ class Configuration(AtomCollection):
         # with xtb, then get the density from the density database
         elif solvent_name is not None:
             logger.info(
-                f'Finding solvent with the name {solvent_name} in autodE solvent database'
+                f'Searching solvent with the name {solvent_name} in autodE solvent database'
             )
             solvent = get_solvent(solvent_name, kind='implicit')
             solvent_smiles = solvent.smiles
