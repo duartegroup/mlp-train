@@ -178,7 +178,7 @@ class Configuration(AtomCollection):
             if solvent.name not in solvent_densities.keys():
                 raise ValueError(
                     f'The density of {solvent.name} is not in the database'
-                    f'Please use provide the solvent molecule and density explicitly'
+                    f'Please provide the solvent molecule and density explicitly'
                 )
             else:
                 solvent_density = solvent_densities[solvent.name]
