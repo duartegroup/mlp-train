@@ -229,6 +229,6 @@ def oh_radical():
 
 @pytest.fixture
 def empty_molecule():
-    "OH radiacal species"
+    "No molecule inserted"
     molecule = mlt.Molecule()
     return molecule
