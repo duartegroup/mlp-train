@@ -3,7 +3,7 @@ import numpy as np
 from copy import deepcopy
 from abc import ABC, abstractmethod
 from typing import Optional
-from mlptrain.descriptors import SoapDescriptor
+from mlptrain.descriptor import SoapDescriptor
 from mlptrain.log import logger
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.decomposition import PCA
@@ -117,9 +117,10 @@ class AtomicEnvSimilarity(SelectionMethod):
         if len(mlp.training_data) == 0:
             return None
 
-        self._k_vec = SoapDescriptor.kernel_vector(
+        self._k_vec = SoapDescriptor().kernel_vector(
             configuration, configurations=mlp.training_data, zeta=8
         )
+
         return None
 
     @property
