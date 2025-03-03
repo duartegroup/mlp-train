@@ -3,7 +3,6 @@ import numpy as np
 from copy import deepcopy
 from abc import ABC, abstractmethod
 from typing import Optional
-from mlptrain.descriptor import SoapDescriptor
 from mlptrain.log import logger
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.decomposition import PCA
@@ -127,7 +126,7 @@ class AbsDiffE(SelectionMethod):
 
 
 class AtomicEnvSimilarity(SelectionMethod):
-    def __init__(self, threshold: float = 0.999):
+    def __init__(self, descriptor, threshold: float = 0.999):
         """
         Selection criteria based on the maximum distance between any of the
         training set and a new configuration. Evaluated based on the similarity
@@ -136,6 +135,7 @@ class AtomicEnvSimilarity(SelectionMethod):
 
         -----------------------------------------------------------------------
         Arguments:
+            descriptor: A descriptor instance (e.g., SoapDescriptor) with user-defined parameters.
             threshold: Value below which a configuration will be selected
         """
         super().__init__()
@@ -143,6 +143,12 @@ class AtomicEnvSimilarity(SelectionMethod):
         if threshold < 0.1 or threshold >= 1.0:
             raise ValueError('Cannot have a threshold outside [0.1, 1]')
 
+        self.descriptor = descriptor
+        """
+        Call the descriptor instance with user-defined parameters,
+        eg. SoapDescriptor = SoapDescriptor(average="outer", r_cut=6.0, n_max=8, l_max=8)
+        selector = AtomicEnvSimilarity(descriptor=SoapDescriptor, threshold=0.95)
+        """
         self.threshold = float(threshold)
         self._k_vec = np.array([])
 
@@ -164,7 +170,7 @@ class AtomicEnvSimilarity(SelectionMethod):
         if len(mlp.training_data) == 0:
             return None
 
-        self._k_vec = SoapDescriptor().kernel_vector(
+        self._k_vec = self.descriptor.kernel_vector(
             configuration, configurations=mlp.training_data, zeta=8
         )
 
@@ -201,6 +207,7 @@ class AtomicEnvSimilarity(SelectionMethod):
 def outlier_identifier(
     configuration: 'mlptrain.Configuration',
     configurations: 'mlptrain.ConfigurationSet',
+    descriptor,
     dim_reduction: bool = False,
     distance_metric: str = 'euclidean',
     n_neighbors: int = 15,
@@ -214,7 +221,7 @@ def outlier_identifier(
 
     -----------------------------------------------------------------------
     Arguments:
-
+    descriptor: Descriptor instance with `compute_representation` method.
     dim_reduction: if Ture, dimensionality reduction will
                    be performed before LOF calculation (so far only PCA available).
     distance_metric: distance metric used in LOF,
@@ -227,10 +234,15 @@ def outlier_identifier(
 
     -1 for anomalies/outliers and +1 for inliers.
     """
-    m1 = SoapDescriptor.compute_representation(configurations)
+    if not hasattr(descriptor, 'compute_representation'):
+        raise ValueError(
+            "The provided descriptor does not have a 'compute_representation' method."
+        )
+
+    m1 = descriptor.compute_representation(configurations)
     m1 /= np.linalg.norm(m1, axis=1).reshape(len(configurations), 1)
 
-    v1 = SoapDescriptor.compute_representation(configuration)
+    v1 = descriptor.compute_representation(configuration)
     v1 /= np.linalg.norm(v1, axis=1).reshape(1, -1)
 
     if dim_reduction:
