@@ -3,9 +3,8 @@ import numpy as np
 from copy import deepcopy
 from abc import ABC, abstractmethod
 from typing import Optional
-from mlptrain.descriptors import soap_kernel_vector
+from mlptrain.descriptors import SoapDescriptor
 from mlptrain.log import logger
-from mlptrain.descriptors import soap_matrix
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.decomposition import PCA
 
@@ -47,10 +46,6 @@ class SelectionMethod(ABC):
         """
         Number of backtracking steps that this selection method should evaluate
         if the value is 'too_large'
-
-        -----------------------------------------------------------------------
-        Returns:
-            (int):
         """
 
     @property
@@ -67,31 +62,10 @@ class SelectionMethod(ABC):
 
 class AbsDiffE(SelectionMethod):
     def __init__(self, e_thresh: float = 0.1):
-        """
-        Selection method based on the absolute difference between the
-        true and predicted total energies.
-
-        -----------------------------------------------------------------------
-        Arguments:
-            e_thresh: E_T
-        """
         super().__init__()
-
         self.e_thresh = e_thresh
 
     def __call__(self, configuration, mlp, **kwargs) -> None:
-        """
-        Evaluate the true and predicted energies, used to determine if this
-        configuration should be selected.
-
-        -----------------------------------------------------------------------
-        Arguments:
-            configuration: Configuration that may or may not be selected
-
-            mlp: Machine learnt potential
-
-            method_name: Name of the reference method to use
-        """
         method_name = kwargs.get('method_name', None)
         self._configuration = configuration
 
@@ -111,18 +85,12 @@ class AbsDiffE(SelectionMethod):
 
     @property
     def select(self) -> bool:
-        """
-        10 E_T > |E_predicted - E_true| > E_T
-        """
-
         abs_dE = abs(self._configuration.energy.delta)
         logger.info(f'|E_MLP - E_true| = {abs_dE:.4} eV')
-
         return 10 * self.e_thresh > abs_dE > self.e_thresh
 
     @property
     def too_large(self) -> bool:
-        """|E_predicted - E_true| > 10*E_T"""
         return abs(self._configuration.energy.delta) > 10 * self.e_thresh
 
     @property
@@ -132,16 +100,6 @@ class AbsDiffE(SelectionMethod):
 
 class AtomicEnvSimilarity(SelectionMethod):
     def __init__(self, threshold: float = 0.999):
-        """
-        Selection criteria based on the maximum distance between any of the
-        training set and a new configuration. Evaluated based on the similarity
-        SOAP kernel vector (K*) between a new configuration and prior training
-        data
-
-        -----------------------------------------------------------------------
-        Arguments:
-            threshold: Value below which a configuration will be selected
-        """
         super().__init__()
 
         if threshold < 0.1 or threshold >= 1.0:
@@ -156,33 +114,16 @@ class AtomicEnvSimilarity(SelectionMethod):
         mlp: 'mlptrain.potentials.MLPotential',
         **kwargs,
     ) -> None:
-        """
-        Evaluate the selection criteria
-
-        -----------------------------------------------------------------------
-        Arguments:
-            configuration: Configuration to evaluate on
-
-            mlp: Machine learning potential with some associated training data
-        """
         if len(mlp.training_data) == 0:
             return None
 
-        self._k_vec = soap_kernel_vector(
+        self._k_vec = SoapDescriptor.kernel_vector(
             configuration, configurations=mlp.training_data, zeta=8
         )
         return None
 
     @property
     def select(self) -> bool:
-        """
-        Determine if this configuration should be selected, based on the
-        minimum similarity between it and all of the training data
-
-        -----------------------------------------------------------------------
-        Returns:
-            (bool): If this configuration should be selected
-        """
         if self._n_training_envs == 0:
             return True
 
@@ -198,7 +139,6 @@ class AtomicEnvSimilarity(SelectionMethod):
 
     @property
     def _n_training_envs(self) -> int:
-        """Number of training environments available"""
         return len(self._k_vec)
 
 
@@ -209,33 +149,10 @@ def outlier_identifier(
     distance_metric: str = 'euclidean',
     n_neighbors: int = 15,
 ) -> int:
-    """
-    This function identifies whether a new data (configuration)
-    is the outlier in comparison with the existing data (configurations) by Local Outlier
-    Factor (LOF). For more details about the LOF method, please see the lit.
-    Breunig, M. M., Kriegel, H.-P., Ng, R. T. & Sander, J. LOF: Identifying
-    density-based local outliers. SIGMOD Rec. 29, 93–104 (2000).
-
-    -----------------------------------------------------------------------
-    Arguments:
-
-    dim_reduction: if Ture, dimensionality reduction will
-                   be performed before LOF calculation (so far only PCA available).
-    distance_metric: distance metric used in LOF,
-                     which could be one of 'euclidean',
-                     'cosine' and 'manhattan’.
-    n_neighbors: number of neighbors considered when computing the LOF.
-
-    -----------------------------------------------------------------------
-    Returns:
-
-    -1 for anomalies/outliers and +1 for inliers.
-    """
-
-    m1 = soap_matrix(configurations)
+    m1 = SoapDescriptor.compute_representation(configurations)
     m1 /= np.linalg.norm(m1, axis=1).reshape(len(configurations), 1)
 
-    v1 = soap_matrix(configuration)
+    v1 = SoapDescriptor.compute_representation(configuration)
     v1 /= np.linalg.norm(v1, axis=1).reshape(1, -1)
 
     if dim_reduction:
@@ -249,10 +166,7 @@ def outlier_identifier(
         novelty=True,
         contamination=0.2,
     )
-    'contamination: define the porpotional of outliner in the data, the higher, the less abnormal'
-
     clf.fit(m1)
-
     new = clf.predict(v1)
 
     return new
@@ -265,18 +179,6 @@ class AtomicEnvDistance(SelectionMethod):
         distance_metric: str = 'euclidean',
         n_neighbors: int = 15,
     ):
-        """
-        Selection criteria based on analysis whether the configuration is
-        outlier by outlier_identifier function
-        -----------------------------------------------------------------------
-        Arguments:
-            pca: whether to do dimensionality reduction by PCA.
-                 As the selected distance_metric may potentially suffer from
-                 the curse of dimensionality, the dimensionality reduction step
-                 (using PCA) could be applied before calculating the LOF.
-                 This would ensure good performance in high-dimensional data space.
-            For the other arguments, please see details in the outlier_identifier function
-        """
         super().__init__()
         self.pca = pca
         self.metric = distance_metric
@@ -307,7 +209,4 @@ class AtomicEnvDistance(SelectionMethod):
 
     @property
     def check(self) -> bool:
-        if self.mlp.n_train > 30:
-            return True
-        else:
-            return False
+        return self.mlp.n_train > 30
