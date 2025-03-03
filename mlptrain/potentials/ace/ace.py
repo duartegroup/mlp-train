@@ -98,7 +98,7 @@ class ACE(MLPotential):
                 'Install: https://github.com/casv2/pyjulip'
             )
 
-        return pyjulip.ACE(f'./{self.name}.json')
+        return pyjulip.ACE1(f'./{self.name}.json')
 
     @property
     def _r_in_estimate(self) -> float:
