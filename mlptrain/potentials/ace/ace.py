@@ -173,8 +173,11 @@ class ACE(MLPotential):
 
         # give weights for the different config_type-s
         print(
+            f"energy_weight = {Config.ace_params['energy_weight']}\n"
+            f"forces_weight = {Config.ace_params['forces_weight']}\n"
+            f"virial_weight = {Config.ace_params['virial_weight']}\n"
             'weights = Dict(\n'
-            f'       "default" => Dict("E" => {Config.ace_params['energy_weight']}, "F" => {Config.ace_params['forces_weight']} , "V" => {Config.ace_params['virial_weight']} )\n'
+            '       "default" => Dict("E" => energy_weight, "F" => forces_weight, "V" => virial_weight )\n'
             '        );\n',
             file=inp_file,
         )
@@ -193,10 +196,13 @@ class ACE(MLPotential):
         # information can be found here:
 
         if Config.ace_params['solver'] == 'QR':
-            print('solver = ACEfit.QR(lambda = 1e-1)\n', file=inp_file)
+            print(
+                f"solver = ACEfit.QR(lambda = {Config.ace_params['qr_lambda']})\n",
+                file=inp_file,
+            )
         elif Config.ace_params['solver'] == 'LSQR':
             print(
-                'solver = ACEfit.LSQR(damp = 1e-4, atol = 1e-6)\n',
+                f"solver = ACEfit.LSQR(damp = {Config.ace_params['lsqr_damp']}, atol = {Config.ace_params['lsqr_atol']})\n",
                 file=inp_file,
             )
         else:
@@ -205,17 +211,23 @@ class ACE(MLPotential):
             )
 
         # Smoothness prior
+        if Config.ace_params['smoothness_prior']:
+            print(
+                f"P = smoothness_prior(model; p = {Config.ace_params['prior']} )\n",
+                file=inp_file,
+            )
 
-        print(
-            f'P = smoothness_prior(model; p = {Config.ace_params['prior']} )\n',
-            file=inp_file,
-        )
-
-        print(
-            'acefit!(model, data_set;\n'
-            '        solver = solver, data_keys...);\n',
-            file=inp_file,
-        )
+            print(
+                'acefit!(model, data_set;\n'
+                '        prior = P, solver = solver, data_keys...);\n',
+                file=inp_file,
+            )
+        else:
+            print(
+                'acefit!(model, data_set;\n'
+                '        solver=solver, data_keys...);\n',
+                file=inp_file,
+            )
 
         print(
             '@info("Training Error Table")\n'

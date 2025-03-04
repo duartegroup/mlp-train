@@ -41,8 +41,12 @@ class _ConfigClass:
         'correlation_order': 3,  # maximum correlation order (body order - 1)
         'r_cut': 6.0,  # outer cutoff of ACE
         'solver': 'LSQR',  # Solver for ridge regression problem. QR or LSQR
+        'lsqr_damp': 0.001,
+        'lsqr_atol': 1e-6,
+        'qr_lambda': 0.1,
         'total_degree': 12,  # maximum total polynomial degree used for the basis
-        'smoothness_prior': 4,  # model prior/regularizer
+        'smoothness_prior': True,  # model prior/regularizer
+        'prior': 4,
     }
 
     # NeQUIP params
