@@ -35,18 +35,23 @@ class _ConfigClass:
     }
     # ACE params
     ace_params = {
-        'energy_weight': 20.0,
-        'forces_weight': 1.0,
-        'virial_weight': 0.0,
-        'correlation_order': 3,  # maximum correlation order (body order - 1)
-        'r_cut': 6.0,  # outer cutoff of ACE
+        'energy_weight': 20.0,  # Regression weights for energy
+        'forces_weight': 1.0,  # Regression weights for forces
+        'virial_weight': 0.0,  # Regression weights for virial
+        'correlation_order': 4,  # Maximum correlation order (body order - 1)
+        'r_cut': 6.0,  # Outer cutoff of ACE
         'solver': 'LSQR',  # Solver for ridge regression problem. QR or LSQR
-        'lsqr_damp': 0.001,
-        'lsqr_atol': 1e-6,
-        'qr_lambda': 0.1,
-        'total_degree': 12,  # maximum total polynomial degree used for the basis
-        'smoothness_prior': True,  # model prior/regularizer
-        'prior': 4,
+        'lsqr_damp': 0.001,  # Lambda parameter in Tikhonov regularisation
+        'lsqr_atol': 1e-6,  # Parameter for an early termination
+        'qr_lambda': 0.1,  #
+        'total_degree': [
+            20,
+            16,
+            16,
+            12,
+        ],  # Maximum total polynomial degree used for the basis
+        'smoothness_prior': True,  # Use model algebraic prior as Tikhonov regularizer in the model
+        'prior': 4,  # Parameter p in the smoothness prior
     }
 
     # NeQUIP params
