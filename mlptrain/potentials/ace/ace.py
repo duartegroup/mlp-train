@@ -174,7 +174,7 @@ class ACE(MLPotential):
         # give weights for the different config_type-s
         print(
             'weights = Dict(\n'
-            '       "default" => Dict("E" => 20.0, "F" => 1.0 , "V" => 0.0 )\n'
+            f'       "default" => Dict("E" => {Config.ace_params['energy_weight']}, "F" => {Config.ace_params['forces_weight']} , "V" => {Config.ace_params['virial_weight']} )\n'
             '        );\n',
             file=inp_file,
         )
@@ -203,6 +203,13 @@ class ACE(MLPotential):
             raise NotImplementedError(
                 'The solver is not supported. Available options are QR or LSQR.'
             )
+
+        # Smoothness prior
+
+        print(
+            f'P = smoothness_prior(model; p = {Config.ace_params['prior']} )\n',
+            file=inp_file,
+        )
 
         print(
             'acefit!(model, data_set;\n'

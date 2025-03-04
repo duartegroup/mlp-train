@@ -35,10 +35,14 @@ class _ConfigClass:
     }
     # ACE params
     ace_params = {
-        'correlation_order': 4,  # maximum correlation order (body order - 1)
-        'r_cut': 4.0,  # outer cutoff of ACE
+        'energy_weight': 20.0,
+        'forces_weight': 1.0,
+        'virial_weight': 0.0,
+        'correlation_order': 3,  # maximum correlation order (body order - 1)
+        'r_cut': 6.0,  # outer cutoff of ACE
         'solver': 'LSQR',  # Solver for ridge regression problem. QR or LSQR
-        'total_degree': 8,  # maximum total polynomial degree used for the basis
+        'total_degree': 12,  # maximum total polynomial degree used for the basis
+        'smoothness_prior': 4,  # model prior/regularizer
     }
 
     # NeQUIP params
