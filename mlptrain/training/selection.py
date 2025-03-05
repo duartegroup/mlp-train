@@ -118,9 +118,8 @@ class AbsDiffE(SelectionMethod):
 
     @property
     def too_large(self) -> bool:
+        """|E_predicted - E_true| > 10*E_T"""
         return abs(self._configuration.energy.delta) > 10 * self.e_thresh
-
-    """|E_predicted - E_true| > 10*E_T"""
 
     @property
     def n_backtrack(self) -> int:
@@ -203,9 +202,8 @@ class AtomicEnvSimilarity(SelectionMethod):
 
     @property
     def _n_training_envs(self) -> int:
+        """Number of training environments available"""
         return len(self._k_vec)
-
-    """Number of training environments available"""
 
 
 def outlier_identifier(
