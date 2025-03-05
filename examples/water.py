@@ -9,7 +9,7 @@ if __name__ == '__main__':
 
     ace = mlt.potentials.ACE('water', system=system)
 
-    SoapDescriptor = SoapDescriptor(
+    descriptor = SoapDescriptor(
         average='outer', r_cut=6.0, n_max=6, l_max=6
     )
     selector = AtomicEnvSimilarity(descriptor=descriptor, threshold=0.9995)
