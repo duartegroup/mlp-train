@@ -39,6 +39,7 @@ class _ConfigClass:
         'forces_weight': 1.0,  # Regression weights for forces
         'virial_weight': 0.0,  # Regression weights for virial
         'correlation_order': 4,  # Maximum correlation order (body order - 1)
+        'r0': 1.3,  # Typical bond lenght in the system, used in distance transform
         'r_cut': 6.0,  # Outer cutoff of ACE
         'solver': 'LSQR',  # Solver for ridge regression problem. QR or LSQR
         'lsqr_damp': 0.001,  # Lambda parameter in Tikhonov regularisation

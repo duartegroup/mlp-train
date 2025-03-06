@@ -1,10 +1,8 @@
 import ase
 import os
 import shutil
-import numpy as np
 from time import time
 from subprocess import Popen, PIPE
-from scipy.spatial import distance_matrix
 from mlptrain.box import Box
 from mlptrain.log import logger
 from mlptrain.config import Config
@@ -100,28 +98,6 @@ class ACE(MLPotential):
 
         return pyjulip.ACE1(f'./{self.name}.json')
 
-    @property
-    def _r_in_estimate(self) -> float:
-        """
-        Estimate the inner cut-off radius for the basis based on the minimum
-        unique pairwise distance in all the configurations. Should be a little
-        larger than that, so there is some data there
-
-        -----------------------------------------------------------------------
-        Returns:
-            (float): r_min / Å
-        """
-        if len(self.training_data) == 0:
-            raise ValueError('Cannot determine r_in. Had no training data')
-
-        def pairwise_dists(_c):
-            diag_shift = 9999.9 * np.eye(len(_c.coordinates))
-            return distance_matrix(_c.coordinates, _c.coordinates) + diag_shift
-
-        return (
-            min(np.min(pairwise_dists(c)) for c in self.training_data) + 0.05
-        )
-
     def _print_input(self, filename: str, **kwargs) -> None:
         """
         Print an input file appropriate for a ACE potential
@@ -135,7 +111,11 @@ class ACE(MLPotential):
         inp_file = open(filename, 'w')
 
         print(
-            'using ExtXYZ\n' 'using ACEpotentials\n',
+            'using ExtXYZ\n'
+            'using ACEpotentials\n'
+            'using Distributed\n'
+            f'addprocs({Config.n_cores}, exeflags="--project=$(Base.active_project())")\n'
+            '@everywhere using ACEpotentials\n',
             file=inp_file,
         )
 
@@ -149,8 +129,8 @@ class ACE(MLPotential):
             file=inp_file,
         )
 
-        # r0 is a typical length scale for the distance transform
         print(
+            f"r0 = {Config.ace_params['r0']}\n"  # r0 is a typical length scale for the distance transform
             f"r_cut = {Config.ace_params['r_cut']}\n"  # outer cutoff of ACE
             '\n',
             file=inp_file,
@@ -187,8 +167,7 @@ class ACE(MLPotential):
             '                   rcut = r_cut,\n'
             '                   order = correlation_order,\n'
             '                   totaldegree = total_degree,\n'
-            '                   Eref = Eref\n',
-            '                   );',
+            '                   Eref = Eref)\n',
             file=inp_file,
         )
 
