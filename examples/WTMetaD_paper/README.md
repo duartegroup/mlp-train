@@ -2,7 +2,7 @@
 
 This folder contains codes and initial files for various computational tasks discussed in the paper "Active learning meets metadynamics: Automated workflow for reactive machine learning potentials" ([https://chemrxiv.org/engage/chemrxiv/article-details/671fe54b98c8527d9ea7647a]).
 
-The manuscript demonstrates three reactions: the SN2 reaction in implicit solvent (referred to as r1), rearrangement reaction in the gas phase (r2), and glycosylation reaction in explicit solvent (r3). Python scripts for each reaction can be found in the corresponding folders.
+The manuscript demonstrates three reactions: the SN2 reaction in implicit solvent (referred to as r1), rearrangement reaction in the gas phase (r2), and glycosylation reaction in explicit solvent (r3). Python scripts for each reaction can be found in the corresponding folders. Access to training and testing data for all three reactions will soon be made available in the Oxford Research Archive (ORA), and the relevant DOI will be provided here. For immediate access to these datasets, please contact the corresponding author, Fernanda Duarte.
 
 For r1 and r2, active learning (AL) was utilised with both WTMetaD-IB and downhill sampling methods to train the potential. Input geometries (as *.xyz files) and training script are located within folders named after the training methods, such as al_downhill.
 
