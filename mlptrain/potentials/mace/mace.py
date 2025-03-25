@@ -6,8 +6,6 @@ import os
 import time
 import logging
 from mlptrain.log import logger
-import gc
-import torch
 import autode as ade
 from typing import Optional
 import ase
@@ -16,6 +14,8 @@ try:
     from mace.calculators import MACECalculator
     from mace.cli.run_train import run as train_mace
     from mace import tools
+    import torch
+    import gc
 except ModuleNotFoundError:
     pass
 
