@@ -150,7 +150,6 @@ class MACE(MLPotential):
             '--ema',
             '--ema_decay',
             str(0.999),
-            '--save_cpu',
             '--device',
             str(Config.mace_params['device']),
             '--default_dtype',
