@@ -2,19 +2,22 @@ import mlptrain as mlt
 import argparse
 from mlptrain.config import Config
 from mlptrain.potentials._base import MLPotential
-from mace.cli.run_train import run as train_mace
-from mace import tools
 import os
 import time
 import logging
 from mlptrain.log import logger
-from mace.calculators import MACECalculator
 import gc
 import torch
 import autode as ade
 from typing import Optional
 import ase
 
+try:
+    from mace.calculators import MACECalculator
+    from mace.cli.run_train import run as train_mace
+    from mace import tools
+except ModuleNotFoundError:
+    pass
 
 class MACE(MLPotential):
     def __init__(
