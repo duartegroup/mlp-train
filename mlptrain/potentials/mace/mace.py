@@ -19,6 +19,7 @@ try:
 except ModuleNotFoundError:
     pass
 
+
 class MACE(MLPotential):
     def __init__(
         self,
@@ -38,6 +39,7 @@ class MACE(MLPotential):
                                       specifying the coordinates
 
             foundation: (str) Name of the foundation model used in fine-tunning
+                         like "medium_off" for MACE-OFF(M), "medium" for MACE-MP-0(M)
         """
         super().__init__(name=name, system=system)
 
