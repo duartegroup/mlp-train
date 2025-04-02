@@ -206,7 +206,7 @@ class AtomicEnvSimilarity(SelectionMethod):
         return len(self._k_vec)
 
 
-def outlier_identifier(
+def _outlier_identifier(
     configuration: 'mlptrain.Configuration',
     configurations: 'mlptrain.ConfigurationSet',
     descriptor,
@@ -268,6 +268,7 @@ def outlier_identifier(
 class AtomicEnvDistance(SelectionMethod):
     def __init__(
         self,
+        descriptor,
         pca: bool = False,
         distance_metric: str = 'euclidean',
         n_neighbors: int = 15,
@@ -277,6 +278,7 @@ class AtomicEnvDistance(SelectionMethod):
         outlier by outlier_identifier function
         -----------------------------------------------------------------------
         Arguments:
+            descriptor: descriptor used to represent the structures
             pca: whether to do dimensionality reduction by PCA.
                  As the selected distance_metric may potentially suffer from
                  the curse of dimensionality, the dimensionality reduction step
@@ -285,6 +287,7 @@ class AtomicEnvDistance(SelectionMethod):
             For the other arguments, please see details in the outlier_identifier function
         """
         super().__init__()
+        self.descriptor = descriptor
         self.pca = pca
         self.metric = distance_metric
         self.n_neighbors = n_neighbors
@@ -295,9 +298,10 @@ class AtomicEnvDistance(SelectionMethod):
 
     @property
     def select(self) -> bool:
-        metric = outlier_identifier(
+        metric = _outlier_identifier(
             self._configuration,
             self.mlp.training_data,
+            self.descriptor,
             self.pca,
             self.metric,
             self.n_neighbors,
