@@ -3,7 +3,7 @@ import mlptrain as mlt
 from mlptrain.box import Box
 import autode as ade
 from autode.utils import work_in_tmp_dir as work_in_tmp_dir_ade
-from autode.wrappers.methods import Method
+from autode.wrappers.methods import ExternalMethodOEG
 from autode.wrappers.keywords import KeywordsSet
 from ase.constraints import Hookean
 from ase.geometry import find_mic
@@ -14,8 +14,11 @@ from mlptrain.utils import work_in_tmp_dir as work_in_tmp_dir_mlt
 import numpy as np
 from copy import deepcopy
 
-mlt.Config.n_cores = 8
-ade.Config.n_cores = 8
+mlt.Config.n_cores = 1
+ade.Config.n_cores = 1
+
+# if torch.cuda.is_available():
+mlt.Config.mace_params['calc_device'] = 'cuda'
 
 ev_to_ha = 1.0 / 27.2114
 
@@ -98,18 +101,18 @@ def from_autode_to_ase(molecule, cell_size=100):
     return atoms
 
 
-class MLPEST(Method):
+class MLPEST(ExternalMethodOEG):
     """class of machine learning potential fitted for autode package
     original code provided by T. Yang"""
 
     @property
-    def available(self):
+    def is_available(self):
         return True
 
     def __repr__(self):
-        return f'ML potential (available = {self.available})'
+        return f'ML potential (available = {self.is_available})'
 
-    def generate_input(self, calc, molecule):
+    def generate_input_for(self, calc, molecule):
         """Just print a .xyz file of the molecule, which can be read
         as a gap-train  configuration object"""
 
@@ -117,13 +120,13 @@ class MLPEST(Method):
         calc.input.additional_filenames = [self.path]
         return None
 
-    def get_output_filename(self, calc):
+    def output_filename_for(self, calc):
         return f'{calc.name}.xyz'
 
-    def get_input_filename(self, calc):
+    def input_filename_for(self, calc):
         return f'{calc.name}.xyz'
 
-    def get_version(self, calc):
+    def version_in(self, calc):
         return '1.0.0'
 
     def execute(self, calc):
@@ -142,7 +145,7 @@ class MLPEST(Method):
             if 'opt' in self.action:
                 logger.info('start optimization')
                 ase_atoms = from_autode_to_ase(molecule=calc.molecule)
-                logger.info('start optimise moelucle')
+                logger.info('start optimise molecule')
                 logger.info(f'{ase_atoms.cell}, {ase_atoms.pbc}')
                 ase_atoms.set_calculator(self.ase_calculator)
                 asetraj = ASETrajectory('tmp.traj', 'w', ase_atoms)
@@ -166,7 +169,7 @@ class MLPEST(Method):
         execute_mlp()
         return None
 
-    def calculation_terminated_normally(self, calc):
+    def terminated_normally_in(self, calc):
         name = self.get_output_filename(calc)
 
         if os.path.exists(name):
@@ -179,16 +182,25 @@ class MLPEST(Method):
     def ase_calculator(self):
         return self.mlp.ase_calculator
 
-    def get_energy(self, calc):
+    def _energy_from(self, calc):
         name = self.get_output_filename(calc)
         configuration = mlt.Configuration()
         configuration.load(name)
         return configuration.energy.true * ev_to_ha
 
+    def coordinates_from(self, calc):
+        return None
+
+    def optimiser_from(self, calc):
+        raise None
+
     def get_free_energy(self, calc):
         return None
 
     def get_enthalpy(self, calc):
+        return None
+
+    def partial_charges_from(self, calc):
         return None
 
     def optimisation_converged(self, calc):
@@ -212,17 +224,24 @@ class MLPEST(Method):
     def get_atomic_charges(self, calc):
         return None
 
-    def get_gradients(self, calc):
+    def gradient_from(self, calc):
         name = self.get_output_filename(calc)
         configuration = mlt.Configuration()
         configuration.load(name)
         return configuration.forces.true * ev_to_ha
 
+    def implements(self):
+        return True
+
+    def uses_external_io(self):
+        return True
+
     def __init__(self, mlp, action, path):
         super().__init__(
-            name='mlp',
+            executable_name='mlp',
             keywords_set=KeywordsSet(),
             path='',
+            doi_list=[],
             implicit_solvation_type=None,
         )
 
@@ -231,7 +250,7 @@ class MLPEST(Method):
         self.action = deepcopy(action)
 
 
-def get_final_species(TS, mlp):
+def get_final_species(TS: mlt.Configuration, mlp):
     """get the optimised product after MD propogation"""
     trajectory_product = mlt.md.run_mlp_md(
         configuration=TS,
@@ -314,19 +333,21 @@ if __name__ == '__main__':
 
     system = mlt.System(TS_mol, box=Box([100, 100, 100]))
 
-    endo = mlt.potentials.ACE('endo_ace_wB97M_imwater', system)
+    # endo = mlt.potentials.ACE('endo_ace_wB97M_imwater', system)
+    endo = mlt.potentials.MACE('MACE-MP0', system)
 
-    TS = mlt.ConfigurationSet()
-    TS.load_xyz(filename='cis_endo_TS_wB97M.xyz', charge=0, mult=1)
-    TS = TS[0]
-    TS.box = Box([100, 100, 100])
-    TS.charge = 0
-    TS.mult = 1
+    # load transition state
+    ts_set = mlt.ConfigurationSet()
+    ts_set.load_xyz(filename='cis_endo_TS_wB97M.xyz', charge=0, mult=1)
+    ts = ts_set[0]
+    ts.box = Box([100, 100, 100])
+    ts.charge = 0
+    ts.mult = 1
 
     cwd = os.getcwd()
     ade_endo = MLPEST(mlp=endo, action=['opt'], path=f'{cwd}/{endo.name}.json')
 
-    product = get_final_species(TS=TS[0], mlp=endo)
+    product = get_final_species(ts, endo)
 
     product.print_xyz_file(filename='product.xyz')
 
