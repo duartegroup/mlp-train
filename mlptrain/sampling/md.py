@@ -476,7 +476,7 @@ def _get_traj_name(restart_files: Optional[List[str]] = None, **kwargs) -> str:
 
 def _convert_ase_traj(
     traj_name: str,
-    bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
+    bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']] = None,
     **kwargs,
 ) -> 'mlptrain.Trajectory':
     """Convert an ASE trajectory into an mlptrain Trajectory"""

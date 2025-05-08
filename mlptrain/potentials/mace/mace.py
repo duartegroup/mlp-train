@@ -26,6 +26,7 @@ class MACE(MLPotential):
         name: str,
         system: 'mlt.System',
         foundation: Optional[str] = None,
+        model_fpath: str = None,
     ) -> None:
         """
         MACE machine learning potential
@@ -40,6 +41,10 @@ class MACE(MLPotential):
 
             foundation: (str) Name of the foundation model used in fine-tunning
                          like "medium_off" for MACE-OFF(M), "medium" for MACE-MP-0(M)
+
+            model_fpath: (str) Optional specification of a specific fpath for the base model,
+                         if None the model file_name defaults to f'{name}.model' in the current 
+                         working dir.
         """
         super().__init__(name=name, system=system)
 
@@ -52,6 +57,7 @@ class MACE(MLPotential):
             )
 
         self.foundation = foundation
+        self.model_fpath = model_fpath
         logging.info(f'MACE version: {mace.__version__}')
 
         tools.set_seeds(345)
@@ -60,7 +66,10 @@ class MACE(MLPotential):
     @property
     def filename(self) -> str:
         """Name of the file where potential is stored"""
-        return f'{self.name}.model'
+        if self.model_fpath is not None:
+            return self.model_fpath
+        else:
+            return f'{os.getcwd()}/{self.name}.model'
 
     @property
     def requires_atomic_energies(self) -> bool:

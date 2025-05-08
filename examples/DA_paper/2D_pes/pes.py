@@ -5,6 +5,7 @@ import autode as ade
 from autode.utils import work_in_tmp_dir as work_in_tmp_dir_ade
 from autode.wrappers.methods import ExternalMethodOEG
 from autode.wrappers.keywords import KeywordsSet
+from autode.calculations.types import CalculationType
 from ase.constraints import Hookean
 from ase.geometry import find_mic
 from mlptrain.log import logger
@@ -230,8 +231,8 @@ class MLPEST(ExternalMethodOEG):
         configuration.load(name)
         return configuration.forces.true * ev_to_ha
 
-    def implements(self):
-        return True
+    # def implements(self, calculation_type: CalculationType):
+    #     return True
 
     def uses_external_io(self):
         return True
@@ -308,6 +309,7 @@ def optimise_with_fix_solute(
 
     ase_atoms = configuration.ase_atoms
     logger.info(f'{ase_atoms.cell}, {ase_atoms.pbc}')
+    print('Current Working Dir: ', os.getcwd())
     ase_atoms.set_calculator(mlp.ase_calculator)
 
     if constraint:
@@ -329,12 +331,19 @@ Hookean.adjust_forces = adjust_forces
 Hookean.adjust_potential_energy = adjust_potential_energy
 
 if __name__ == '__main__':
+
     TS_mol = mlt.Molecule(name='cis_endo_TS_water.xyz')
 
     system = mlt.System(TS_mol, box=Box([100, 100, 100]))
 
     # endo = mlt.potentials.ACE('endo_ace_wB97M_imwater', system)
-    endo = mlt.potentials.MACE('MACE-MP0', system)
+    # model_name = 'GO-MACE-23'
+    # model_name = 'MACE-OFF23_medium'
+    model_name = 'MACE-OFF23_medium_endo_DA_train_fine_tuned'
+    cwd = os.getcwd()
+    endo = mlt.potentials.MACE(model_name, system, model_fpath=f'{cwd}/{model_name}.model')
+
+    # dumy_ase_calc = endo.ase_calculator
 
     # load transition state
     ts_set = mlt.ConfigurationSet()
@@ -344,13 +353,14 @@ if __name__ == '__main__':
     ts.charge = 0
     ts.mult = 1
 
-    cwd = os.getcwd()
-    ade_endo = MLPEST(mlp=endo, action=['opt'], path=f'{cwd}/{endo.name}.json')
+    # ade_endo = MLPEST(mlp=endo, action=['opt'], path=f'{cwd}/{endo.name}.json')   # for ACE
+    ade_endo = MLPEST(mlp=endo, action=['opt'], path=f'{cwd}/{endo.name}.model')
 
     product = get_final_species(ts, endo)
 
     product.print_xyz_file(filename='product.xyz')
 
+    # define product
     pes = ade.pes.RelaxedPESnD(
         ade.Molecule('product.xyz'),
         rs={
@@ -359,6 +369,6 @@ if __name__ == '__main__':
         },
     )
 
-    pes.calculate(method=ade_endo, keywords=['opt'], n_cores=8)
+    pes.calculate(method=ade_endo, keywords=['opt'], n_cores=mlt.Config.n_cores)
     pes.save(filename='endo_in_water.npz')
     pes.plot()
