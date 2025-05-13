@@ -44,6 +44,7 @@ def train(
     pbc: bool = False,
     box_size: Optional[list] = None,
     keep_al_trajs: bool = False,
+    keep_output_files: bool = True,
 ) -> None:
     """
     Train a system using active learning, by propagating dynamics using ML
@@ -145,6 +146,8 @@ def train(
         box_size: (List | None) Size of the box where MLP-MD propagated.
 
         keep_al_trajs: (bool) If True, MLP-MD trajectories generated during AL phase are saved into new folder.
+
+        keep_output_files: (bool) If True, outputs of Orca computations are saved to new folder.
     """
     if md_program.lower() == 'openmm':
         if not isinstance(mlp, mlptrain.potentials.MACE):
@@ -162,6 +165,9 @@ def train(
 
     if keep_al_trajs is True:
         os.makedirs('al_trajectories', exist_ok=True)
+
+    if keep_output_files is True:
+        os.makedirs('orca_outputs', exist_ok=True)
 
     if pbc and box_size is None:
         raise ValueError('For PBC in MD, the box_size cannot be None')
@@ -238,6 +244,7 @@ def train(
             pbc=pbc,
             box_size=box_size,
             keep_al_trajs=keep_al_trajs,
+            keep_output_files=keep_output_files,
         )
 
         # Active learning finds no configurations
@@ -369,6 +376,7 @@ def _gen_active_config(
     n_cores: int,
     max_time: float,
     method_name: str,
+    keep_output_files: str,
     **kwargs,
 ) -> Optional['mlptrain.Configuration']:
     """
@@ -515,7 +523,11 @@ def _gen_active_config(
             frame = traj.final_frame
 
         if frame.energy.true is None:
-            frame.single_point(method_name, n_cores=n_cores)
+            frame.single_point(
+                method_name,
+                n_cores=n_cores,
+                keep_output_files=keep_output_files,
+            )
 
         return frame
 
