@@ -1,0 +1,7 @@
+mlptrain.training.active
+========================
+
+.. automodule:: mlptrain.training.active
+   :members:
+   :undoc-members:
+   :show-inheritance:

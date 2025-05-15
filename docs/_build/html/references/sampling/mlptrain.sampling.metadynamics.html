@@ -1,0 +1,403 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mlptrain.sampling.metadynamics &mdash; mlp-train  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            mlp-train
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/contributing.html">Contributing to mlp-train</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">References</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">mlp-train</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">mlptrain.sampling.metadynamics</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/references/sampling/mlptrain.sampling.metadynamics.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-mlptrain.sampling.metadynamics">
+<span id="mlptrain-sampling-metadynamics"></span><h1>mlptrain.sampling.metadynamics<a class="headerlink" href="#module-mlptrain.sampling.metadynamics" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.sampling.metadynamics.Metadynamics">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.sampling.metadynamics.</span></span><span class="sig-name descname"><span class="pre">Metadynamics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cvs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">mlptrain._PlumedCV</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">mlptrain._PlumedCV</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">mlptrain.PlumedBias</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.sampling.metadynamics.Metadynamics" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Metadynamics class for running biased molecular dynamics using
+metadynamics bias and analysing the results</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.sampling.metadynamics.Metadynamics.block_analysis">
+<span class="sig-name descname"><span class="pre">block_analysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start_time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'kcal</span> <span class="pre">mol-1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_n_blocks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_blocksize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">blocksize_interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bandwidth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cvs_bounds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.sampling.metadynamics.Metadynamics.block_analysis" title="Link to this definition"></a></dt>
+<dd><p>Perform block averaging analysis on the sliced trajectory of the most
+recent metadynamics run. Plot the block analysis and save mean FES
+grids with a range of block sizes, which, if the block analysis
+converged, can be used for plotting the FES error using plot_fes()
+method.</p>
+<blockquote>
+<div><p>(in ps)</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>idx</strong> – (int) Index specifying which metadynamics run (from n_runs)
+to use for block analysis</p></li>
+<li><p><strong>energy_units</strong> – (str) Energy units to be used in plotting, available
+units: ‘eV’, ‘kcal mol-1’, ‘kJ mol-1’</p></li>
+<li><p><strong>n_bins</strong> – (int) Number of bins to use when dumping histograms</p></li>
+<li><p><strong>min_n_blocks</strong> – (int) Minimum number of blocks</p></li>
+<li><p><strong>min_blocksize</strong> – (int) Minimum size of a block</p></li>
+<li><p><strong>blocksize_interval</strong> – (int) Block size interval describing the
+difference in the number of frames per
+block for adjacent block sizes</p></li>
+<li><p><strong>bandwidth</strong> – (float) Bandwidth parameter used in the histogram
+estimations</p></li>
+<li><p><strong>cvs_bounds</strong> – Specifies the range between which to compute the free
+energy for each collective variable,
+e.g. [(0.8, 1.5), (80, 120)]</p></li>
+<li><p><strong>temp</strong> – (float) Temperature in K during the analysed simulation</p></li>
+<li><p><strong>dt</strong> – (float) Time-step in fs during the analysed simulation</p></li>
+<li><p><strong>interval</strong> – (int) Interval between saving the geometry during the
+analysed simulation</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.sampling.metadynamics.Metadynamics.compute_fes">
+<span class="sig-name descname"><span class="pre">compute_fes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'kcal</span> <span class="pre">mol-1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cvs_bounds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">via_reweighting</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bandwidth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#mlptrain.sampling.metadynamics.Metadynamics.compute_fes" title="Link to this definition"></a></dt>
+<dd><p>Compute a grid containing collective variable grids and free energy
+surface grids, which is saved in the current directory as .npy file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_bins</strong> – (int) Number of bins to use in every dimension for fes file
+generation from HILLS</p></li>
+<li><p><strong>cvs_bounds</strong> – Specifies the range between which to compute the free
+energy for each collective variable
+e.g. [(0.8, 1.5), (80, 120)]</p></li>
+<li><p><strong>via_reweighting</strong> – (bool) If true the free energy is computed using
+the reweighting scheme</p></li>
+<li><p><strong>start_time</strong> – (float) Start time of the sliced trajectory which is
+going to be used in reweighting (in ps)</p></li>
+<li><p><strong>bandwidth</strong> – (float) Bandwidth parameter used in the histogram
+estimations</p></li>
+<li><p><strong>temp</strong> – (float) Temperature in K during the analysed simulation,
+only needed when reweighting</p></li>
+<li><p><strong>dt</strong> – (float) Time-step in fs during the analysed simulation, only
+needed when reweighting</p></li>
+<li><p><strong>interval</strong> – (int) Interval between saving the geometry during the
+analysed simulation, only needed
+when reweighting</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The total grid containing CVs and FESs</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.sampling.metadynamics.Metadynamics.estimate_width">
+<span class="sig-name descname"><span class="pre">estimate_width</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">configurations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../configurations/mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../configurations/mlptrain.configurations.configuration_set.html#mlptrain.configurations.configuration_set.ConfigurationSet" title="mlptrain.configurations.configuration_set.ConfigurationSet"><span class="pre">ConfigurationSet</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../potentials/mlptrain.potentials._base.html#mlptrain.potentials._base.MLPotential" title="mlptrain.potentials._base.MLPotential"><span class="pre">MLPotential</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span></span></span><a class="headerlink" href="#mlptrain.sampling.metadynamics.Metadynamics.estimate_width" title="Link to this definition"></a></dt>
+<dd><p>Estimate optimal widths (σ) to be used in metadynamics.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mlp</strong> – Machine learnt potential</p></li>
+<li><p><strong>temp</strong> – (float) Temperature in K to initialise velocities and to run
+NVT MD. Must be positive</p></li>
+<li><p><strong>interval</strong> – (int) Interval between saving the geometry</p></li>
+<li><p><strong>dt</strong> – (float) Time-step in fs</p></li>
+<li><p><strong>plot</strong> – (bool) If True plots trajectories of collective variables as
+a function of time</p></li>
+</ul>
+</dd>
+</dl>
+<blockquote>
+<div><dl class="simple">
+<dt>List of optimal width values for each CV,</dt><dd><p>e.g. [0.02, 0.03] for two CVs</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(List)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.sampling.metadynamics.Metadynamics.kbt">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">kbt</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#mlptrain.sampling.metadynamics.Metadynamics.kbt" title="Link to this definition"></a></dt>
+<dd><p>Value of k_B*T in ASE units</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.sampling.metadynamics.Metadynamics.n_cvs">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_cvs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#mlptrain.sampling.metadynamics.Metadynamics.n_cvs" title="Link to this definition"></a></dt>
+<dd><p>Number of collective variables used in metadynamics</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.sampling.metadynamics.Metadynamics.plot_fes">
+<span class="sig-name descname"><span class="pre">plot_fes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'kcal</span> <span class="pre">mol-1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cvs_bounds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fes_npy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">blocksize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.sampling.metadynamics.Metadynamics.plot_fes" title="Link to this definition"></a></dt>
+<dd><p>Plot the free energy surface with a confidence interval. If the .npy
+file is not supplied, the file is computed (if metadynamics has been
+run). If blocksize is supplied, the FES error is plotted using
+block_analysis.npz file with the given blocksize generated during
+block averaging analysis.</p>
+<blockquote>
+<div><p>‘kJ mol-1’. If fes_npy and/or blocksize options
+are used, the units of fes_npy and/or blocksize
+files must match energy units here</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>confidence_level</strong> – (float) Specifies what confidence level to use
+in plots (probability for FES to lie in
+the plotted range)</p></li>
+<li><p><strong>n_bins</strong> – (int) Number of bins to use in every dimension for fes file
+generation from HILLS</p></li>
+<li><p><strong>cvs_bounds</strong> – Specifies the range between which to compute the free
+energy for each collective variable,
+e.g. [(0.8, 1.5), (80, 120)]</p></li>
+<li><p><strong>fes_npy</strong> – (str) File name of the .npy file used for plotting. FES
+obtained through block analysis should be specified
+using blocksize</p></li>
+<li><p><strong>blocksize</strong> – (int) If block analysis has been performed, the integer
+specifies which block size to use for plotting
+the FES standard error</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.sampling.metadynamics.Metadynamics.plot_fes_convergence">
+<span class="sig-name descname"><span class="pre">plot_fes_convergence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stride</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_surfaces</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'ps'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'kcal</span> <span class="pre">mol-1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cvs_bounds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.sampling.metadynamics.Metadynamics.plot_fes_convergence" title="Link to this definition"></a></dt>
+<dd><p>Compute multiple fes.dat files from a HILLS_idx.dat file by summing
+the deposited gaussians using a stride. Use the computed files to plot
+multiple FESs as a function of simulation time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_surfaces</strong> – (int) Number of surfaces to be plotted (counting from
+the last computed surface), must not exceed the
+number of computed surfaces</p></li>
+<li><p><strong>time_units</strong> – (str) Time units to be used in plotting, available
+units: ‘fs’, ‘ps’, ‘ns’</p></li>
+<li><p><strong>energy_units</strong> – (str) Energy units to be used in plotting, available
+units: ‘eV’, ‘kcal mol-1’, ‘kJ mol-1’</p></li>
+<li><p><strong>n_bins</strong> – (int) Number of bins to use in every dimension for fes file
+generation from HILLS</p></li>
+<li><p><strong>cvs_bounds</strong> – Specifies the range between which to compute the free
+energy for each collective variable,
+e.g. [(0.8, 1.5), (80, 120)]</p></li>
+<li><p><strong>idx</strong> – (int) Integer which specifies which metadynamics run to use
+for plotting the FES convergence</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.sampling.metadynamics.Metadynamics.plot_gaussian_heights">
+<span class="sig-name descname"><span class="pre">plot_gaussian_heights</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'kcal</span> <span class="pre">mol-1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'ps'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'plumed_files/metadynamics'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.sampling.metadynamics.Metadynamics.plot_gaussian_heights" title="Link to this definition"></a></dt>
+<dd><p>Plot the height of deposited gaussians as a function of time (using
+HILLS_{idx}.dat files).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>time_units</strong> – (str) Time units to be used in plotting, available
+units: ‘fs’, ‘ps’, ‘ns’</p></li>
+<li><p><strong>path</strong> – (str) Directory where HILLS_{idx}.dat files are located</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.sampling.metadynamics.Metadynamics.run_metadynamics">
+<span class="sig-name descname"><span class="pre">run_metadynamics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">configuration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">mlptrain.Configuration</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../potentials/mlptrain.potentials._base.html#mlptrain.potentials._base.MLPotential" title="mlptrain.potentials._base.MLPotential"><span class="pre">mlptrain.potentials._base.MLPotential</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">biasfactor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">al_iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_runs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_sep</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_to_xyz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restart</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.sampling.metadynamics.Metadynamics.run_metadynamics" title="Link to this definition"></a></dt>
+<dd><p>Perform multiple metadynamics runs in parallel, generate .xyz and .traj
+files containing trajectories of the runs, generate PLUMED files
+containing deposited gaussians and trajectories in terms of the CVs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>temp</strong> – (float) Temperature in K to initialise velocities and to run
+NVT MD. Must be positive</p></li>
+<li><p><strong>interval</strong> – (int) Interval between saving the geometry</p></li>
+<li><p><strong>dt</strong> – (float) Time-step in fs</p></li>
+<li><p><strong>pace</strong> – (int) τ_G/dt, interval at which a new gaussian is placed</p></li>
+<li><p><strong>height</strong> – (float) ω, initial height of placed gaussians (in eV)</p></li>
+<li><p><strong>width</strong> – (List[float] | float | None) σ, standard deviation
+(parameter describing the width) of placed gaussians,
+if not supplied it is estimated automatically</p></li>
+<li><p><strong>biasfactor</strong> – (float | None) γ, describes how quickly gaussians
+shrink, larger values make gaussians to
+be placed less sensitive to the bias
+potential</p></li>
+<li><p><strong>al_iter</strong> – (int | None) If not None, can be used to load metadynamics
+bias generated during inherited-bias active
+learning. The index specifies from which AL
+iteration to load the bias</p></li>
+<li><p><strong>n_runs</strong> – (int) Number of times to run metadynamics</p></li>
+<li><p><strong>save_sep</strong> – (bool) If True saves trajectories of
+each simulation separately</p></li>
+<li><p><strong>all_to_xyz</strong> – (bool) If True all .traj trajectory files are saved as
+.xyz files (when using save_fs, save_ps, save_ns)</p></li>
+<li><p><strong>restart</strong> – (bool) If True restarts the most recent metadynamics
+simulation</p></li>
+</ul>
+</dd>
+</dl>
+<blockquote>
+<div><p>in some units</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Keyword Arguments<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>grid_bin}</strong> (<em>{grid_min</em><em>, </em><em>grid_max</em><em>,</em>) – Grid parameters: if defined, the
+deposited gaussians are dumped to
+a grid that is used to compute
+the biased forces</p></li>
+<li><p><strong>constraints</strong> – (List) List of ASE constraints to use in the dynamics
+e.g. [ase.constraints.Hookean(a1, a2, k, rt)]</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.sampling.metadynamics.Metadynamics.try_multiple_biasfactors">
+<span class="sig-name descname"><span class="pre">try_multiple_biasfactors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">configuration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">mlptrain.Configuration</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../potentials/mlptrain.potentials._base.html#mlptrain.potentials._base.MLPotential" title="mlptrain.potentials._base.MLPotential"><span class="pre">mlptrain.potentials._base.MLPotential</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">biasfactors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plotted_cvs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.sampling.metadynamics.Metadynamics.try_multiple_biasfactors" title="Link to this definition"></a></dt>
+<dd><p>Execute multiple well-tempered metadynamics runs in parallel with a
+provided sequence of biasfactors and plot the resulting trajectories,
+useful for estimating the optimal biasfactor value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>temp</strong> – (float) Temperature in K to initialise velocities and to run
+NVT MD. Must be positive</p></li>
+<li><p><strong>interval</strong> – (int) Interval between saving the geometry</p></li>
+<li><p><strong>dt</strong> – (float) Time-step in fs</p></li>
+<li><p><strong>biasfactors</strong> – Sequence of γ, describes how quickly gaussians shrink,
+larger values make gaussians to be placed less
+sensitive to the bias potential</p></li>
+<li><p><strong>pace</strong> – (int) τ_G/dt, interval at which a new gaussian is placed</p></li>
+<li><p><strong>height</strong> – (float) ω, initial height of placed gaussians (in eV)</p></li>
+<li><p><strong>width</strong> – (List[float] | float | None) σ, standard deviation
+(parameter describing the width) of placed gaussians,
+if not supplied it is estimated automatically</p></li>
+<li><p><strong>plotted_cvs</strong> – Sequence of one or two PlumedCV objects which are
+going to be plotted, must be a subset for CVs used to
+define the Metadynamics object</p></li>
+</ul>
+</dd>
+</dl>
+<blockquote>
+<div><p>deposited gaussians are dumped to
+a grid that is used to compute
+the biased forces</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Keyword Arguments<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>constraints</strong> – (List) List of ASE constraints to use in the dynamics
+e.g. [ase.constraints.Hookean(a1, a2, k, rt)]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Duarte group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

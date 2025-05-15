@@ -1,0 +1,211 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mlptrain.configurations.calculate &mdash; mlp-train  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            mlp-train
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">mlp-train</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">mlptrain.configurations.calculate</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for mlptrain.configurations.calculate</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">mlptrain</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">autode</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tuple</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mlptrain.log</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mlptrain.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">work_in_tmp_dir</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mlptrain.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
+
+
+<div class="viewcode-block" id="run_autode">
+<a class="viewcode-back" href="../../../references/mlptrain.configurations.calculate.html#mlptrain.configurations.calculate.run_autode">[docs]</a>
+<span class="nd">@work_in_tmp_dir</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_autode</span><span class="p">(</span>
+    <span class="n">configuration</span><span class="p">:</span> <span class="s1">&#39;mlptrain.Configuration&#39;</span><span class="p">,</span> <span class="n">method_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">n_cores</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Run an autodE calculation</span>
+
+<span class="sd">    ---------------------------------------------------------------------------</span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        configuration:</span>
+
+<span class="sd">        method_name: Name of the method. Case insensitive</span>
+
+<span class="sd">        n_cores: Number of cores to use for the calculation</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">autode.species</span><span class="w"> </span><span class="kn">import</span> <span class="n">Species</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">autode.calculations</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calculation</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">autode.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">CouldNotGetProperty</span>
+
+    <span class="n">method</span><span class="p">,</span> <span class="n">kwds</span> <span class="o">=</span> <span class="n">_method_and_keywords</span><span class="p">(</span><span class="n">method_name</span><span class="o">=</span><span class="n">method_name</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Running a </span><span class="si">{</span><span class="n">method_name</span><span class="si">}</span><span class="s1"> calculation at: </span><span class="si">{</span><span class="n">kwds</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="n">calc</span> <span class="o">=</span> <span class="n">Calculation</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;tmp&#39;</span><span class="p">,</span>
+        <span class="n">molecule</span><span class="o">=</span><span class="n">Species</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;tmp&#39;</span><span class="p">,</span>
+            <span class="n">atoms</span><span class="o">=</span><span class="n">configuration</span><span class="o">.</span><span class="n">atoms</span><span class="p">,</span>
+            <span class="n">charge</span><span class="o">=</span><span class="n">configuration</span><span class="o">.</span><span class="n">charge</span><span class="p">,</span>
+            <span class="n">mult</span><span class="o">=</span><span class="n">configuration</span><span class="o">.</span><span class="n">mult</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+        <span class="n">keywords</span><span class="o">=</span><span class="n">kwds</span><span class="p">,</span>
+        <span class="n">n_cores</span><span class="o">=</span><span class="n">n_cores</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">calc</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">configuration</span><span class="o">.</span><span class="n">forces</span><span class="o">.</span><span class="n">true</span> <span class="o">=</span> <span class="o">-</span><span class="n">calc</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">gradient</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;eV Å^-1&#39;</span><span class="p">)</span>
+
+    <span class="k">except</span> <span class="n">CouldNotGetProperty</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Failed to set forces&#39;</span><span class="p">)</span>
+
+    <span class="n">energy</span> <span class="o">=</span> <span class="n">calc</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">energy</span>
+    <span class="k">if</span> <span class="n">energy</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Failed to calculate the energy&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">calc</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">exists</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">calc</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">file_lines</span><span class="p">[</span><span class="o">-</span><span class="mi">50</span><span class="p">:]))</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">configuration</span><span class="o">.</span><span class="n">energy</span><span class="o">.</span><span class="n">true</span> <span class="o">=</span> <span class="n">energy</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;eV&#39;</span><span class="p">)</span>
+    <span class="n">configuration</span><span class="o">.</span><span class="n">partial_charges</span> <span class="o">=</span> <span class="n">calc</span><span class="o">.</span><span class="n">molecule</span><span class="o">.</span><span class="n">partial_charges</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_method_and_keywords</span><span class="p">(</span>
+    <span class="n">method_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="s1">&#39;autode.wrappers.Method&#39;</span><span class="p">,</span> <span class="s1">&#39;autode.wrappers.keywords.Keywords&#39;</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the method and associated keywords to use in a QM calculation&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">autode.methods</span><span class="w"> </span><span class="kn">import</span> <span class="n">ORCA</span><span class="p">,</span> <span class="n">XTB</span><span class="p">,</span> <span class="n">G16</span><span class="p">,</span> <span class="n">G09</span>
+
+    <span class="k">if</span> <span class="n">method_name</span> <span class="o">==</span> <span class="s1">&#39;orca&#39;</span><span class="p">:</span>
+        <span class="n">method</span><span class="p">,</span> <span class="n">kwds</span> <span class="o">=</span> <span class="n">ORCA</span><span class="p">(),</span> <span class="n">_orca_keywords</span><span class="p">()</span>
+
+    <span class="k">elif</span> <span class="n">method_name</span> <span class="o">==</span> <span class="s1">&#39;g09&#39;</span> <span class="ow">or</span> <span class="n">method_name</span> <span class="o">==</span> <span class="s1">&#39;g16&#39;</span><span class="p">:</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="n">G09</span><span class="p">()</span> <span class="k">if</span> <span class="n">method_name</span> <span class="o">==</span> <span class="s1">&#39;g09&#39;</span> <span class="k">else</span> <span class="n">G16</span><span class="p">()</span>
+        <span class="n">kwds</span> <span class="o">=</span> <span class="n">_gaussian_keywords</span><span class="p">()</span>
+
+    <span class="k">elif</span> <span class="n">method_name</span> <span class="o">==</span> <span class="s1">&#39;xtb&#39;</span><span class="p">:</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="n">XTB</span><span class="p">()</span>
+        <span class="n">kwds</span> <span class="o">=</span> <span class="n">method</span><span class="o">.</span><span class="n">keywords</span><span class="o">.</span><span class="n">grad</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Unknown method </span><span class="si">{</span><span class="n">method_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">method</span><span class="p">,</span> <span class="n">kwds</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_orca_keywords</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="s1">&#39;autode.wrappers.keywords.Keywords&#39;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keywords e.g. functional and basis set to use for an ORCA calculation&quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Config</span><span class="o">.</span><span class="n">orca_keywords</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s1">&#39;For ORCA training GTConfig.orca_keywords must be&#39;</span>
+            <span class="s1">&#39; set. e.g.</span><span class="se">\n</span><span class="s1">mlt.Config.orca_keywords &#39;</span>
+            <span class="s2">&quot;= [&#39;PBE&#39;, &#39;def2-SVP&#39;, &#39;EnGrad&#39;])&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">Config</span><span class="o">.</span><span class="n">orca_keywords</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_gaussian_keywords</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="s1">&#39;autode.wrappers.keywords.Keywords&#39;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Keywords e.g. functional and basis set to use for an Gaussian</span>
+<span class="sd">    calculation, either Gaussian09 or Gaussian16&quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Config</span><span class="o">.</span><span class="n">gaussian_keywords</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s1">&#39;To train with Gaussian QM calculations &#39;</span>
+            <span class="s1">&#39;mlt.Config.gaussian_keywords must be set.&#39;</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">Config</span><span class="o">.</span><span class="n">gaussian_keywords</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Duarte group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

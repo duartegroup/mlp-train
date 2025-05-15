@@ -1,0 +1,419 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mlptrain.configurations &mdash; mlp-train  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            mlp-train
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">mlptrain.configurations</a><ul>
+<li><a class="reference internal" href="#mlptrain.configurations.Configuration"><code class="docutils literal notranslate"><span class="pre">Configuration</span></code></a><ul>
+<li><a class="reference internal" href="#mlptrain.configurations.Configuration.ase_atoms"><code class="docutils literal notranslate"><span class="pre">Configuration.ase_atoms</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.Configuration.copy"><code class="docutils literal notranslate"><span class="pre">Configuration.copy()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.Configuration.save_xyz"><code class="docutils literal notranslate"><span class="pre">Configuration.save_xyz()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.Configuration.single_point"><code class="docutils literal notranslate"><span class="pre">Configuration.single_point()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.Configuration.update_attr_from"><code class="docutils literal notranslate"><span class="pre">Configuration.update_attr_from()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet</span></code></a><ul>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.append"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.append()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.bias_energies"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.bias_energies</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.compare"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.compare()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.has_a_none_energy"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.has_a_none_energy</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.inherited_bias_energies"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.inherited_bias_energies</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.load"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.load()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.load_xyz"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.load_xyz()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.lowest_biased_energy"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.lowest_biased_energy</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.lowest_energy"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.lowest_energy</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.lowest_inherited_biased_energy"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.lowest_inherited_biased_energy</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.plumed_coordinates"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.plumed_coordinates</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.predicted_energies"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.predicted_energies</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.predicted_forces"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.predicted_forces</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.remove_above_e"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.remove_above_e()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.remove_none_energy"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.remove_none_energy()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.save"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.save()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.save_xyz"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.save_xyz()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.single_point"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.single_point()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.t_min"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.t_min()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.true_energies"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.true_energies</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.ConfigurationSet.true_forces"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.true_forces</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mlptrain.configurations.Trajectory"><code class="docutils literal notranslate"><span class="pre">Trajectory</span></code></a><ul>
+<li><a class="reference internal" href="#mlptrain.configurations.Trajectory.final_frame"><code class="docutils literal notranslate"><span class="pre">Trajectory.final_frame</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.configurations.Trajectory.t0"><code class="docutils literal notranslate"><span class="pre">Trajectory.t0</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">mlp-train</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">mlptrain.configurations</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/references/mlptrain.configurations.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-mlptrain.configurations">
+<span id="mlptrain-configurations"></span><h1>mlptrain.configurations<a class="headerlink" href="#module-mlptrain.configurations" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.configurations.Configuration">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.configurations.</span></span><span class="sig-name descname"><span class="pre">Configuration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">atoms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Atoms</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Atom</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charge</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mult</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">box</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.box.html#mlptrain.box.Box" title="mlptrain.box.Box"><span class="pre">Box</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.configurations.Configuration" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">AtomCollection</span></code></p>
+<p>Configuration of atoms</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.configurations.Configuration.ase_atoms">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ase_atoms</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Atoms</span></em><a class="headerlink" href="#mlptrain.configurations.Configuration.ase_atoms" title="Link to this definition"></a></dt>
+<dd><p>ASE atoms for this configuration, absent of energy  and force
+properties.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.configurations.Configuration.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></span></span><a class="headerlink" href="#mlptrain.configurations.Configuration.copy" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.configurations.Configuration.save_xyz">
+<span class="sig-name descname"><span class="pre">save_xyz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">append</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">true</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">predicted</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.configurations.Configuration.save_xyz" title="Link to this definition"></a></dt>
+<dd><p>Print this configuration as an extended xyz file where the first 4
+columns are the atom symbol, x, y, z and, if this configuration
+contains forces then add the x, y, z components of the force on as
+columns 4-7.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>true</strong> – Save the true energy and forces</p></li>
+<li><p><strong>predicted</strong> – Save the predicted energy and forces</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.configurations.Configuration.single_point">
+<span class="sig-name descname"><span class="pre">single_point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="mlptrain.potentials._base.html#mlptrain.potentials._base.MLPotential" title="mlptrain.potentials._base.MLPotential"><span class="pre">MLPotential</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cores</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.configurations.Configuration.single_point" title="Link to this definition"></a></dt>
+<dd><p>Run a single point energy and gradient (force) evaluation using
+either a reference method defined by a string (e.g. ‘orca’) or a
+machine learned potential (with a .predict) method.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.configurations.Configuration.update_attr_from">
+<span class="sig-name descname"><span class="pre">update_attr_from</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">configuration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.configurations.Configuration.update_attr_from" title="Link to this definition"></a></dt>
+<dd><p>Update system attributes from a configuration</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.configurations.</span></span><span class="sig-name descname"><span class="pre">ConfigurationSet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_duplicates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></p>
+<p>A set of configurations</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.append">
+<span class="sig-name descname"><span class="pre">append</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.append" title="Link to this definition"></a></dt>
+<dd><p>Append an item onto these set of configurations. None will not be
+appended</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.bias_energies">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bias_energies</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.bias_energies" title="Link to this definition"></a></dt>
+<dd><p>Bias energies from ASE and PLUMED biases</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.compare">
+<span class="sig-name descname"><span class="pre">compare</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">mlptrain.potentials.MLPotential</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.compare" title="Link to this definition"></a></dt>
+<dd><p>Compare methods e.g. a MLP to a ground truth reference method over
+these set of configurations. Will generate plots of total energies
+over these configurations and save a text file with ∆s</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.has_a_none_energy">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_a_none_energy</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.has_a_none_energy" title="Link to this definition"></a></dt>
+<dd><p>Does this set of configurations have a true energy that is undefined
+(i.e. thus is set to None)?</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.inherited_bias_energies">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">inherited_bias_energies</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.inherited_bias_energies" title="Link to this definition"></a></dt>
+<dd><p>If active learning is performed using inheritable metadynamics bias,
+at any given active learning iteration this property is equal to the
+value of metadynamics bias inherited from the previous active learning
+iteration</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.load">
+<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.load" title="Link to this definition"></a></dt>
+<dd><p>Load energies and forces from a saved numpy compressed array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>(</strong><strong>ValueError</strong><strong>)</strong> – If an unsupported file extension is present</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.load_xyz">
+<span class="sig-name descname"><span class="pre">load_xyz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charge</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mult</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">box</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.box.html#mlptrain.box.Box" title="mlptrain.box.Box"><span class="pre">Box</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_energies</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_forces</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.load_xyz" title="Link to this definition"></a></dt>
+<dd><p>Load configurations from a .xyz file with optional box, energies and forces if specified.
+Note: this currently assumes that all configurations have the same charge and multiplicity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mult</strong> – total spin multiplicity on all configurations in the set</p></li>
+<li><p><strong>box</strong> – optionally specify a Box or None, if the configurations
+are in vacuum (or if ‘Lattice’ is specified in extended .xyz)</p></li>
+<li><p><strong>load_energies</strong> – bool - whether to load ‘true’ configurational energies or not</p></li>
+<li><p><strong>load_forces</strong> – bool - whether to load ‘true’ forces from atom lines or not</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.lowest_biased_energy">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lowest_biased_energy</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></em><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.lowest_biased_energy" title="Link to this definition"></a></dt>
+<dd><p>Determine the configuration with the lowest biased energy (true energy
++ bias energy) in this set. If not evaluated then returns the first
+configuration</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.lowest_energy">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lowest_energy</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></em><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.lowest_energy" title="Link to this definition"></a></dt>
+<dd><p>Determine the lowest energy configuration in this set based on the
+true energies. If not evaluated then returns the first configuration</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.lowest_inherited_biased_energy">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lowest_inherited_biased_energy</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></em><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.lowest_inherited_biased_energy" title="Link to this definition"></a></dt>
+<dd><p>Determine the configuration with the lowest inherited biased energy
+(true energy + inherited bias energy) in this set. If not evaluated
+then returns the first configuration</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.plumed_coordinates">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">plumed_coordinates</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.plumed_coordinates" title="Link to this definition"></a></dt>
+<dd><p>PLUMED collective variable values in this set</p>
+<blockquote>
+<div><dl class="simple">
+<dt>PLUMED collective variable matrix (n, n_cvs),</dt><dd><p>where n is len(self)</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.predicted_energies">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">predicted_energies</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.predicted_energies" title="Link to this definition"></a></dt>
+<dd><p>Predicted energies using a MLP</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.predicted_forces">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">predicted_forces</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.predicted_forces" title="Link to this definition"></a></dt>
+<dd><p>Predicted force tensor. shape = (N, n_atoms, 3)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.remove_above_e">
+<span class="sig-name descname"><span class="pre">remove_above_e</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.remove_above_e" title="Link to this definition"></a></dt>
+<dd><p>Remove all configuration above a particular <em>relative</em> energy</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.remove_none_energy">
+<span class="sig-name descname"><span class="pre">remove_none_energy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.remove_none_energy" title="Link to this definition"></a></dt>
+<dd><p>Remove configurations in this set with no true energy</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.save" title="Link to this definition"></a></dt>
+<dd><p>Save all the parameters for this configuration. Overrides any current
+data in that file</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.save_xyz">
+<span class="sig-name descname"><span class="pre">save_xyz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">true</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">predicted</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.save_xyz" title="Link to this definition"></a></dt>
+<dd><p>Save these configurations to a file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>predicted</strong> – Save the MLP predicted energies and forces, if they
+exist.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.single_point">
+<span class="sig-name descname"><span class="pre">single_point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.single_point" title="Link to this definition"></a></dt>
+<dd><p>Evaluate energies and forces on all configuration in this set</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.t_min">
+<span class="sig-name descname"><span class="pre">t_min</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">from_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.t_min" title="Link to this definition"></a></dt>
+<dd><p>Determine the minimum time for a slice (portion) of these
+configurations, if a time is not specified for a frame then assume
+it was generated at ‘zero’ time</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Time in fs</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>(float)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.true_energies">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">true_energies</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.true_energies" title="Link to this definition"></a></dt>
+<dd><p>True calculated energies</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.configurations.ConfigurationSet.true_forces">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">true_forces</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#mlptrain.configurations.ConfigurationSet.true_forces" title="Link to this definition"></a></dt>
+<dd><p>(n_atoms, 3)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of true config forces. List of np.ndarray with shape</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.configurations.Trajectory">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.configurations.</span></span><span class="sig-name descname"><span class="pre">Trajectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.configurations.Trajectory" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="mlptrain.configurations.configuration_set.html#mlptrain.configurations.configuration_set.ConfigurationSet" title="mlptrain.configurations.configuration_set.ConfigurationSet"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConfigurationSet</span></code></a></p>
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.configurations.Trajectory.final_frame">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">final_frame</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></em><a class="headerlink" href="#mlptrain.configurations.Trajectory.final_frame" title="Link to this definition"></a></dt>
+<dd><p>Return the final frame from this trajectory</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.configurations.Trajectory.t0">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">t0</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#mlptrain.configurations.Trajectory.t0" title="Link to this definition"></a></dt>
+<dd><p>Initial time of this trajectory</p>
+</dd></dl>
+
+</dd></dl>
+
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.configurations.calculate.html">mlptrain.configurations.calculate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.configurations.configuration.html">mlptrain.configurations.configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.configurations.configuration_set.html">mlptrain.configurations.configuration_set</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.configurations.plotting.html">mlptrain.configurations.plotting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.configurations.trajectory.html">mlptrain.configurations.trajectory</a></li>
+</ul>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Duarte group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

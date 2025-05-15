@@ -1,0 +1,1766 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mlptrain.sampling.plumed &mdash; mlp-train  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            mlp-train
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">mlp-train</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">mlptrain.sampling.plumed</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for mlptrain.sampling.plumed</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">mlptrain</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ase</span><span class="w"> </span><span class="kn">import</span> <span class="n">units</span> <span class="k">as</span> <span class="n">ase_units</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ase.calculators.plumed</span><span class="w"> </span><span class="kn">import</span> <span class="n">Plumed</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ase.calculators.calculator</span><span class="w"> </span><span class="kn">import</span> <span class="n">Calculator</span><span class="p">,</span> <span class="n">all_changes</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ase.parallel</span><span class="w"> </span><span class="kn">import</span> <span class="n">broadcast</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ase.parallel</span><span class="w"> </span><span class="kn">import</span> <span class="n">world</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mlptrain.sampling._base</span><span class="w"> </span><span class="kn">import</span> <span class="n">ASEConstraint</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mlptrain.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">convert_ase_time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mlptrain.log</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
+
+
+<div class="viewcode-block" id="PlumedCalculator">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.PlumedCalculator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PlumedCalculator</span><span class="p">(</span><span class="n">Plumed</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Modified ASE calculator, instead of returning biased energies and forces,</span>
+<span class="sd">    this calculator computes unbiased energies and forces, and computes PLUMED</span>
+<span class="sd">    energy and force biases separately.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">implemented_properties</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;energy&#39;</span><span class="p">,</span> <span class="s1">&#39;forces&#39;</span><span class="p">,</span> <span class="s1">&#39;energy_bias&#39;</span><span class="p">,</span> <span class="s1">&#39;forces_bias&#39;</span><span class="p">]</span>
+
+<div class="viewcode-block" id="PlumedCalculator.compute_energy_and_forces">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.PlumedCalculator.compute_energy_and_forces">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_energy_and_forces</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="n">istep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute unbiased energies and forces, and PLUMED energy and force</span>
+<span class="sd">        biases separately</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">unbiased_energy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc</span><span class="o">.</span><span class="n">get_potential_energy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">)</span>
+        <span class="n">unbiased_forces</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc</span><span class="o">.</span><span class="n">get_forces</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">world</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">ener_forc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_bias</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="n">istep</span><span class="p">,</span> <span class="n">unbiased_energy</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ener_forc</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">energy_bias</span><span class="p">,</span> <span class="n">forces_bias</span> <span class="o">=</span> <span class="n">broadcast</span><span class="p">(</span><span class="n">ener_forc</span><span class="p">)</span>
+        <span class="n">energy</span> <span class="o">=</span> <span class="n">unbiased_energy</span>
+        <span class="n">forces</span> <span class="o">=</span> <span class="n">unbiased_forces</span>
+
+        <span class="k">return</span> <span class="n">energy</span><span class="p">,</span> <span class="n">forces</span><span class="p">,</span> <span class="n">energy_bias</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">forces_bias</span></div>
+
+
+<div class="viewcode-block" id="PlumedCalculator.calculate">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.PlumedCalculator.calculate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">atoms</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">properties</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;energy&#39;</span><span class="p">,</span> <span class="s1">&#39;forces&#39;</span><span class="p">,</span> <span class="s1">&#39;energy_bias&#39;</span><span class="p">,</span> <span class="s1">&#39;forces_bias&#39;</span><span class="p">],</span>
+        <span class="n">system_changes</span><span class="o">=</span><span class="n">all_changes</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the properties and attach them to the results&quot;&quot;&quot;</span>
+
+        <span class="n">Calculator</span><span class="o">.</span><span class="n">calculate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atoms</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="n">system_changes</span><span class="p">)</span>
+
+        <span class="n">comp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_energy_and_forces</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">atoms</span><span class="o">.</span><span class="n">get_positions</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">istep</span>
+        <span class="p">)</span>
+
+        <span class="n">energy</span><span class="p">,</span> <span class="n">forces</span><span class="p">,</span> <span class="n">energy_bias</span><span class="p">,</span> <span class="n">forces_bias</span> <span class="o">=</span> <span class="n">comp</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">istep</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;energy&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">energy</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;forces&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">forces</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;energy_bias&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">energy_bias</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;forces_bias&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">forces_bias</span>
+
+        <span class="k">return</span> <span class="kc">None</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="PlumedBias">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.PlumedBias">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PlumedBias</span><span class="p">(</span><span class="n">ASEConstraint</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    @DynamicAttrs</span>
+<span class="sd">    Class for storing collective variables and parameters used in biased</span>
+<span class="sd">    simulations</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">cvs</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="s1">&#39;_PlumedCV&#39;</span><span class="p">],</span> <span class="s1">&#39;_PlumedCV&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Class for storing collective variables and parameters used in biased</span>
+<span class="sd">        simulations, parameters are not initialised with the object and have</span>
+<span class="sd">        to be defined seperately using PlumedBias methods.</span>
+
+<span class="sd">        Can be initialised from a complete PLUMED input file as well.</span>
+
+<span class="sd">        -----------------------------------------------------------------------</span>
+<span class="sd">        Arguments:</span>
+
+<span class="sd">            cvs: Sequence of PLUMED collective variables</span>
+
+<span class="sd">            filename: (str) Complete PLUMED input file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cv_files</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pace</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">biasfactor</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">metad_cvs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="s1">&#39;_PlumedCV&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="s1">&#39;bin&#39;</span><span class="p">,</span> <span class="s1">&#39;wstride&#39;</span><span class="p">,</span> <span class="s1">&#39;wfile&#39;</span><span class="p">,</span> <span class="s1">&#39;rfile&#39;</span><span class="p">]:</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;metad_grid_</span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cvs</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_from_file</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">cvs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cvs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_cvs_format</span><span class="p">(</span><span class="n">cvs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cvs</span> <span class="o">=</span> <span class="n">cvs</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s1">&#39;PLUMED bias instantiation requires &#39;</span>
+                <span class="s1">&#39;a list of collective variables (CVs) &#39;</span>
+                <span class="s1">&#39;or a file containing PLUMED-type input&#39;</span>
+            <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_file</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Whether the bias is initialised using PLUMED input file&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_cvs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of collective variables attached to the bias&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cvs</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_metad_cvs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of collective variables attached to the bias that will be</span>
+<span class="sd">        used in metadynamics&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metad_cvs</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cv_sequence</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        String containing names of all collective variables separated</span>
+<span class="sd">        by commas</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">cv_names</span> <span class="o">=</span> <span class="p">(</span><span class="n">cv</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">cv</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cvs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cv_names</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metad_cv_sequence</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        String containing names of collective variables used in metadynamics</span>
+<span class="sd">        separated by commas</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">metad_cv_names</span> <span class="o">=</span> <span class="p">(</span><span class="n">cv</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">cv</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metad_cvs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">metad_cv_names</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metadynamics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;True if any parameters required for metadynamics are set&quot;&quot;&quot;</span>
+
+        <span class="n">_metad_parameters</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;pace&#39;</span><span class="p">,</span> <span class="s1">&#39;width&#39;</span><span class="p">,</span> <span class="s1">&#39;height&#39;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">_metad_parameters</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">width_sequence</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;String containing width values separated by commas&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Width is not initialised&#39;</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">width</span><span class="p">)</span> <span class="k">for</span> <span class="n">width</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metad_grid_setup</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;String specifying metadynamics grid parameters in PLUMED input</span>
+<span class="sd">        file&quot;&quot;&quot;</span>
+
+        <span class="n">_metad_grid_setup</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="n">_grid_params</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="s1">&#39;bin&#39;</span><span class="p">,</span> <span class="s1">&#39;wstride&#39;</span><span class="p">,</span> <span class="s1">&#39;wfile&#39;</span><span class="p">,</span> <span class="s1">&#39;rfile&#39;</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">_grid_params</span><span class="p">:</span>
+            <span class="n">param</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;metad_grid_</span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">param</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                    <span class="n">param_str</span> <span class="o">=</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">param</span><span class="p">)</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">param_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+
+                <span class="n">_metad_grid_setup</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;GRID_</span><span class="si">{</span><span class="n">param_name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s1">=</span><span class="si">{</span><span class="n">param_str</span><span class="si">}</span><span class="s1"> &#39;</span>
+
+        <span class="k">return</span> <span class="n">_metad_grid_setup</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">biasfactor_setup</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;String specifying biasfactor in PLUMED input file&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">biasfactor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;BIASFACTOR=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">biasfactor</span><span class="si">}</span><span class="s1"> &#39;</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;&#39;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_set_metad_params</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">pace</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">width</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">float</span><span class="p">],</span>
+        <span class="n">height</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">biasfactor</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">cvs</span><span class="p">:</span> <span class="n">Optional</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grid_min</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grid_max</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grid_bin</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grid_wstride</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grid_wfile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grid_rfile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Define parameters used in (well-tempered) metadynamics.</span>
+
+<span class="sd">        -----------------------------------------------------------------------</span>
+<span class="sd">        Arguments:</span>
+
+<span class="sd">            pace: (int) τ_G/dt, interval at which a new gaussian is placed</span>
+
+<span class="sd">            width: (float) σ, standard deviation (parameter describing the</span>
+<span class="sd">                           width) of the placed gaussian</span>
+
+<span class="sd">            height: (float) ω, initial height of placed gaussians (in eV)</span>
+
+<span class="sd">            biasfactor: (float) γ, describes how quickly gaussians shrink,</span>
+<span class="sd">                                larger values make gaussians to be placed</span>
+<span class="sd">                                less sensitive to the bias potential</span>
+
+<span class="sd">            cvs: (mlptrain._PlumedCV) Sequence of PLUMED collective variables</span>
+<span class="sd">                                      which will be biased. If this variable</span>
+<span class="sd">                                      is not set all CVs attached to self</span>
+<span class="sd">                                      will be biased</span>
+
+<span class="sd">            grid_min: (float) Lower bound of the grid</span>
+
+<span class="sd">            grid_max: (float) Upper bound of the grid</span>
+
+<span class="sd">            grid_bin: (float) Number of bins to use for each collective</span>
+<span class="sd">                              variable, if not specified PLUMED automatically</span>
+<span class="sd">                              sets the width of the bin to 1/5 of the</span>
+<span class="sd">                              width (σ) value</span>
+
+<span class="sd">            grid_wstride: (float) Number of steps specifying the period at</span>
+<span class="sd">                                  which the grid is written</span>
+
+<span class="sd">            grid_wfile: (str) Name of the file to write the grid to</span>
+
+<span class="sd">            grid_rfile: (str) Name of the file to read the grid from</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_metad_cvs</span><span class="p">(</span><span class="n">cvs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pace</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="n">pace</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Pace (τ_G/dt) must be a positive integer&#39;</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pace</span> <span class="o">=</span> <span class="n">pace</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">width</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;The provided width sequence is empty&#39;</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="nb">any</span><span class="p">(</span><span class="n">single_width</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">single_width</span> <span class="ow">in</span> <span class="n">width</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;All gaussian widths (σ) must be positive&#39;</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="n">width</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">width</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Gaussian width (σ) must be positive&#39;</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">=</span> <span class="p">[</span><span class="n">width</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">width</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_metad_cvs</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;The number of supplied widths (σ) does not &#39;</span>
+                <span class="s1">&#39;match the number of collective variables&#39;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">height</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Gaussian height (ω) must be non-negative float&#39;</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">=</span> <span class="n">height</span>
+
+        <span class="k">if</span> <span class="n">biasfactor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">biasfactor</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Biasfactor (γ) must be larger than one&#39;</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">biasfactor</span> <span class="o">=</span> <span class="n">biasfactor</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_metad_grid_params</span><span class="p">(</span>
+            <span class="n">grid_min</span><span class="o">=</span><span class="n">grid_min</span><span class="p">,</span>
+            <span class="n">grid_max</span><span class="o">=</span><span class="n">grid_max</span><span class="p">,</span>
+            <span class="n">grid_bin</span><span class="o">=</span><span class="n">grid_bin</span><span class="p">,</span>
+            <span class="n">grid_wstride</span><span class="o">=</span><span class="n">grid_wstride</span><span class="p">,</span>
+            <span class="n">grid_wfile</span><span class="o">=</span><span class="n">grid_wfile</span><span class="p">,</span>
+            <span class="n">grid_rfile</span><span class="o">=</span><span class="n">grid_rfile</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_set_metad_cvs</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">cvs</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="s1">&#39;_PlumedCV&#39;</span><span class="p">],</span> <span class="s1">&#39;_PlumedCV&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Attach PLUMED collective variables to PlumedBias which will be used in</span>
+<span class="sd">        metadynamics.</span>
+
+<span class="sd">        -----------------------------------------------------------------------</span>
+<span class="sd">        Arguments:</span>
+
+<span class="sd">            cvs: (mlptrain._PlumedCV) Sequence of PLUMED collective variables</span>
+<span class="sd">                                      which will be biased. If this variable</span>
+<span class="sd">                                      is not set all CVs attached to self</span>
+<span class="sd">                                      will be biased</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">cvs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cvs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_cvs_format</span><span class="p">(</span><span class="n">cvs</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">cv</span> <span class="ow">in</span> <span class="n">cvs</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">cv</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cvs</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="s1">&#39;Supplied CVs must be a subset of CVs &#39;</span>
+                        <span class="s1">&#39;already attached to the PlumedBias&#39;</span>
+                    <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">metad_cvs</span> <span class="o">=</span> <span class="n">cvs</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">metad_cvs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">metad_cvs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cvs</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_set_metad_grid_params</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">grid_min</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grid_max</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grid_bin</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grid_wstride</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grid_wfile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grid_rfile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Define grid parameters used in (well-tempered) metadynamics. Grid</span>
+<span class="sd">        bounds (min and max) must cover the whole configuration space that the</span>
+<span class="sd">        system will explore during the simulation, otherwise PLUMED will raise</span>
+<span class="sd">        an error.</span>
+
+<span class="sd">        ------------------------------------------------------------------------</span>
+<span class="sd">        Arguments:</span>
+
+<span class="sd">            grid_min: (float) Lower bound of the grid</span>
+
+<span class="sd">            grid_max: (float) Upper bound of the grid</span>
+
+<span class="sd">            grid_bin: (float) Number of bins to use for each collective</span>
+<span class="sd">                              variable, if not specified PLUMED automatically</span>
+<span class="sd">                              sets the width of the bin to 1/5 of the</span>
+<span class="sd">                              width (σ) value</span>
+
+<span class="sd">            grid_wstride: (float) Number of steps specifying the period at</span>
+<span class="sd">                                  which the grid is written</span>
+
+<span class="sd">            grid_wfile: (str) Name of the file to write the grid to</span>
+
+<span class="sd">            grid_rfile: (str) Name of the file to read the grid from</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">_sequences</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;grid_min&#39;</span><span class="p">:</span> <span class="n">grid_min</span><span class="p">,</span>
+            <span class="s1">&#39;grid_max&#39;</span><span class="p">:</span> <span class="n">grid_max</span><span class="p">,</span>
+            <span class="s1">&#39;grid_bin&#39;</span><span class="p">:</span> <span class="n">grid_bin</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">grid_bin</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">_sequences</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;grid_bin&#39;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">params</span> <span class="ow">in</span> <span class="n">_sequences</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="s1">&#39;The supplied parameter sequence &#39;</span> <span class="s1">&#39;is empty&#39;</span>
+                    <span class="p">)</span>
+
+                <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">params</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_metad_cvs</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="s1">&#39;The length of the parameter sequence &#39;</span>
+                        <span class="s1">&#39;does not match the number of CVs used &#39;</span>
+                        <span class="s1">&#39;in metadynamics&#39;</span>
+                    <span class="p">)</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;metad_</span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">params</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_metad_cvs</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;metad_</span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">params</span><span class="p">])</span>
+
+        <span class="n">_single_params</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;grid_wstride&#39;</span><span class="p">:</span> <span class="n">grid_wstride</span><span class="p">,</span>
+            <span class="s1">&#39;grid_wfile&#39;</span><span class="p">:</span> <span class="n">grid_wfile</span><span class="p">,</span>
+            <span class="s1">&#39;grid_rfile&#39;</span><span class="p">:</span> <span class="n">grid_rfile</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">_single_params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">param</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;metad_</span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">param</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_from_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Method to extract PLUMED setup from a file&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;#&#39;</span> <span class="ow">or</span> <span class="n">line</span> <span class="o">==</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">setup</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+        <span class="n">cv_filenames</span> <span class="o">=</span> <span class="n">_find_files</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">setup</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cv_filenames</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_attach_cv_files</span><span class="p">(</span><span class="n">cv_filenames</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_attach_cv_files</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cv_filenames</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Attach files required for CVs from the PlumedBias setup&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cv_files</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">cv_filenames</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">&#39;File </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s1">, which is &#39;</span>
+                    <span class="sa">f</span><span class="s1">&#39;required for defining one of the &#39;</span>
+                    <span class="sa">f</span><span class="s1">&#39;CVs was not found in the &#39;</span>
+                    <span class="s1">&#39;current directory&#39;</span>
+                <span class="p">)</span>
+
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">cv_files</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">filename</span><span class="p">,</span> <span class="n">data</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="PlumedBias.write_cv_files">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.PlumedBias.write_cv_files">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">write_cv_files</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write files attached to the CVs to the current directory&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">from_file</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cv_files</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">filename</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cv_files</span><span class="p">:</span>
+                    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">cv</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cvs</span><span class="p">:</span>
+                <span class="n">cv</span><span class="o">.</span><span class="n">write_files</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="PlumedBias.initialise_for_metad_al">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.PlumedBias.initialise_for_metad_al">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">initialise_for_metad_al</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">width</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">float</span><span class="p">],</span>
+        <span class="n">pace</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+        <span class="n">height</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">biasfactor</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">cvs</span><span class="p">:</span> <span class="n">Optional</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grid_min</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grid_max</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">grid_bin</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialise PlumedBias for metadynamics active learning by setting the</span>
+<span class="sd">        required parameters.</span>
+
+<span class="sd">        ------------------------------------------------------------------------</span>
+<span class="sd">        Arguments:</span>
+
+<span class="sd">            width: (float) σ, standard deviation (parameter describing the</span>
+<span class="sd">                           width) of the placed gaussian</span>
+
+<span class="sd">            pace: (int) τ_G/dt, interval at which a new gaussian is placed</span>
+
+<span class="sd">            height: (float) ω, initial height of placed gaussians (in eV).</span>
+<span class="sd">                            If not supplied will be set to 5*k_B*T, where</span>
+<span class="sd">                            T is the temperature at which metadynamics active</span>
+<span class="sd">                            learning is performed</span>
+
+<span class="sd">            biasfactor: (float) γ, describes how quickly gaussians shrink,</span>
+<span class="sd">                                larger values make gaussians to be placed</span>
+<span class="sd">                                less sensitive to the bias potential</span>
+
+<span class="sd">            cvs: (mlptrain._PlumedCV) Sequence of PLUMED collective variables</span>
+<span class="sd">                                      which will be biased. If this variable</span>
+<span class="sd">                                      is not set, all CVs attached to self</span>
+<span class="sd">                                      will be biased</span>
+
+<span class="sd">            grid_min: (float) Lower bound of the grid</span>
+
+<span class="sd">            grid_max: (float) Upper bound of the grid</span>
+
+<span class="sd">            grid_bin: (float) Number of bins to use for each collective</span>
+<span class="sd">                              variable, if not specified PLUMED automatically</span>
+<span class="sd">                              sets bin width to 1/5 of the gaussian width (σ)</span>
+<span class="sd">                              value</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">height</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">height</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_metad_params</span><span class="p">(</span>
+            <span class="n">pace</span><span class="o">=</span><span class="n">pace</span><span class="p">,</span>
+            <span class="n">width</span><span class="o">=</span><span class="n">width</span><span class="p">,</span>
+            <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">,</span>
+            <span class="n">biasfactor</span><span class="o">=</span><span class="n">biasfactor</span><span class="p">,</span>
+            <span class="n">cvs</span><span class="o">=</span><span class="n">cvs</span><span class="p">,</span>
+            <span class="n">grid_min</span><span class="o">=</span><span class="n">grid_min</span><span class="p">,</span>
+            <span class="n">grid_max</span><span class="o">=</span><span class="n">grid_max</span><span class="p">,</span>
+            <span class="n">grid_bin</span><span class="o">=</span><span class="n">grid_bin</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="PlumedBias.strip">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.PlumedBias.strip">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">strip</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Change the bias such that it would only contain the definitions of</span>
+<span class="sd">        collective variables and their associated upper and lower walls</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">from_file</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_strip_setup</span><span class="p">()</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Setting all attributes to None, except cvs (which might have</span>
+            <span class="c1"># walls attached)</span>
+            <span class="n">_attributes</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">)</span>
+            <span class="n">_attributes</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;cvs&#39;</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">_attributes</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_strip_setup</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        If the bias is initialised using a PLUMED input file, remove all</span>
+<span class="sd">        lines from the setup except the ones defining walls and collective</span>
+<span class="sd">        variables</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s1">&#39;Setup of the bias is not initialised, if you &#39;</span>
+                <span class="s1">&#39;want to strip the setup make sure to use a bias &#39;</span>
+                <span class="s1">&#39;which was initialised using a PLUMED input file&#39;</span>
+            <span class="p">)</span>
+
+        <span class="n">_stripped_setup</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_defines_cv</span><span class="p">(</span><span class="n">line</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_defines_wall</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+                <span class="n">_stripped_setup</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup</span> <span class="o">=</span> <span class="n">_stripped_setup</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_cvs_format</span><span class="p">(</span>
+        <span class="n">cvs</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="s1">&#39;_PlumedCV&#39;</span><span class="p">],</span> <span class="s1">&#39;_PlumedCV&#39;</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="s1">&#39;_PlumedCV&#39;</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check if the supplied collective variables are in the correct</span>
+<span class="sd">        format</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># e.g. cvs == [cv1, cv2]; (cv1, cv2)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cvs</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cvs</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cvs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="s1">&#39;The provided collective variable &#39;</span> <span class="s1">&#39;sequence is empty&#39;</span>
+                <span class="p">)</span>
+
+            <span class="k">elif</span> <span class="nb">all</span><span class="p">(</span><span class="nb">issubclass</span><span class="p">(</span><span class="n">cv</span><span class="o">.</span><span class="vm">__class__</span><span class="p">,</span> <span class="n">_PlumedCV</span><span class="p">)</span> <span class="k">for</span> <span class="n">cv</span> <span class="ow">in</span> <span class="n">cvs</span><span class="p">):</span>
+                <span class="k">pass</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Supplied CVs are in incorrect format&#39;</span><span class="p">)</span>
+
+        <span class="c1"># e.g. cvs == cv1</span>
+        <span class="k">elif</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">cvs</span><span class="o">.</span><span class="vm">__class__</span><span class="p">,</span> <span class="n">_PlumedCV</span><span class="p">):</span>
+            <span class="n">cvs</span> <span class="o">=</span> <span class="p">[</span><span class="n">cvs</span><span class="p">]</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Supplied CVs are in incorrect format&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">cvs</span>
+
+<div class="viewcode-block" id="PlumedBias.adjust_potential_energy">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.PlumedBias.adjust_potential_energy">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">adjust_potential_energy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atoms</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Adjust the energy of the system by adding PLUMED bias&quot;&quot;&quot;</span>
+
+        <span class="n">energy_bias</span> <span class="o">=</span> <span class="n">atoms</span><span class="o">.</span><span class="n">calc</span><span class="o">.</span><span class="n">get_property</span><span class="p">(</span><span class="s1">&#39;energy_bias&#39;</span><span class="p">,</span> <span class="n">atoms</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">energy_bias</span></div>
+
+
+<div class="viewcode-block" id="PlumedBias.adjust_forces">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.PlumedBias.adjust_forces">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">adjust_forces</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atoms</span><span class="p">,</span> <span class="n">forces</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Adjust the forces of the system by adding PLUMED forces&quot;&quot;&quot;</span>
+
+        <span class="n">forces_bias</span> <span class="o">=</span> <span class="n">atoms</span><span class="o">.</span><span class="n">calc</span><span class="o">.</span><span class="n">get_property</span><span class="p">(</span><span class="s1">&#39;forces_bias&#39;</span><span class="p">,</span> <span class="n">atoms</span><span class="p">)</span>
+        <span class="n">forces</span> <span class="o">+=</span> <span class="n">forces_bias</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="PlumedBias.adjust_positions">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.PlumedBias.adjust_positions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">adjust_positions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">atoms</span><span class="p">,</span> <span class="n">newpositions</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Method required for ASE but not used in mlp-train&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+</div>
+
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">_PlumedCV</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parent class containing methods for initialising PLUMED collective</span>
+<span class="sd">    variables&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">atom_groups</span><span class="p">:</span> <span class="n">Sequence</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">component</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This class contains methods to initialise PLUMED collective variables</span>
+<span class="sd">        (CVs) and only acts as a parent class which should not be used to</span>
+<span class="sd">        initialise CVs directly.</span>
+
+<span class="sd">        CV can be initialised using groups of atoms in the same way as</span>
+<span class="sd">        mlptrain.AverageDistance and mlptrain.DifferenceDistance are</span>
+<span class="sd">        initialised, but this method only supports distances, angles,</span>
+<span class="sd">        and torsions as degrees of freedom (DOFs).</span>
+
+<span class="sd">        Another method to initialise a CV is to supply a PLUMED input file</span>
+<span class="sd">        which only contains input used in the definition of the CV, and the</span>
+<span class="sd">        CV itself.</span>
+
+<span class="sd">        -----------------------------------------------------------------------</span>
+<span class="sd">        Arguments:</span>
+
+<span class="sd">            name: (str) Name of the collective variable (only for generating</span>
+<span class="sd">                        CVs from atom_groups, the name when generating CVs from</span>
+<span class="sd">                        a file is taken directly from the file)</span>
+
+<span class="sd">            atom_groups: (Sequence[Sequence[int]]) List of atom index sequences</span>
+<span class="sd">                          which are used to generate DOFs,</span>
+<span class="sd">                          e.g. [(0, 1), (2, 3)];</span>
+<span class="sd">                               [0, 1, 2]</span>
+
+<span class="sd">            filename: (str) Name of the PLUMED file used to generate a CV</span>
+<span class="sd">                            from that file</span>
+
+<span class="sd">            component: (str) Name of a component of the last CV in the supplied</span>
+<span class="sd">                             PLUMED input file to use as a collective variable,</span>
+<span class="sd">                             e.g. &#39;spath&#39; for PATH collective variable.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup</span><span class="p">:</span> <span class="n">List</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">files</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">units</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dof_names</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dof_units</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">lower_wall</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">upper_wall</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_from_file</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">component</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">atom_groups</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_from_atom_groups</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">atom_groups</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s1">&#39;Collective variable instantiation requires &#39;</span>
+                <span class="s1">&#39;groups of atom indices (DOFs) &#39;</span>
+                <span class="s1">&#39;or a file containing PLUMED-type input&#39;</span>
+            <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dof_sequence</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;String containing names of DOFs separated by commas&quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_names</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">attach_lower_wall</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">kappa</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">exp</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Attach lower wall bias to the collective variable.</span>
+
+<span class="sd">        -----------------------------------------------------------------------</span>
+<span class="sd">        Arguments:</span>
+
+<span class="sd">            location: (float | str) Value of the CV where the wall will be</span>
+<span class="sd">                                    located</span>
+
+<span class="sd">            kappa: (float) The force constant of the wall in eV/Å^(-exp) units</span>
+
+<span class="sd">            exp: (float) The power of the wall</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lower_wall</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;Lower wall for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1"> CV has already &#39;</span> <span class="s1">&#39;been set&#39;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">lower_wall</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;location&#39;</span><span class="p">:</span> <span class="n">location</span><span class="p">,</span> <span class="s1">&#39;kappa&#39;</span><span class="p">:</span> <span class="n">kappa</span><span class="p">,</span> <span class="s1">&#39;exp&#39;</span><span class="p">:</span> <span class="n">exp</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="s1">&#39;LOWER_WALLS &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;ARG=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1"> &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;AT=</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s1"> &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;KAPPA=</span><span class="si">{</span><span class="n">kappa</span><span class="si">}</span><span class="s1"> &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;EXP=</span><span class="si">{</span><span class="n">exp</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">attach_upper_wall</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">kappa</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">exp</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Attach upper wall bias to the collective variable.</span>
+
+<span class="sd">        -----------------------------------------------------------------------</span>
+<span class="sd">        Arguments:</span>
+
+<span class="sd">            location: (float | str) Value of the CV where the wall will be</span>
+<span class="sd">                                    located</span>
+
+<span class="sd">            kappa: (float) The force constant of the wall in eV/Å^(-exp) units</span>
+
+<span class="sd">            exp: (float) The power of the wall</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">upper_wall</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;Upper wall for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1"> CV has already &#39;</span> <span class="s1">&#39;been set&#39;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">upper_wall</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;location&#39;</span><span class="p">:</span> <span class="n">location</span><span class="p">,</span> <span class="s1">&#39;kappa&#39;</span><span class="p">:</span> <span class="n">kappa</span><span class="p">,</span> <span class="s1">&#39;exp&#39;</span><span class="p">:</span> <span class="n">exp</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="s1">&#39;UPPER_WALLS &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;ARG=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1"> &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;AT=</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s1"> &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;KAPPA=</span><span class="si">{</span><span class="n">kappa</span><span class="si">}</span><span class="s1"> &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;EXP=</span><span class="si">{</span><span class="n">exp</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_from_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">component</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate DOFs and a CV from a file&quot;&quot;&quot;</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;#&#39;</span> <span class="ow">or</span> <span class="n">line</span> <span class="o">==</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">setup</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+        <span class="n">_last_line</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">setup</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">_last_line</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;Supply a name to the collective variable on &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;the last line of </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s1"> file.&#39;</span>
+            <span class="p">)</span>
+
+        <span class="n">_name</span> <span class="o">=</span> <span class="n">_last_line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">component</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">_name</span><span class="si">}</span><span class="s1">.</span><span class="si">{</span><span class="n">component</span><span class="si">}</span><span class="s1">&#39;</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">_name</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_name</span><span class="p">()</span>
+
+        <span class="n">filenames</span> <span class="o">=</span> <span class="n">_find_files</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">setup</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">filenames</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_attach_files</span><span class="p">(</span><span class="n">filenames</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_attach_files</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filenames</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Attache files found in the CV initialisation to the CV object&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">files</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">&#39;File </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s1">, which is &#39;</span>
+                    <span class="sa">f</span><span class="s1">&#39;required for defining the CV &#39;</span>
+                    <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1"> was not found in the &#39;</span>
+                    <span class="s1">&#39;current directory&#39;</span>
+                <span class="p">)</span>
+
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">files</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">filename</span><span class="p">,</span> <span class="n">data</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">write_files</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write files attached to the CV to the current directory&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">files</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">filename</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">files</span><span class="p">:</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_from_atom_groups</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">atom_groups</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate DOFs from atom_groups&quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_name</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dof_names</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof_units</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">atom_groups</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">atom_groups</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">atom_groups</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="s1">&#39;Atom groups cannot be an empty list or an &#39;</span> <span class="s1">&#39;empty tuple&#39;</span>
+                <span class="p">)</span>
+
+            <span class="c1"># e.g. atom_groups == [(1, 2), (3, 4)]; ([0, 1])</span>
+            <span class="k">elif</span> <span class="nb">all</span><span class="p">(</span>
+                <span class="nb">isinstance</span><span class="p">(</span><span class="n">atom_group</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">atom_group</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">atom_group</span> <span class="ow">in</span> <span class="n">atom_groups</span>
+            <span class="p">):</span>
+                <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">atom_group</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">atom_groups</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_atom_group_to_dof</span><span class="p">(</span><span class="n">idx</span><span class="o">=</span><span class="n">idx</span><span class="p">,</span> <span class="n">atom_group</span><span class="o">=</span><span class="n">atom_group</span><span class="p">)</span>
+
+            <span class="c1"># e.g. atom_groups = [0, 1]</span>
+            <span class="k">elif</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">atom_groups</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_atom_group_to_dof</span><span class="p">(</span><span class="n">idx</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">atom_group</span><span class="o">=</span><span class="n">atom_groups</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="s1">&#39;Elements of atom_groups must all be &#39;</span>
+                    <span class="s1">&#39;sequences or all be integers&#39;</span>
+                <span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Atom groups are in incorrect format&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if the supplied name is valid&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="s1">&#39; &#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Spaces in CV names are not allowed&#39;</span><span class="p">)</span>
+
+        <span class="n">_illegal_substrings</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;fes&#39;</span><span class="p">,</span> <span class="s1">&#39;colvar&#39;</span><span class="p">,</span> <span class="s1">&#39;HILLS&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">substr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">substr</span> <span class="ow">in</span> <span class="n">_illegal_substrings</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;Please do not use &quot;fes&quot;, &quot;colvar&quot;, &quot;HILLS&quot; in &#39;</span>
+                <span class="s1">&#39;your CV names&#39;</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_atom_group_to_dof</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">atom_group</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check the atom group and generate a DOF&quot;&quot;&quot;</span>
+
+        <span class="c1"># PLUMED atom enumeration starts from 1</span>
+        <span class="n">atom_list</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">atom_group</span><span class="p">]</span>
+        <span class="n">atoms</span> <span class="o">=</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">atom_list</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">atom_list</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Atom group must contain at least two atoms&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">atom_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">dof_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">_dist</span><span class="si">{</span><span class="n">idx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dof_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dof_name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dof_units</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;Å&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setup</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">dof_name</span><span class="si">}</span><span class="s1">: &#39;</span> <span class="sa">f</span><span class="s1">&#39;DISTANCE ATOMS=</span><span class="si">{</span><span class="n">atoms</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">atom_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">dof_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">_ang</span><span class="si">{</span><span class="n">idx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dof_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dof_name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dof_units</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;rad&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setup</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">dof_name</span><span class="si">}</span><span class="s1">: &#39;</span> <span class="sa">f</span><span class="s1">&#39;ANGLE ATOMS=</span><span class="si">{</span><span class="n">atoms</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">atom_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+            <span class="n">dof_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">_tor</span><span class="si">{</span><span class="n">idx</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dof_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dof_name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dof_units</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;rad&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setup</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">dof_name</span><span class="si">}</span><span class="s1">: &#39;</span> <span class="sa">f</span><span class="s1">&#39;TORSION ATOMS=</span><span class="si">{</span><span class="n">atoms</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">atom_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">4</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                <span class="s1">&#39;Instatiation using atom groups &#39;</span>
+                <span class="s1">&#39;is only implemented for groups &#39;</span>
+                <span class="s1">&#39;not larger than four&#39;</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_set_units</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">units</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set units of the collective variable as a string&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof_units</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_units</span><span class="p">))</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_units</span><span class="p">)</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s1">&#39;DOFs in a defined CV have different units, &#39;</span>
+                    <span class="s1">&#39;setting units of this CV to None&#39;</span>
+                <span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="n">units</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="PlumedAverageCV">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.PlumedAverageCV">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PlumedAverageCV</span><span class="p">(</span><span class="n">_PlumedCV</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class used to initialise a PLUMED collective variable as an average</span>
+<span class="sd">    between multiple degrees of freedom&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">atom_groups</span><span class="p">:</span> <span class="n">Sequence</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        PLUMED collective variable as an average between multiple degrees of</span>
+<span class="sd">        freedom (distances, angles, torsions),</span>
+
+<span class="sd">        e.g. [(0, 1), (2, 3), (4, 5)] gives ζ = 1/3 * (r_01 + r_23 + r_45)</span>
+
+<span class="sd">        -----------------------------------------------------------------------</span>
+<span class="sd">        Arguments:</span>
+
+<span class="sd">            name: (str) Name of the collective variable</span>
+
+<span class="sd">            atom_groups: (Sequence[Sequence[int]]) List of atom index sequences</span>
+<span class="sd">                                                which are used to generate DOFs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">atom_groups</span><span class="o">=</span><span class="n">atom_groups</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_units</span><span class="p">()</span>
+
+        <span class="n">dof_sum</span> <span class="o">=</span> <span class="s1">&#39;+&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_names</span><span class="p">)</span>
+        <span class="n">func</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="mi">1</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_names</span><span class="p">)</span><span class="si">}</span><span class="s1">*(</span><span class="si">{</span><span class="n">dof_sum</span><span class="si">}</span><span class="s1">)&#39;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">: &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;CUSTOM ARG=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_sequence</span><span class="si">}</span><span class="s1"> &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;VAR=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_sequence</span><span class="si">}</span><span class="s1"> &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;FUNC=</span><span class="si">{</span><span class="n">func</span><span class="si">}</span><span class="s1"> &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;PERIODIC=NO&#39;</span>
+            <span class="p">]</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="PlumedDifferenceCV">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.PlumedDifferenceCV">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PlumedDifferenceCV</span><span class="p">(</span><span class="n">_PlumedCV</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class used to initialise a PLUMED collective variable as a difference</span>
+<span class="sd">    between two degrees of freedom&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">atom_groups</span><span class="p">:</span> <span class="n">Sequence</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        PLUMED collective variable as a difference between two degrees of</span>
+<span class="sd">        freedom (distances, angles, torsions),</span>
+
+<span class="sd">        e.g. [(0, 2), (0, 1)] gives ζ = r_02 - r_01</span>
+
+<span class="sd">        -----------------------------------------------------------------------</span>
+<span class="sd">        Arguments:</span>
+
+<span class="sd">            name: (str) Name of the collective variable</span>
+
+<span class="sd">            atom_groups: (Sequence[Sequence[int]]) List of atom index sequences</span>
+<span class="sd">                                                which are used to generate DOFs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">atom_groups</span><span class="o">=</span><span class="n">atom_groups</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_units</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_names</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;DifferenceCV must comprise exactly two &#39;</span> <span class="s1">&#39;groups of atoms&#39;</span>
+            <span class="p">)</span>
+
+        <span class="n">func</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1">-</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_names</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">: &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;CUSTOM ARG=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_sequence</span><span class="si">}</span><span class="s1"> &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;VAR=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_sequence</span><span class="si">}</span><span class="s1"> &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;FUNC=</span><span class="si">{</span><span class="n">func</span><span class="si">}</span><span class="s1"> &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;PERIODIC=NO&#39;</span>
+            <span class="p">]</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="PlumedCNCV">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.PlumedCNCV">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PlumedCNCV</span><span class="p">(</span><span class="n">_PlumedCV</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">ref</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+        <span class="n">m</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span>
+        <span class="n">atom_groups</span><span class="p">:</span> <span class="n">Sequence</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        PLUMED collective variable as a coordination number (CN) between two atoms or groups of atoms</span>
+
+<span class="sd">        e.g. [(0, 2)] gives ζ =[1-(r_02/r_ref)^n]/ [1-(r_02/r_ref)^m]</span>
+
+<span class="sd">        which corresponds to the CN between atoms 0 and 2.</span>
+<span class="sd">        To ensure that the CN has continuous derivatives,</span>
+<span class="sd">        we use a rational switching function consistent with PLUMED.</span>
+<span class="sd">        More information: https://www.plumed.org/doc-v2.9/user-doc/html/_c_o_o_r_d_i_n_a_t_i_o_n.html</span>
+
+<span class="sd">        -----------------------------------------------------------------------</span>
+<span class="sd">        Arguments:</span>
+
+<span class="sd">            name: (str) Name of the collective variable</span>
+
+<span class="sd">            ref: (float) Reference values to distinguish different states</span>
+
+<span class="sd">            n, m: (int) Parameters used to adjust the shape of the function</span>
+
+<span class="sd">            atom_groups: (Sequence[Sequence[int]]) List of atom index sequences</span>
+<span class="sd">                                                which are used to generate DOFs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">atom_groups</span><span class="o">=</span><span class="n">atom_groups</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_units</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ref</span> <span class="o">=</span> <span class="n">ref</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="n">n</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">m</span>
+
+        <span class="n">func</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;(1-(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ref</span><span class="si">}</span><span class="s1">)^</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="si">}</span><span class="s1">)/(1-(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ref</span><span class="si">}</span><span class="s1">)^</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="si">}</span><span class="s1">)&#39;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">: &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;CUSTOM ARG=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_sequence</span><span class="si">}</span><span class="s1"> &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;VAR=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dof_sequence</span><span class="si">}</span><span class="s1"> &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;FUNC=</span><span class="si">{</span><span class="n">func</span><span class="si">}</span><span class="s1"> &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;PERIODIC=NO&#39;</span>
+            <span class="p">]</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="PlumedCustomCV">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.PlumedCustomCV">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PlumedCustomCV</span><span class="p">(</span><span class="n">_PlumedCV</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class used to initialise a PLUMED collective variable from a file&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">component</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">units</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        PLUMED collective variable from a file. The file must be written in the</span>
+<span class="sd">        style of a PLUMED input file, but only contain input used in the</span>
+<span class="sd">        definition of the CV, and the CV itself. There are no constraints</span>
+<span class="sd">        on the CVs that can be defined.</span>
+
+<span class="sd">        e.g. dof0: COM ATOMS=1-5</span>
+<span class="sd">             dof1: CENTER ATOMS=3-7</span>
+<span class="sd">             cv0: CUSTOM ARG=dof0,dof1 FUNC=x^2*y^2 PERIODIC=NO</span>
+
+<span class="sd">        -----------------------------------------------------------------------</span>
+<span class="sd">        Arguments:</span>
+
+<span class="sd">            filename: (str) Name of the PLUMED file used to generate a CV</span>
+<span class="sd">                            from that file</span>
+
+<span class="sd">            component: (str) Name of a component of the last CV in the supplied</span>
+<span class="sd">                             PLUMED input file to use as a collective variable</span>
+
+<span class="sd">            units: (str) Units of the collective variable, used in plots</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span> <span class="n">component</span><span class="o">=</span><span class="n">component</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">units</span> <span class="o">=</span> <span class="n">units</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_defines_wall</span><span class="p">(</span><span class="n">line</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if a line in a setup defines UPPER_WALLS or LOWER_WALLS&quot;&quot;&quot;</span>
+
+    <span class="n">elements</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="p">[</span><span class="n">elements</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">elements</span><span class="p">[</span><span class="mi">1</span><span class="p">]]:</span>
+        <span class="k">if</span> <span class="n">element</span> <span class="o">==</span> <span class="s1">&#39;UPPER_WALLS&#39;</span> <span class="ow">or</span> <span class="n">element</span> <span class="o">==</span> <span class="s1">&#39;LOWER_WALLS&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">return</span> <span class="kc">False</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_defines_cv</span><span class="p">(</span><span class="n">line</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if a line in a setup defines a CV&quot;&quot;&quot;</span>
+
+    <span class="n">elements</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="p">[</span><span class="n">elements</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">elements</span><span class="p">[</span><span class="mi">1</span><span class="p">]]:</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">cv</span> <span class="o">==</span> <span class="n">element</span> <span class="k">for</span> <span class="n">cv</span> <span class="ow">in</span> <span class="n">CVS</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">return</span> <span class="kc">False</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_find_files</span><span class="p">(</span><span class="n">setup</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Find and return filenames required for PLUMED collective variables</span>
+<span class="sd">    during a simulation</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">filenames</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">setup</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">_defines_cv</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+            <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                <span class="n">element</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;=&#39;</span><span class="p">)</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">element</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+                <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.dat&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.pdb&#39;</span><span class="p">):</span>
+                    <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">filenames</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_find_args</span><span class="p">(</span><span class="n">line</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Find and return inputs to ARG parameter in a given line of a PLUMED</span>
+<span class="sd">    setup</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">_args</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">_line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">_line</span><span class="p">:</span>
+        <span class="n">element</span> <span class="o">=</span> <span class="n">element</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;=&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">element</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;ARG&#39;</span><span class="p">:</span>
+            <span class="n">_args</span> <span class="o">=</span> <span class="n">element</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">_args</span>
+
+
+<div class="viewcode-block" id="plot_cv_versus_time">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.plot_cv_versus_time">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_cv_versus_time</span><span class="p">(</span>
+    <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">style</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;trajectory&#39;</span><span class="p">,</span>
+    <span class="n">time_units</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;ps&#39;</span><span class="p">,</span>
+    <span class="n">cv_units</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cv_limits</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">label</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plot a collective variable as a function of time from a given colvar file.</span>
+<span class="sd">    Only plot the first collective variable in the colvar file.</span>
+
+<span class="sd">    ---------------------------------------------------------------------------</span>
+<span class="sd">    Arguments:</span>
+
+<span class="sd">        filename: (str) Name of the colvar file used for plotting</span>
+
+<span class="sd">        style: (str) Style to use for plotting, e.g. &#39;scatter&#39;, &#39;trajectory&#39;</span>
+
+<span class="sd">        time_units: (str) Units of time</span>
+
+<span class="sd">        cv_units: Units of the CV to be plotted</span>
+
+<span class="sd">        cv_limits: Min and max limits of the CV in the plot</span>
+
+<span class="sd">        label: (str) Label attached to the name of the plot, useful when</span>
+<span class="sd">                     multiple plots of the same CVs are generated in the same</span>
+<span class="sd">                     directory</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">cv_name</span> <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">3</span><span class="p">]</span>  <span class="c1"># (#! FIELDS time cv_name ...)</span>
+    <span class="n">ase_time_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">usecols</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">cv_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">usecols</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">time_array</span> <span class="o">=</span> <span class="n">convert_ase_time</span><span class="p">(</span><span class="n">time_array</span><span class="o">=</span><span class="n">ase_time_array</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="n">time_units</span><span class="p">)</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">style</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;scatter&#39;</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">time_array</span><span class="p">,</span> <span class="n">cv_array</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">style</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;trajectory&#39;</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">time_array</span><span class="p">,</span> <span class="n">cv_array</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Time / </span><span class="si">{</span><span class="n">time_units</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">cv_units</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cv_name</span><span class="si">}</span><span class="s1"> / </span><span class="si">{</span><span class="n">cv_units</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">cv_name</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">cv_limits</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">ylim</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">cv_limits</span><span class="p">))</span>
+
+    <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">label</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cv_name</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s1">.pdf&#39;</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cv_name</span><span class="si">}</span><span class="s1">.pdf&#39;</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="plot_cv1_and_cv2">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.plot_cv1_and_cv2">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_cv1_and_cv2</span><span class="p">(</span>
+    <span class="n">filenames</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">style</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;scatter&#39;</span><span class="p">,</span>
+    <span class="n">cvs_units</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cvs_limits</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">label</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plot the trajectory of the system by tracking two collective variables</span>
+<span class="sd">    using two colvar files. The function only works for two collective</span>
+<span class="sd">    variables.</span>
+
+<span class="sd">    ---------------------------------------------------------------------------</span>
+<span class="sd">    Arguments:</span>
+
+<span class="sd">        filenames: Names of two colvar files used for plotting</span>
+
+<span class="sd">        style: (str) Style to use for plotting, e.g. &#39;scatter&#39;, &#39;trajectory&#39;,</span>
+<span class="sd">                     &#39;histogram&#39;</span>
+
+<span class="sd">        cvs_units: Units of the CVs to be plotted</span>
+
+<span class="sd">        cvs_limits: Min and max limits of the CVs in the plot</span>
+
+<span class="sd">        label: (str) Label attached to the name of the plot, useful when</span>
+<span class="sd">                     multiple plots of the same CVs are generated in the same</span>
+<span class="sd">                     directory</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+    <span class="n">cvs_names</span><span class="p">,</span> <span class="n">cvs_arrays</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">header</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">cvs_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">header</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">3</span><span class="p">])</span>  <span class="c1"># (#! FIELDS time cv_name ...)</span>
+        <span class="n">cvs_arrays</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">usecols</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">style</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;scatter&#39;</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">cvs_arrays</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cvs_arrays</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">style</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;trajectory&#39;</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">cvs_arrays</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cvs_arrays</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">style</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;histogram&#39;</span><span class="p">:</span>
+        <span class="n">hist</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">hist2d</span><span class="p">(</span><span class="n">cvs_arrays</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cvs_arrays</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">bins</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">cmin</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">cbar</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">hist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+        <span class="n">cbar</span><span class="o">.</span><span class="n">set_label</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Count&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">cvs_units</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cvs_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1"> / </span><span class="si">{</span><span class="n">cvs_units</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cvs_names</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1"> / </span><span class="si">{</span><span class="n">cvs_units</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">cvs_names</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">cvs_names</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">cvs_limits</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">xlim</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">cvs_limits</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">ylim</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">cvs_limits</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+
+    <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">label</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cvs_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">cvs_names</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s1">.pdf&#39;</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cvs_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">cvs_names</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1">.pdf&#39;</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="plumed_setup">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.plumed_setup">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">plumed_setup</span><span class="p">(</span>
+    <span class="n">bias</span><span class="p">:</span> <span class="s1">&#39;mlptrain.PlumedBias&#39;</span><span class="p">,</span> <span class="n">temp</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">interval</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate a list which represents the PLUMED input file</span>
+
+<span class="sd">    ---------------------------------------------------------------------------</span>
+<span class="sd">    Arguments:</span>
+
+<span class="sd">        bias: PLUMED bias object</span>
+
+<span class="sd">        temp: (float) Temperature of a simulation</span>
+
+<span class="sd">        interval: (int) Interval between saving the geometry</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">setup</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Converting PLUMED units to ASE units</span>
+    <span class="n">time_conversion</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">ase_units</span><span class="o">.</span><span class="n">fs</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+    <span class="n">energy_conversion</span> <span class="o">=</span> <span class="n">ase_units</span><span class="o">.</span><span class="n">mol</span> <span class="o">/</span> <span class="n">ase_units</span><span class="o">.</span><span class="n">kJ</span>
+    <span class="n">units_setup</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;UNITS &#39;</span>
+        <span class="s1">&#39;LENGTH=A &#39;</span>
+        <span class="sa">f</span><span class="s1">&#39;TIME=</span><span class="si">{</span><span class="n">time_conversion</span><span class="si">}</span><span class="s1"> &#39;</span>
+        <span class="sa">f</span><span class="s1">&#39;ENERGY=</span><span class="si">{</span><span class="n">energy_conversion</span><span class="si">}</span><span class="s1">&#39;</span>
+    <span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">bias</span><span class="o">.</span><span class="n">from_file</span><span class="p">:</span>
+        <span class="n">setup</span> <span class="o">=</span> <span class="n">bias</span><span class="o">.</span><span class="n">setup</span>
+
+        <span class="k">if</span> <span class="s1">&#39;UNITS&#39;</span> <span class="ow">in</span> <span class="n">setup</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Setting PLUMED units to ASE units&#39;</span><span class="p">)</span>
+            <span class="n">setup</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">units_setup</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="k">return</span> <span class="n">setup</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s1">&#39;Unit conversion not found in PLUMED input file, &#39;</span>
+                <span class="s1">&#39;adding conversion from PLUMED units to ASE units&#39;</span>
+            <span class="p">)</span>
+            <span class="n">setup</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">units_setup</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+            <span class="k">return</span> <span class="n">setup</span>
+
+    <span class="n">setup</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">units_setup</span><span class="p">)</span>
+
+    <span class="c1"># Defining DOFs and CVs (including upper and lower walls)</span>
+    <span class="k">for</span> <span class="n">cv</span> <span class="ow">in</span> <span class="n">bias</span><span class="o">.</span><span class="n">cvs</span><span class="p">:</span>
+        <span class="n">setup</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">cv</span><span class="o">.</span><span class="n">setup</span><span class="p">)</span>
+
+    <span class="c1"># Metadynamics</span>
+    <span class="k">if</span> <span class="n">bias</span><span class="o">.</span><span class="n">metadynamics</span><span class="p">:</span>
+        <span class="n">hills_filename</span> <span class="o">=</span> <span class="n">get_hills_filename</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;load_metad_bias&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="ow">and</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;load_metad_bias&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">load_metad_bias_setup</span> <span class="o">=</span> <span class="s1">&#39;RESTART=YES &#39;</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">load_metad_bias_setup</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+        <span class="n">metad_setup</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s1">&#39;metad: METAD &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;ARG=</span><span class="si">{</span><span class="n">bias</span><span class="o">.</span><span class="n">metad_cv_sequence</span><span class="si">}</span><span class="s1"> &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;PACE=</span><span class="si">{</span><span class="n">bias</span><span class="o">.</span><span class="n">pace</span><span class="si">}</span><span class="s1"> &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;HEIGHT=</span><span class="si">{</span><span class="n">bias</span><span class="o">.</span><span class="n">height</span><span class="si">}</span><span class="s1"> &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;SIGMA=</span><span class="si">{</span><span class="n">bias</span><span class="o">.</span><span class="n">width_sequence</span><span class="si">}</span><span class="s1"> &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;TEMP=</span><span class="si">{</span><span class="n">temp</span><span class="si">}</span><span class="s1"> &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">bias</span><span class="o">.</span><span class="n">biasfactor_setup</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">bias</span><span class="o">.</span><span class="n">metad_grid_setup</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">load_metad_bias_setup</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;FILE=</span><span class="si">{</span><span class="n">hills_filename</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="p">]</span>
+        <span class="n">setup</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">metad_setup</span><span class="p">)</span>
+
+    <span class="c1"># Printing trajectory in terms of DOFs and CVs</span>
+    <span class="k">for</span> <span class="n">cv</span> <span class="ow">in</span> <span class="n">bias</span><span class="o">.</span><span class="n">cvs</span><span class="p">:</span>
+        <span class="n">colvar_filename</span> <span class="o">=</span> <span class="n">get_colvar_filename</span><span class="p">(</span><span class="n">cv</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">cv</span><span class="o">.</span><span class="n">dof_names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cv</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">,</span><span class="si">{</span><span class="n">cv</span><span class="o">.</span><span class="n">dof_sequence</span><span class="si">}</span><span class="s1">&#39;</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">name</span>
+
+        <span class="n">print_setup</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s1">&#39;PRINT &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;ARG=</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s1"> &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;FILE=</span><span class="si">{</span><span class="n">colvar_filename</span><span class="si">}</span><span class="s1"> &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;STRIDE=</span><span class="si">{</span><span class="n">interval</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="p">]</span>
+        <span class="n">setup</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">print_setup</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s1">&#39;remove_print&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="ow">and</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;remove_print&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">setup</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;PRINT&#39;</span><span class="p">):</span>
+                <span class="n">setup</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+    <span class="c1"># Remove duplicate lines</span>
+    <span class="n">setup</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">setup</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="s1">&#39;write_plumed_setup&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="ow">and</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;write_plumed_setup&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;plumed_setup.dat&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">setup</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">setup</span></div>
+
+
+
+<div class="viewcode-block" id="get_colvar_filename">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.get_colvar_filename">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_colvar_filename</span><span class="p">(</span><span class="n">cv</span><span class="p">:</span> <span class="s1">&#39;_PlumedCV&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the name of the file where the trajectory in terms of collective</span>
+<span class="sd">    variable values would be written</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Remove the dot if component CV is used</span>
+    <span class="n">name_without_dot</span> <span class="o">=</span> <span class="s1">&#39;_&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cv</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="s1">&#39;idx&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="n">colvar_filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;colvar_</span><span class="si">{</span><span class="n">name_without_dot</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;idx&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1">.dat&#39;</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">colvar_filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;colvar_</span><span class="si">{</span><span class="n">name_without_dot</span><span class="si">}</span><span class="s1">.dat&#39;</span>
+
+    <span class="k">return</span> <span class="n">colvar_filename</span></div>
+
+
+
+<div class="viewcode-block" id="get_hills_filename">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.plumed.html#mlptrain.get_hills_filename">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_hills_filename</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the name of the file where a list of deposited gaussians would be</span>
+<span class="sd">    written</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;HILLS&#39;</span>
+
+    <span class="k">if</span> <span class="s1">&#39;iteration&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="ow">and</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;iteration&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">filename</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;_</span><span class="si">{</span><span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;iteration&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span>
+
+    <span class="k">if</span> <span class="s1">&#39;idx&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="ow">and</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;idx&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">filename</span> <span class="o">+=</span> <span class="sa">f</span><span class="s1">&#39;_</span><span class="si">{</span><span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;idx&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span>
+
+    <span class="n">filename</span> <span class="o">+=</span> <span class="s1">&#39;.dat&#39;</span>
+    <span class="k">return</span> <span class="n">filename</span></div>
+
+
+
+<span class="n">CVS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;GROUP&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;CENTER&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;CENTER_OF_MULTICOLVAR&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;COM&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;FIXEDATOM&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;GHOST&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ADAPTIVE_PATH&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ALPHABETA&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ALPHARMSD&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ANGLE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ANTIBETARMSD&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;CELL&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;CONSTANT&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;CONTACTMAP&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;COORDINATION&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;DHENERGY&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;DIHCOR&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;DIMER&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;DIPOLE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;DISTANCE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;DISTANCE_FROM_CONTOUR&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;EEFSOLV&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ENERGY&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ERMSD&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;EXTRACV&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;FAKE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;GHBFIX&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;GPROPERTYMAP&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;GYRATION&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;PARABETARMSD&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;PATH&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;PATHMSD&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;PCAVARS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;POSITION&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;PROJECTION_ON_AXIS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;PROPERTYMAP&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;PUCKERING&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;TEMPLATE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;TORSION&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;VOLUME&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;DRMSD&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;MULTI_RMSD&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;PCARMSD&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;RMSD&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;TARGET&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;COMBINE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;CUSTOM&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;EMSEMBLE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;FUNCPATHGENERAL&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;FUNCPATHMSD&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;LOCALENSEMBLE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;MATHEVAL&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;PIECEWISE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;SORT&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;STATS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ANGLES&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;BOND_DIRECTIONS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;BRIDGE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;COORDINATIONNUMBER&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;DENSITY&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;DISTANCES&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;FCCUBIC&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ENVIRONMENTSIMILARITY&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;FCCUBIC&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;HBPAMM_SH&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;INPLANEDISTANCES&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;MOLECULES&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;PLANES&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;Q3&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;Q4&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;Q6&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;SIMPLECUBIC&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;TETRAHEDRAL&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;TORSIONS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;XDISTANCES&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;XYDISTANCES&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;XYTORSIONS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;XZDISTANCES&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;XZTORSIONS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;YANGLES&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;YDISTANCES&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;YXTORSIONS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;YZDISTANCES&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;YZTORSIONS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ZANGLES&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ZDISTANCES&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ZXTORSIONS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ZYTORSIONS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;MFILTER_BETWEEN&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;MFILTER_LESS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;MFILTER_MORE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;AROUND&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;CAVITY&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;INCYLINDER&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;INENVELOPE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;INSPHERE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;TETRAHEDRALPORE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;GRADIENT&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;INTERMOLECULARTORSIONS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;LOCAL_AVERAGE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;LOCAL_Q3&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;LOCAL_Q4&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;LOCAL_Q6&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;MCOLV_COMBINE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;MCOLV_PRODUCT&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;NLINKS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;PAMM&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;SMAC&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;POLYMER_ANGLES&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;MTRANSFORM_BETWEEN&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;MTRANSFORM_LESS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;MTRANSFORM_MORE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ALIGNED_MATRIX&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;CONTACT_MATRIX&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;HBOND_MATRIX&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;HBPAMM_MATRIX&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;SMAC_MATRIX&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;TOPOLOGY_MATRIX&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;COLUMNSUMS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;CLUSTER_WITHSURFACE&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;DFSCLUSTERING&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ROWSUMS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;SPRINT&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;CLUSTER_DIAMETER&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;CLUSTER_DISTRIBUTION&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;CLUSTER_NATOMS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;CLUSTER_PROPERTIES&#39;</span><span class="p">,</span>
+<span class="p">]</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Duarte group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

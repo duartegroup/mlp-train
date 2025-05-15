@@ -1,0 +1,17 @@
+mlptrain.loss
+=============
+
+.. automodule:: mlptrain.loss
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+---------
+
+.. toctree::
+   :maxdepth: 1
+
+   mlptrain.loss._base
+   mlptrain.loss.mean_errors
+   mlptrain.loss.tau

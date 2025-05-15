@@ -1,0 +1,239 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>System &mdash; mlp-train  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="&lt;no title&gt;" href="training/index.html" />
+    <link rel="prev" title="&lt;no title&gt;" href="sampling/index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            mlp-train
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Documentation</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../dev/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dev/contributing.html">Contributing to mlp-train</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">References</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="box.html">Box</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html">Config</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configurations/index.html">Configurations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="descriptor/index.html">Descriptor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="energy.html">Energy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="forces.html">Forces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="log.html">Log</a></li>
+<li class="toctree-l2"><a class="reference internal" href="molecule.html">Molecule</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">System</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#mlptrain.system.System"><code class="docutils literal notranslate"><span class="pre">System</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#mlptrain.system.System.add_molecule"><code class="docutils literal notranslate"><span class="pre">System.add_molecule()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mlptrain.system.System.add_molecules"><code class="docutils literal notranslate"><span class="pre">System.add_molecules()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mlptrain.system.System.atoms"><code class="docutils literal notranslate"><span class="pre">System.atoms</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mlptrain.system.System.charge"><code class="docutils literal notranslate"><span class="pre">System.charge</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mlptrain.system.System.configuration"><code class="docutils literal notranslate"><span class="pre">System.configuration</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mlptrain.system.System.mult"><code class="docutils literal notranslate"><span class="pre">System.mult</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mlptrain.system.System.random_configuration"><code class="docutils literal notranslate"><span class="pre">System.random_configuration()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mlptrain.system.System.random_configurations"><code class="docutils literal notranslate"><span class="pre">System.random_configurations()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mlptrain.system.System.unique_atomic_symbols"><code class="docutils literal notranslate"><span class="pre">System.unique_atomic_symbols</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html">Utils</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/tutorial1.html">Tutorial1</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/tutorial2.html">Tutorial2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/tutorial3.html">Tutorial3</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example1.html">Example1</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example2.html">Example2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example3.html">Example3</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">mlp-train</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">References</a></li>
+      <li class="breadcrumb-item active">System</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/references/system.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-mlptrain.system">
+<span id="system"></span><h1>System<a class="headerlink" href="#module-mlptrain.system" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.system.System">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.system.</span></span><span class="sig-name descname"><span class="pre">System</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="molecule.html#mlptrain.molecule.Molecule" title="mlptrain.molecule.Molecule"><span class="pre">Molecule</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">box</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="box.html#mlptrain.box.Box" title="mlptrain.box.Box"><span class="pre">Box</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.system.System" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>System with molecules but without any coordinates</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.system.System.add_molecule">
+<span class="sig-name descname"><span class="pre">add_molecule</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">molecule</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="molecule.html#mlptrain.molecule.Molecule" title="mlptrain.molecule.Molecule"><span class="pre">Molecule</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.system.System.add_molecule" title="Link to this definition"></a></dt>
+<dd><p>Add a molecule to this system</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.system.System.add_molecules">
+<span class="sig-name descname"><span class="pre">add_molecules</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">molecule</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="molecule.html#mlptrain.molecule.Molecule" title="mlptrain.molecule.Molecule"><span class="pre">Molecule</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">num</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.system.System.add_molecules" title="Link to this definition"></a></dt>
+<dd><p>Add multiple versions of a molecule to this sytem</p>
+<dl class="field-list simple">
+<dt class="field-odd">Keyword Arguments<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>num</strong> – Number of molecules of this type to add</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.system.System.atoms">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">atoms</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Atom</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mlptrain.system.System.atoms" title="Link to this definition"></a></dt>
+<dd><p>Constituent atoms of this system</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.system.System.charge">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">charge</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#mlptrain.system.System.charge" title="Link to this definition"></a></dt>
+<dd><p>Get the total charge on the system</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.system.System.configuration">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">configuration</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="configurations/configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></em><a class="headerlink" href="#mlptrain.system.System.configuration" title="Link to this definition"></a></dt>
+<dd><p>Single configuration for this system</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.system.System.mult">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mult</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#mlptrain.system.System.mult" title="Link to this definition"></a></dt>
+<dd><p>Get the total spin multiplicity on the system</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.system.System.random_configuration">
+<span class="sig-name descname"><span class="pre">random_configuration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_intra</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intra_sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.01</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="configurations/configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></span></span><a class="headerlink" href="#mlptrain.system.System.random_configuration" title="Link to this definition"></a></dt>
+<dd><p>Generate a random configuration of this system, where all the molecules
+in the system have been randomised</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>intra_sigma</strong> – Variance of the normal distribution used to displace
+each atom_pair_list of the molecules in the system</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>(mlptrain.Configuration)</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>(</strong><strong>RuntimeError</strong><strong>)</strong> – If all the molecules cannot be randomised while
+    maintaining the required min. distance between them</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.system.System.random_configurations">
+<span class="sig-name descname"><span class="pre">random_configurations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="configurations/configuration_set.html#mlptrain.configurations.configuration_set.ConfigurationSet" title="mlptrain.configurations.configuration_set.ConfigurationSet"><span class="pre">ConfigurationSet</span></a></span></span><a class="headerlink" href="#mlptrain.system.System.random_configurations" title="Link to this definition"></a></dt>
+<dd><p>Generate a number of random configurations of this system</p>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>mlptrain.system.System.random_configuration for keyword arguments</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(<a class="reference internal" href="configurations/configuration_set.html#mlptrain.configurations.configuration_set.ConfigurationSet" title="mlptrain.configurations.configuration_set.ConfigurationSet">mlptrain.configurations.configuration_set.ConfigurationSet</a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.system.System.unique_atomic_symbols">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">unique_atomic_symbols</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mlptrain.system.System.unique_atomic_symbols" title="Link to this definition"></a></dt>
+<dd><p>Unique atomic symbols in this system</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="sampling/index.html" class="btn btn-neutral float-left" title="&lt;no title&gt;" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="training/index.html" class="btn btn-neutral float-right" title="&lt;no title&gt;" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Duarte group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

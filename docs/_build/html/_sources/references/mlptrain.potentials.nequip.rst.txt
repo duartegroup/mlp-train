@@ -1,0 +1,15 @@
+mlptrain.potentials.nequip
+==========================
+
+.. automodule:: mlptrain.potentials.nequip
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+---------
+
+.. toctree::
+   :maxdepth: 1
+
+   mlptrain.potentials.nequip._nequip

@@ -1,0 +1,292 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Selection &mdash; mlp-train  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Utils" href="../utils.html" />
+    <link rel="prev" title="Active" href="active.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            mlp-train
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Documentation</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../dev/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../dev/contributing.html">Contributing to mlp-train</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">References</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../box.html">Box</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../config.html">Config</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configurations/index.html">Configurations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../descriptor/index.html">Descriptor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../energy.html">Energy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../forces.html">Forces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../log.html">Log</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../loss/index.html">Loss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../molecule.html">Molecule</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../sampling/index.html">Sampling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../system.html">System</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Training</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="active.html">Active</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Selection</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#mlptrain.training.selection.AbsDiffE"><code class="docutils literal notranslate"><span class="pre">AbsDiffE</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mlptrain.training.selection.AtomicEnvDistance"><code class="docutils literal notranslate"><span class="pre">AtomicEnvDistance</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mlptrain.training.selection.AtomicEnvSimilarity"><code class="docutils literal notranslate"><span class="pre">AtomicEnvSimilarity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mlptrain.training.selection.SelectionMethod"><code class="docutils literal notranslate"><span class="pre">SelectionMethod</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mlptrain.training.selection.outlier_identifier"><code class="docutils literal notranslate"><span class="pre">outlier_identifier()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../utils.html">Utils</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/tutorial1.html">Tutorial1</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/tutorial2.html">Tutorial2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/tutorial3.html">Tutorial3</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example1.html">Example1</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example2.html">Example2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/example3.html">Example3</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">mlp-train</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">References</a></li>
+          <li class="breadcrumb-item"><a href="index.html">Training</a></li>
+      <li class="breadcrumb-item active">Selection</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/references/training/selection.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-mlptrain.training.selection">
+<span id="selection"></span><h1>Selection<a class="headerlink" href="#module-mlptrain.training.selection" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.training.selection.AbsDiffE">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.training.selection.</span></span><span class="sig-name descname"><span class="pre">AbsDiffE</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e_thresh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.training.selection.AbsDiffE" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#mlptrain.training.selection.SelectionMethod" title="mlptrain.training.selection.SelectionMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">SelectionMethod</span></code></a></p>
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.training.selection.AbsDiffE.n_backtrack">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_backtrack</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#mlptrain.training.selection.AbsDiffE.n_backtrack" title="Link to this definition"></a></dt>
+<dd><p>Number of backtracking steps that this selection method should evaluate
+if the value is ‘too_large’</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.training.selection.AbsDiffE.select">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">select</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mlptrain.training.selection.AbsDiffE.select" title="Link to this definition"></a></dt>
+<dd><p>10 E_T &gt; <a href="#id1"><span class="problematic" id="id2">|E_predicted - E_true|</span></a> &gt; E_T</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.training.selection.AbsDiffE.too_large">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">too_large</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mlptrain.training.selection.AbsDiffE.too_large" title="Link to this definition"></a></dt>
+<dd><p><a href="#id3"><span class="problematic" id="id4">|E_predicted - E_true|</span></a> &gt; 10*E_T</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.training.selection.AtomicEnvDistance">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.training.selection.</span></span><span class="sig-name descname"><span class="pre">AtomicEnvDistance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pca</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance_metric</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'euclidean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_neighbors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">15</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.training.selection.AtomicEnvDistance" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#mlptrain.training.selection.SelectionMethod" title="mlptrain.training.selection.SelectionMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">SelectionMethod</span></code></a></p>
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.training.selection.AtomicEnvDistance.check">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">check</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mlptrain.training.selection.AtomicEnvDistance.check" title="Link to this definition"></a></dt>
+<dd><p>Should we keep checking configurations in the MLP-MD trajectory
+until the first configuration that will be selected by the selector is found?</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.training.selection.AtomicEnvDistance.n_backtrack">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_backtrack</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#mlptrain.training.selection.AtomicEnvDistance.n_backtrack" title="Link to this definition"></a></dt>
+<dd><p>Number of backtracking steps that this selection method should evaluate
+if the value is ‘too_large’</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.training.selection.AtomicEnvDistance.select">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">select</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mlptrain.training.selection.AtomicEnvDistance.select" title="Link to this definition"></a></dt>
+<dd><p>Should this configuration be selected?</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.training.selection.AtomicEnvDistance.too_large">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">too_large</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mlptrain.training.selection.AtomicEnvDistance.too_large" title="Link to this definition"></a></dt>
+<dd><p>Is the error/discrepancy too large to be selected?</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.training.selection.AtomicEnvSimilarity">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.training.selection.</span></span><span class="sig-name descname"><span class="pre">AtomicEnvSimilarity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.999</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.training.selection.AtomicEnvSimilarity" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#mlptrain.training.selection.SelectionMethod" title="mlptrain.training.selection.SelectionMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">SelectionMethod</span></code></a></p>
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.training.selection.AtomicEnvSimilarity.n_backtrack">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_backtrack</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#mlptrain.training.selection.AtomicEnvSimilarity.n_backtrack" title="Link to this definition"></a></dt>
+<dd><p>Number of backtracking steps that this selection method should evaluate
+if the value is ‘too_large’</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.training.selection.AtomicEnvSimilarity.select">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">select</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mlptrain.training.selection.AtomicEnvSimilarity.select" title="Link to this definition"></a></dt>
+<dd><p>Determine if this configuration should be selected, based on the
+minimum similarity between it and all of the training data</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.training.selection.AtomicEnvSimilarity.too_large">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">too_large</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mlptrain.training.selection.AtomicEnvSimilarity.too_large" title="Link to this definition"></a></dt>
+<dd><p>Is the error/discrepancy too large to be selected?</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.training.selection.SelectionMethod">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.training.selection.</span></span><span class="sig-name descname"><span class="pre">SelectionMethod</span></span><a class="headerlink" href="#mlptrain.training.selection.SelectionMethod" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Active learning selection method</p>
+<p>NOTE: Should execute in serial</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.training.selection.SelectionMethod.check">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">check</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mlptrain.training.selection.SelectionMethod.check" title="Link to this definition"></a></dt>
+<dd><p>Should we keep checking configurations in the MLP-MD trajectory
+until the first configuration that will be selected by the selector is found?</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.training.selection.SelectionMethod.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mlptrain.training.selection.SelectionMethod" title="mlptrain.training.selection.SelectionMethod"><span class="pre">SelectionMethod</span></a></span></span><a class="headerlink" href="#mlptrain.training.selection.SelectionMethod.copy" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.training.selection.SelectionMethod.n_backtrack">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_backtrack</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#mlptrain.training.selection.SelectionMethod.n_backtrack" title="Link to this definition"></a></dt>
+<dd><p>Number of backtracking steps that this selection method should evaluate
+if the value is ‘too_large’</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.training.selection.SelectionMethod.select">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">select</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mlptrain.training.selection.SelectionMethod.select" title="Link to this definition"></a></dt>
+<dd><p>Should this configuration be selected?</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.training.selection.SelectionMethod.too_large">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">too_large</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mlptrain.training.selection.SelectionMethod.too_large" title="Link to this definition"></a></dt>
+<dd><p>Is the error/discrepancy too large to be selected?</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mlptrain.training.selection.outlier_identifier">
+<span class="sig-prename descclassname"><span class="pre">mlptrain.training.selection.</span></span><span class="sig-name descname"><span class="pre">outlier_identifier</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">configuration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../configurations/configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">configurations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../configurations/configuration_set.html#mlptrain.configurations.configuration_set.ConfigurationSet" title="mlptrain.configurations.configuration_set.ConfigurationSet"><span class="pre">ConfigurationSet</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_reduction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance_metric</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'euclidean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_neighbors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">15</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#mlptrain.training.selection.outlier_identifier" title="Link to this definition"></a></dt>
+<dd><p>This function identifies whether a new data (configuration)
+is the outlier in comparison with the existing data (configurations) by Local Outlier
+Factor (LOF). For more details about the LOF method, please see the lit.
+Breunig, M. M., Kriegel, H.-P., Ng, R. T. &amp; Sander, J. LOF: Identifying
+density-based local outliers. SIGMOD Rec. 29, 93–104 (2000).</p>
+<dl class="simple">
+<dt>dim_reduction: if Ture, dimensionality reduction will</dt><dd><p>be performed before LOF calculation (so far only PCA available).</p>
+</dd>
+<dt>distance_metric: distance metric used in LOF,</dt><dd><p>which could be one of ‘euclidean’,
+‘cosine’ and ‘manhattan’.</p>
+</dd>
+</dl>
+<p>n_neighbors: number of neighbors considered when computing the LOF.</p>
+<p>-1 for anomalies/outliers and +1 for inliers.</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="active.html" class="btn btn-neutral float-left" title="Active" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../utils.html" class="btn btn-neutral float-right" title="Utils" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Duarte group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

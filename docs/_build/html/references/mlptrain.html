@@ -1,0 +1,1443 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mlptrain &mdash; mlp-train  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            mlp-train
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">mlptrain</a><ul>
+<li><a class="reference internal" href="#mlptrain.AverageDistance"><code class="docutils literal notranslate"><span class="pre">AverageDistance</span></code></a><ul>
+<li><a class="reference internal" href="#mlptrain.AverageDistance.n_pairs"><code class="docutils literal notranslate"><span class="pre">AverageDistance.n_pairs</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mlptrain.Bias"><code class="docutils literal notranslate"><span class="pre">Bias</span></code></a><ul>
+<li><a class="reference internal" href="#mlptrain.Bias.adjust_forces"><code class="docutils literal notranslate"><span class="pre">Bias.adjust_forces()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Bias.adjust_positions"><code class="docutils literal notranslate"><span class="pre">Bias.adjust_positions()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Bias.adjust_potential_energy"><code class="docutils literal notranslate"><span class="pre">Bias.adjust_potential_energy()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Bias.grad"><code class="docutils literal notranslate"><span class="pre">Bias.grad()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mlptrain.Box"><code class="docutils literal notranslate"><span class="pre">Box</span></code></a><ul>
+<li><a class="reference internal" href="#mlptrain.Box.has_zero_volume"><code class="docutils literal notranslate"><span class="pre">Box.has_zero_volume</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Box.midpoint"><code class="docutils literal notranslate"><span class="pre">Box.midpoint</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Box.random_point"><code class="docutils literal notranslate"><span class="pre">Box.random_point</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Box.volume"><code class="docutils literal notranslate"><span class="pre">Box.volume</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mlptrain.Configuration"><code class="docutils literal notranslate"><span class="pre">Configuration</span></code></a><ul>
+<li><a class="reference internal" href="#mlptrain.Configuration.ase_atoms"><code class="docutils literal notranslate"><span class="pre">Configuration.ase_atoms</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Configuration.copy"><code class="docutils literal notranslate"><span class="pre">Configuration.copy()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Configuration.save_xyz"><code class="docutils literal notranslate"><span class="pre">Configuration.save_xyz()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Configuration.single_point"><code class="docutils literal notranslate"><span class="pre">Configuration.single_point()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Configuration.update_attr_from"><code class="docutils literal notranslate"><span class="pre">Configuration.update_attr_from()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet</span></code></a><ul>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.append"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.append()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.bias_energies"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.bias_energies</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.compare"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.compare()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.has_a_none_energy"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.has_a_none_energy</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.inherited_bias_energies"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.inherited_bias_energies</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.load"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.load()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.load_xyz"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.load_xyz()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.lowest_biased_energy"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.lowest_biased_energy</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.lowest_energy"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.lowest_energy</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.lowest_inherited_biased_energy"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.lowest_inherited_biased_energy</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.plumed_coordinates"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.plumed_coordinates</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.predicted_energies"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.predicted_energies</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.predicted_forces"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.predicted_forces</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.remove_above_e"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.remove_above_e()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.remove_none_energy"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.remove_none_energy()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.save"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.save()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.save_xyz"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.save_xyz()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.single_point"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.single_point()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.t_min"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.t_min()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.true_energies"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.true_energies</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.ConfigurationSet.true_forces"><code class="docutils literal notranslate"><span class="pre">ConfigurationSet.true_forces</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mlptrain.DifferenceDistance"><code class="docutils literal notranslate"><span class="pre">DifferenceDistance</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Metadynamics"><code class="docutils literal notranslate"><span class="pre">Metadynamics</span></code></a><ul>
+<li><a class="reference internal" href="#mlptrain.Metadynamics.block_analysis"><code class="docutils literal notranslate"><span class="pre">Metadynamics.block_analysis()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Metadynamics.compute_fes"><code class="docutils literal notranslate"><span class="pre">Metadynamics.compute_fes()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Metadynamics.estimate_width"><code class="docutils literal notranslate"><span class="pre">Metadynamics.estimate_width()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Metadynamics.kbt"><code class="docutils literal notranslate"><span class="pre">Metadynamics.kbt</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Metadynamics.n_cvs"><code class="docutils literal notranslate"><span class="pre">Metadynamics.n_cvs</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Metadynamics.plot_fes"><code class="docutils literal notranslate"><span class="pre">Metadynamics.plot_fes()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Metadynamics.plot_fes_convergence"><code class="docutils literal notranslate"><span class="pre">Metadynamics.plot_fes_convergence()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Metadynamics.plot_gaussian_heights"><code class="docutils literal notranslate"><span class="pre">Metadynamics.plot_gaussian_heights()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Metadynamics.run_metadynamics"><code class="docutils literal notranslate"><span class="pre">Metadynamics.run_metadynamics()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Metadynamics.try_multiple_biasfactors"><code class="docutils literal notranslate"><span class="pre">Metadynamics.try_multiple_biasfactors()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mlptrain.Molecule"><code class="docutils literal notranslate"><span class="pre">Molecule</span></code></a><ul>
+<li><a class="reference internal" href="#mlptrain.Molecule.centroid"><code class="docutils literal notranslate"><span class="pre">Molecule.centroid</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Molecule.is_in_box"><code class="docutils literal notranslate"><span class="pre">Molecule.is_in_box()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Molecule.min_distance_to"><code class="docutils literal notranslate"><span class="pre">Molecule.min_distance_to()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Molecule.random_normal_jiggle"><code class="docutils literal notranslate"><span class="pre">Molecule.random_normal_jiggle()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mlptrain.PlumedAverageCV"><code class="docutils literal notranslate"><span class="pre">PlumedAverageCV</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedBias"><code class="docutils literal notranslate"><span class="pre">PlumedBias</span></code></a><ul>
+<li><a class="reference internal" href="#mlptrain.PlumedBias.adjust_forces"><code class="docutils literal notranslate"><span class="pre">PlumedBias.adjust_forces()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedBias.adjust_positions"><code class="docutils literal notranslate"><span class="pre">PlumedBias.adjust_positions()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedBias.adjust_potential_energy"><code class="docutils literal notranslate"><span class="pre">PlumedBias.adjust_potential_energy()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedBias.biasfactor_setup"><code class="docutils literal notranslate"><span class="pre">PlumedBias.biasfactor_setup</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedBias.cv_sequence"><code class="docutils literal notranslate"><span class="pre">PlumedBias.cv_sequence</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedBias.from_file"><code class="docutils literal notranslate"><span class="pre">PlumedBias.from_file</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedBias.initialise_for_metad_al"><code class="docutils literal notranslate"><span class="pre">PlumedBias.initialise_for_metad_al()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedBias.metad_cv_sequence"><code class="docutils literal notranslate"><span class="pre">PlumedBias.metad_cv_sequence</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedBias.metad_grid_setup"><code class="docutils literal notranslate"><span class="pre">PlumedBias.metad_grid_setup</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedBias.metadynamics"><code class="docutils literal notranslate"><span class="pre">PlumedBias.metadynamics</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedBias.n_cvs"><code class="docutils literal notranslate"><span class="pre">PlumedBias.n_cvs</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedBias.n_metad_cvs"><code class="docutils literal notranslate"><span class="pre">PlumedBias.n_metad_cvs</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedBias.strip"><code class="docutils literal notranslate"><span class="pre">PlumedBias.strip()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedBias.width_sequence"><code class="docutils literal notranslate"><span class="pre">PlumedBias.width_sequence</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedBias.write_cv_files"><code class="docutils literal notranslate"><span class="pre">PlumedBias.write_cv_files()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mlptrain.PlumedCalculator"><code class="docutils literal notranslate"><span class="pre">PlumedCalculator</span></code></a><ul>
+<li><a class="reference internal" href="#mlptrain.PlumedCalculator.calculate"><code class="docutils literal notranslate"><span class="pre">PlumedCalculator.calculate()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedCalculator.compute_energy_and_forces"><code class="docutils literal notranslate"><span class="pre">PlumedCalculator.compute_energy_and_forces()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedCalculator.implemented_properties"><code class="docutils literal notranslate"><span class="pre">PlumedCalculator.implemented_properties</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mlptrain.PlumedCustomCV"><code class="docutils literal notranslate"><span class="pre">PlumedCustomCV</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.PlumedDifferenceCV"><code class="docutils literal notranslate"><span class="pre">PlumedDifferenceCV</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.System"><code class="docutils literal notranslate"><span class="pre">System</span></code></a><ul>
+<li><a class="reference internal" href="#mlptrain.System.add_molecule"><code class="docutils literal notranslate"><span class="pre">System.add_molecule()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.System.add_molecules"><code class="docutils literal notranslate"><span class="pre">System.add_molecules()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.System.atoms"><code class="docutils literal notranslate"><span class="pre">System.atoms</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.System.charge"><code class="docutils literal notranslate"><span class="pre">System.charge</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.System.configuration"><code class="docutils literal notranslate"><span class="pre">System.configuration</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.System.mult"><code class="docutils literal notranslate"><span class="pre">System.mult</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.System.random_configuration"><code class="docutils literal notranslate"><span class="pre">System.random_configuration()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.System.random_configurations"><code class="docutils literal notranslate"><span class="pre">System.random_configurations()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.System.unique_atomic_symbols"><code class="docutils literal notranslate"><span class="pre">System.unique_atomic_symbols</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mlptrain.Trajectory"><code class="docutils literal notranslate"><span class="pre">Trajectory</span></code></a><ul>
+<li><a class="reference internal" href="#mlptrain.Trajectory.final_frame"><code class="docutils literal notranslate"><span class="pre">Trajectory.final_frame</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.Trajectory.t0"><code class="docutils literal notranslate"><span class="pre">Trajectory.t0</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mlptrain.UmbrellaSampling"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling</span></code></a><ul>
+<li><a class="reference internal" href="#mlptrain.UmbrellaSampling.beta"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.beta</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.UmbrellaSampling.free_energies"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.free_energies()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.UmbrellaSampling.from_folder"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.from_folder()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.UmbrellaSampling.from_folders"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.from_folders()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.UmbrellaSampling.load"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.load()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.UmbrellaSampling.run_umbrella_sampling"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.run_umbrella_sampling()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.UmbrellaSampling.save"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.save()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.UmbrellaSampling.umbrella_integration"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.umbrella_integration()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.UmbrellaSampling.wham"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.wham()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.UmbrellaSampling.zeta_refs"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.zeta_refs</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#mlptrain.convert_ase_energy"><code class="docutils literal notranslate"><span class="pre">convert_ase_energy()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.convert_ase_time"><code class="docutils literal notranslate"><span class="pre">convert_ase_time()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.plot_cv1_and_cv2"><code class="docutils literal notranslate"><span class="pre">plot_cv1_and_cv2()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.plot_cv_versus_time"><code class="docutils literal notranslate"><span class="pre">plot_cv_versus_time()</span></code></a></li>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">mlp-train</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">mlptrain</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/references/mlptrain.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-mlptrain">
+<span id="mlptrain"></span><h1>mlptrain<a class="headerlink" href="#module-mlptrain" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.AverageDistance">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">AverageDistance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.AverageDistance" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="mlptrain.sampling.reaction_coord.html#mlptrain.sampling.reaction_coord.ReactionCoordinate" title="mlptrain.sampling.reaction_coord.ReactionCoordinate"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReactionCoordinate</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">_Distances</span></code></p>
+<p>Average distance between each pair of atoms specified</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.AverageDistance.n_pairs">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_pairs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#mlptrain.AverageDistance.n_pairs" title="Link to this definition"></a></dt>
+<dd><p>Number of pairs of atoms in this set</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.Bias">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">Bias</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zeta_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.sampling.reaction_coord.html#mlptrain.sampling.reaction_coord.ReactionCoordinate" title="mlptrain.sampling.reaction_coord.ReactionCoordinate"><span class="pre">ReactionCoordinate</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">kappa</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.Bias" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="mlptrain.sampling._base.html#mlptrain.sampling._base.ASEConstraint" title="mlptrain.sampling._base.ASEConstraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">ASEConstraint</span></code></a>, <a class="reference internal" href="mlptrain.sampling._base.html#mlptrain.sampling._base.Function" title="mlptrain.sampling._base.Function"><code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code></a></p>
+<p>Modifies the forces and energy of a set of ASE atoms under a bias</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Bias.adjust_forces">
+<span class="sig-name descname"><span class="pre">adjust_forces</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">atoms</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forces</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.Bias.adjust_forces" title="Link to this definition"></a></dt>
+<dd><p>Adjust the forces of a set of atoms in place using the gradient
+of the bias function:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>F = -∇E -∇B
+</pre></div>
+</div>
+<p>where ∇E is the gradient of the energy with respect to the coordinates
+and B is the bias.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Bias.adjust_positions">
+<span class="sig-name descname"><span class="pre">adjust_positions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">atoms</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">newpositions</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.Bias.adjust_positions" title="Link to this definition"></a></dt>
+<dd><p>Method required for ASE but not used in mlp-train</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Bias.adjust_potential_energy">
+<span class="sig-name descname"><span class="pre">adjust_potential_energy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">atoms</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.Bias.adjust_potential_energy" title="Link to this definition"></a></dt>
+<dd><p>Adjust the energy of a set of atoms using the bias function</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Bias.grad">
+<span class="sig-name descname"><span class="pre">grad</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">atoms</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.Bias.grad" title="Link to this definition"></a></dt>
+<dd><p>Gradient of the biasing potential a set of atom pairs in atoms</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.Box">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">Box</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.Box" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.Box.has_zero_volume">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_zero_volume</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mlptrain.Box.has_zero_volume" title="Link to this definition"></a></dt>
+<dd><p>Is this box essentially of zero size</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.Box.midpoint">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">midpoint</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span></em><a class="headerlink" href="#mlptrain.Box.midpoint" title="Link to this definition"></a></dt>
+<dd><p>Midpoint inside this box</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.Box.random_point">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">random_point</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span></em><a class="headerlink" href="#mlptrain.Box.random_point" title="Link to this definition"></a></dt>
+<dd><p>Get a random point inside the box</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.Box.volume">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">volume</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#mlptrain.Box.volume" title="Link to this definition"></a></dt>
+<dd><p>Volume of this box</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.Configuration">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">Configuration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">atoms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Atoms</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Atom</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charge</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mult</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">box</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.box.html#mlptrain.box.Box" title="mlptrain.box.Box"><span class="pre">Box</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.Configuration" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">AtomCollection</span></code></p>
+<p>Configuration of atoms</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.Configuration.ase_atoms">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ase_atoms</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Atoms</span></em><a class="headerlink" href="#mlptrain.Configuration.ase_atoms" title="Link to this definition"></a></dt>
+<dd><p>ASE atoms for this configuration, absent of energy  and force
+properties.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Configuration.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></span></span><a class="headerlink" href="#mlptrain.Configuration.copy" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Configuration.save_xyz">
+<span class="sig-name descname"><span class="pre">save_xyz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">append</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">true</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">predicted</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.Configuration.save_xyz" title="Link to this definition"></a></dt>
+<dd><p>Print this configuration as an extended xyz file where the first 4
+columns are the atom symbol, x, y, z and, if this configuration
+contains forces then add the x, y, z components of the force on as
+columns 4-7.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>true</strong> – Save the true energy and forces</p></li>
+<li><p><strong>predicted</strong> – Save the predicted energy and forces</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Configuration.single_point">
+<span class="sig-name descname"><span class="pre">single_point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="mlptrain.potentials._base.html#mlptrain.potentials._base.MLPotential" title="mlptrain.potentials._base.MLPotential"><span class="pre">MLPotential</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cores</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.Configuration.single_point" title="Link to this definition"></a></dt>
+<dd><p>Run a single point energy and gradient (force) evaluation using
+either a reference method defined by a string (e.g. ‘orca’) or a
+machine learned potential (with a .predict) method.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Configuration.update_attr_from">
+<span class="sig-name descname"><span class="pre">update_attr_from</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">configuration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.Configuration.update_attr_from" title="Link to this definition"></a></dt>
+<dd><p>Update system attributes from a configuration</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">ConfigurationSet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_duplicates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.ConfigurationSet" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></p>
+<p>A set of configurations</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.append">
+<span class="sig-name descname"><span class="pre">append</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.ConfigurationSet.append" title="Link to this definition"></a></dt>
+<dd><p>Append an item onto these set of configurations. None will not be
+appended</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.bias_energies">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bias_energies</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mlptrain.ConfigurationSet.bias_energies" title="Link to this definition"></a></dt>
+<dd><p>Bias energies from ASE and PLUMED biases</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.compare">
+<span class="sig-name descname"><span class="pre">compare</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">mlptrain.potentials.MLPotential</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.ConfigurationSet.compare" title="Link to this definition"></a></dt>
+<dd><p>Compare methods e.g. a MLP to a ground truth reference method over
+these set of configurations. Will generate plots of total energies
+over these configurations and save a text file with ∆s</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.has_a_none_energy">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_a_none_energy</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mlptrain.ConfigurationSet.has_a_none_energy" title="Link to this definition"></a></dt>
+<dd><p>Does this set of configurations have a true energy that is undefined
+(i.e. thus is set to None)?</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.inherited_bias_energies">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">inherited_bias_energies</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mlptrain.ConfigurationSet.inherited_bias_energies" title="Link to this definition"></a></dt>
+<dd><p>If active learning is performed using inheritable metadynamics bias,
+at any given active learning iteration this property is equal to the
+value of metadynamics bias inherited from the previous active learning
+iteration</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.load">
+<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.ConfigurationSet.load" title="Link to this definition"></a></dt>
+<dd><p>Load energies and forces from a saved numpy compressed array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>(</strong><strong>ValueError</strong><strong>)</strong> – If an unsupported file extension is present</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.load_xyz">
+<span class="sig-name descname"><span class="pre">load_xyz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charge</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mult</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">box</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.box.html#mlptrain.box.Box" title="mlptrain.box.Box"><span class="pre">Box</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_energies</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_forces</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.ConfigurationSet.load_xyz" title="Link to this definition"></a></dt>
+<dd><p>Load configurations from a .xyz file with optional box, energies and forces if specified.
+Note: this currently assumes that all configurations have the same charge and multiplicity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mult</strong> – total spin multiplicity on all configurations in the set</p></li>
+<li><p><strong>box</strong> – optionally specify a Box or None, if the configurations
+are in vacuum (or if ‘Lattice’ is specified in extended .xyz)</p></li>
+<li><p><strong>load_energies</strong> – bool - whether to load ‘true’ configurational energies or not</p></li>
+<li><p><strong>load_forces</strong> – bool - whether to load ‘true’ forces from atom lines or not</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.lowest_biased_energy">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lowest_biased_energy</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></em><a class="headerlink" href="#mlptrain.ConfigurationSet.lowest_biased_energy" title="Link to this definition"></a></dt>
+<dd><p>Determine the configuration with the lowest biased energy (true energy
++ bias energy) in this set. If not evaluated then returns the first
+configuration</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.lowest_energy">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lowest_energy</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></em><a class="headerlink" href="#mlptrain.ConfigurationSet.lowest_energy" title="Link to this definition"></a></dt>
+<dd><p>Determine the lowest energy configuration in this set based on the
+true energies. If not evaluated then returns the first configuration</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.lowest_inherited_biased_energy">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lowest_inherited_biased_energy</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></em><a class="headerlink" href="#mlptrain.ConfigurationSet.lowest_inherited_biased_energy" title="Link to this definition"></a></dt>
+<dd><p>Determine the configuration with the lowest inherited biased energy
+(true energy + inherited bias energy) in this set. If not evaluated
+then returns the first configuration</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.plumed_coordinates">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">plumed_coordinates</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#mlptrain.ConfigurationSet.plumed_coordinates" title="Link to this definition"></a></dt>
+<dd><p>PLUMED collective variable values in this set</p>
+<blockquote>
+<div><dl class="simple">
+<dt>PLUMED collective variable matrix (n, n_cvs),</dt><dd><p>where n is len(self)</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.predicted_energies">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">predicted_energies</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mlptrain.ConfigurationSet.predicted_energies" title="Link to this definition"></a></dt>
+<dd><p>Predicted energies using a MLP</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.predicted_forces">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">predicted_forces</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#mlptrain.ConfigurationSet.predicted_forces" title="Link to this definition"></a></dt>
+<dd><p>Predicted force tensor. shape = (N, n_atoms, 3)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.remove_above_e">
+<span class="sig-name descname"><span class="pre">remove_above_e</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.ConfigurationSet.remove_above_e" title="Link to this definition"></a></dt>
+<dd><p>Remove all configuration above a particular <em>relative</em> energy</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.remove_none_energy">
+<span class="sig-name descname"><span class="pre">remove_none_energy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.ConfigurationSet.remove_none_energy" title="Link to this definition"></a></dt>
+<dd><p>Remove configurations in this set with no true energy</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.ConfigurationSet.save" title="Link to this definition"></a></dt>
+<dd><p>Save all the parameters for this configuration. Overrides any current
+data in that file</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.save_xyz">
+<span class="sig-name descname"><span class="pre">save_xyz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">true</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">predicted</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.ConfigurationSet.save_xyz" title="Link to this definition"></a></dt>
+<dd><p>Save these configurations to a file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>predicted</strong> – Save the MLP predicted energies and forces, if they
+exist.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.single_point">
+<span class="sig-name descname"><span class="pre">single_point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.ConfigurationSet.single_point" title="Link to this definition"></a></dt>
+<dd><p>Evaluate energies and forces on all configuration in this set</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.t_min">
+<span class="sig-name descname"><span class="pre">t_min</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">from_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#mlptrain.ConfigurationSet.t_min" title="Link to this definition"></a></dt>
+<dd><p>Determine the minimum time for a slice (portion) of these
+configurations, if a time is not specified for a frame then assume
+it was generated at ‘zero’ time</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Time in fs</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>(float)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.true_energies">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">true_energies</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mlptrain.ConfigurationSet.true_energies" title="Link to this definition"></a></dt>
+<dd><p>True calculated energies</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.ConfigurationSet.true_forces">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">true_forces</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#mlptrain.ConfigurationSet.true_forces" title="Link to this definition"></a></dt>
+<dd><p>(n_atoms, 3)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of true config forces. List of np.ndarray with shape</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.DifferenceDistance">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">DifferenceDistance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.DifferenceDistance" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="mlptrain.sampling.reaction_coord.html#mlptrain.sampling.reaction_coord.ReactionCoordinate" title="mlptrain.sampling.reaction_coord.ReactionCoordinate"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReactionCoordinate</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">_Distances</span></code></p>
+<p>Difference in distance between two pairs of specified atoms</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.Metadynamics">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">Metadynamics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cvs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">mlptrain._PlumedCV</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">mlptrain._PlumedCV</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#mlptrain.PlumedBias" title="mlptrain.PlumedBias"><span class="pre">mlptrain.PlumedBias</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.Metadynamics" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Metadynamics class for running biased molecular dynamics using
+metadynamics bias and analysing the results</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Metadynamics.block_analysis">
+<span class="sig-name descname"><span class="pre">block_analysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start_time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'kcal</span> <span class="pre">mol-1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_n_blocks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_blocksize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">blocksize_interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bandwidth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cvs_bounds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.Metadynamics.block_analysis" title="Link to this definition"></a></dt>
+<dd><p>Perform block averaging analysis on the sliced trajectory of the most
+recent metadynamics run. Plot the block analysis and save mean FES
+grids with a range of block sizes, which, if the block analysis
+converged, can be used for plotting the FES error using plot_fes()
+method.</p>
+<blockquote>
+<div><p>(in ps)</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>idx</strong> – (int) Index specifying which metadynamics run (from n_runs)
+to use for block analysis</p></li>
+<li><p><strong>energy_units</strong> – (str) Energy units to be used in plotting, available
+units: ‘eV’, ‘kcal mol-1’, ‘kJ mol-1’</p></li>
+<li><p><strong>n_bins</strong> – (int) Number of bins to use when dumping histograms</p></li>
+<li><p><strong>min_n_blocks</strong> – (int) Minimum number of blocks</p></li>
+<li><p><strong>min_blocksize</strong> – (int) Minimum size of a block</p></li>
+<li><p><strong>blocksize_interval</strong> – (int) Block size interval describing the
+difference in the number of frames per
+block for adjacent block sizes</p></li>
+<li><p><strong>bandwidth</strong> – (float) Bandwidth parameter used in the histogram
+estimations</p></li>
+<li><p><strong>cvs_bounds</strong> – Specifies the range between which to compute the free
+energy for each collective variable,
+e.g. [(0.8, 1.5), (80, 120)]</p></li>
+<li><p><strong>temp</strong> – (float) Temperature in K during the analysed simulation</p></li>
+<li><p><strong>dt</strong> – (float) Time-step in fs during the analysed simulation</p></li>
+<li><p><strong>interval</strong> – (int) Interval between saving the geometry during the
+analysed simulation</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Metadynamics.compute_fes">
+<span class="sig-name descname"><span class="pre">compute_fes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'kcal</span> <span class="pre">mol-1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cvs_bounds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">via_reweighting</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bandwidth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#mlptrain.Metadynamics.compute_fes" title="Link to this definition"></a></dt>
+<dd><p>Compute a grid containing collective variable grids and free energy
+surface grids, which is saved in the current directory as .npy file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_bins</strong> – (int) Number of bins to use in every dimension for fes file
+generation from HILLS</p></li>
+<li><p><strong>cvs_bounds</strong> – Specifies the range between which to compute the free
+energy for each collective variable
+e.g. [(0.8, 1.5), (80, 120)]</p></li>
+<li><p><strong>via_reweighting</strong> – (bool) If true the free energy is computed using
+the reweighting scheme</p></li>
+<li><p><strong>start_time</strong> – (float) Start time of the sliced trajectory which is
+going to be used in reweighting (in ps)</p></li>
+<li><p><strong>bandwidth</strong> – (float) Bandwidth parameter used in the histogram
+estimations</p></li>
+<li><p><strong>temp</strong> – (float) Temperature in K during the analysed simulation,
+only needed when reweighting</p></li>
+<li><p><strong>dt</strong> – (float) Time-step in fs during the analysed simulation, only
+needed when reweighting</p></li>
+<li><p><strong>interval</strong> – (int) Interval between saving the geometry during the
+analysed simulation, only needed
+when reweighting</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The total grid containing CVs and FESs</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Metadynamics.estimate_width">
+<span class="sig-name descname"><span class="pre">estimate_width</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">configurations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="mlptrain.configurations.configuration_set.html#mlptrain.configurations.configuration_set.ConfigurationSet" title="mlptrain.configurations.configuration_set.ConfigurationSet"><span class="pre">ConfigurationSet</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.potentials._base.html#mlptrain.potentials._base.MLPotential" title="mlptrain.potentials._base.MLPotential"><span class="pre">MLPotential</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span></span></span><a class="headerlink" href="#mlptrain.Metadynamics.estimate_width" title="Link to this definition"></a></dt>
+<dd><p>Estimate optimal widths (σ) to be used in metadynamics.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mlp</strong> – Machine learnt potential</p></li>
+<li><p><strong>temp</strong> – (float) Temperature in K to initialise velocities and to run
+NVT MD. Must be positive</p></li>
+<li><p><strong>interval</strong> – (int) Interval between saving the geometry</p></li>
+<li><p><strong>dt</strong> – (float) Time-step in fs</p></li>
+<li><p><strong>plot</strong> – (bool) If True plots trajectories of collective variables as
+a function of time</p></li>
+</ul>
+</dd>
+</dl>
+<blockquote>
+<div><dl class="simple">
+<dt>List of optimal width values for each CV,</dt><dd><p>e.g. [0.02, 0.03] for two CVs</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(List)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.Metadynamics.kbt">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">kbt</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#mlptrain.Metadynamics.kbt" title="Link to this definition"></a></dt>
+<dd><p>Value of k_B*T in ASE units</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.Metadynamics.n_cvs">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_cvs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#mlptrain.Metadynamics.n_cvs" title="Link to this definition"></a></dt>
+<dd><p>Number of collective variables used in metadynamics</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Metadynamics.plot_fes">
+<span class="sig-name descname"><span class="pre">plot_fes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'kcal</span> <span class="pre">mol-1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cvs_bounds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fes_npy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">blocksize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.Metadynamics.plot_fes" title="Link to this definition"></a></dt>
+<dd><p>Plot the free energy surface with a confidence interval. If the .npy
+file is not supplied, the file is computed (if metadynamics has been
+run). If blocksize is supplied, the FES error is plotted using
+block_analysis.npz file with the given blocksize generated during
+block averaging analysis.</p>
+<blockquote>
+<div><p>‘kJ mol-1’. If fes_npy and/or blocksize options
+are used, the units of fes_npy and/or blocksize
+files must match energy units here</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>confidence_level</strong> – (float) Specifies what confidence level to use
+in plots (probability for FES to lie in
+the plotted range)</p></li>
+<li><p><strong>n_bins</strong> – (int) Number of bins to use in every dimension for fes file
+generation from HILLS</p></li>
+<li><p><strong>cvs_bounds</strong> – Specifies the range between which to compute the free
+energy for each collective variable,
+e.g. [(0.8, 1.5), (80, 120)]</p></li>
+<li><p><strong>fes_npy</strong> – (str) File name of the .npy file used for plotting. FES
+obtained through block analysis should be specified
+using blocksize</p></li>
+<li><p><strong>blocksize</strong> – (int) If block analysis has been performed, the integer
+specifies which block size to use for plotting
+the FES standard error</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Metadynamics.plot_fes_convergence">
+<span class="sig-name descname"><span class="pre">plot_fes_convergence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stride</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_surfaces</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'ps'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'kcal</span> <span class="pre">mol-1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cvs_bounds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.Metadynamics.plot_fes_convergence" title="Link to this definition"></a></dt>
+<dd><p>Compute multiple fes.dat files from a HILLS_idx.dat file by summing
+the deposited gaussians using a stride. Use the computed files to plot
+multiple FESs as a function of simulation time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_surfaces</strong> – (int) Number of surfaces to be plotted (counting from
+the last computed surface), must not exceed the
+number of computed surfaces</p></li>
+<li><p><strong>time_units</strong> – (str) Time units to be used in plotting, available
+units: ‘fs’, ‘ps’, ‘ns’</p></li>
+<li><p><strong>energy_units</strong> – (str) Energy units to be used in plotting, available
+units: ‘eV’, ‘kcal mol-1’, ‘kJ mol-1’</p></li>
+<li><p><strong>n_bins</strong> – (int) Number of bins to use in every dimension for fes file
+generation from HILLS</p></li>
+<li><p><strong>cvs_bounds</strong> – Specifies the range between which to compute the free
+energy for each collective variable,
+e.g. [(0.8, 1.5), (80, 120)]</p></li>
+<li><p><strong>idx</strong> – (int) Integer which specifies which metadynamics run to use
+for plotting the FES convergence</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Metadynamics.plot_gaussian_heights">
+<span class="sig-name descname"><span class="pre">plot_gaussian_heights</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'kcal</span> <span class="pre">mol-1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'ps'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'plumed_files/metadynamics'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.Metadynamics.plot_gaussian_heights" title="Link to this definition"></a></dt>
+<dd><p>Plot the height of deposited gaussians as a function of time (using
+HILLS_{idx}.dat files).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>time_units</strong> – (str) Time units to be used in plotting, available
+units: ‘fs’, ‘ps’, ‘ns’</p></li>
+<li><p><strong>path</strong> – (str) Directory where HILLS_{idx}.dat files are located</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Metadynamics.run_metadynamics">
+<span class="sig-name descname"><span class="pre">run_metadynamics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">configuration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#mlptrain.Configuration" title="mlptrain.Configuration"><span class="pre">mlptrain.Configuration</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.potentials._base.html#mlptrain.potentials._base.MLPotential" title="mlptrain.potentials._base.MLPotential"><span class="pre">mlptrain.potentials._base.MLPotential</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">biasfactor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">al_iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_runs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_sep</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_to_xyz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restart</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.Metadynamics.run_metadynamics" title="Link to this definition"></a></dt>
+<dd><p>Perform multiple metadynamics runs in parallel, generate .xyz and .traj
+files containing trajectories of the runs, generate PLUMED files
+containing deposited gaussians and trajectories in terms of the CVs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>temp</strong> – (float) Temperature in K to initialise velocities and to run
+NVT MD. Must be positive</p></li>
+<li><p><strong>interval</strong> – (int) Interval between saving the geometry</p></li>
+<li><p><strong>dt</strong> – (float) Time-step in fs</p></li>
+<li><p><strong>pace</strong> – (int) τ_G/dt, interval at which a new gaussian is placed</p></li>
+<li><p><strong>height</strong> – (float) ω, initial height of placed gaussians (in eV)</p></li>
+<li><p><strong>width</strong> – (List[float] | float | None) σ, standard deviation
+(parameter describing the width) of placed gaussians,
+if not supplied it is estimated automatically</p></li>
+<li><p><strong>biasfactor</strong> – (float | None) γ, describes how quickly gaussians
+shrink, larger values make gaussians to
+be placed less sensitive to the bias
+potential</p></li>
+<li><p><strong>al_iter</strong> – (int | None) If not None, can be used to load metadynamics
+bias generated during inherited-bias active
+learning. The index specifies from which AL
+iteration to load the bias</p></li>
+<li><p><strong>n_runs</strong> – (int) Number of times to run metadynamics</p></li>
+<li><p><strong>save_sep</strong> – (bool) If True saves trajectories of
+each simulation separately</p></li>
+<li><p><strong>all_to_xyz</strong> – (bool) If True all .traj trajectory files are saved as
+.xyz files (when using save_fs, save_ps, save_ns)</p></li>
+<li><p><strong>restart</strong> – (bool) If True restarts the most recent metadynamics
+simulation</p></li>
+</ul>
+</dd>
+</dl>
+<blockquote>
+<div><p>in some units</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Keyword Arguments<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>grid_bin}</strong> (<em>{grid_min</em><em>, </em><em>grid_max</em><em>,</em>) – Grid parameters: if defined, the
+deposited gaussians are dumped to
+a grid that is used to compute
+the biased forces</p></li>
+<li><p><strong>constraints</strong> – (List) List of ASE constraints to use in the dynamics
+e.g. [ase.constraints.Hookean(a1, a2, k, rt)]</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Metadynamics.try_multiple_biasfactors">
+<span class="sig-name descname"><span class="pre">try_multiple_biasfactors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">configuration</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#mlptrain.Configuration" title="mlptrain.Configuration"><span class="pre">mlptrain.Configuration</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.potentials._base.html#mlptrain.potentials._base.MLPotential" title="mlptrain.potentials._base.MLPotential"><span class="pre">mlptrain.potentials._base.MLPotential</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">biasfactors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plotted_cvs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.Metadynamics.try_multiple_biasfactors" title="Link to this definition"></a></dt>
+<dd><p>Execute multiple well-tempered metadynamics runs in parallel with a
+provided sequence of biasfactors and plot the resulting trajectories,
+useful for estimating the optimal biasfactor value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>temp</strong> – (float) Temperature in K to initialise velocities and to run
+NVT MD. Must be positive</p></li>
+<li><p><strong>interval</strong> – (int) Interval between saving the geometry</p></li>
+<li><p><strong>dt</strong> – (float) Time-step in fs</p></li>
+<li><p><strong>biasfactors</strong> – Sequence of γ, describes how quickly gaussians shrink,
+larger values make gaussians to be placed less
+sensitive to the bias potential</p></li>
+<li><p><strong>pace</strong> – (int) τ_G/dt, interval at which a new gaussian is placed</p></li>
+<li><p><strong>height</strong> – (float) ω, initial height of placed gaussians (in eV)</p></li>
+<li><p><strong>width</strong> – (List[float] | float | None) σ, standard deviation
+(parameter describing the width) of placed gaussians,
+if not supplied it is estimated automatically</p></li>
+<li><p><strong>plotted_cvs</strong> – Sequence of one or two PlumedCV objects which are
+going to be plotted, must be a subset for CVs used to
+define the Metadynamics object</p></li>
+</ul>
+</dd>
+</dl>
+<blockquote>
+<div><p>deposited gaussians are dumped to
+a grid that is used to compute
+the biased forces</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Keyword Arguments<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>constraints</strong> – (List) List of ASE constraints to use in the dynamics
+e.g. [ase.constraints.Hookean(a1, a2, k, rt)]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.Molecule">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">Molecule</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'molecule'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smiles</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atoms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">autode.atoms.Atom</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solvent_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charge</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mult</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.Molecule" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Molecule</span></code></p>
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.Molecule.centroid">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">centroid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span></em><a class="headerlink" href="#mlptrain.Molecule.centroid" title="Link to this definition"></a></dt>
+<dd><p>Centroid of this molecule</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Molecule.is_in_box">
+<span class="sig-name descname"><span class="pre">is_in_box</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">box</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.box.html#mlptrain.box.Box" title="mlptrain.box.Box"><span class="pre">Box</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#mlptrain.Molecule.is_in_box" title="Link to this definition"></a></dt>
+<dd><p>Is this molecule totally inside a box with an origin at
+(0,0,0) and top right corner (a, b, c) = box.size</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(bool)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Molecule.min_distance_to">
+<span class="sig-name descname"><span class="pre">min_distance_to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coords</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#mlptrain.Molecule.min_distance_to" title="Link to this definition"></a></dt>
+<dd><p>Calculate the minimum distance from this molecule to a set
+of coordinates</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Minimum distance (Å)</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>(float)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.Molecule.random_normal_jiggle">
+<span class="sig-name descname"><span class="pre">random_normal_jiggle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.01</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.Molecule.random_normal_jiggle" title="Link to this definition"></a></dt>
+<dd><p>Add a random displacement to each atoms position.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.PlumedAverageCV">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">PlumedAverageCV</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atom_groups</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.PlumedAverageCV" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_PlumedCV</span></code></p>
+<p>Class used to initialise a PLUMED collective variable as an average
+between multiple degrees of freedom</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.PlumedBias">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">PlumedBias</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cvs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">_PlumedCV</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">_PlumedCV</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.PlumedBias" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="mlptrain.sampling._base.html#mlptrain.sampling._base.ASEConstraint" title="mlptrain.sampling._base.ASEConstraint"><code class="xref py py-class docutils literal notranslate"><span class="pre">ASEConstraint</span></code></a></p>
+<p>&#64;DynamicAttrs
+Class for storing collective variables and parameters used in biased
+simulations</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.PlumedBias.adjust_forces">
+<span class="sig-name descname"><span class="pre">adjust_forces</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">atoms</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forces</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.PlumedBias.adjust_forces" title="Link to this definition"></a></dt>
+<dd><p>Adjust the forces of the system by adding PLUMED forces</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.PlumedBias.adjust_positions">
+<span class="sig-name descname"><span class="pre">adjust_positions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">atoms</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">newpositions</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.PlumedBias.adjust_positions" title="Link to this definition"></a></dt>
+<dd><p>Method required for ASE but not used in mlp-train</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.PlumedBias.adjust_potential_energy">
+<span class="sig-name descname"><span class="pre">adjust_potential_energy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">atoms</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#mlptrain.PlumedBias.adjust_potential_energy" title="Link to this definition"></a></dt>
+<dd><p>Adjust the energy of the system by adding PLUMED bias</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.PlumedBias.biasfactor_setup">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">biasfactor_setup</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#mlptrain.PlumedBias.biasfactor_setup" title="Link to this definition"></a></dt>
+<dd><p>String specifying biasfactor in PLUMED input file</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.PlumedBias.cv_sequence">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cv_sequence</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#mlptrain.PlumedBias.cv_sequence" title="Link to this definition"></a></dt>
+<dd><p>String containing names of all collective variables separated
+by commas</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.PlumedBias.from_file">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_file</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mlptrain.PlumedBias.from_file" title="Link to this definition"></a></dt>
+<dd><p>Whether the bias is initialised using PLUMED input file</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.PlumedBias.initialise_for_metad_al">
+<span class="sig-name descname"><span class="pre">initialise_for_metad_al</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pace</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">biasfactor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cvs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_min</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_bin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.PlumedBias.initialise_for_metad_al" title="Link to this definition"></a></dt>
+<dd><p>Initialise PlumedBias for metadynamics active learning by setting the
+required parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pace</strong> – (int) τ_G/dt, interval at which a new gaussian is placed</p></li>
+<li><p><strong>height</strong> – (float) ω, initial height of placed gaussians (in eV).
+If not supplied will be set to 5*k_B*T, where
+T is the temperature at which metadynamics active
+learning is performed</p></li>
+<li><p><strong>biasfactor</strong> – (float) γ, describes how quickly gaussians shrink,
+larger values make gaussians to be placed
+less sensitive to the bias potential</p></li>
+<li><p><strong>cvs</strong> – (mlptrain._PlumedCV) Sequence of PLUMED collective variables
+which will be biased. If this variable
+is not set, all CVs attached to self
+will be biased</p></li>
+<li><p><strong>grid_min</strong> – (float) Lower bound of the grid</p></li>
+<li><p><strong>grid_max</strong> – (float) Upper bound of the grid</p></li>
+<li><p><strong>grid_bin</strong> – (float) Number of bins to use for each collective
+variable, if not specified PLUMED automatically
+sets bin width to 1/5 of the gaussian width (σ)
+value</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.PlumedBias.metad_cv_sequence">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">metad_cv_sequence</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#mlptrain.PlumedBias.metad_cv_sequence" title="Link to this definition"></a></dt>
+<dd><p>String containing names of collective variables used in metadynamics
+separated by commas</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.PlumedBias.metad_grid_setup">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">metad_grid_setup</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#mlptrain.PlumedBias.metad_grid_setup" title="Link to this definition"></a></dt>
+<dd><p>String specifying metadynamics grid parameters in PLUMED input
+file</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.PlumedBias.metadynamics">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">metadynamics</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#mlptrain.PlumedBias.metadynamics" title="Link to this definition"></a></dt>
+<dd><p>True if any parameters required for metadynamics are set</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.PlumedBias.n_cvs">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_cvs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#mlptrain.PlumedBias.n_cvs" title="Link to this definition"></a></dt>
+<dd><p>Number of collective variables attached to the bias</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.PlumedBias.n_metad_cvs">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_metad_cvs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#mlptrain.PlumedBias.n_metad_cvs" title="Link to this definition"></a></dt>
+<dd><p>Number of collective variables attached to the bias that will be
+used in metadynamics</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.PlumedBias.strip">
+<span class="sig-name descname"><span class="pre">strip</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.PlumedBias.strip" title="Link to this definition"></a></dt>
+<dd><p>Change the bias such that it would only contain the definitions of
+collective variables and their associated upper and lower walls</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.PlumedBias.width_sequence">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">width_sequence</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#mlptrain.PlumedBias.width_sequence" title="Link to this definition"></a></dt>
+<dd><p>String containing width values separated by commas</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.PlumedBias.write_cv_files">
+<span class="sig-name descname"><span class="pre">write_cv_files</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.PlumedBias.write_cv_files" title="Link to this definition"></a></dt>
+<dd><p>Write files attached to the CVs to the current directory</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.PlumedCalculator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">PlumedCalculator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">calc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timestep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kT</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">restart</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_charge</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">update_charge</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.PlumedCalculator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Plumed</span></code></p>
+<p>Modified ASE calculator, instead of returning biased energies and forces,
+this calculator computes unbiased energies and forces, and computes PLUMED
+energy and force biases separately.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.PlumedCalculator.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">atoms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['energy',</span> <span class="pre">'forces',</span> <span class="pre">'energy_bias',</span> <span class="pre">'forces_bias']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">system_changes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['positions',</span> <span class="pre">'numbers',</span> <span class="pre">'cell',</span> <span class="pre">'pbc',</span> <span class="pre">'initial_charges',</span> <span class="pre">'initial_magmoms']</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.PlumedCalculator.calculate" title="Link to this definition"></a></dt>
+<dd><p>Compute the properties and attach them to the results</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.PlumedCalculator.compute_energy_and_forces">
+<span class="sig-name descname"><span class="pre">compute_energy_and_forces</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">istep</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span></span></span><a class="headerlink" href="#mlptrain.PlumedCalculator.compute_energy_and_forces" title="Link to this definition"></a></dt>
+<dd><p>Compute unbiased energies and forces, and PLUMED energy and force
+biases separately</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="mlptrain.PlumedCalculator.implemented_properties">
+<span class="sig-name descname"><span class="pre">implemented_properties</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">['energy',</span> <span class="pre">'forces',</span> <span class="pre">'energy_bias',</span> <span class="pre">'forces_bias']</span></em><a class="headerlink" href="#mlptrain.PlumedCalculator.implemented_properties" title="Link to this definition"></a></dt>
+<dd><p>Properties calculator can handle (energy, forces, …)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.PlumedCustomCV">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">PlumedCustomCV</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">component</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.PlumedCustomCV" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_PlumedCV</span></code></p>
+<p>Class used to initialise a PLUMED collective variable from a file</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.PlumedDifferenceCV">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">PlumedDifferenceCV</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atom_groups</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.PlumedDifferenceCV" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_PlumedCV</span></code></p>
+<p>Class used to initialise a PLUMED collective variable as a difference
+between two degrees of freedom</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.System">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">System</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.molecule.html#mlptrain.molecule.Molecule" title="mlptrain.molecule.Molecule"><span class="pre">Molecule</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">box</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.box.html#mlptrain.box.Box" title="mlptrain.box.Box"><span class="pre">Box</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.System" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>System with molecules but without any coordinates</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.System.add_molecule">
+<span class="sig-name descname"><span class="pre">add_molecule</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">molecule</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.molecule.html#mlptrain.molecule.Molecule" title="mlptrain.molecule.Molecule"><span class="pre">Molecule</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.System.add_molecule" title="Link to this definition"></a></dt>
+<dd><p>Add a molecule to this system</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.System.add_molecules">
+<span class="sig-name descname"><span class="pre">add_molecules</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">molecule</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.molecule.html#mlptrain.molecule.Molecule" title="mlptrain.molecule.Molecule"><span class="pre">Molecule</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">num</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.System.add_molecules" title="Link to this definition"></a></dt>
+<dd><p>Add multiple versions of a molecule to this sytem</p>
+<dl class="field-list simple">
+<dt class="field-odd">Keyword Arguments<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>num</strong> – Number of molecules of this type to add</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.System.atoms">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">atoms</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Atom</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mlptrain.System.atoms" title="Link to this definition"></a></dt>
+<dd><p>Constituent atoms of this system</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.System.charge">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">charge</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#mlptrain.System.charge" title="Link to this definition"></a></dt>
+<dd><p>Get the total charge on the system</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.System.configuration">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">configuration</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></em><a class="headerlink" href="#mlptrain.System.configuration" title="Link to this definition"></a></dt>
+<dd><p>Single configuration for this system</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.System.mult">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mult</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#mlptrain.System.mult" title="Link to this definition"></a></dt>
+<dd><p>Get the total spin multiplicity on the system</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.System.random_configuration">
+<span class="sig-name descname"><span class="pre">random_configuration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_intra</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intra_sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.01</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></span></span><a class="headerlink" href="#mlptrain.System.random_configuration" title="Link to this definition"></a></dt>
+<dd><p>Generate a random configuration of this system, where all the molecules
+in the system have been randomised</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>intra_sigma</strong> – Variance of the normal distribution used to displace
+each atom_pair_list of the molecules in the system</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>(<a class="reference internal" href="#mlptrain.Configuration" title="mlptrain.Configuration">mlptrain.Configuration</a>)</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>(</strong><strong>RuntimeError</strong><strong>)</strong> – If all the molecules cannot be randomised while
+    maintaining the required min. distance between them</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.System.random_configurations">
+<span class="sig-name descname"><span class="pre">random_configurations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="mlptrain.configurations.configuration_set.html#mlptrain.configurations.configuration_set.ConfigurationSet" title="mlptrain.configurations.configuration_set.ConfigurationSet"><span class="pre">ConfigurationSet</span></a></span></span><a class="headerlink" href="#mlptrain.System.random_configurations" title="Link to this definition"></a></dt>
+<dd><p>Generate a number of random configurations of this system</p>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>mlptrain.system.System.random_configuration for keyword arguments</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(<a class="reference internal" href="mlptrain.configurations.configuration_set.html#mlptrain.configurations.configuration_set.ConfigurationSet" title="mlptrain.configurations.configuration_set.ConfigurationSet">mlptrain.configurations.configuration_set.ConfigurationSet</a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.System.unique_atomic_symbols">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">unique_atomic_symbols</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#mlptrain.System.unique_atomic_symbols" title="Link to this definition"></a></dt>
+<dd><p>Unique atomic symbols in this system</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.Trajectory">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">Trajectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.Trajectory" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="mlptrain.configurations.configuration_set.html#mlptrain.configurations.configuration_set.ConfigurationSet" title="mlptrain.configurations.configuration_set.ConfigurationSet"><code class="xref py py-class docutils literal notranslate"><span class="pre">ConfigurationSet</span></code></a></p>
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.Trajectory.final_frame">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">final_frame</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="mlptrain.configurations.configuration.html#mlptrain.configurations.configuration.Configuration" title="mlptrain.configurations.configuration.Configuration"><span class="pre">Configuration</span></a></em><a class="headerlink" href="#mlptrain.Trajectory.final_frame" title="Link to this definition"></a></dt>
+<dd><p>Return the final frame from this trajectory</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.Trajectory.t0">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">t0</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#mlptrain.Trajectory.t0" title="Link to this definition"></a></dt>
+<dd><p>Initial time of this trajectory</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.UmbrellaSampling">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">UmbrellaSampling</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zeta_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.sampling.reaction_coord.html#mlptrain.sampling.reaction_coord.ReactionCoordinate" title="mlptrain.sampling.reaction_coord.ReactionCoordinate"><span class="pre">ReactionCoordinate</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">kappa</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.UmbrellaSampling" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Umbrella sampling class for generating pulling simulation, running
+umbrella sampling windows and running WHAM or umbrella integration.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.UmbrellaSampling.beta">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">beta</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#mlptrain.UmbrellaSampling.beta" title="Link to this definition"></a></dt>
+<dd><p>β = 1 / (k_B T)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.UmbrellaSampling.free_energies">
+<span class="sig-name descname"><span class="pre">free_energies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prob_dist</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#mlptrain.UmbrellaSampling.free_energies" title="Link to this definition"></a></dt>
+<dd><p>Free energies at each point along the profile, eqn. 8.6.5 in Tuckerman</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.UmbrellaSampling.from_folder">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_folder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="mlptrain.sampling.umbrella.html#mlptrain.sampling.umbrella.UmbrellaSampling" title="mlptrain.sampling.umbrella.UmbrellaSampling"><span class="pre">UmbrellaSampling</span></a></span></span><a class="headerlink" href="#mlptrain.UmbrellaSampling.from_folder" title="Link to this definition"></a></dt>
+<dd><p>Create an umbrella sampling instance from a folder containing the
+window data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(<a class="reference internal" href="mlptrain.sampling.umbrella.html#mlptrain.sampling.umbrella.UmbrellaSampling" title="mlptrain.sampling.umbrella.UmbrellaSampling">mlptrain.sampling.umbrella.UmbrellaSampling</a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.UmbrellaSampling.from_folders">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_folders</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="mlptrain.sampling.umbrella.html#mlptrain.sampling.umbrella.UmbrellaSampling" title="mlptrain.sampling.umbrella.UmbrellaSampling"><span class="pre">UmbrellaSampling</span></a></span></span><a class="headerlink" href="#mlptrain.UmbrellaSampling.from_folders" title="Link to this definition"></a></dt>
+<dd><p>Load a set of individual umbrella sampling simulations in to a single
+one</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(<a class="reference internal" href="mlptrain.sampling.umbrella.html#mlptrain.sampling.umbrella.UmbrellaSampling" title="mlptrain.sampling.umbrella.UmbrellaSampling">mlptrain.sampling.umbrella.UmbrellaSampling</a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.UmbrellaSampling.load">
+<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.UmbrellaSampling.load" title="Link to this definition"></a></dt>
+<dd><p>Load data from a set of saved windows</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.UmbrellaSampling.run_umbrella_sampling">
+<span class="sig-name descname"><span class="pre">run_umbrella_sampling</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">traj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.configurations.configuration_set.html#mlptrain.configurations.configuration_set.ConfigurationSet" title="mlptrain.configurations.configuration_set.ConfigurationSet"><span class="pre">ConfigurationSet</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.potentials._base.html#mlptrain.potentials._base.MLPotential" title="mlptrain.potentials._base.MLPotential"><span class="pre">MLPotential</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_ref</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_ref</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_windows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_sep</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_to_xyz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.UmbrellaSampling.run_umbrella_sampling" title="Link to this definition"></a></dt>
+<dd><p>Run umbrella sampling across n_windows, fitting Gaussians to the
+sampled values of the reaction coordinate.</p>
+<p><em>NOTE</em> will leave a dangling plt.figure open</p>
+<blockquote>
+<div><p>range f reaction coordinates</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mlp</strong> – Machine learnt potential</p></li>
+<li><p><strong>temp</strong> – Temperature in K to initialise velocities and to run NVT MD.
+Must be positive</p></li>
+<li><p><strong>interval</strong> – (int) Interval between saving the geometry</p></li>
+<li><p><strong>dt</strong> – (float) Time-step in fs</p></li>
+<li><p><strong>init_ref</strong> – (float | None) Value of reaction coordinate in Å for
+first window</p></li>
+<li><p><strong>final_ref</strong> – (float | None) Value of reaction coordinate in Å for
+first window</p></li>
+<li><p><strong>n_windows</strong> – (int) Number of windows to run in the umbrella sampling</p></li>
+<li><p><strong>save_sep</strong> – (bool) If True saves trajectories of each window
+separately as .xyz files</p></li>
+<li><p><strong>all_to_xyz</strong> – (bool) If True all .traj trajectory files are saved as
+.xyz files (when using save_fs, save_ps, save_ns)</p></li>
+</ul>
+</dd>
+</dl>
+<blockquote>
+<div><p>in some units</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Keyword Arguments<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>constraints</strong> – (List) List of ASE constraints to use in the dynamics
+e.g. [ase.constraints.Hookean(a1, a2, k, rt)]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.UmbrellaSampling.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'umbrella'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.UmbrellaSampling.save" title="Link to this definition"></a></dt>
+<dd><p>Save the windows in this US to a folder containing each window as .txt
+files within in</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.UmbrellaSampling.umbrella_integration">
+<span class="sig-name descname"><span class="pre">umbrella_integration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#mlptrain.UmbrellaSampling.umbrella_integration" title="Link to this definition"></a></dt>
+<dd><p>Perform umbrella integration on the umbrella windows to un-bias the
+probability distribution. Such that the PMF becomes</p>
+<div class="math notranslate nohighlight">
+\[dA/dq = Σ_i p_i(q) dA^u_i/ dq\]</div>
+<p>where the sum runs over the windows. Also plot and save the resulting
+free energy.</p>
+<blockquote>
+<div><p>returned</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>Tuple containing the reaction coordinate</dt><dd><p>and values of the free energy</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>(np.ndarray, np.ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.UmbrellaSampling.wham">
+<span class="sig-name descname"><span class="pre">wham</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#mlptrain.UmbrellaSampling.wham" title="Link to this definition"></a></dt>
+<dd><p>Construct an unbiased distribution (on a grid) from a set of windows</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>n_bins</strong> – Number of bins to use in the histogram (minus one) and
+the number of reaction coordinate values plotted and
+returned</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Tuple containing the reaction coordinate</dt><dd><p>and values of the free energy</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray, np.ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.UmbrellaSampling.zeta_refs">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">zeta_refs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#mlptrain.UmbrellaSampling.zeta_refs" title="Link to this definition"></a></dt>
+<dd><p>Array of ζ_ref for each window</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mlptrain.convert_ase_energy">
+<span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">convert_ase_energy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy_array</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#mlptrain.convert_ase_energy" title="Link to this definition"></a></dt>
+<dd><p>Converts ASE energy units to different energy units.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Numpy array containing energy in the other units</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>(np.ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mlptrain.convert_ase_time">
+<span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">convert_ase_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_array</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#mlptrain.convert_ase_time" title="Link to this definition"></a></dt>
+<dd><p>Converts ASE time units to different time units.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Numpy array containing time in the other units</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>(np.ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mlptrain.plot_cv1_and_cv2">
+<span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">plot_cv1_and_cv2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filenames</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">style</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'scatter'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cvs_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cvs_limits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.plot_cv1_and_cv2" title="Link to this definition"></a></dt>
+<dd><p>Plot the trajectory of the system by tracking two collective variables
+using two colvar files. The function only works for two collective
+variables.</p>
+<blockquote>
+<div><p>‘histogram’</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cvs_units</strong> – Units of the CVs to be plotted</p></li>
+<li><p><strong>cvs_limits</strong> – Min and max limits of the CVs in the plot</p></li>
+<li><p><strong>label</strong> – (str) Label attached to the name of the plot, useful when
+multiple plots of the same CVs are generated in the same
+directory</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mlptrain.plot_cv_versus_time">
+<span class="sig-prename descclassname"><span class="pre">mlptrain.</span></span><span class="sig-name descname"><span class="pre">plot_cv_versus_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">style</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'trajectory'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'ps'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cv_units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cv_limits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.plot_cv_versus_time" title="Link to this definition"></a></dt>
+<dd><p>Plot a collective variable as a function of time from a given colvar file.
+Only plot the first collective variable in the colvar file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>time_units</strong> – (str) Units of time</p></li>
+<li><p><strong>cv_units</strong> – Units of the CV to be plotted</p></li>
+<li><p><strong>cv_limits</strong> – Min and max limits of the CV in the plot</p></li>
+<li><p><strong>label</strong> – (str) Label attached to the name of the plot, useful when
+multiple plots of the same CVs are generated in the same
+directory</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.box.html">mlptrain.box</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.config.html">mlptrain.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.configurations.html">mlptrain.configurations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.descriptors.html">mlptrain.descriptors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.energy.html">mlptrain.energy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.forces.html">mlptrain.forces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.log.html">mlptrain.log</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.loss.html">mlptrain.loss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.molecule.html">mlptrain.molecule</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.potentials.html">mlptrain.potentials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.sampling.html">mlptrain.sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.system.html">mlptrain.system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.training.html">mlptrain.training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mlptrain.utils.html">mlptrain.utils</a></li>
+</ul>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Duarte group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

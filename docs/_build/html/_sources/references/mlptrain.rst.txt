@@ -1,0 +1,28 @@
+mlptrain
+========
+
+.. automodule:: mlptrain
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+---------
+
+.. toctree::
+   :maxdepth: 1
+
+   mlptrain.box
+   mlptrain.config
+   mlptrain.configurations
+   mlptrain.descriptors
+   mlptrain.energy
+   mlptrain.forces
+   mlptrain.log
+   mlptrain.loss
+   mlptrain.molecule
+   mlptrain.potentials
+   mlptrain.sampling
+   mlptrain.system
+   mlptrain.training
+   mlptrain.utils

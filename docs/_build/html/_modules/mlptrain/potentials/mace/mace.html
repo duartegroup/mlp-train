@@ -1,0 +1,933 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mlptrain.potentials.mace.mace &mdash; mlp-train  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            mlp-train
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">mlp-train</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">mlptrain.potentials.mace.mace</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for mlptrain.potentials.mace.mace</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">ase</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">mlptrain</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">ast</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ase.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">chemical_symbols</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mlptrain.potentials._base</span><span class="w"> </span><span class="kn">import</span> <span class="n">MLPotential</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mlptrain.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">Config</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mlptrain.box</span><span class="w"> </span><span class="kn">import</span> <span class="n">Box</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mlptrain.log</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">mace</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">torch_ema</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">e3nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">o3</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">torch.optim.swa_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">SWALR</span><span class="p">,</span> <span class="n">AveragedModel</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">mace</span><span class="w"> </span><span class="kn">import</span> <span class="n">data</span><span class="p">,</span> <span class="n">modules</span><span class="p">,</span> <span class="n">tools</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">mace.calculators</span><span class="w"> </span><span class="kn">import</span> <span class="n">MACECalculator</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">mace.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">torch_geometric</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">mace.tools.scripts_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_error_table</span>
+<span class="k">except</span> <span class="ne">ModuleNotFoundError</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+
+<div class="viewcode-block" id="MACE">
+<a class="viewcode-back" href="../../../../references/mlptrain.potentials.mace.mace.html#mlptrain.potentials.MACE">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MACE</span><span class="p">(</span><span class="n">MLPotential</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;@DynamicAttrs&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">system</span><span class="p">:</span> <span class="s1">&#39;mlptrain.System&#39;</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        MACE machine learning potential</span>
+
+<span class="sd">        -----------------------------------------------------------------------</span>
+<span class="sd">        Arguments:</span>
+
+<span class="sd">            name: (str) Name of the potential, used in naming output files</span>
+
+<span class="sd">            system: (mlptrain.System) Object defining the system without</span>
+<span class="sd">                                      specifying the coordinates</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">system</span><span class="o">=</span><span class="n">system</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">mace</span>
+        <span class="k">except</span> <span class="ne">ModuleNotFoundError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ModuleNotFoundError</span><span class="p">(</span>
+                <span class="s1">&#39;MACE install not found, install it &#39;</span>
+                <span class="s1">&#39;here: https://github.com/ACEsuit/mace&#39;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_logger</span><span class="p">()</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;MACE version: </span><span class="si">{</span><span class="n">mace</span><span class="o">.</span><span class="n">__version__</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="n">tools</span><span class="o">.</span><span class="n">set_seeds</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+        <span class="n">tools</span><span class="o">.</span><span class="n">set_default_dtype</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">default_dtype</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_train_obj_names</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s1">&#39;_train_configs&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_valid_configs&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_z_table&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_loss_fn&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_train_loader&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_valid_loader&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_model&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_optimizer&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_scheduler&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_checkpoint_handler&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_start_epoch&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_swa&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_ema&#39;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_train_obj_names</span><span class="p">:</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_cores</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Train a MACE potential using the data as .xyz file and save the</span>
+<span class="sd">        final potential as .model file</span>
+
+<span class="sd">        -----------------------------------------------------------------------</span>
+<span class="sd">        Arguments:</span>
+
+<span class="sd">            n_cores: (int) Number of cores to use in training</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">n_cores</span> <span class="o">=</span> <span class="n">n_cores</span> <span class="k">if</span> <span class="n">n_cores</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">Config</span><span class="o">.</span><span class="n">n_cores</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;OMP_NUM_THREADS&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">n_cores</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s1">&#39;Training a MACE potential on &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;*</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">training_data</span><span class="p">)</span><span class="si">}</span><span class="s1">* training data, &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;using </span><span class="si">{</span><span class="n">n_cores</span><span class="si">}</span><span class="s1"> cores for training.&#39;</span>
+        <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">config</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_data</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">requires_non_zero_box_size</span> <span class="ow">and</span> <span class="n">config</span><span class="o">.</span><span class="n">box</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">config</span><span class="o">.</span><span class="n">box</span> <span class="o">=</span> <span class="n">Box</span><span class="p">([</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_data</span><span class="o">.</span><span class="n">save_xyz</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">_data.xyz&#39;</span><span class="p">)</span>
+
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_train</span><span class="p">()</span>
+        <span class="n">delta_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;MACE training ran in </span><span class="si">{</span><span class="n">delta_time</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">60</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1"> m.&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_latest_epoch</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_print_error_table</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_save_model</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reset_train_objs</span><span class="p">()</span>
+
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">_data.xyz&#39;</span><span class="p">)</span>
+
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">requires_atomic_energies</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">requires_non_zero_box_size</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;MACE cannot use a zero size box&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ase_calculator</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;ase.calculators.calculator.Calculator&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ASE calculator for MACE potential&quot;&quot;&quot;</span>
+
+        <span class="n">calculator</span> <span class="o">=</span> <span class="n">MACECalculator</span><span class="p">(</span>
+            <span class="n">model_paths</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;calc_device&#39;</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">calculator</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">filename</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Name of the file where potential is stored&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">.model&#39;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_run_train</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run MACE training.</span>
+
+<span class="sd">        This code is adjusted from run_train.py in the MACE package.</span>
+<span class="sd">        For more details, see</span>
+<span class="sd">        https://github.com/ACEsuit/mace/tree/main/scripts</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_train_objs</span><span class="p">()</span>
+
+        <span class="n">metrics_logger</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">MetricsLogger</span><span class="p">(</span>
+            <span class="n">directory</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">results_dir</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">_train&#39;</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;device&#39;</span><span class="p">])</span>
+
+        <span class="n">tools</span><span class="o">.</span><span class="n">train</span><span class="p">(</span>
+            <span class="n">model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
+            <span class="n">loss_fn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loss_fn</span><span class="p">,</span>
+            <span class="n">train_loader</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">train_loader</span><span class="p">,</span>
+            <span class="n">valid_loader</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">valid_loader</span><span class="p">,</span>
+            <span class="n">optimizer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span>
+            <span class="n">lr_scheduler</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="p">,</span>
+            <span class="n">checkpoint_handler</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_handler</span><span class="p">,</span>
+            <span class="n">eval_interval</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">eval_interval</span><span class="p">,</span>
+            <span class="n">start_epoch</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">start_epoch</span><span class="p">,</span>
+            <span class="n">max_num_epochs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_num_epochs</span><span class="p">,</span>
+            <span class="n">logger</span><span class="o">=</span><span class="n">metrics_logger</span><span class="p">,</span>
+            <span class="n">patience</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">patience</span><span class="p">,</span>
+            <span class="n">output_args</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_args</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;device&#39;</span><span class="p">],</span>
+            <span class="n">swa</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">swa</span><span class="p">,</span>
+            <span class="n">ema</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ema</span><span class="p">,</span>
+            <span class="n">max_grad_norm</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">clip_grad</span><span class="p">,</span>
+            <span class="n">log_errors</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;error_table&#39;</span><span class="p">],</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_latest_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load the latest epoch of the training&quot;&quot;&quot;</span>
+
+        <span class="n">epoch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_handler</span><span class="o">.</span><span class="n">load_latest</span><span class="p">(</span>
+            <span class="n">state</span><span class="o">=</span><span class="n">tools</span><span class="o">.</span><span class="n">CheckpointState</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span>
+            <span class="p">),</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;device&#39;</span><span class="p">],</span>
+        <span class="p">)</span>
+
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Loaded model from epoch </span><span class="si">{</span><span class="n">epoch</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_print_error_table</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate an error table and print it in logs&quot;&quot;&quot;</span>
+
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Generating error table&#39;</span><span class="p">)</span>
+
+        <span class="n">all_collections</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;training&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_loader</span><span class="p">,</span>
+            <span class="s1">&#39;validation&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">valid_loader</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="n">table</span> <span class="o">=</span> <span class="n">create_error_table</span><span class="p">(</span>
+            <span class="n">table_type</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;error_table&#39;</span><span class="p">],</span>
+            <span class="n">all_data_loaders</span><span class="o">=</span><span class="n">all_collections</span><span class="p">,</span>
+            <span class="n">model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
+            <span class="n">loss_fn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loss_fn</span><span class="p">,</span>
+            <span class="n">output_args</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_args</span><span class="p">,</span>
+            <span class="n">log_wandb</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">wandb</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;device&#39;</span><span class="p">],</span>
+        <span class="p">)</span>
+
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">table</span><span class="p">))</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_save_model</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save the trained model&quot;&quot;&quot;</span>
+
+        <span class="n">model_paths</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">checkpoints_dir</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;save_cpu&#39;</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;Saving the model </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="si">}</span><span class="s1"> &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">checkpoints_dir</span><span class="si">}</span><span class="s1"> &#39;</span>
+            <span class="s1">&#39;and the current directory.&#39;</span>
+        <span class="p">)</span>
+
+        <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">model_paths</span><span class="p">)</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span>
+            <span class="n">src</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="n">model_paths</span><span class="p">),</span>
+            <span class="n">dst</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_set_train_objs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialise and log training objects&quot;&quot;&quot;</span>
+
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;Total number of configurations: &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;valid=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">valid_configs</span><span class="p">)</span><span class="si">}</span><span class="s1">, &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;train=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_configs</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z_table</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Chemical symbols: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">z_table_symbol</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Atomic energies: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">atomic_energies</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Loss: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">loss_fn</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Selected the following outputs: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">output_args</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">compute_avg_num_neighbors</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;Average number of neighbors: &#39;</span>
+                <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">avg_num_neighbors</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="p">)</span>
+
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Model: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;Number of parameters: &#39;</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">tools</span><span class="o">.</span><span class="n">count_parameters</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Optimizer: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_reset_train_objs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset training objects to None, important for retraining and</span>
+<span class="sd">        multiprocessing&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_train_obj_names</span><span class="p">:</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="MACE.setup_logger">
+<a class="viewcode-back" href="../../../../references/mlptrain.potentials.mace.mace.html#mlptrain.potentials.MACE.setup_logger">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup_logger</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set up a MACE logger&quot;&quot;&quot;</span>
+
+        <span class="n">mace_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span>
+        <span class="n">mace_logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+
+        <span class="n">formatter</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">Formatter</span><span class="p">(</span>
+            <span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1">.</span><span class="si">%(msecs)03d</span><span class="s1"> </span><span class="si">%(levelname)s</span><span class="s1">: </span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">,</span>
+            <span class="n">datefmt</span><span class="o">=</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">log_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">log_dir</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;.log&#39;</span><span class="p">)</span>
+
+        <span class="n">fh</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">fh</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span><span class="n">formatter</span><span class="p">)</span>
+        <span class="n">mace_logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">fh</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">max_num_epochs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Maximum number of epochs to perform during training&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_train</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">1000</span>
+
+        <span class="k">elif</span> <span class="mi">100</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_train</span> <span class="o">&lt;</span> <span class="mi">300</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">1200</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">1500</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">args</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;argparse.Namespace&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Namespace containing mostly default MACE parameters&quot;&quot;&quot;</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">build_default_arg_parser</span><span class="p">()</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="s1">&#39;--name&#39;</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="s1">&#39;--train_file&#39;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">_data.xyz&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;--default_dtype&#39;</span><span class="p">,</span>
+                <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;dtype&#39;</span><span class="p">],</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">args</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">device</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;torch.device&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Device to use for training&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">tools</span><span class="o">.</span><span class="n">init_device</span><span class="p">(</span><span class="n">device_str</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;device&#39;</span><span class="p">])</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">config_type_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Dictionary containing the weights for each configuration type&quot;&quot;&quot;</span>
+        <span class="n">config_type_weights</span> <span class="o">=</span> <span class="n">ast</span><span class="o">.</span><span class="n">literal_eval</span><span class="p">(</span>
+            <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;config_type_weights&#39;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">config_type_weights</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s1">&#39;Config type weights not specified correctly, &#39;</span> <span class="s1">&#39;using Default&#39;</span>
+            <span class="p">)</span>
+            <span class="n">config_type_weights</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;Default&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">config_type_weights</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">z_table</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;mace.tools.AtomicNumberTable&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Table containing atomic numbers of the system&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_z_table</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_z_table</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">get_atomic_number_table_from_zs</span><span class="p">(</span>
+                <span class="n">z</span>
+                <span class="k">for</span> <span class="n">configs</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_configs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">valid_configs</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">config</span> <span class="ow">in</span> <span class="n">configs</span>
+                <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">atomic_numbers</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_z_table</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">z_table_symbol</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;List of chemical symbols of the system&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">chemical_symbols</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">z_table</span><span class="o">.</span><span class="n">zs</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">atomic_energies_array</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;List of atomic energies of the system&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">atomic_energies</span><span class="p">[</span><span class="n">symbol</span><span class="p">]</span> <span class="k">for</span> <span class="n">symbol</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">z_table_symbol</span><span class="p">]</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">valid_fraction</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fraction of the whole dataset to be used as validation set&quot;&quot;&quot;</span>
+        <span class="n">_min_dataset</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="mi">1</span> <span class="o">//</span> <span class="o">-</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;valid_fraction&#39;</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_train</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;MACE training requires at least &#39;</span> <span class="s1">&#39;2 configurations&#39;</span>
+            <span class="p">)</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_train</span> <span class="o">&gt;=</span> <span class="n">_min_dataset</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;valid_fraction&#39;</span><span class="p">]</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Valid fraction which sets at least 1 datapoint for validation</span>
+            <span class="n">_unrounded_valid_fraction</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_train</span>
+            <span class="k">return</span> <span class="o">-</span><span class="p">((</span><span class="n">_unrounded_valid_fraction</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="o">//</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">100</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train_configs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;mace.data.Configurations&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Configurations in the training dataset&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_train_configs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_train_configs</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">load_from_xyz</span><span class="p">(</span>
+                <span class="n">file_path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">train_file</span><span class="p">,</span>
+                <span class="n">config_type_weights</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config_type_weights</span><span class="p">,</span>
+                <span class="n">energy_key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">energy_key</span><span class="p">,</span>
+                <span class="n">forces_key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">forces_key</span><span class="p">,</span>
+                <span class="n">extract_atomic_energies</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_train_configs</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">valid_configs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;mace.data.Configurations&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Configurations in the validation dataset&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_configs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">valid_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_configs</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">load_from_xyz</span><span class="p">(</span>
+                    <span class="n">file_path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">valid_path</span><span class="p">,</span>
+                    <span class="n">config_type_weights</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config_type_weights</span><span class="p">,</span>
+                    <span class="n">energy_key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">energy_key</span><span class="p">,</span>
+                    <span class="n">forces_key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">forces_key</span><span class="p">,</span>
+                    <span class="n">extract_atomic_energies</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="p">)</span>
+
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">&#39;Loaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_valid_configs</span><span class="p">)</span><span class="si">}</span><span class="s1"> validation&#39;</span>
+                    <span class="sa">f</span><span class="s1">&#39;configurations from &quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">valid_file</span><span class="si">}</span><span class="s1">&quot;&#39;</span>
+                <span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">&#39;Using </span><span class="si">{</span><span class="mi">100</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">valid_fraction</span><span class="si">}</span><span class="s1">% of the &#39;</span>
+                    <span class="s1">&#39;training set for validation&#39;</span>
+                <span class="p">)</span>
+
+                <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_train_configs</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_valid_configs</span><span class="p">,</span>
+                <span class="p">)</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">random_train_valid_split</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">train_configs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">valid_fraction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">seed</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_configs</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">loss_fn</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;torch.nn.Module&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Loss function to use in the training&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loss_fn</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;weighted&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_loss_fn</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">WeightedEnergyForcesLoss</span><span class="p">(</span>
+                    <span class="n">energy_weight</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">forces_weight</span><span class="o">=</span><span class="mf">5.0</span>
+                <span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;forces_only&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_loss_fn</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">WeightedForcesLoss</span><span class="p">(</span><span class="n">forces_weight</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1"> is not allowed in &#39;</span>
+                    <span class="sa">f</span><span class="s1">&#39;mlp-train, setting loss to EnergyForcesLoss&#39;</span>
+                <span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_loss_fn</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">EnergyForcesLoss</span><span class="p">(</span>
+                    <span class="n">energy_weight</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;energy_weight&#39;</span><span class="p">],</span>
+                    <span class="n">forces_weight</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;forces_weight&#39;</span><span class="p">],</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loss_fn</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train_batch_size</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Batch size of the training set&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_configs</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_configs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">valid_batch_size</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Batch size of the validation set&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">valid_configs</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">valid_configs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train_loader</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;mace.tools.torch_geometric.dataloader.DataLoader&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Torch dataloader with training configurations&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_train_loader</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_train_loader</span> <span class="o">=</span> <span class="n">torch_geometric</span><span class="o">.</span><span class="n">dataloader</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span>
+                <span class="n">dataset</span><span class="o">=</span><span class="p">[</span>
+                    <span class="n">data</span><span class="o">.</span><span class="n">AtomicData</span><span class="o">.</span><span class="n">from_config</span><span class="p">(</span>
+                        <span class="n">config</span><span class="p">,</span>
+                        <span class="n">z_table</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">z_table</span><span class="p">,</span>
+                        <span class="n">cutoff</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;r_max&#39;</span><span class="p">],</span>
+                    <span class="p">)</span>
+                    <span class="k">for</span> <span class="n">config</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_configs</span>
+                <span class="p">],</span>
+                <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">train_batch_size</span><span class="p">,</span>
+                <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">drop_last</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_train_loader</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">valid_loader</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;mace.tools.torch_geometric.dataloader.DataLoader&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Torch dataloader with validation configurations&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_loader</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_valid_loader</span> <span class="o">=</span> <span class="n">torch_geometric</span><span class="o">.</span><span class="n">dataloader</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span>
+                <span class="n">dataset</span><span class="o">=</span><span class="p">[</span>
+                    <span class="n">data</span><span class="o">.</span><span class="n">AtomicData</span><span class="o">.</span><span class="n">from_config</span><span class="p">(</span>
+                        <span class="n">config</span><span class="p">,</span>
+                        <span class="n">z_table</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">z_table</span><span class="p">,</span>
+                        <span class="n">cutoff</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;r_max&#39;</span><span class="p">],</span>
+                    <span class="p">)</span>
+                    <span class="k">for</span> <span class="n">config</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">valid_configs</span>
+                <span class="p">],</span>
+                <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">valid_batch_size</span><span class="p">,</span>
+                <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">drop_last</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_valid_loader</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">avg_num_neighbors</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Average number of neighbors in the training set&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">compute_avg_num_neighbors</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">modules</span><span class="o">.</span><span class="n">compute_avg_num_neighbors</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_loader</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">avg_num_neighbors</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">output_args</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Dictionary containing required outputs&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;energy&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;forces&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;virials&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="s1">&#39;stress&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="s1">&#39;dipoles&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">model</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;torch.nn.Module&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Torch Module to use in training&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Building model&#39;</span><span class="p">)</span>
+
+            <span class="n">model_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">r_max</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;r_max&#39;</span><span class="p">],</span>
+                <span class="n">num_bessel</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">num_radial_basis</span><span class="p">,</span>
+                <span class="n">num_polynomial_cutoff</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">num_cutoff_basis</span><span class="p">,</span>
+                <span class="n">max_ell</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">max_ell</span><span class="p">,</span>
+                <span class="n">interaction_cls</span><span class="o">=</span><span class="n">modules</span><span class="o">.</span><span class="n">interaction_classes</span><span class="p">[</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">interaction</span>
+                <span class="p">],</span>
+                <span class="n">num_interactions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">num_interactions</span><span class="p">,</span>
+                <span class="n">num_elements</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z_table</span><span class="p">),</span>
+                <span class="n">hidden_irreps</span><span class="o">=</span><span class="n">o3</span><span class="o">.</span><span class="n">Irreps</span><span class="p">(</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;hidden_irreps&#39;</span><span class="p">]),</span>
+                <span class="n">atomic_energies</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">atomic_energies_array</span><span class="p">,</span>
+                <span class="n">avg_num_neighbors</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">avg_num_neighbors</span><span class="p">,</span>
+                <span class="n">atomic_numbers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">z_table</span><span class="o">.</span><span class="n">zs</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;MACE&#39;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">scaling</span> <span class="o">==</span> <span class="s1">&#39;no_scaling&#39;</span><span class="p">:</span>
+                    <span class="n">std</span> <span class="o">=</span> <span class="mf">1.0</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;No scaling selected&#39;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">mean</span><span class="p">,</span> <span class="n">std</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">scaling_classes</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">scaling</span><span class="p">](</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">train_loader</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomic_energies_array</span>
+                    <span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">ScaleShiftMACE</span><span class="p">(</span>
+                    <span class="o">**</span><span class="n">model_config</span><span class="p">,</span>
+                    <span class="n">correlation</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;correlation&#39;</span><span class="p">],</span>
+                    <span class="n">gate</span><span class="o">=</span><span class="n">modules</span><span class="o">.</span><span class="n">gate_dict</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">gate</span><span class="p">],</span>
+                    <span class="n">interaction_cls_first</span><span class="o">=</span><span class="n">modules</span><span class="o">.</span><span class="n">interaction_classes</span><span class="p">[</span>
+                        <span class="s1">&#39;RealAgnosticInteractionBlock&#39;</span>
+                    <span class="p">],</span>
+                    <span class="n">MLP_irreps</span><span class="o">=</span><span class="n">o3</span><span class="o">.</span><span class="n">Irreps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">MLP_irreps</span><span class="p">),</span>
+                    <span class="n">atomic_inter_scale</span><span class="o">=</span><span class="n">std</span><span class="p">,</span>
+                    <span class="n">atomic_inter_shift</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;ScaleShiftMACE&#39;</span><span class="p">:</span>
+                <span class="n">mean</span><span class="p">,</span> <span class="n">std</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">scaling_classes</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">scaling</span><span class="p">](</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">train_loader</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomic_energies_array</span>
+                <span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">ScaleShiftMACE</span><span class="p">(</span>
+                    <span class="o">**</span><span class="n">model_config</span><span class="p">,</span>
+                    <span class="n">correlation</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;correlation&#39;</span><span class="p">],</span>
+                    <span class="n">gate</span><span class="o">=</span><span class="n">modules</span><span class="o">.</span><span class="n">gate_dict</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">gate</span><span class="p">],</span>
+                    <span class="n">interaction_cls_first</span><span class="o">=</span><span class="n">modules</span><span class="o">.</span><span class="n">interaction_classes</span><span class="p">[</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">interaction_first</span>
+                    <span class="p">],</span>
+                    <span class="n">MLP_irreps</span><span class="o">=</span><span class="n">o3</span><span class="o">.</span><span class="n">Irreps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">MLP_irreps</span><span class="p">),</span>
+                    <span class="n">atomic_inter_scale</span><span class="o">=</span><span class="n">std</span><span class="p">,</span>
+                    <span class="n">atomic_inter_shift</span><span class="o">=</span><span class="n">mean</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;ScaleShiftBOTNet&#39;</span><span class="p">:</span>
+                <span class="n">mean</span><span class="p">,</span> <span class="n">std</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">scaling_classes</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">scaling</span><span class="p">](</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">train_loader</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">atomic_energies_array</span>
+                <span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">ScaleShiftBOTNet</span><span class="p">(</span>
+                    <span class="o">**</span><span class="n">model_config</span><span class="p">,</span>
+                    <span class="n">gate</span><span class="o">=</span><span class="n">modules</span><span class="o">.</span><span class="n">gate_dict</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">gate</span><span class="p">],</span>
+                    <span class="n">interaction_cls_first</span><span class="o">=</span><span class="n">modules</span><span class="o">.</span><span class="n">interaction_classes</span><span class="p">[</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">interaction_first</span>
+                    <span class="p">],</span>
+                    <span class="n">MLP_irreps</span><span class="o">=</span><span class="n">o3</span><span class="o">.</span><span class="n">Irreps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">MLP_irreps</span><span class="p">),</span>
+                    <span class="n">atomic_inter_scale</span><span class="o">=</span><span class="n">std</span><span class="p">,</span>
+                    <span class="n">atomic_inter_shift</span><span class="o">=</span><span class="n">mean</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;BOTNet&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">BOTNet</span><span class="p">(</span>
+                    <span class="o">**</span><span class="n">model_config</span><span class="p">,</span>
+                    <span class="n">gate</span><span class="o">=</span><span class="n">modules</span><span class="o">.</span><span class="n">gate_dict</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">gate</span><span class="p">],</span>
+                    <span class="n">interaction_cls_first</span><span class="o">=</span><span class="n">modules</span><span class="o">.</span><span class="n">interaction_classes</span><span class="p">[</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">interaction_first</span>
+                    <span class="p">],</span>
+                    <span class="n">MLP_irreps</span><span class="o">=</span><span class="n">o3</span><span class="o">.</span><span class="n">Irreps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">MLP_irreps</span><span class="p">),</span>
+                <span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s2">&quot;model&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1"> cannot be &#39;</span>
+                    <span class="s1">&#39;used in mlp-train, please specify a &#39;</span>
+                    <span class="s1">&#39;different model in Config.mace_params&#39;</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">opt_param_options</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Dictionary with optimiser parameter options&quot;&quot;&quot;</span>
+
+        <span class="n">decay_interactions</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">no_decay_interactions</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">interactions</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">():</span>
+            <span class="k">if</span> <span class="s1">&#39;linear.weight&#39;</span> <span class="ow">in</span> <span class="n">name</span> <span class="ow">or</span> <span class="s1">&#39;skip_tp_full.weight&#39;</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
+                <span class="n">decay_interactions</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">param</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">no_decay_interactions</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">param</span>
+
+        <span class="n">param_options</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">params</span><span class="o">=</span><span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;embedding&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">node_embedding</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span>
+                    <span class="s1">&#39;weight_decay&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;interactions_decay&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">decay_interactions</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
+                    <span class="s1">&#39;weight_decay&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">weight_decay</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;interactions_no_decay&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">no_decay_interactions</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
+                    <span class="s1">&#39;weight_decay&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;products&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">products</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span>
+                    <span class="s1">&#39;weight_decay&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">weight_decay</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="s1">&#39;readouts&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">readouts</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span>
+                    <span class="s1">&#39;weight_decay&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">],</span>
+            <span class="n">lr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">lr</span><span class="p">,</span>
+            <span class="n">amsgrad</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;amsgrad&#39;</span><span class="p">],</span>
+            <span class="n">foreach</span><span class="o">=</span><span class="kc">False</span>
+            <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">get_default_dtype</span><span class="p">()</span> <span class="o">==</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span>
+            <span class="k">else</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">param_options</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">optimizer</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;torch.optim.Optimizer&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Optimizer to use in training&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">optimizer</span> <span class="o">==</span> <span class="s1">&#39;adamw&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">AdamW</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">opt_param_options</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">opt_param_options</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">scheduler</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;torch.optim.lr_scheduler&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Torch scheduler for training&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scheduler</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">scheduler</span> <span class="o">==</span> <span class="s1">&#39;ExponentialLR&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_scheduler</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">lr_scheduler</span><span class="o">.</span><span class="n">ExponentialLR</span><span class="p">(</span>
+                    <span class="n">optimizer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span>
+                    <span class="n">gamma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">lr_scheduler_gamma</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">scheduler</span> <span class="o">==</span> <span class="s1">&#39;ReduceLROnPlateau&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_scheduler</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">lr_scheduler</span><span class="o">.</span><span class="n">ReduceLROnPlateau</span><span class="p">(</span>
+                    <span class="n">optimizer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span>
+                    <span class="n">factor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">lr_factor</span><span class="p">,</span>
+                    <span class="n">patience</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">scheduler_patience</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">&#39;Unknown scheduler: &#39;</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">scheduler</span><span class="si">}</span><span class="s1">&#39;</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scheduler</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">checkpoint_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;mace.tools.CheckpointHandler&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Checkpoint handler to use in training&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_checkpoint_handler</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_checkpoint_handler</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">CheckpointHandler</span><span class="p">(</span>
+                <span class="n">directory</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">checkpoints_dir</span><span class="p">,</span>
+                <span class="n">tag</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="n">keep</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">keep_checkpoints</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_checkpoint_handler</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start epoch of the training&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_epoch</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_start_epoch</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;restart_latest&#39;</span><span class="p">]:</span>
+                <span class="n">opt_start_epoch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_handler</span><span class="o">.</span><span class="n">load_latest</span><span class="p">(</span>
+                    <span class="n">state</span><span class="o">=</span><span class="n">tools</span><span class="o">.</span><span class="n">CheckpointState</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span>
+                    <span class="p">),</span>
+                    <span class="n">device</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;device&#39;</span><span class="p">],</span>
+                <span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">opt_start_epoch</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_start_epoch</span> <span class="o">=</span> <span class="n">opt_start_epoch</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_epoch</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">swa</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="s1">&#39;mace.tools.SWAContainer&#39;</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Object for stochastic weight averaging during training&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_swa</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;swa&#39;</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;start_swa&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="c1"># if not set start swa at 75% of training</span>
+                    <span class="n">start_swa</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_num_epochs</span> <span class="o">//</span> <span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="mi">3</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">start_swa</span> <span class="o">=</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;start_swa&#39;</span><span class="p">]</span>
+
+                <span class="k">if</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;forces_only&#39;</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Can not select swa with forces only loss.&#39;</span><span class="p">)</span>
+
+                <span class="n">loss_fn_energy</span> <span class="o">=</span> <span class="n">modules</span><span class="o">.</span><span class="n">WeightedEnergyForcesLoss</span><span class="p">(</span>
+                    <span class="n">energy_weight</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">swa_energy_weight</span><span class="p">,</span>
+                    <span class="n">forces_weight</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">swa_forces_weight</span><span class="p">,</span>
+                <span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_swa</span> <span class="o">=</span> <span class="n">tools</span><span class="o">.</span><span class="n">SWAContainer</span><span class="p">(</span>
+                    <span class="n">model</span><span class="o">=</span><span class="n">AveragedModel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">),</span>
+                    <span class="n">scheduler</span><span class="o">=</span><span class="n">SWALR</span><span class="p">(</span>
+                        <span class="n">optimizer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span>
+                        <span class="n">swa_lr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">swa_lr</span><span class="p">,</span>
+                        <span class="n">anneal_epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                        <span class="n">anneal_strategy</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span>
+                    <span class="p">),</span>
+                    <span class="n">start</span><span class="o">=</span><span class="n">start_swa</span><span class="p">,</span>
+                    <span class="n">loss_fn</span><span class="o">=</span><span class="n">loss_fn_energy</span><span class="p">,</span>
+                <span class="p">)</span>
+
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">&#39;Using stochastic weight averaging &#39;</span>
+                    <span class="sa">f</span><span class="s1">&#39;(after </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_swa</span><span class="o">.</span><span class="n">start</span><span class="si">}</span><span class="s1"> epochs) with &#39;</span>
+                    <span class="sa">f</span><span class="s1">&#39;energy weight : </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">swa_energy_weight</span><span class="si">}</span><span class="s1">, &#39;</span>
+                    <span class="sa">f</span><span class="s1">&#39;forces weight : </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">swa_forces_weight</span><span class="si">}</span><span class="s1">, &#39;</span>
+                    <span class="sa">f</span><span class="s1">&#39;learning rate : </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="o">.</span><span class="n">swa_lr</span><span class="si">}</span><span class="s1">&#39;</span>
+                <span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_swa</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_swa</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ema</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="s1">&#39;torch_ema.ExponentialMovingAverage&#39;</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Object for exponantial moving average during training&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ema</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;ema&#39;</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_ema</span> <span class="o">=</span> <span class="n">torch_ema</span><span class="o">.</span><span class="n">ExponentialMovingAverage</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span>
+                    <span class="n">decay</span><span class="o">=</span><span class="n">Config</span><span class="o">.</span><span class="n">mace_params</span><span class="p">[</span><span class="s1">&#39;ema_decay&#39;</span><span class="p">],</span>
+                <span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_ema</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ema</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Duarte group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

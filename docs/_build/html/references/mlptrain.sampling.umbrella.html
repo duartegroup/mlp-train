@@ -1,0 +1,272 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mlptrain.sampling.umbrella &mdash; mlp-train  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            mlp-train
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">mlptrain.sampling.umbrella</a><ul>
+<li><a class="reference internal" href="#mlptrain.sampling.umbrella.UmbrellaSampling"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling</span></code></a><ul>
+<li><a class="reference internal" href="#mlptrain.sampling.umbrella.UmbrellaSampling.beta"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.beta</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.sampling.umbrella.UmbrellaSampling.free_energies"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.free_energies()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.sampling.umbrella.UmbrellaSampling.from_folder"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.from_folder()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.sampling.umbrella.UmbrellaSampling.from_folders"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.from_folders()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.sampling.umbrella.UmbrellaSampling.load"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.load()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.sampling.umbrella.UmbrellaSampling.run_umbrella_sampling"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.run_umbrella_sampling()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.sampling.umbrella.UmbrellaSampling.save"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.save()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.sampling.umbrella.UmbrellaSampling.umbrella_integration"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.umbrella_integration()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.sampling.umbrella.UmbrellaSampling.wham"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.wham()</span></code></a></li>
+<li><a class="reference internal" href="#mlptrain.sampling.umbrella.UmbrellaSampling.zeta_refs"><code class="docutils literal notranslate"><span class="pre">UmbrellaSampling.zeta_refs</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">mlp-train</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">mlptrain.sampling.umbrella</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/references/mlptrain.sampling.umbrella.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-mlptrain.sampling.umbrella">
+<span id="mlptrain-sampling-umbrella"></span><h1>mlptrain.sampling.umbrella<a class="headerlink" href="#module-mlptrain.sampling.umbrella" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="mlptrain.sampling.umbrella.UmbrellaSampling">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">mlptrain.sampling.umbrella.</span></span><span class="sig-name descname"><span class="pre">UmbrellaSampling</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zeta_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.sampling.reaction_coord.html#mlptrain.sampling.reaction_coord.ReactionCoordinate" title="mlptrain.sampling.reaction_coord.ReactionCoordinate"><span class="pre">ReactionCoordinate</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">kappa</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#mlptrain.sampling.umbrella.UmbrellaSampling" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Umbrella sampling class for generating pulling simulation, running
+umbrella sampling windows and running WHAM or umbrella integration.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.sampling.umbrella.UmbrellaSampling.beta">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">beta</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#mlptrain.sampling.umbrella.UmbrellaSampling.beta" title="Link to this definition"></a></dt>
+<dd><p>β = 1 / (k_B T)</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.sampling.umbrella.UmbrellaSampling.free_energies">
+<span class="sig-name descname"><span class="pre">free_energies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prob_dist</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#mlptrain.sampling.umbrella.UmbrellaSampling.free_energies" title="Link to this definition"></a></dt>
+<dd><p>Free energies at each point along the profile, eqn. 8.6.5 in Tuckerman</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.sampling.umbrella.UmbrellaSampling.from_folder">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_folder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mlptrain.sampling.umbrella.UmbrellaSampling" title="mlptrain.sampling.umbrella.UmbrellaSampling"><span class="pre">UmbrellaSampling</span></a></span></span><a class="headerlink" href="#mlptrain.sampling.umbrella.UmbrellaSampling.from_folder" title="Link to this definition"></a></dt>
+<dd><p>Create an umbrella sampling instance from a folder containing the
+window data</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(<a class="reference internal" href="#mlptrain.sampling.umbrella.UmbrellaSampling" title="mlptrain.sampling.umbrella.UmbrellaSampling">mlptrain.sampling.umbrella.UmbrellaSampling</a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.sampling.umbrella.UmbrellaSampling.from_folders">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_folders</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#mlptrain.sampling.umbrella.UmbrellaSampling" title="mlptrain.sampling.umbrella.UmbrellaSampling"><span class="pre">UmbrellaSampling</span></a></span></span><a class="headerlink" href="#mlptrain.sampling.umbrella.UmbrellaSampling.from_folders" title="Link to this definition"></a></dt>
+<dd><p>Load a set of individual umbrella sampling simulations in to a single
+one</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(<a class="reference internal" href="#mlptrain.sampling.umbrella.UmbrellaSampling" title="mlptrain.sampling.umbrella.UmbrellaSampling">mlptrain.sampling.umbrella.UmbrellaSampling</a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.sampling.umbrella.UmbrellaSampling.load">
+<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.sampling.umbrella.UmbrellaSampling.load" title="Link to this definition"></a></dt>
+<dd><p>Load data from a set of saved windows</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.sampling.umbrella.UmbrellaSampling.run_umbrella_sampling">
+<span class="sig-name descname"><span class="pre">run_umbrella_sampling</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">traj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.configurations.configuration_set.html#mlptrain.configurations.configuration_set.ConfigurationSet" title="mlptrain.configurations.configuration_set.ConfigurationSet"><span class="pre">ConfigurationSet</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="mlptrain.potentials._base.html#mlptrain.potentials._base.MLPotential" title="mlptrain.potentials._base.MLPotential"><span class="pre">MLPotential</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_ref</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_ref</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_windows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_sep</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_to_xyz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.sampling.umbrella.UmbrellaSampling.run_umbrella_sampling" title="Link to this definition"></a></dt>
+<dd><p>Run umbrella sampling across n_windows, fitting Gaussians to the
+sampled values of the reaction coordinate.</p>
+<p><em>NOTE</em> will leave a dangling plt.figure open</p>
+<blockquote>
+<div><p>range f reaction coordinates</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mlp</strong> – Machine learnt potential</p></li>
+<li><p><strong>temp</strong> – Temperature in K to initialise velocities and to run NVT MD.
+Must be positive</p></li>
+<li><p><strong>interval</strong> – (int) Interval between saving the geometry</p></li>
+<li><p><strong>dt</strong> – (float) Time-step in fs</p></li>
+<li><p><strong>init_ref</strong> – (float | None) Value of reaction coordinate in Å for
+first window</p></li>
+<li><p><strong>final_ref</strong> – (float | None) Value of reaction coordinate in Å for
+first window</p></li>
+<li><p><strong>n_windows</strong> – (int) Number of windows to run in the umbrella sampling</p></li>
+<li><p><strong>save_sep</strong> – (bool) If True saves trajectories of each window
+separately as .xyz files</p></li>
+<li><p><strong>all_to_xyz</strong> – (bool) If True all .traj trajectory files are saved as
+.xyz files (when using save_fs, save_ps, save_ns)</p></li>
+</ul>
+</dd>
+</dl>
+<blockquote>
+<div><p>in some units</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Keyword Arguments<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>constraints</strong> – (List) List of ASE constraints to use in the dynamics
+e.g. [ase.constraints.Hookean(a1, a2, k, rt)]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.sampling.umbrella.UmbrellaSampling.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'umbrella'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#mlptrain.sampling.umbrella.UmbrellaSampling.save" title="Link to this definition"></a></dt>
+<dd><p>Save the windows in this US to a folder containing each window as .txt
+files within in</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.sampling.umbrella.UmbrellaSampling.umbrella_integration">
+<span class="sig-name descname"><span class="pre">umbrella_integration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#mlptrain.sampling.umbrella.UmbrellaSampling.umbrella_integration" title="Link to this definition"></a></dt>
+<dd><p>Perform umbrella integration on the umbrella windows to un-bias the
+probability distribution. Such that the PMF becomes</p>
+<div class="math notranslate nohighlight">
+\[dA/dq = Σ_i p_i(q) dA^u_i/ dq\]</div>
+<p>where the sum runs over the windows. Also plot and save the resulting
+free energy.</p>
+<blockquote>
+<div><p>returned</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>Tuple containing the reaction coordinate</dt><dd><p>and values of the free energy</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>(np.ndarray, np.ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="mlptrain.sampling.umbrella.UmbrellaSampling.wham">
+<span class="sig-name descname"><span class="pre">wham</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#mlptrain.sampling.umbrella.UmbrellaSampling.wham" title="Link to this definition"></a></dt>
+<dd><p>Construct an unbiased distribution (on a grid) from a set of windows</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>n_bins</strong> – Number of bins to use in the histogram (minus one) and
+the number of reaction coordinate values plotted and
+returned</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Tuple containing the reaction coordinate</dt><dd><p>and values of the free energy</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray, np.ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="mlptrain.sampling.umbrella.UmbrellaSampling.zeta_refs">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">zeta_refs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#mlptrain.sampling.umbrella.UmbrellaSampling.zeta_refs" title="Link to this definition"></a></dt>
+<dd><p>Array of ζ_ref for each window</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Duarte group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

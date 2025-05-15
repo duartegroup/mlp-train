@@ -1,0 +1,668 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mlptrain.sampling.md_openmm &mdash; mlp-train  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            mlp-train
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">mlp-train</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">mlptrain.sampling.md_openmm</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for mlptrain.sampling.md_openmm</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">ase</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">mlptrain</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mlt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mlptrain.log</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mlptrain.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">work_in_tmp_dir</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mlptrain.sampling.md</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">_convert_ase_traj</span><span class="p">,</span>
+    <span class="n">_get_traj_name</span><span class="p">,</span>
+    <span class="n">_initialise_traj</span><span class="p">,</span>
+    <span class="n">_n_simulation_steps</span><span class="p">,</span>
+    <span class="n">_save_trajectory</span><span class="p">,</span>
+    <span class="n">_traj_saving_interval</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">openmm</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mm</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">openmm.app</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">app</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">openmm.unit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">unit</span>
+
+    <span class="n">_HAS_OPENMM</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">_HAS_OPENMM</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">openmmml</span><span class="w"> </span><span class="kn">import</span> <span class="n">MLPotential</span>
+
+    <span class="n">_HAS_OPENMM_ML</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">_HAS_OPENMM_ML</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="c1"># Conversion factor from kJ/mol to eV</span>
+<span class="n">_KJ_PER_MOL_TO_EV</span> <span class="o">=</span> <span class="p">(</span><span class="n">ase</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">kJ</span> <span class="o">/</span> <span class="n">ase</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">mol</span><span class="p">)</span> <span class="o">/</span> <span class="n">ase</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">eV</span>
+
+
+<div class="viewcode-block" id="run_mlp_md_openmm">
+<a class="viewcode-back" href="../../../references/mlptrain.sampling.md_openmm.html#mlptrain.sampling.md_openmm.run_mlp_md_openmm">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_mlp_md_openmm</span><span class="p">(</span>
+    <span class="n">configuration</span><span class="p">:</span> <span class="s1">&#39;mlt.Configuration&#39;</span><span class="p">,</span>
+    <span class="n">mlp</span><span class="p">:</span> <span class="s1">&#39;mlt.potentials._base.MLPotential&#39;</span><span class="p">,</span>
+    <span class="n">temp</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">interval</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">init_temp</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">fbond_energy</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">bbond_energy</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">bias</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="s1">&#39;mlt.Bias&#39;</span><span class="p">,</span> <span class="s1">&#39;mlt.PlumedBias&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">restart_files</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">copied_substrings</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">kept_substrings</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">platform</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;mlt.Trajectory&#39;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Run molecular dynamics on a system using a MLP to predict energies and</span>
+<span class="sd">    forces and OpenMM to drive dynamics. The function is executed in a temporary</span>
+<span class="sd">    directory.</span>
+
+<span class="sd">    ---------------------------------------------------------------------------</span>
+<span class="sd">    Arguments:</span>
+
+<span class="sd">        configuration: Configuration from which the simulation is started</span>
+<span class="sd">                       (if restart is False)</span>
+
+<span class="sd">        mlp: Machine learnt potential</span>
+
+<span class="sd">        temp: Temperature in K to initialise velocities and to run</span>
+<span class="sd">              NVT MD, if temp=0 then will run NVE</span>
+
+<span class="sd">        init_temp: (float | None) Initial temperature to initialise momenta</span>
+<span class="sd">                   with. If None then will be set to temp</span>
+
+<span class="sd">        dt: (float) Time-step in fs</span>
+
+<span class="sd">        interval: (int) Interval between saving the geometry</span>
+
+<span class="sd">        bbond_energy: (dict | None) Additional energy to add to a breaking</span>
+<span class="sd">                         bond. e.g. bbond_energy={(0, 1), 0.1} Adds 0.1 eV</span>
+<span class="sd">                         to the &#39;bond&#39; between atoms 0 and 1 as velocities</span>
+<span class="sd">                         shared between the atoms in the breaking bond direction</span>
+
+<span class="sd">        fbond_energy: (dict | None) As bbond_energy but in the direction to</span>
+<span class="sd">                         form a bond</span>
+
+<span class="sd">        bias: (mlt.Bias | mltr.PlumedBias) mlp-train constrain</span>
+<span class="sd">              to use in the dynamics</span>
+
+<span class="sd">        restart_files: List of files which are needed for restarting the</span>
+<span class="sd">                       simulation, e.g. &#39;simulation.state.xml&#39;, &#39;trajectory.traj&#39;</span>
+
+<span class="sd">        kept_substrings: List of substrings with which files are copied back</span>
+<span class="sd">                         from the temporary directory</span>
+<span class="sd">                         e.g. &#39;.json&#39;, &#39;trajectory_1.traj&#39;</span>
+
+<span class="sd">        copied_substrings: List of substrings with which files are copied</span>
+<span class="sd">                           to the temporary directory. Files required for MLPs</span>
+<span class="sd">                           are added to the list automatically</span>
+
+<span class="sd">        platform: (str) OpenMM platform to use. If None, the fastest available</span>
+<span class="sd">                    platform is used in this order: &#39;CUDA&#39;, &#39;OpenCL&#39;, &#39;CPU&#39;, &#39;Reference&#39;.</span>
+<span class="sd">    ---------------</span>
+<span class="sd">    Keyword Arguments:</span>
+
+<span class="sd">        {fs, ps, ns}: Simulation time in some units</span>
+
+<span class="sd">        {save_fs, save_ps, save_ns}: Trajectory saving interval in some units</span>
+
+<span class="sd">        constraints: (List) List of ASE constraints to use in the dynamics</span>
+<span class="sd">                            e.g. [ase.constraints.Hookean(a1, a2, k, rt)]</span>
+
+<span class="sd">        write_plumed_setup: (bool) If True saves the PLUMED input file as</span>
+<span class="sd">                            plumed_setup.dat</span>
+
+<span class="sd">    Returns:</span>
+
+<span class="sd">        (mlt.Trajectory):</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_HAS_OPENMM</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s1">&#39;OpenMM is not installed. Install it with &#39;</span>
+            <span class="s2">&quot;&#39;conda install -c conda-forge openmm&#39;&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_HAS_OPENMM_ML</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s1">&#39;openmm-ml is not installed. Install it with &#39;</span>
+            <span class="s2">&quot;&#39;conda install -c conda-forge openmm-ml&#39;&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mlp</span><span class="p">,</span> <span class="n">mlt</span><span class="o">.</span><span class="n">potentials</span><span class="o">.</span><span class="n">MACE</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s1">&#39;The OpenMM backend only supports the use of the MACE potential.&#39;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="n">fbond_energy</span><span class="p">,</span>
+            <span class="n">bbond_energy</span><span class="p">,</span>
+            <span class="n">bias</span><span class="p">,</span>
+            <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;constraints&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="s1">&#39;constraints&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="p">]</span>
+    <span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="s2">&quot;The OpenMM backend does not support the use of the &#39;bias&#39;, &quot;</span>
+            <span class="s2">&quot;&#39;fbond_energy&#39;, &#39;bbond_energy&#39;, or &#39;constraints&#39; arguments.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">restart</span> <span class="o">=</span> <span class="n">restart_files</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">copied_substrings</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">copied_substrings</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">kept_substrings</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">kept_substrings</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">copied_substrings_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">copied_substrings</span><span class="p">)</span>
+    <span class="n">kept_substrings_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">kept_substrings</span><span class="p">)</span>
+
+    <span class="n">copied_substrings_list</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s1">&#39;.xml&#39;</span><span class="p">,</span> <span class="s1">&#39;.json&#39;</span><span class="p">,</span> <span class="s1">&#39;.pth&#39;</span><span class="p">,</span> <span class="s1">&#39;.model&#39;</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;keep_al_trajs&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">kept_substrings_list</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s1">&#39;.traj&#39;</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">restart</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Restarting MLP OpenMM MD&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">restart_files</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Restart files must be a list&#39;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">restart_files</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="s1">&#39;Restart files must be a list of strings &#39;</span>
+                    <span class="s1">&#39;specifying filenames&#39;</span>
+                <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.state.xml&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">restart_files</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;Restaring an OpenMM simulation requires a .state.xml file &#39;</span>
+                <span class="s1">&#39;from the previous simulation&#39;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.traj&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">restart_files</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s1">&#39;Restaring an OpenMM simulation requires a .traj file &#39;</span>
+                <span class="s1">&#39;from the previous simulation&#39;</span>
+            <span class="p">)</span>
+
+        <span class="n">copied_substrings_list</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">restart_files</span><span class="p">)</span>
+        <span class="n">kept_substrings_list</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">restart_files</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Running MLP MD with OpenMM&#39;</span><span class="p">)</span>
+
+    <span class="n">decorator</span> <span class="o">=</span> <span class="n">work_in_tmp_dir</span><span class="p">(</span>
+        <span class="n">copied_substrings</span><span class="o">=</span><span class="n">copied_substrings_list</span><span class="p">,</span>
+        <span class="n">kept_substrings</span><span class="o">=</span><span class="n">kept_substrings_list</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">_run_mlp_md_decorated</span> <span class="o">=</span> <span class="n">decorator</span><span class="p">(</span><span class="n">_run_mlp_md_openmm</span><span class="p">)</span>
+
+    <span class="n">traj</span> <span class="o">=</span> <span class="n">_run_mlp_md_decorated</span><span class="p">(</span>
+        <span class="n">configuration</span><span class="o">=</span><span class="n">configuration</span><span class="p">,</span>
+        <span class="n">mlp</span><span class="o">=</span><span class="n">mlp</span><span class="p">,</span>
+        <span class="n">temp</span><span class="o">=</span><span class="n">temp</span><span class="p">,</span>
+        <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+        <span class="n">interval</span><span class="o">=</span><span class="n">interval</span><span class="p">,</span>
+        <span class="n">init_temp</span><span class="o">=</span><span class="n">init_temp</span><span class="p">,</span>
+        <span class="n">fbond_energy</span><span class="o">=</span><span class="n">fbond_energy</span><span class="p">,</span>
+        <span class="n">bbond_energy</span><span class="o">=</span><span class="n">bbond_energy</span><span class="p">,</span>
+        <span class="n">bias</span><span class="o">=</span><span class="n">bias</span><span class="p">,</span>
+        <span class="n">restart_files</span><span class="o">=</span><span class="n">restart_files</span><span class="p">,</span>
+        <span class="n">platform</span><span class="o">=</span><span class="n">platform</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">traj</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_mlp_md_openmm</span><span class="p">(</span>
+    <span class="n">configuration</span><span class="p">:</span> <span class="s1">&#39;mlt.Configuration&#39;</span><span class="p">,</span>
+    <span class="n">mlp</span><span class="p">:</span> <span class="s1">&#39;mlt.potentials._base.MLPotential&#39;</span><span class="p">,</span>
+    <span class="n">temp</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">interval</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">init_temp</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">fbond_energy</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">bbond_energy</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">bias</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="s1">&#39;mlt.Bias&#39;</span><span class="p">,</span> <span class="s1">&#39;mlt.PlumedBias&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">restart_files</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">platform</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;mlt.Trajectory&#39;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Run molecular dynamics on a system using a MLP to predict energies and</span>
+<span class="sd">    forces and OpenMM to drive dynamics</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">restart</span> <span class="o">=</span> <span class="n">restart_files</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+    <span class="c1"># Calculate the number of steps to perform.</span>
+    <span class="n">n_steps</span> <span class="o">=</span> <span class="n">_n_simulation_steps</span><span class="p">(</span><span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="c1"># Set the box size if required</span>
+    <span class="k">if</span> <span class="n">mlp</span><span class="o">.</span><span class="n">requires_non_zero_box_size</span> <span class="ow">and</span> <span class="n">configuration</span><span class="o">.</span><span class="n">box</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Assuming vacuum simulation. Box size = 1000 nm^3&#39;</span><span class="p">)</span>
+        <span class="n">configuration</span><span class="o">.</span><span class="n">box</span> <span class="o">=</span> <span class="n">mlt</span><span class="o">.</span><span class="n">Box</span><span class="p">([</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">])</span>
+
+    <span class="c1"># Get the ASE atoms object and positions.</span>
+    <span class="n">ase_atoms</span> <span class="o">=</span> <span class="n">configuration</span><span class="o">.</span><span class="n">ase_atoms</span>
+
+    <span class="c1"># Get the name of the trajectory and simulation state files.</span>
+    <span class="n">traj_name</span> <span class="o">=</span> <span class="n">_get_traj_name</span><span class="p">(</span><span class="n">restart_files</span><span class="o">=</span><span class="n">restart_files</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">simulation_name</span> <span class="o">=</span> <span class="n">_get_simulation_name</span><span class="p">(</span>
+        <span class="n">restart_files</span><span class="o">=</span><span class="n">restart_files</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create the OpenMM topology</span>
+    <span class="n">topology</span> <span class="o">=</span> <span class="n">_create_openmm_topology</span><span class="p">(</span><span class="n">ase_atoms</span><span class="p">)</span>
+
+    <span class="c1"># Get the OpenMM platform</span>
+    <span class="n">platform</span> <span class="o">=</span> <span class="n">_get_openmm_platform</span><span class="p">(</span><span class="n">platform</span><span class="p">)</span>
+
+    <span class="c1"># Create the OpenMM simulation object</span>
+    <span class="n">simulation</span> <span class="o">=</span> <span class="n">_create_openmm_simulation</span><span class="p">(</span>
+        <span class="n">mlp</span><span class="o">=</span><span class="n">mlp</span><span class="p">,</span>
+        <span class="n">topology</span><span class="o">=</span><span class="n">topology</span><span class="p">,</span>
+        <span class="n">temp</span><span class="o">=</span><span class="n">temp</span><span class="p">,</span>
+        <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+        <span class="n">platform</span><span class="o">=</span><span class="n">platform</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Set the initial positions and velocities</span>
+    <span class="n">_set_momenta_and_geometry</span><span class="p">(</span>
+        <span class="n">simulation</span><span class="o">=</span><span class="n">simulation</span><span class="p">,</span>
+        <span class="n">positions</span><span class="o">=</span><span class="n">ase_atoms</span><span class="o">.</span><span class="n">get_positions</span><span class="p">()</span> <span class="o">*</span> <span class="n">unit</span><span class="o">.</span><span class="n">angstrom</span><span class="p">,</span>
+        <span class="n">temp</span><span class="o">=</span><span class="n">init_temp</span> <span class="k">if</span> <span class="n">init_temp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">temp</span><span class="p">,</span>
+        <span class="n">restart_file</span><span class="o">=</span><span class="n">simulation_name</span> <span class="k">if</span> <span class="n">restart</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Initialise the ASE trajectory with the last frame of the previous trajectory</span>
+    <span class="n">ase_traj</span> <span class="o">=</span> <span class="n">_initialise_traj</span><span class="p">(</span>
+        <span class="n">ase_atoms</span><span class="o">=</span><span class="n">ase_atoms</span><span class="p">,</span>
+        <span class="n">restart</span><span class="o">=</span><span class="n">restart</span><span class="p">,</span>
+        <span class="n">traj_name</span><span class="o">=</span><span class="n">traj_name</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># If MD is restarted, energies of frames from the previous trajectory</span>
+    <span class="c1"># are not loaded. Setting them to None</span>
+    <span class="n">energies</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ase_traj</span><span class="p">))]</span>
+    <span class="n">biased_energies</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">energies</span><span class="p">)</span>
+    <span class="n">bias_energies</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">energies</span><span class="p">)</span>
+
+    <span class="c1"># Calculate the number of steps already performed.</span>
+    <span class="n">n_previous_steps</span> <span class="o">=</span> <span class="n">interval</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">ase_traj</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s1">&#39;Running OpenMM simulation for </span><span class="si">{</span><span class="n">n_steps</span><span class="si">}</span><span class="s1"> steps with saving interval </span><span class="si">{</span><span class="n">interval</span><span class="si">}</span><span class="s1">&#39;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Run the dynamics</span>
+    <span class="n">_run_dynamics</span><span class="p">(</span>
+        <span class="n">simulation</span><span class="o">=</span><span class="n">simulation</span><span class="p">,</span>
+        <span class="n">simulation_name</span><span class="o">=</span><span class="n">simulation_name</span><span class="p">,</span>
+        <span class="n">ase_atoms</span><span class="o">=</span><span class="n">ase_atoms</span><span class="p">,</span>
+        <span class="n">ase_traj</span><span class="o">=</span><span class="n">ase_traj</span><span class="p">,</span>
+        <span class="n">traj_name</span><span class="o">=</span><span class="n">traj_name</span><span class="p">,</span>
+        <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+        <span class="n">interval</span><span class="o">=</span><span class="n">interval</span><span class="p">,</span>
+        <span class="n">n_steps</span><span class="o">=</span><span class="n">n_steps</span><span class="p">,</span>
+        <span class="n">n_previous_steps</span><span class="o">=</span><span class="n">n_previous_steps</span><span class="p">,</span>
+        <span class="n">energies</span><span class="o">=</span><span class="n">energies</span><span class="p">,</span>
+        <span class="n">biased_energies</span><span class="o">=</span><span class="n">biased_energies</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Close the ASE trajectory</span>
+    <span class="n">ase_traj</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="c1"># Duplicate frames removed only if PLUMED bias is initialised not from file</span>
+    <span class="c1"># if restart and isinstance(bias, PlumedBias) and not bias.from_file:</span>
+    <span class="c1">#    _remove_colvar_duplicate_frames(bias=bias, **kwargs)</span>
+
+    <span class="n">traj</span> <span class="o">=</span> <span class="n">_convert_ase_traj</span><span class="p">(</span><span class="n">traj_name</span><span class="o">=</span><span class="n">traj_name</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="n">bias</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">energy</span><span class="p">,</span> <span class="n">biased_energy</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">energies</span><span class="p">,</span> <span class="n">biased_energies</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">energy</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">biased_energy</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">bias_energy</span> <span class="o">=</span> <span class="n">biased_energy</span> <span class="o">-</span> <span class="n">energy</span>
+            <span class="n">bias_energies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bias_energy</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">energy</span><span class="p">,</span> <span class="n">bias_energy</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+        <span class="nb">zip</span><span class="p">(</span><span class="n">traj</span><span class="p">,</span> <span class="n">energies</span><span class="p">,</span> <span class="n">bias_energies</span><span class="p">)</span>
+    <span class="p">):</span>
+        <span class="n">frame</span><span class="o">.</span><span class="n">update_attr_from</span><span class="p">(</span><span class="n">configuration</span><span class="p">)</span>
+        <span class="n">frame</span><span class="o">.</span><span class="n">energy</span><span class="o">.</span><span class="n">predicted</span> <span class="o">=</span> <span class="n">energy</span>
+        <span class="n">frame</span><span class="o">.</span><span class="n">energy</span><span class="o">.</span><span class="n">bias</span> <span class="o">=</span> <span class="n">bias_energy</span>
+        <span class="n">frame</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="n">dt</span> <span class="o">*</span> <span class="n">interval</span> <span class="o">*</span> <span class="n">i</span>
+
+    <span class="k">return</span> <span class="n">traj</span>
+
+
+<span class="c1"># ============================================================================= #</span>
+<span class="c1">#             Auxiliary functions to create the OpenMM Simulation               #</span>
+<span class="c1"># ============================================================================= #</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_create_openmm_topology</span><span class="p">(</span><span class="n">ase_atoms</span><span class="p">:</span> <span class="s1">&#39;ase.Atoms&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;app.Topology&#39;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create an OpenMM topology from an ASE atoms object.&quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Creating the OpenMM topology&#39;</span><span class="p">)</span>
+    <span class="n">topology</span> <span class="o">=</span> <span class="n">app</span><span class="o">.</span><span class="n">Topology</span><span class="p">()</span>
+    <span class="n">chain</span> <span class="o">=</span> <span class="n">topology</span><span class="o">.</span><span class="n">addChain</span><span class="p">()</span>
+
+    <span class="n">atomic_numbers</span> <span class="o">=</span> <span class="n">ase_atoms</span><span class="o">.</span><span class="n">get_atomic_numbers</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">atomic_number</span> <span class="ow">in</span> <span class="n">atomic_numbers</span><span class="p">:</span>
+        <span class="n">residue</span> <span class="o">=</span> <span class="n">topology</span><span class="o">.</span><span class="n">addResidue</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;X&#39;</span><span class="p">,</span> <span class="n">chain</span><span class="o">=</span><span class="n">chain</span><span class="p">)</span>
+        <span class="n">element</span> <span class="o">=</span> <span class="n">app</span><span class="o">.</span><span class="n">Element</span><span class="o">.</span><span class="n">getByAtomicNumber</span><span class="p">(</span><span class="n">atomic_number</span><span class="p">)</span>
+        <span class="n">topology</span><span class="o">.</span><span class="n">addAtom</span><span class="p">(</span><span class="n">element</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">element</span><span class="p">,</span> <span class="n">residue</span><span class="p">)</span>
+
+    <span class="n">topology</span><span class="o">.</span><span class="n">setPeriodicBoxVectors</span><span class="p">(</span>
+        <span class="n">ase_atoms</span><span class="o">.</span><span class="n">get_cell</span><span class="p">()</span><span class="o">.</span><span class="n">array</span> <span class="o">*</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">unit</span><span class="o">.</span><span class="n">nanometer</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">topology</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_openmm_platform</span><span class="p">(</span><span class="n">platform</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;mm.Platform&#39;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the OpenMM platform to use.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+    <span class="n">available_platforms</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">mm</span><span class="o">.</span><span class="n">Platform</span><span class="o">.</span><span class="n">getPlatform</span><span class="p">(</span><span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">getName</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">mm</span><span class="o">.</span><span class="n">Platform</span><span class="o">.</span><span class="n">getNumPlatforms</span><span class="p">())</span>
+    <span class="p">]</span>
+
+    <span class="c1"># OpenMM might have been built with CUDA support</span>
+    <span class="c1"># but the current system might not have a GPU available (typical in clusters)</span>
+    <span class="k">if</span> <span class="s1">&#39;CUDA&#39;</span> <span class="ow">in</span> <span class="n">available_platforms</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+        <span class="n">available_platforms</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;CUDA&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">platform</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">platform</span> <span class="ow">in</span> <span class="n">available_platforms</span><span class="p">:</span>
+        <span class="n">platform</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">Platform</span><span class="o">.</span><span class="n">getPlatformByName</span><span class="p">(</span><span class="n">platform</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">platform</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+            <span class="p">(</span>
+                <span class="n">p</span>
+                <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;CUDA&#39;</span><span class="p">,</span> <span class="s1">&#39;OpenCL&#39;</span><span class="p">,</span> <span class="s1">&#39;CPU&#39;</span><span class="p">,</span> <span class="s1">&#39;Reference&#39;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">available_platforms</span>
+            <span class="p">),</span>
+            <span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">platform</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;No suitable platform found. Available platforms are: </span><span class="si">{</span><span class="n">available_platforms</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="p">)</span>
+        <span class="n">platform</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">Platform</span><span class="o">.</span><span class="n">getPlatformByName</span><span class="p">(</span><span class="n">platform</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Using the OpenMM platform: </span><span class="si">{</span><span class="n">platform</span><span class="o">.</span><span class="n">getName</span><span class="p">()</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">platform</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_create_openmm_simulation</span><span class="p">(</span>
+    <span class="n">mlp</span><span class="p">:</span> <span class="s1">&#39;mlt.potentials._base.MLPotential&#39;</span><span class="p">,</span>
+    <span class="n">topology</span><span class="p">:</span> <span class="s1">&#39;app.Topology&#39;</span><span class="p">,</span>
+    <span class="n">temp</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">platform</span><span class="p">:</span> <span class="s1">&#39;mm.Platform&#39;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;app.Simulation&#39;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create an OpenMM simulation object.&quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Creating the OpenMM simulation object&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Use the mace model with openmm-ml and make sure the total energy is used.</span>
+    <span class="n">potential</span> <span class="o">=</span> <span class="n">MLPotential</span><span class="p">(</span><span class="s1">&#39;mace&#39;</span><span class="p">,</span> <span class="n">modelPath</span><span class="o">=</span><span class="n">mlp</span><span class="o">.</span><span class="n">filename</span><span class="p">)</span>
+    <span class="n">system</span> <span class="o">=</span> <span class="n">potential</span><span class="o">.</span><span class="n">createSystem</span><span class="p">(</span><span class="n">topology</span><span class="p">,</span> <span class="n">returnEnergyType</span><span class="o">=</span><span class="s1">&#39;energy&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Use a Langevin integrator if temp&gt;0 (NVT ensemble).</span>
+    <span class="c1"># Otherwise, use a Verlet integrator (NVE ensemble).</span>
+    <span class="k">if</span> <span class="n">temp</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;Using Langevin integrator (NVT) with temperture=</span><span class="si">{</span><span class="n">temp</span><span class="si">}</span><span class="s1"> K&#39;</span>
+        <span class="p">)</span>
+        <span class="n">integrator</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">LangevinMiddleIntegrator</span><span class="p">(</span>
+            <span class="n">temp</span> <span class="o">*</span> <span class="n">unit</span><span class="o">.</span><span class="n">kelvin</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">unit</span><span class="o">.</span><span class="n">picoseconds</span><span class="p">,</span> <span class="n">dt</span> <span class="o">*</span> <span class="n">unit</span><span class="o">.</span><span class="n">femtoseconds</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Using Verlet integrator (NVE) as temperture is </span><span class="si">{</span><span class="n">temp</span><span class="si">}</span><span class="s1"> K&#39;</span><span class="p">)</span>
+        <span class="n">integrator</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">VerletIntegrator</span><span class="p">(</span><span class="n">dt</span> <span class="o">*</span> <span class="n">unit</span><span class="o">.</span><span class="n">femtoseconds</span><span class="p">)</span>
+
+    <span class="n">simulation</span> <span class="o">=</span> <span class="n">app</span><span class="o">.</span><span class="n">Simulation</span><span class="p">(</span><span class="n">topology</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">integrator</span><span class="p">,</span> <span class="n">platform</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">simulation</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_set_momenta_and_geometry</span><span class="p">(</span>
+    <span class="n">simulation</span><span class="p">:</span> <span class="s1">&#39;app.Simulation&#39;</span><span class="p">,</span>
+    <span class="n">positions</span><span class="p">:</span> <span class="s1">&#39;unit.Quantity&#39;</span><span class="p">,</span>
+    <span class="n">temp</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">restart_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;app.Simulation&#39;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the momenta and geometry for the OpenMM simulation.&quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">restart_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">restart_file</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;Restarting the OpenMM simulation state from file </span><span class="si">{</span><span class="n">restart_file</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="p">)</span>
+            <span class="n">simulation</span><span class="o">.</span><span class="n">loadState</span><span class="p">(</span><span class="n">restart_file</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;File </span><span class="si">{</span><span class="n">restart_file</span><span class="si">}</span><span class="s1"> not found&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s1">&#39;Setting the initial momenta and geometry for the OpenMM simulation&#39;</span>
+        <span class="p">)</span>
+        <span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">setPositions</span><span class="p">(</span><span class="n">positions</span><span class="p">)</span>
+        <span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">setVelocitiesToTemperature</span><span class="p">(</span><span class="n">temp</span> <span class="o">*</span> <span class="n">unit</span><span class="o">.</span><span class="n">kelvin</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">simulation</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_simulation_name</span><span class="p">(</span>
+    <span class="n">restart_files</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the name of the OpenMM simulation to be created or restarted.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">restart_files</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s1">&#39;idx&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">simulation_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;simulation_</span><span class="si">{</span><span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;idx&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1">.state.xml&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">simulation_name</span> <span class="o">=</span> <span class="s1">&#39;simulation.state.xml&#39;</span>
+
+        <span class="k">return</span> <span class="n">simulation_name</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">restart_files</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">filename</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.state.xml&#39;</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">filename</span>
+
+    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+        <span class="s1">&#39;Restart mode detected, but no simulation state files were found in restart_files. &#39;</span>
+    <span class="p">)</span>
+
+
+<span class="c1"># ============================================================================= #</span>
+<span class="c1">#               Auxiliary functions to run the OpenMM Simulation                #</span>
+<span class="c1"># ============================================================================= #</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_dynamics</span><span class="p">(</span>
+    <span class="n">simulation</span><span class="p">:</span> <span class="s1">&#39;app.Simulation&#39;</span><span class="p">,</span>
+    <span class="n">simulation_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">ase_atoms</span><span class="p">:</span> <span class="s1">&#39;ase.Atoms&#39;</span><span class="p">,</span>
+    <span class="n">ase_traj</span><span class="p">:</span> <span class="s1">&#39;ase.io.trajectory.Trajectory&#39;</span><span class="p">,</span>
+    <span class="n">traj_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">interval</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">n_steps</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">n_previous_steps</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">energies</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]],</span>
+    <span class="n">biased_energies</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]],</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run the MD and save frames to the mlt.Trajectory.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">append_unbiased_energy</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Append the unbiased potential energy to the energies list.&quot;&quot;&quot;</span>
+        <span class="n">energies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">potential_energy</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">append_biased_energy</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Append the biased potential energy to the biased_energies list.&quot;&quot;&quot;</span>
+        <span class="n">biased_energies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">biased_energy</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_trajectory</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save the ASE trajectory to a file.&quot;&quot;&quot;</span>
+        <span class="n">_save_trajectory</span><span class="p">(</span><span class="n">ase_traj</span><span class="p">,</span> <span class="n">traj_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_simulation_state</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save the state of the OpenMM simulation.&quot;&quot;&quot;</span>
+        <span class="n">simulation</span><span class="o">.</span><span class="n">saveState</span><span class="p">(</span><span class="n">simulation_name</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_frame_to_ase_traj</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a new frame to the ASE train trajectory&quot;&quot;&quot;</span>
+        <span class="c1"># Create a new ASE atoms object.</span>
+        <span class="n">new_ase_atoms</span> <span class="o">=</span> <span class="n">ase</span><span class="o">.</span><span class="n">Atoms</span><span class="p">(</span>
+            <span class="n">symbols</span><span class="o">=</span><span class="n">ase_atoms</span><span class="o">.</span><span class="n">get_chemical_symbols</span><span class="p">(),</span>
+            <span class="n">positions</span><span class="o">=</span><span class="n">coordinates</span><span class="p">,</span>
+            <span class="n">cell</span><span class="o">=</span><span class="n">ase_atoms</span><span class="o">.</span><span class="n">get_cell</span><span class="p">(),</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Append the new frame to the trajectory.</span>
+        <span class="n">ase_traj</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">new_ase_atoms</span><span class="p">,</span> <span class="n">energy</span><span class="o">=</span><span class="n">potential_energy</span><span class="p">)</span>
+
+    <span class="c1"># Determine saving intervals</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">key</span> <span class="ow">in</span> <span class="n">kwargs</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;save_fs&#39;</span><span class="p">,</span> <span class="s1">&#39;save_ps&#39;</span><span class="p">,</span> <span class="s1">&#39;save_ns&#39;</span><span class="p">]):</span>
+        <span class="n">traj_saving_interval</span> <span class="o">=</span> <span class="n">_traj_saving_interval</span><span class="p">(</span><span class="n">dt</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">traj_saving_interval</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="c1"># Add the initial frame to the ASE trajectory.</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">getState</span><span class="p">(</span><span class="n">getPositions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">getEnergy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">coordinates</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getPositions</span><span class="p">(</span><span class="n">asNumpy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">angstrom</span><span class="p">)</span>
+    <span class="n">potential_energy</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">state</span><span class="o">.</span><span class="n">getPotentialEnergy</span><span class="p">()</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">kilojoules_per_mole</span><span class="p">)</span>
+        <span class="o">*</span> <span class="n">_KJ_PER_MOL_TO_EV</span>
+    <span class="p">)</span>
+    <span class="n">add_frame_to_ase_traj</span><span class="p">()</span>
+
+    <span class="c1"># Run the dynamics n_steps, performing interval steps at a time.</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_steps</span> <span class="o">//</span> <span class="n">interval</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Step </span><span class="si">{</span><span class="n">j</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1"> / </span><span class="si">{</span><span class="n">n_steps</span><span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="n">interval</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">simulation</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="n">dt</span> <span class="o">*</span> <span class="n">interval</span> <span class="o">*</span> <span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Get the coordinates and energy of the system from the OpenMM simulation.</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">simulation</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">getState</span><span class="p">(</span><span class="n">getPositions</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">getEnergy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">coordinates</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">getPositions</span><span class="p">(</span><span class="n">asNumpy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span>
+            <span class="n">unit</span><span class="o">.</span><span class="n">angstrom</span>
+        <span class="p">)</span>
+        <span class="n">potential_energy</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">getPotentialEnergy</span><span class="p">()</span><span class="o">.</span><span class="n">value_in_unit</span><span class="p">(</span><span class="n">unit</span><span class="o">.</span><span class="n">kilojoules_per_mole</span><span class="p">)</span>
+            <span class="o">*</span> <span class="n">_KJ_PER_MOL_TO_EV</span>
+        <span class="p">)</span>
+
+        <span class="c1"># TODO: Implement biased_energy when bias is implemented</span>
+        <span class="n">biased_energy</span> <span class="o">=</span> <span class="n">potential_energy</span>
+
+        <span class="c1"># Add the frame to the ASE trajectory.</span>
+        <span class="n">add_frame_to_ase_traj</span><span class="p">()</span>
+
+        <span class="c1"># Store the energies</span>
+        <span class="n">append_unbiased_energy</span><span class="p">()</span>
+        <span class="n">append_biased_energy</span><span class="p">()</span>
+        <span class="n">save_simulation_state</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">traj_saving_interval</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">time</span> <span class="o">%</span> <span class="n">traj_saving_interval</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">save_trajectory</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Duarte group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

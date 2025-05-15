@@ -1,0 +1,16 @@
+mlptrain.training
+=================
+
+.. automodule:: mlptrain.training
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+---------
+
+.. toctree::
+   :maxdepth: 1
+
+   mlptrain.training.active
+   mlptrain.training.selection
