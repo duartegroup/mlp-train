@@ -147,7 +147,7 @@ def train(
 
         keep_al_trajs: (bool) If True, MLP-MD trajectories generated during AL phase are saved into new folder.
 
-        keep_output_files: (bool) If True, outputs of Orca computations are saved to new folder.
+        keep_output_files: (bool) If True, outputs of QM computations are saved to new folder.
     """
     if md_program.lower() == 'openmm':
         if not isinstance(mlp, mlptrain.potentials.MACE):
@@ -167,7 +167,7 @@ def train(
         os.makedirs('al_trajectories', exist_ok=True)
 
     if keep_output_files is True:
-        os.makedirs('orca_outputs', exist_ok=True)
+        os.makedirs('QM_outputs', exist_ok=True)
 
     if pbc and box_size is None:
         raise ValueError('For PBC in MD, the box_size cannot be None')
@@ -527,6 +527,7 @@ def _gen_active_config(
                 method_name,
                 n_cores=n_cores,
                 keep_output_files=keep_output_files,
+                output_name=f'{method_name}_iter_{kwargs["iteration"]}_{kwargs["idx"]}',
             )
 
         return frame
@@ -543,7 +544,12 @@ def _gen_active_config(
 
             if selector.select:
                 if frame.energy.true is None:
-                    frame.single_point(method_name, n_cores=n_cores)
+                    frame.single_point(
+                        method_name,
+                        n_cores=n_cores,
+                        keep_output_files=keep_output_files,
+                        output_name=f'{method_name}_iter_{kwargs["iteration"]}_{kwargs["idx"]}',
+                    )
 
                 return frame
 
@@ -568,6 +574,7 @@ def _gen_active_config(
         temp=temp,
         curr_time=curr_time,
         n_calls=n_calls + 1,
+        keep_output_files=keep_output_files,
         **kwargs,
     )
 

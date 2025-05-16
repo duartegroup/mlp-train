@@ -449,7 +449,7 @@ class Configuration(AtomCollection):
 
         if isinstance(method, str) and method.lower() in implemented_methods:
             if keep_output_files:
-                kept_substrings_list = []
+                kept_substrings_list = ['.out']
 
             decorator = work_in_tmp_dir(
                 kept_substrings=kept_substrings_list,
