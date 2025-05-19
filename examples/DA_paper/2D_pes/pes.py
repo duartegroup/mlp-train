@@ -1,11 +1,14 @@
 import os
 import mlptrain as mlt
 from mlptrain.box import Box
+import multiprocessing as mp
 import autode as ade
 from autode.utils import work_in_tmp_dir as work_in_tmp_dir_ade
 from autode.wrappers.methods import ExternalMethodOEG
 from autode.wrappers.keywords import KeywordsSet
 from autode.calculations.types import CalculationType
+from autode.calculations.calculation import Calculation
+from autode.calculations.executors import CalculationExecutor
 from ase.constraints import Hookean
 from ase.geometry import find_mic
 from mlptrain.log import logger
@@ -113,11 +116,11 @@ class MLPEST(ExternalMethodOEG):
     def __repr__(self):
         return f'ML potential (available = {self.is_available})'
 
-    def generate_input_for(self, calc, molecule):
+    def generate_input_for(self, calc):
         """Just print a .xyz file of the molecule, which can be read
         as a gap-train  configuration object"""
 
-        molecule.print_xyz_file(filename=calc.input.filename)
+        calc.molecule.print_xyz_file(filename=calc.input.filename)
         calc.input.additional_filenames = [self.path]
         return None
 
@@ -130,7 +133,7 @@ class MLPEST(ExternalMethodOEG):
     def version_in(self, calc):
         return '1.0.0'
 
-    def execute(self, calc):
+    def execute(self, calc: Calculation):
         """
         Execute the calculation
         Arguments:
@@ -148,7 +151,7 @@ class MLPEST(ExternalMethodOEG):
                 ase_atoms = from_autode_to_ase(molecule=calc.molecule)
                 logger.info('start optimise molecule')
                 logger.info(f'{ase_atoms.cell}, {ase_atoms.pbc}')
-                ase_atoms.set_calculator(self.ase_calculator)
+                ase_atoms.calc = self.ase_calculator
                 asetraj = ASETrajectory('tmp.traj', 'w', ase_atoms)
                 dyn = BFGS(ase_atoms)
                 dyn.attach(asetraj.write, interval=2)
@@ -156,27 +159,29 @@ class MLPEST(ExternalMethodOEG):
                 traj = _convert_ase_traj('tmp.traj')
                 final_traj = traj.final_frame
                 final_traj.single_point(self.mlp, n_cores=calc.n_cores)
-                name = self.get_output_filename(calc)
+                name = self.output_filename_for(calc)
                 final_traj.save_xyz(filename=name, predicted=True)
 
             else:
-                configuration = mlt.Configuration()
-                configuration.load(f'{calc.name}.xyz')
-                configuration.box = Box(size=[100, 100, 100])
-                configuration.single_point(self.mlp, n_cores=calc.n_cores)
-                name = self.get_output_filename(calc)
-                configuration.save_xyz(filename=name, predicted=True)
+                # run single point calculation
+                config_set = mlt.ConfigurationSet()
+                config_set.load_xyz(self.input_filename_for(calc), charge=0, mult=1)
+                config = config_set[0]
+                config.box = Box(size=[100, 100, 100])
+                config.single_point(self.mlp, n_cores=calc.n_cores)
+                name = self.output_filename_for(calc)
+                config.save_xyz(filename=name, predicted=True)
 
         execute_mlp()
         return None
 
     def terminated_normally_in(self, calc):
-        name = self.get_output_filename(calc)
+        name = self.output_filename_for(calc)
 
         if os.path.exists(name):
-            configuration = mlt.Configuration()
-            configuration.load(name)
-            return configuration.energy.true is not None
+            config_set = mlt.ConfigurationSet()
+            config_set.load_xyz(name, charge=0, mult=1, load_energies=True)
+            return config_set[0].energy.true is not None
         return False
 
     @property
@@ -184,16 +189,23 @@ class MLPEST(ExternalMethodOEG):
         return self.mlp.ase_calculator
 
     def _energy_from(self, calc):
-        name = self.get_output_filename(calc)
-        configuration = mlt.Configuration()
-        configuration.load(name)
-        return configuration.energy.true * ev_to_ha
+        name = self.output_filename_for(calc)
+        config_set = mlt.ConfigurationSet()
+        config_set.load_xyz(name, charge=0, mult=1, load_energies=True)
+        config = config_set[0]
+        logger.info(f'True Energy: {config.energy.true}')
+        logger.info(f'Pred Energy: {config.energy.predicted}')
+        return config.energy.true * ev_to_ha
 
     def coordinates_from(self, calc):
-        return None
+        name = self.output_filename_for(calc)
+        config_set = mlt.ConfigurationSet()
+        config_set.load_xyz(name, charge=0, mult=1)
+        config = config_set[0]
+        return np.array([atom.coordinate for atom in config.atoms])
 
     def optimiser_from(self, calc):
-        raise None
+        return None
 
     def get_free_energy(self, calc):
         return None
@@ -217,19 +229,21 @@ class MLPEST(ExternalMethodOEG):
         return None
 
     def get_final_atoms(self, calc):
-        name = self.get_output_filename(calc)
-        configuration = mlt.Configuration()
-        configuration.load(name)
-        return [atom for atom in configuration.atoms]
+        name = self.output_filename_for(calc)
+        config_set = mlt.ConfigurationSet()
+        config_set.load_xyz(name, charge=0, mult=1)
+        config = config_set[0]
+        return [atom for atom in config.atoms]
 
     def get_atomic_charges(self, calc):
         return None
 
     def gradient_from(self, calc):
-        name = self.get_output_filename(calc)
-        configuration = mlt.Configuration()
-        configuration.load(name)
-        return configuration.forces.true * ev_to_ha
+        name = self.output_filename_for(calc)
+        config_set = mlt.ConfigurationSet()
+        config_set.load_xyz(name, charge=0, mult=1, load_energies=True, load_forces=True)
+        config = config_set[0]
+        return config.forces.true * ev_to_ha
 
     # def implements(self, calculation_type: CalculationType):
     #     return True
@@ -251,7 +265,7 @@ class MLPEST(ExternalMethodOEG):
         self.action = deepcopy(action)
 
 
-def get_final_species(TS: mlt.Configuration, mlp):
+def get_final_species(TS: mlt.Configuration, mlp: mlt.potentials.MLPotential):
     """get the optimised product after MD propogation"""
     trajectory_product = mlt.md.run_mlp_md(
         configuration=TS,
@@ -267,7 +281,7 @@ def get_final_species(TS: mlt.Configuration, mlp):
 
     traj_product_optimised = optimise_with_fix_solute(
         solute=TS,
-        configuration=final_traj_product,
+        config=final_traj_product,
         fmax=0.01,
         mlp=mlp,
         constraint=False,
@@ -288,15 +302,19 @@ def get_final_species(TS: mlt.Configuration, mlp):
 
 
 @work_in_tmp_dir_mlt()
-def optimise_with_fix_solute(
-    solute, configuration, fmax, mlp, constraint=True, **kwargs
+def optimise_with_fix_solute(solute, 
+                             config: mlt.Configuration, 
+                             fmax, 
+                             mlp, 
+                             constraint=True, 
+                             **kwargs
 ):
     """optimised molecular geometries by MLP with or without constraint"""
     from ase.constraints import FixAtoms
     from ase.optimize import BFGS
     from ase.io.trajectory import Trajectory as ASETrajectory
 
-    assert configuration.box is not None, 'configuration must have box'
+    assert config.box is not None, 'configuration must have box'
     logger.info(
         'Optimise the configuration with fixed solute (solute coords should at the first in configuration coords) by MLP'
     )
@@ -307,10 +325,10 @@ def optimise_with_fix_solute(
     os.environ['OMP_NUM_THREADS'] = str(n_cores)
     logger.info(f'Using {n_cores} cores for MLP MD')
 
-    ase_atoms = configuration.ase_atoms
+    ase_atoms = config.ase_atoms
     logger.info(f'{ase_atoms.cell}, {ase_atoms.pbc}')
     print('Current Working Dir: ', os.getcwd())
-    ase_atoms.set_calculator(mlp.ase_calculator)
+    ase_atoms.calc = mlp.ase_calculator
 
     if constraint:
         solute_idx = list(range(len(solute.atoms)))
@@ -331,6 +349,10 @@ Hookean.adjust_forces = adjust_forces
 Hookean.adjust_potential_energy = adjust_potential_energy
 
 if __name__ == '__main__':
+
+    # set multi start method to avoid CUDA errors
+    print(mp.get_start_method())
+    mp.set_start_method("spawn", force=True)
 
     TS_mol = mlt.Molecule(name='cis_endo_TS_water.xyz')
 
@@ -369,6 +391,10 @@ if __name__ == '__main__':
         },
     )
 
+    # print key values
+    # print('PES Energies: ', pes._energies)
+
+    # calculate the pes
     pes.calculate(method=ade_endo, keywords=['opt'], n_cores=mlt.Config.n_cores)
     pes.save(filename='endo_in_water.npz')
     pes.plot()
