@@ -504,7 +504,11 @@ class ConfigurationSet(list):
 
         return None
 
-    def single_point(self, method: str) -> None:
+    def single_point(
+        self,
+        method: str,
+        output_name: Optional[str] = None,
+    ) -> None:
         """
         Evaluate energies and forces on all configuration in this set
 
@@ -513,7 +517,9 @@ class ConfigurationSet(list):
             method:
         """
         return self._run_parallel_method(
-            function=_single_point_eval, method_name=method
+            function=_single_point_eval,
+            method_name=method,
+            output_name=output_name,
         )
 
     @property
@@ -798,9 +804,9 @@ class ConfigurationSet(list):
         return name
 
 
-def _single_point_eval(config, method_name, **kwargs):
+def _single_point_eval(config, method_name, output_name, **kwargs):
     """Top-level hashable function useful for multiprocessing"""
-    config.single_point(method_name, **kwargs)
+    config.single_point(method=method_name, output_name=output_name, **kwargs)
     return config
 
 

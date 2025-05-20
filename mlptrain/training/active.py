@@ -583,6 +583,7 @@ def _set_init_training_configs(
     mlp: 'mlptrain.potentials._base.MLPotential',
     init_configs: 'mlptrain.ConfigurationSet',
     method_name: str,
+    keep_output_files: str,
 ) -> None:
     """Set some initial training configurations"""
 
@@ -597,7 +598,9 @@ def _set_init_training_configs(
             f'Initialised with {len(init_configs)} configurations '
             f'all with defined energy'
         )
-        init_configs.single_point(method=method_name)
+        init_configs.single_point(
+            method=method_name, keep_output_files=keep_output_files
+        )
 
     mlp.training_data += init_configs
 
@@ -656,7 +659,9 @@ def _gen_and_set_init_training_configs(
             continue
 
     logger.info(f'Added {num} configurations with min dist = {dist:.3f} Å')
-    init_configs.single_point(method_name)
+    init_configs.single_point(
+        method_name,
+    )
     mlp.training_data += init_configs
     return init_configs
 

@@ -63,13 +63,13 @@ def work_in_tmp_dir(
                         ):
                             if output_name is not None:
                                 extension = filename.split('.')[-1]
-                                output_name = output_name + '.' + extension
+                                final_name = f'{output_name}.{extension}'
                             else:
-                                output_name = filename
+                                final_name = filename
 
                             shutil.copy(
                                 src=os.path.join(tmpdir_path, filename),
-                                dst=os.path.join(here_path, output_name),
+                                dst=os.path.join(here_path, final_name),
                             )
 
                 os.chdir(here_path)

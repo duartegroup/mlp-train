@@ -431,6 +431,8 @@ class Configuration(AtomCollection):
         method: Union[str, 'mlptrain.potentials._base.MLPotential'],
         n_cores: int = 1,
         keep_output_files: bool = True,
+        output_name: Optional[str] = None,
+        **kwargs,
     ) -> None:
         """
         Run a single point energy and gradient (force) evaluation using
@@ -453,9 +455,15 @@ class Configuration(AtomCollection):
 
             decorator = work_in_tmp_dir(
                 kept_substrings=kept_substrings_list,
+                output_name=output_name,
             )
             run_autode_decorated = decorator(run_autode)
-            run_autode_decorated(self, method, n_cores=n_cores)
+            run_autode_decorated(
+                self,
+                method,
+                n_cores=n_cores,
+                **kwargs,
+            )
             self.n_ref_evals += 1
             return None
 
