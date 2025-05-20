@@ -9,6 +9,7 @@ from autode.wrappers.keywords import KeywordsSet
 from autode.calculations.types import CalculationType
 from autode.calculations.calculation import Calculation
 from autode.calculations.executors import CalculationExecutor
+from autode.values import PotentialEnergy
 from ase.constraints import Hookean
 from ase.geometry import find_mic
 from mlptrain.log import logger
@@ -194,8 +195,7 @@ class MLPEST(ExternalMethodOEG):
         config_set.load_xyz(name, charge=0, mult=1, load_energies=True)
         config = config_set[0]
         logger.info(f'True Energy: {config.energy.true}')
-        logger.info(f'Pred Energy: {config.energy.predicted}')
-        return config.energy.true * ev_to_ha
+        return PotentialEnergy(config.energy.true * ev_to_ha, units='ha', method=self)
 
     def coordinates_from(self, calc):
         name = self.output_filename_for(calc)
@@ -244,9 +244,6 @@ class MLPEST(ExternalMethodOEG):
         config_set.load_xyz(name, charge=0, mult=1, load_energies=True, load_forces=True)
         config = config_set[0]
         return config.forces.true * ev_to_ha
-
-    # def implements(self, calculation_type: CalculationType):
-    #     return True
 
     def uses_external_io(self):
         return True
@@ -351,21 +348,29 @@ Hookean.adjust_potential_energy = adjust_potential_energy
 if __name__ == '__main__':
 
     # set multi start method to avoid CUDA errors
-    print(mp.get_start_method())
     mp.set_start_method("spawn", force=True)
 
-    TS_mol = mlt.Molecule(name='cis_endo_TS_water.xyz')
+    ts_mol = mlt.Molecule(name='cis_endo_TS_wB97M.xyz')
+    system = mlt.System(ts_mol, box=Box([18.5, 18.5, 18.5]))
 
-    system = mlt.System(TS_mol, box=Box([100, 100, 100]))
+    # product_fname = 'cis_endo_DA_product.xyz'
+    product_fname = 'cis_endo_DA_product_in_water.xyz'
 
+    # solvate system with water molecules
+    # ts_mol = mlt.Molecule(name='cis_endo_TS_water.xyz')
+    water_mol_fname = 'h2o.xyz'
+    water_mol = mlt.Molecule(name='h2o.xyz')
+    system.add_molecules(water_mol, num=200)
+
+    # ACE models
     # endo = mlt.potentials.ACE('endo_ace_wB97M_imwater', system)
+    
+    # MACE models
     # model_name = 'GO-MACE-23'
     # model_name = 'MACE-OFF23_medium'
     model_name = 'MACE-OFF23_medium_endo_DA_train_fine_tuned'
     cwd = os.getcwd()
     endo = mlt.potentials.MACE(model_name, system, model_fpath=f'{cwd}/{model_name}.model')
-
-    # dumy_ase_calc = endo.ase_calculator
 
     # load transition state
     ts_set = mlt.ConfigurationSet()
@@ -375,26 +380,35 @@ if __name__ == '__main__':
     ts.charge = 0
     ts.mult = 1
 
-    # ade_endo = MLPEST(mlp=endo, action=['opt'], path=f'{cwd}/{endo.name}.json')   # for ACE
-    ade_endo = MLPEST(mlp=endo, action=['opt'], path=f'{cwd}/{endo.name}.model')
+    # print true DFT TS location (in reaction coordinates)
+    ts_rs_1_dist = np.linalg.norm(ts.atoms[1].coord - ts.atoms[12].coord)
+    ts_rs_2_dist = np.linalg.norm(ts.atoms[6].coord - ts.atoms[11].coord)
+    logger.info(f"Reference TS Reaction Distances: r1: {ts_rs_1_dist}, r2: {ts_rs_2_dist}")
 
+    # TODO: THIS IS WHERE WE NEED TO GET THE PRODUCT IN WATER!!! .solvate() product
+    ts.solvate(box_size=18.5, solvent_molecule=ade.Molecule(water_mol_fname), solvent_density=...)
+
+    # get product and save structure
     product = get_final_species(ts, endo)
-
-    product.print_xyz_file(filename='product.xyz')
+    product.print_xyz_file(filename=product_fname)
 
     # define product
     pes = ade.pes.RelaxedPESnD(
-        ade.Molecule('product.xyz'),
+        ade.Molecule(product_fname),
         rs={
-            (1, 12): (1.55, 3, 20),  # Current->3.0 Å in 8 steps
-            (6, 11): (1.55, 3, 20),
+            (1, 12): (2.0, 2.2, 2),  # Current->3.0 Å in 16 steps
+            (6, 11): (2.0, 2.2, 2),
+            # (1, 12): (1.50, 3.5, 25),  # Current->3.0 Å in 16 steps
+            # (6, 11): (1.50, 3.5, 25),
         },
     )
 
-    # print key values
-    # print('PES Energies: ', pes._energies)
+    # define ade Method
+    # ade_endo = MLPEST(mlp=endo, action=['opt'], path=f'{cwd}/{endo.name}.json')   # for ACE
+    ade_endo = MLPEST(mlp=endo, action=['opt'], path=f'{cwd}/{endo.name}.model')    # for MACE
 
     # calculate the pes
     pes.calculate(method=ade_endo, keywords=['opt'], n_cores=mlt.Config.n_cores)
-    pes.save(filename='endo_in_water.npz')
+    pes.save(filename='endo_in_vac.npz')
+    # pes.save(filename='endo_in_water.npz')
     pes.plot()
