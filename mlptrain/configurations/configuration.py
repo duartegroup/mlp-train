@@ -1,4 +1,5 @@
 import mlptrain
+import shutil
 import ase
 import numpy as np
 from typing import Optional, Union, List
@@ -451,7 +452,10 @@ class Configuration(AtomCollection):
 
         if isinstance(method, str) and method.lower() in implemented_methods:
             if keep_output_files:
-                kept_substrings_list = ['.out']
+                if method in ['g09', 'g16']:
+                    kept_substrings_list = ['.log']
+                else:
+                    kept_substrings_list = ['.out']
 
             decorator = work_in_tmp_dir(
                 kept_substrings=kept_substrings_list,
@@ -464,6 +468,13 @@ class Configuration(AtomCollection):
                 n_cores=n_cores,
                 **kwargs,
             )
+
+            if keep_output_files and output_name is not None:
+                shutil.move(
+                    src=f'{output_name}{kept_substrings_list[0]}',
+                    dst='QM_outputs/',
+                )
+
             self.n_ref_evals += 1
             return None
 
