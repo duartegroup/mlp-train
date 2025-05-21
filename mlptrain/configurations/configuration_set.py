@@ -246,7 +246,9 @@ class ConfigurationSet(list):
         return super().append(value)
 
     def compare(
-        self, *args: Union['mlptrain.potentials.MLPotential', str]
+        self,
+        *args: Union['mlptrain.potentials.MLPotential', str],
+        keep_outputs: bool = True,
     ) -> None:
         """
         Compare methods e.g. a MLP to a ground truth reference method over
@@ -255,6 +257,7 @@ class ConfigurationSet(list):
 
         -----------------------------------------------------------------------
         Arguments:
+            keep_outputs: If True, save outputs of QM computations to designated folder
             *args: Strings defining the method or MLPs
         """
         from mlptrain.configurations.plotting import parity_plot
@@ -284,7 +287,7 @@ class ConfigurationSet(list):
                         logger.info(
                             f'Running single point calcs with method {arg}'
                         )
-                        self.single_point(method=arg)
+                        self.single_point(method=arg, output_name='comparison')
                     elif self.has_a_none_energy:
                         raise ValueError(
                             'Data set contains mix of labelled and non-labelled data!'
@@ -758,7 +761,8 @@ class ConfigurationSet(list):
         )
 
         with Pool(processes=n_processes) as pool:
-            for _, config in enumerate(self):
+            for num, config in enumerate(self):
+                kwargs['index'] = num
                 result = pool.apply_async(
                     func=function, args=(config,), kwds=kwargs
                 )
@@ -806,6 +810,9 @@ class ConfigurationSet(list):
 
 def _single_point_eval(config, method_name, output_name, **kwargs):
     """Top-level hashable function useful for multiprocessing"""
+
+    if 'index' in kwargs:
+        output_name = (f'{output_name}_{kwargs.pop("index")}',)
     config.single_point(method=method_name, output_name=output_name, **kwargs)
     return config
 
