@@ -1,7 +1,0 @@
-mlptrain.box
-============
-
-.. automodule:: mlptrain.box
-   :members:
-   :undoc-members:
-   :show-inheritance:

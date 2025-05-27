@@ -1,7 +1,0 @@
-mlptrain.configurations.plotting
-================================
-
-.. automodule:: mlptrain.configurations.plotting
-   :members:
-   :undoc-members:
-   :show-inheritance:

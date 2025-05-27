@@ -1,7 +1,0 @@
-mlptrain.energy
-===============
-
-.. automodule:: mlptrain.energy
-   :members:
-   :undoc-members:
-   :show-inheritance:

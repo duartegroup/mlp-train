@@ -1,7 +1,0 @@
-mlptrain.training.selection
-===========================
-
-.. automodule:: mlptrain.training.selection
-   :members:
-   :undoc-members:
-   :show-inheritance:

@@ -1,7 +1,0 @@
-mlptrain.configurations.configuration_set
-=========================================
-
-.. automodule:: mlptrain.configurations.configuration_set
-   :members:
-   :undoc-members:
-   :show-inheritance:

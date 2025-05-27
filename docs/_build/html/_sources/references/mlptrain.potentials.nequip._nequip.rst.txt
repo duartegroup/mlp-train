@@ -1,7 +1,0 @@
-mlptrain.potentials.nequip._nequip
-==================================
-
-.. automodule:: mlptrain.potentials.nequip._nequip
-   :members:
-   :undoc-members:
-   :show-inheritance:
