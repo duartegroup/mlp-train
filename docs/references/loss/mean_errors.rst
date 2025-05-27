@@ -1,5 +1,6 @@
-mlptrain.loss.mean_errors
-=========================
+***********
+Mean_errors
+***********
 
 .. automodule:: mlptrain.loss.mean_errors
    :members:

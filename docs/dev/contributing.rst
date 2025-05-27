@@ -35,6 +35,7 @@ hesitate to include command line output or screenshots as part of your
 bug report.
 
 **An idea for a fix?**, feel free to describe it in your bug report.
+
 ========================
 Contributing to the code
 ========================

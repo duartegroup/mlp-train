@@ -1,5 +1,6 @@
-mlptrain.sampling.bias
-======================
+****
+Bias
+****
 
 .. automodule:: mlptrain.sampling.bias
    :members:

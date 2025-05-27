@@ -1,5 +1,6 @@
-mlptrain.sampling.reaction_coord
-================================
+**************
+Reaction_coord
+**************
 
 .. automodule:: mlptrain.sampling.reaction_coord
    :members:

@@ -1,5 +1,6 @@
-mlptrain.descriptors
-====================
+***********
+Descriptors
+***********
 
 .. automodule:: mlptrain.descriptors
    :members:

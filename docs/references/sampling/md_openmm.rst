@@ -1,5 +1,6 @@
-mlptrain.sampling.md_openmm
-===========================
+*********
+MD_openmm
+*********
 
 .. automodule:: mlptrain.sampling.md_openmm
    :members:

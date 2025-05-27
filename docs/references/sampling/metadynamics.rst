@@ -1,5 +1,6 @@
-mlptrain.sampling.metadynamics
-==============================
+************
+Metadynamics
+************
 
 .. automodule:: mlptrain.sampling.metadynamics
    :members:

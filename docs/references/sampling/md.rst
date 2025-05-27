@@ -1,5 +1,6 @@
-mlptrain.sampling.md
-====================
+**
+MD
+**
 
 .. automodule:: mlptrain.sampling.md
    :members:

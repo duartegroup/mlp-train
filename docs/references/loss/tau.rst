@@ -1,5 +1,6 @@
-mlptrain.loss.tau
-=================
+***
+Tau
+***
 
 .. automodule:: mlptrain.loss.tau
    :members:

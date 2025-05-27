@@ -1,5 +1,6 @@
-mlptrain.sampling.plumed
-========================
+******
+Plumed
+******
 
 .. automodule:: mlptrain.sampling.plumed
    :members:

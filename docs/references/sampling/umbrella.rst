@@ -1,5 +1,6 @@
-mlptrain.sampling.umbrella
-==========================
+********
+Umbrella
+********
 
 .. automodule:: mlptrain.sampling.umbrella
    :members:
