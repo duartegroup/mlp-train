@@ -5,6 +5,7 @@ channels:
   - conda-forge
 dependencies:
   - python=3.9
+  - libgfortran=14.*
   - pip
   - pre-commit
   - ase
