@@ -18,7 +18,7 @@ You can train MLIP for existing dataset. The structures can be loaded in xyz for
    data.load_xyz('data_set.xyz', charge = 0, mult = 1)
 
 
-This function assumes that all data in your dataset have the same charge and multiplicity. If it is not case, you can load data with different charges separately.
+This function assumes that all data in your dataset have the same charge and multiplicity. If it is not the case, you can load data with different charges separately.
 
 
 .. code-block:: python
