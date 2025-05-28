@@ -154,7 +154,7 @@ class MLPEST(ExternalMethodOEG):
                 asetraj = ASETrajectory('tmp.traj', 'w', ase_atoms)
                 dyn = BFGS(ase_atoms)
                 dyn.attach(asetraj.write, interval=2)
-                dyn.run(fmax=0.01)
+                dyn.run(fmax=0.1)
                 traj = _convert_ase_traj('tmp.traj')
                 final_traj = traj.final_frame
                 final_traj.single_point(self.mlp, n_cores=calc.n_cores)
@@ -268,6 +268,8 @@ class MLPEST(ExternalMethodOEG):
 
 def get_final_species(TS: mlt.Configuration, mlp: mlt.potentials.MLPotential):
     """get the optimised product after MD propogation"""
+    
+    # 1) run biased MD to go from TS -> Product
     trajectory_product = mlt.md.run_mlp_md(
         configuration=TS,
         mlp=mlp,
@@ -277,13 +279,13 @@ def get_final_species(TS: mlt.Configuration, mlp: mlt.potentials.MLPotential):
         fbond_energy={(1, 12): 0.1, (6, 11): 0.1},
         interval=2,
     )
-
     final_traj_product = trajectory_product.final_frame
 
+    # 2) fix the solute and run optimisation of solvent (if there is any)
     traj_product_optimised = optimise_with_fix_solute(
         solute=TS,
         config=final_traj_product,
-        fmax=0.01,
+        fmax=0.1, #0.01,
         mlp=mlp,
         constraint=False,
     )
@@ -304,7 +306,12 @@ def get_final_species(TS: mlt.Configuration, mlp: mlt.potentials.MLPotential):
 
 @work_in_tmp_dir_mlt()
 def optimise_with_fix_solute(
-    solute, config: mlt.Configuration, fmax, mlp, constraint=True, **kwargs
+    solute, 
+    config: mlt.Configuration, 
+    fmax, 
+    mlp, 
+    constraint=True, 
+    **kwargs
 ):
     """optimised molecular geometries by MLP with or without constraint"""
     from ase.constraints import FixAtoms
@@ -346,11 +353,13 @@ Hookean.adjust_forces = adjust_forces
 Hookean.adjust_potential_energy = adjust_potential_energy
 
 if __name__ == '__main__':
+
     # set multi start method to avoid CUDA errors
     mp.set_start_method('spawn', force=True)
 
+    box_dim = [100.0, 100.0, 100.0]
     ts_mol = mlt.Molecule(name='cis_endo_TS_wB97M.xyz')
-    system = mlt.System(ts_mol, box=Box([18.5, 18.5, 18.5]))
+    system = mlt.System(ts_mol, box=Box(box_dim))
 
     # product_fname = 'cis_endo_DA_product.xyz'
     product_fname = 'cis_endo_DA_product_in_water.xyz'
@@ -359,7 +368,7 @@ if __name__ == '__main__':
     # ts_mol = mlt.Molecule(name='cis_endo_TS_water.xyz')
     water_mol_fname = 'h2o.xyz'
     water_mol = mlt.Molecule(name='h2o.xyz')
-    system.add_molecules(water_mol, num=200)
+    # system.add_molecules(water_mol, num=200)
     solvent_density = 0.99657
 
     # ACE models
@@ -379,9 +388,15 @@ if __name__ == '__main__':
     ts_set = mlt.ConfigurationSet()
     ts_set.load_xyz(filename='cis_endo_TS_wB97M.xyz', charge=0, mult=1)
     ts = ts_set[0]
-    ts.box = Box([100, 100, 100])
-    ts.charge = 0
-    ts.mult = 1
+    ts.box = Box(box_dim)
+
+    # solvate the transition state
+    ts.solvate(
+        box_size=18.5,
+        solvent_molecule=ade.Molecule(water_mol_fname),
+        solvent_density=solvent_density,
+    )
+    ts.save_xyz('solvated_ts')
 
     # print true DFT TS location (in reaction coordinates)
     ts_rs_1_dist = np.linalg.norm(ts.atoms[1].coord - ts.atoms[12].coord)
@@ -389,14 +404,6 @@ if __name__ == '__main__':
     logger.info(
         f'Reference TS Reaction Distances: r1: {ts_rs_1_dist}, r2: {ts_rs_2_dist}'
     )
-
-    # TODO: THIS IS WHERE WE NEED TO GET THE PRODUCT IN WATER!!! .solvate() product
-    ts.solvate(
-        box_size=18.5,
-        solvent_molecule=ade.Molecule(water_mol_fname),
-        solvent_density=solvent_density,
-    )
-    ts.save_xyz('solvated_ts')
 
     # get product and save structure
     product = get_final_species(ts, endo)
@@ -423,6 +430,6 @@ if __name__ == '__main__':
     pes.calculate(
         method=ade_endo, keywords=['opt'], n_cores=mlt.Config.n_cores
     )
-    pes.save(filename='endo_in_vac.npz')
-    # pes.save(filename='endo_in_water.npz')
+    # pes.save(filename='endo_in_vac.npz')
+    pes.save(filename='endo_in_water.npz')
     pes.plot()
