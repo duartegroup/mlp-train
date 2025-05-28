@@ -1,8 +1,8 @@
 ***********
-Descriptors
+SOAP descriptor
 ***********
 
-.. automodule:: mlptrain.descriptors
+.. automodule:: mlptrain.descriptor.soap_descriptor
    :members:
    :undoc-members:
    :show-inheritance:

@@ -4,5 +4,6 @@ Descriptor
 
 .. toctree::
    :maxdepth: 1
-
-   descriptors
+    
+   _base
+   soap_descriptor
