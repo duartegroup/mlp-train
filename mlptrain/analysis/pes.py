@@ -318,9 +318,11 @@ def calculate_pes(
     Currently only tested for unimolecular (X -> A + B) and bimolecular (A + B -> X) reactions.
 
     Parameters:
-        mlp_model (mlt.potentials.MLPotetntial)
-
-            rs={(1, 12): (1.50, 3.5, 25), (6, 11): (1.50, 3.5, 25)}
+        mlp_model (mlt.potentials.MLPotetntial): the mlp model to use to calculate the pes
+        reaction_coords (list[tuple]): a list of tuples of (id_1, id_2) which each define a bond to be formed / broken between 
+                                       reactant and product, i.e. (1, 12) specified that a bond will form between atom id 1 and atom id 12.
+        solvent_xyz_fpath:
+        solvent_density:
     """
 
     Hookean.adjust_forces = adjust_forces
@@ -341,10 +343,12 @@ def calculate_pes(
     ts.box = Box(box_dim)
 
     # print true DFT TS location (in reaction coordinates)
-    ts_rs_1_dist = np.linalg.norm(ts.atoms[1].coord - ts.atoms[12].coord)
-    ts_rs_2_dist = np.linalg.norm(ts.atoms[6].coord - ts.atoms[11].coord)
+    ts_r_coord_dists = [np.linalg.norm(ts.atoms[r_coord[0]].coord - ts.atoms[r_coord[1]].coord) for r_coord in reaction_coords]
+    # ts_rs_1_dist = np.linalg.norm(ts.atoms[1].coord - ts.atoms[12].coord)
+    # ts_rs_2_dist = np.linalg.norm(ts.atoms[6].coord - ts.atoms[11].coord)
     logger.info(
-        f'Reference TS Reaction Distances: r1: {ts_rs_1_dist}, r2: {ts_rs_2_dist}'
+        f'Reference TS Reaction Distances: ' + ''.join(f'r{i} {r_coord}: {r_coord_dist} A' 
+                                                       for i, r_coord, r_coord_dist in enumerate(zip(reaction_coords, ts_r_coord_dists)))
     )
 
     # 1) run biased MD to go from TS -> Product
@@ -392,7 +396,10 @@ def calculate_pes(
     product.print_xyz_file(filename=product_fname)
 
     # define PES
-    pes = ade.pes.RelaxedPESnD(ade.Molecule(product_fname))
+    pes = ade.pes.RelaxedPESnD(
+        ade.Molecule(product_fname),
+        rs={r_coord: grid_spec for r_coord in reaction_coords}
+        )
 
     # define ade Method
     # ade_endo = MLPEST(mlp=endo, action=['opt'], path=f'{cwd}/{endo.name}.json')   # for ACE
