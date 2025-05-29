@@ -12,6 +12,7 @@ from mlptrain.forces import Forces
 from mlptrain.energy import Energy
 from mlptrain.configurations.configuration import Configuration
 from mlptrain.box import Box
+from copy import deepcopy
 
 
 class ConfigurationSet(list):
@@ -248,7 +249,7 @@ class ConfigurationSet(list):
     def compare(
         self,
         *args: Union['mlptrain.potentials.MLPotential', str],
-        keep_outputs: bool = True,
+        keep_output_files: bool = True,
     ) -> None:
         """
         Compare methods e.g. a MLP to a ground truth reference method over
@@ -257,7 +258,7 @@ class ConfigurationSet(list):
 
         -----------------------------------------------------------------------
         Arguments:
-            keep_outputs: If True, save outputs of QM computations to designated folder
+            keep_output_files: If True, save outputs of QM computations to designated folder
             *args: Strings defining the method or MLPs
         """
         from mlptrain.configurations.plotting import parity_plot
@@ -283,11 +284,16 @@ class ConfigurationSet(list):
                 # if is a string reference to a QM calculation method
                 elif isinstance(arg, str):
                     # if true energies and forces do not already exist for this config set
+
+                    if keep_output_files is True:
+                        os.makedirs('QM_comparison', exist_ok=True)
+
                     if all(c.energy.true is None for c in self):
                         logger.info(
                             f'Running single point calcs with method {arg}'
                         )
                         self.single_point(method=arg, output_name='comparison')
+
                     elif self.has_a_none_energy:
                         raise ValueError(
                             'Data set contains mix of labelled and non-labelled data!'
@@ -762,7 +768,9 @@ class ConfigurationSet(list):
 
         with Pool(processes=n_processes) as pool:
             for num, config in enumerate(self):
-                kwargs['index'] = num
+                print(num)
+                kwargs['index'] = deepcopy(num)
+                print(kwargs['index'])
                 result = pool.apply_async(
                     func=function, args=(config,), kwds=kwargs
                 )
@@ -812,7 +820,7 @@ def _single_point_eval(config, method_name, output_name, **kwargs):
     """Top-level hashable function useful for multiprocessing"""
 
     if 'index' in kwargs:
-        output_name = (f'{output_name}_{kwargs.pop("index")}',)
+        output_name = f'{output_name}_{kwargs.pop("index")}'
     config.single_point(method=method_name, output_name=output_name, **kwargs)
     return config
 
