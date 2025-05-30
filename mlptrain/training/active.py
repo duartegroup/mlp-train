@@ -183,7 +183,10 @@ def train(
     elif init_configs is None:
         init_config = mlp.system.configuration
         _gen_and_set_init_training_configs(
-            mlp=mlp, method_name=method_name, num=n_init_configs
+            mlp=mlp,
+            method_name=method_name,
+            num=n_init_configs,
+            keep_output_files=keep_output_files,
         )
 
     else:
@@ -598,8 +601,13 @@ def _set_init_training_configs(
             f'Initialised with {len(init_configs)} configurations '
             f'all with defined energy'
         )
+
+        output_name = 'initial'
+
         init_configs.single_point(
-            method=method_name, keep_output_files=keep_output_files
+            method=method_name,
+            keep_output_files=keep_output_files,
+            output_name=output_name,
         )
 
     mlp.training_data += init_configs
@@ -608,7 +616,10 @@ def _set_init_training_configs(
 
 
 def _gen_and_set_init_training_configs(
-    mlp: 'mlptrain.potentials._base.MLPotential', method_name: str, num: int
+    mlp: 'mlptrain.potentials._base.MLPotential',
+    method_name: str,
+    num: int,
+    keep_output_files: bool,
 ) -> None:
     """
     Generate a set of initial configurations for a system, if init_configs
@@ -659,8 +670,12 @@ def _gen_and_set_init_training_configs(
             continue
 
     logger.info(f'Added {num} configurations with min dist = {dist:.3f} Å')
+
+    output_name = 'initial'
+
     init_configs.single_point(
         method_name,
+        output_name,
     )
     mlp.training_data += init_configs
     return init_configs
