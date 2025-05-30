@@ -285,9 +285,6 @@ class ConfigurationSet(list):
                 elif isinstance(arg, str):
                     # if true energies and forces do not already exist for this config set
 
-                    if keep_output_files is True:
-                        os.makedirs('QM_comparison', exist_ok=True)
-
                     if all(c.energy.true is None for c in self):
                         logger.info(
                             f'Running single point calcs with method {arg}'
@@ -768,11 +765,10 @@ class ConfigurationSet(list):
 
         with Pool(processes=n_processes) as pool:
             for num, config in enumerate(self):
-                print(num)
-                kwargs['index'] = deepcopy(num)
-                print(kwargs['index'])
+                kw = deepcopy(kwargs)
+                kw['index'] = num
                 result = pool.apply_async(
-                    func=function, args=(config,), kwds=kwargs
+                    func=function, args=(config,), kwds=kw
                 )
                 results.append(result)
 
@@ -821,6 +817,7 @@ def _single_point_eval(config, method_name, output_name, **kwargs):
 
     if 'index' in kwargs:
         output_name = f'{output_name}_{kwargs.pop("index")}'
+        print(f'Computing structure with {output_name}')
     config.single_point(method=method_name, output_name=output_name, **kwargs)
     return config
 
