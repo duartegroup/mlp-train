@@ -12,6 +12,7 @@ from mlptrain.forces import Forces
 from mlptrain.energy import Energy
 from mlptrain.configurations.configuration import Configuration
 from mlptrain.box import Box
+from copy import deepcopy
 
 
 class ConfigurationSet(list):
@@ -246,7 +247,9 @@ class ConfigurationSet(list):
         return super().append(value)
 
     def compare(
-        self, *args: Union['mlptrain.potentials.MLPotential', str]
+        self,
+        *args: Union['mlptrain.potentials.MLPotential', str],
+        keep_output_files: bool = True,
     ) -> None:
         """
         Compare methods e.g. a MLP to a ground truth reference method over
@@ -255,6 +258,7 @@ class ConfigurationSet(list):
 
         -----------------------------------------------------------------------
         Arguments:
+            keep_output_files: If True, save outputs of QM computations to designated folder
             *args: Strings defining the method or MLPs
         """
         from mlptrain.configurations.plotting import parity_plot
@@ -280,11 +284,13 @@ class ConfigurationSet(list):
                 # if is a string reference to a QM calculation method
                 elif isinstance(arg, str):
                     # if true energies and forces do not already exist for this config set
+
                     if all(c.energy.true is None for c in self):
                         logger.info(
                             f'Running single point calcs with method {arg}'
                         )
-                        self.single_point(method=arg)
+                        self.single_point(method=arg, output_name='comparison')
+
                     elif self.has_a_none_energy:
                         raise ValueError(
                             'Data set contains mix of labelled and non-labelled data!'
@@ -504,7 +510,11 @@ class ConfigurationSet(list):
 
         return None
 
-    def single_point(self, method: str) -> None:
+    def single_point(
+        self,
+        method: str,
+        output_name: Optional[str] = None,
+    ) -> None:
         """
         Evaluate energies and forces on all configuration in this set
 
@@ -513,7 +523,9 @@ class ConfigurationSet(list):
             method:
         """
         return self._run_parallel_method(
-            function=_single_point_eval, method_name=method
+            function=_single_point_eval,
+            method_name=method,
+            output_name=output_name,
         )
 
     @property
@@ -752,9 +764,11 @@ class ConfigurationSet(list):
         )
 
         with Pool(processes=n_processes) as pool:
-            for _, config in enumerate(self):
+            for num, config in enumerate(self):
+                kw = deepcopy(kwargs)
+                kw['index'] = num
                 result = pool.apply_async(
-                    func=function, args=(config,), kwds=kwargs
+                    func=function, args=(config,), kwds=kw
                 )
                 results.append(result)
 
@@ -798,9 +812,13 @@ class ConfigurationSet(list):
         return name
 
 
-def _single_point_eval(config, method_name, **kwargs):
+def _single_point_eval(config, method_name, output_name, **kwargs):
     """Top-level hashable function useful for multiprocessing"""
-    config.single_point(method_name, **kwargs)
+
+    if 'index' in kwargs:
+        output_name = f'{output_name}_{kwargs.pop("index")}'
+        print(f'Computing structure with {output_name}')
+    config.single_point(method=method_name, output_name=output_name, **kwargs)
     return config
 
 

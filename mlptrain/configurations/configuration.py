@@ -1,4 +1,5 @@
 import mlptrain
+import shutil
 import ase
 import numpy as np
 from typing import Optional, Union, List
@@ -12,6 +13,7 @@ from mlptrain.forces import Forces
 from mlptrain.box import Box
 from mlptrain.configurations.calculate import run_autode
 from scipy.spatial import cKDTree
+from mlptrain.utils import work_in_tmp_dir
 import random
 import autode as ade
 from math import dist
@@ -429,6 +431,9 @@ class Configuration(AtomCollection):
         self,
         method: Union[str, 'mlptrain.potentials._base.MLPotential'],
         n_cores: int = 1,
+        keep_output_files: bool = True,
+        output_name: Optional[str] = None,
+        **kwargs,
     ) -> None:
         """
         Run a single point energy and gradient (force) evaluation using
@@ -440,11 +445,36 @@ class Configuration(AtomCollection):
             method:
 
             n_cores: Number of cores to use for the calculation
+
+            keep_output_files: If true, copy back the QM outputs.
         """
         implemented_methods = ['xtb', 'orca', 'g09', 'g16']
 
         if isinstance(method, str) and method.lower() in implemented_methods:
-            run_autode(self, method, n_cores=n_cores)
+            if keep_output_files:
+                if method in ['g09', 'g16']:
+                    kept_substrings_list = ['.log']
+                else:
+                    kept_substrings_list = ['.out']
+
+            decorator = work_in_tmp_dir(
+                kept_substrings=kept_substrings_list,
+                output_name=output_name,
+            )
+            run_autode_decorated = decorator(run_autode)
+            run_autode_decorated(
+                self,
+                method,
+                n_cores=n_cores,
+                **kwargs,
+            )
+
+            if keep_output_files and output_name is not None:
+                shutil.move(
+                    src=f'{output_name}{kept_substrings_list[0]}',
+                    dst='QM_outputs/',
+                )
+
             self.n_ref_evals += 1
             return None
 
