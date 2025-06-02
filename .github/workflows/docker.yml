@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - jl/docker
     paths:
       - 'Dockerfile'
       - '.github/workflows/docker.yml'
