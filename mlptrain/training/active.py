@@ -271,7 +271,7 @@ def _add_active_configs(
     init_config: 'mlptrain.Configuration',
     selection_method: 'mlptrain.training.selection.SelectionMethod',
     n_configs: int = 10,
-    process_timeout: Optional[float] = None, #secs
+    process_timeout: Optional[float] = None,  # secs
     **kwargs,
 ) -> None:
     """
