@@ -504,16 +504,20 @@ class ConfigurationSet(list):
 
         return None
 
-    def single_point(self, method: str) -> None:
+    def single_point(self, method: str, n_cores_pp: int = 0) -> None:
         """
         Evaluate energies and forces on all configuration in this set
 
         -----------------------------------------------------------------------
         Arguments:
-            method:
+            method: Electronic structure method used for calculations
+            n_cores_pp: Number of CPU per computation,
+                        if int=0, n_cores will be assigned automatically
         """
         return self._run_parallel_method(
-            function=_single_point_eval, method_name=method
+            function=_single_point_eval,
+            method_name=method,
+            n_cores_pp=n_cores_pp,
         )
 
     @property
@@ -728,7 +732,7 @@ class ConfigurationSet(list):
         logger.info(f'Current number of configurations is {len(self)}')
         return self
 
-    def _run_parallel_method(self, function, **kwargs):
+    def _run_parallel_method(self, function, n_cores_pp, **kwargs):
         """Run a set of electronic structure calculations on this set
         in parallel
 
@@ -744,12 +748,19 @@ class ConfigurationSet(list):
         start_time = time()
         results = []
 
-        n_processes = min(len(self), Config.n_cores)
-        n_cores_pp = max(Config.n_cores // len(self), 1)
-        kwargs['n_cores'] = n_cores_pp
-        logger.info(
-            f'Running {n_processes} processes; {n_cores_pp} cores each'
-        )
+        if n_cores_pp != 0:
+            n_processes = Config.n_cores // n_cores_pp
+            kwargs['n_cores'] = n_cores_pp
+            logger.info(
+                f'Running {n_processes} processes; {n_cores_pp} cores each'
+            )
+        else:
+            n_processes = min(len(self), Config.n_cores)
+            n_cores_pp = max(Config.n_cores // len(self), 1)
+            kwargs['n_cores'] = n_cores_pp
+            logger.info(
+                f'Running {n_processes} processes; {n_cores_pp} cores each'
+            )
 
         with Pool(processes=n_processes) as pool:
             for _, config in enumerate(self):
