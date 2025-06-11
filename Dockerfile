@@ -1,10 +1,17 @@
-FROM mambaorg/micromamba:2.1.1-cuda12.9.0-ubuntu22.04
+FROM mambaorg/micromamba:2.2.0-cuda12.2.2-ubuntu22.04
 
 USER root
 WORKDIR /app
 
 ENV CONDA_ENV_NAME=mlptrain-mace
 ENV CONDA_ENV_FILE=environment_mace.yml
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y nvidia-driver-535-server \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies and MACE
 COPY ./${CONDA_ENV_FILE} /app/${CONDA_ENV_FILE}
