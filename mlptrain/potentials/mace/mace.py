@@ -42,8 +42,8 @@ class MACE(MLPotential):
             foundation: (str) Name of the foundation model used in fine-tunning
                          like "medium_off" for MACE-OFF(M), "medium" for MACE-MP-0(M)
 
-            model_fpath: (str) Optional specification of a specific fpath for the base model,
-                         if None the model file_name defaults to f'{name}.model' in the current 
+            model_fpath: (str) Optional specific fpath for the base model,
+                         if None the model file_name defaults to f'{name}.model' in the current
                          working dir.
         """
         super().__init__(name=name, system=system)

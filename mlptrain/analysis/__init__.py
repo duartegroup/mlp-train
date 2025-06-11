@@ -1,3 +1,3 @@
-from mlptrain.analysis.pes import pes
+from mlptrain.analysis.calc_pes import pes
 
 __all__ = ['pes']

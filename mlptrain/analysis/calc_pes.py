@@ -19,8 +19,19 @@ from mlptrain.sampling.md import _convert_ase_traj
 from mlptrain.utils import work_in_tmp_dir as work_in_tmp_dir_mlt
 import numpy as np
 from copy import deepcopy
+import torch
 
 ev_to_ha = 1.0 / 27.2114
+
+# TODO: DEBUG, REMOVE THIS!!!
+N_CORES = 4
+mlt.Config.n_cores = N_CORES
+ade.Config.n_cores = N_CORES
+
+
+if torch.cuda.is_available():
+    mlt.Config.mace_params['calc_device'] = 'cuda'
+# ==================================================
 
 
 def adjust_potential_energy(self, atoms):
@@ -303,12 +314,13 @@ def optimise_with_fix_solute(
 
 
 def calculate_pes(
-    mlp_model: mlt.potentials.MLPotential,
+    mlp: mlt.potentials.MLPotential,
     ts_xyz_fpath: str,
-    reaction_coords: list[tuple],
+    react_coords: list[tuple],
+    save_name: str,
     solvent_xyz_fpath: str = None,
     solvent_density: float = None,
-    solvent_box_size: float = 14.0,
+    solvation_box_size: float = 14.0,
     opt_fmax: float = 0.01,
     grid_spec: tuple = (1.50, 3.5, 25),
 ):
@@ -318,9 +330,18 @@ def calculate_pes(
     Currently only tested for unimolecular (X -> A + B) and bimolecular (A + B -> X) reactions.
 
     Parameters:
-        mlp_model (mlt.potentials.MLPotetntial)
-
-            rs={(1, 12): (1.50, 3.5, 25), (6, 11): (1.50, 3.5, 25)}
+        mlp (mlt.potentials.MLPotential): the machine learning potential model to use for calculation
+        ts_xyz_fpath (str): the file path of the xyz file of the transition state of the reaction (in vacuum)
+        reaction_coords (list(tuple): a list of reaction coordinates of pairs of atoms expected to form / break a bond
+                                      i.e. [(1, 12), (6, 11)] means a bond formed between atom 1 and 12 and atom 6 and 11.
+        save_name (str): save file name stub for all produced pes files
+        solvent_xyz_fpath (str): xyz fpath of the solvent molecule
+        solvent_density (float): experimental density (in g/cm^3) to try to replicate with solvent placement
+        solvation_box_size (float): the size to fit the solvent to (controls number of solvent molecules placed,
+                                    but does not define the final box size for PES scan)
+        opt_fmax (float): the convergence value for the BFGS optimiser for geometry optimisation
+        grid_spec (tuple): a tuple of (start_dist, end_dist, grid_size) where start_dist and end_dist specify the start and
+                            ends of the distances between reaction coords in Amstrongs to perform the scan over a grid of grid_size^2.
     """
 
     Hookean.adjust_forces = adjust_forces
@@ -330,21 +351,27 @@ def calculate_pes(
     mp.set_start_method('spawn', force=True)
 
     box_dim = [100.0, 100.0, 100.0]
-
-    # product_fname = 'cis_endo_DA_product.xyz'
-    product_fname = 'cis_endo_DA_product_in_water.xyz'
+    product_fname = f'{save_name}_product.xyz'
 
     # load transition state
     ts_set = mlt.ConfigurationSet()
-    ts_set.load_xyz(filename='cis_endo_TS_wB97M.xyz', charge=0, mult=1)
+    ts_set.load_xyz(filename=ts_xyz_fpath, charge=0, mult=1)
     ts = ts_set[0]
     ts.box = Box(box_dim)
 
     # print true DFT TS location (in reaction coordinates)
-    ts_rs_1_dist = np.linalg.norm(ts.atoms[1].coord - ts.atoms[12].coord)
-    ts_rs_2_dist = np.linalg.norm(ts.atoms[6].coord - ts.atoms[11].coord)
+    ts_rs_distances = [
+        np.linalg.norm(ts.atoms[a1].coord - ts.atoms[a2].coord)
+        for a1, a2 in react_coords
+    ]
     logger.info(
-        f'Reference TS Reaction Distances: r1: {ts_rs_1_dist}, r2: {ts_rs_2_dist}'
+        'Reference TS Reaction Distances: '
+        + ', '.join(
+            [
+                f'r{i}: {ts_rs_distances[i]}'
+                for i in range(len(ts_rs_distances))
+            ]
+        )
     )
 
     # 1) run biased MD to go from TS -> Product
@@ -354,7 +381,7 @@ def calculate_pes(
         fs=500,
         temp=300,
         dt=0.5,
-        fbond_energy={(1, 12): 0.1, (6, 11): 0.1},
+        fbond_energy={coord: 0.1 for coord in react_coords},
         interval=2,
     )
     final_traj_product = trajectory_product.final_frame
@@ -362,7 +389,7 @@ def calculate_pes(
     # solvate the product
     if solvent_xyz_fpath is not None:
         final_traj_product.solvate(
-            box_size=solvent_box_size,
+            box_size=solvation_box_size,
             solvent_molecule=ade.Molecule(solvent_xyz_fpath),
             solvent_density=solvent_density,
         )
@@ -378,21 +405,31 @@ def calculate_pes(
         constraint=False,
     )
 
-    rt1 = np.linalg.norm(
-        traj_product_optimised.atoms[1].coord
-        - traj_product_optimised.atoms[12].coord
+    prod_rs_distances = [
+        np.linalg.norm(
+            traj_product_optimised.atoms[a1].coord
+            - traj_product_optimised.atoms[a2].coord
+        )
+        for a1, a2 in react_coords
+    ]
+    logger.info(
+        'the forming carbon bonds length in product are: '
+        + ', '.join(
+            [
+                f'r{i}: {prod_rs_distances[i]}'
+                for i in range(len(prod_rs_distances))
+            ]
+        )
     )
-    rt2 = np.linalg.norm(
-        traj_product_optimised.atoms[6].coord
-        - traj_product_optimised.atoms[11].coord
-    )
-    logger.info(f'the forming carbon bonds length in product are {rt1}, {rt2}')
 
     product = mlt.Molecule(name='product', atoms=traj_product_optimised.atoms)
     product.print_xyz_file(filename=product_fname)
 
     # define PES
-    pes = ade.pes.RelaxedPESnD(ade.Molecule(product_fname))
+    pes = ade.pes.RelaxedPESnD(
+        ade.Molecule(product_fname),
+        rs={react_coord: grid_spec for react_coord in react_coords},
+    )
 
     # define ade Method
     # ade_endo = MLPEST(mlp=endo, action=['opt'], path=f'{cwd}/{endo.name}.json')   # for ACE
@@ -404,14 +441,11 @@ def calculate_pes(
     pes.calculate(
         method=ade_mlp_method, keywords=['opt'], n_cores=mlt.Config.n_cores
     )
-    # pes.save(filename='endo_in_vac.npz')
-    pes.save(filename='endo_in_water.npz')
+    pes.save(filename=f'{save_name}_pes.npz')
     pes.plot()
 
 
 if __name__ == '__main__':
-    """TO BE REMOVED, JUST FOR DEBUG"""
-
     # ACE models
     # endo = mlt.potentials.ACE('endo_ace_wB97M_imwater', system)
 
@@ -420,22 +454,31 @@ if __name__ == '__main__':
     # model_name = 'MACE-OFF23_medium'
     # model_name = 'MACE-MP0'
     model_name = 'MACE-OFF23_medium_endo_DA_train_fine_tuned'
-    cwd = os.getcwd()
+    ts_xyz_fpath = 'cis_endo_TS_wB97M.xyz'
+    solvent_xyz_fpath = 'h2o.xyz'
+    save_name = 'cis_endo_DA'
 
-    # ts_mol = mlt.Molecule(name=ts_xyz_fpath)
-    system = mlt.System()
+    system = mlt.System(box=[100.0, 100.0, 100.0])
+    cwd = os.getcwd()
     mlp = mlt.potentials.MACE(
         model_name, system, model_fpath=f'{cwd}/{model_name}.model'
     )
 
     solvation_box_size = 14.0
     solvent_density = 0.99657
-    rs = {
-        # (1, 12): (2.0, 2.2, 2),  # debug
-        # (6, 11): (2.0, 2.2, 2),
-        (1, 12): (1.50, 3.5, 25),  # Current->3.0 Å in 16 steps
-        (6, 11): (1.50, 3.5, 25),
-    }
+    react_coords = [(1, 12), (6, 11)]
     opt_fmax = 0.03
+    grid_spec = (2.0, 2.2, 2)  # debug
+    # grid_spec = (1.50, 3.5, 25) # Current->3.0 Å in 16 steps
 
-    calculate_pes()
+    calculate_pes(
+        mlp,
+        ts_xyz_fpath,
+        react_coords,
+        save_name,
+        solvent_xyz_fpath=solvent_xyz_fpath,
+        solvent_density=solvent_density,
+        solvation_box_size=solvation_box_size,
+        opt_fmax=opt_fmax,
+        grid_spec=grid_spec,
+    )
