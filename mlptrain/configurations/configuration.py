@@ -1,7 +1,9 @@
 import mlptrain
 import ase
 import numpy as np
-from typing import Optional, Union, List
+import os
+import json
+from typing import Optional, Union, List, Dict
 from copy import deepcopy
 from autode.atoms import AtomCollection, Atom
 import autode.atoms
@@ -11,6 +13,7 @@ from mlptrain.energy import Energy
 from mlptrain.forces import Forces
 from mlptrain.box import Box
 from mlptrain.configurations.calculate import run_autode
+from mlptrain.utils import work_in_tmp_dir
 from scipy.spatial import cKDTree
 import random
 import autode as ade
@@ -54,6 +57,9 @@ class Configuration(AtomCollection):
 
         self.energy = Energy()
         self.forces = Forces()
+
+        # Dictionary to track molecule types and their atom ranges
+        self.mol_dict: Dict[str, List[Dict[str, Union[int, str]]]] = {}
 
         # Collective variable values (obtained using PLUMED)
         self.plumed_coordinates: Optional[np.ndarray] = None
@@ -173,7 +179,7 @@ class Configuration(AtomCollection):
             solvent = get_solvent(solvent_name, kind='implicit')
             solvent_smiles = solvent.smiles
             solvent_molecule = ade.Molecule(smiles=solvent_smiles)
-            solvent_molecule.optimise(method=ade.methods.XTB())
+            solvent_molecule = optimise_solvent(solvent_molecule)
 
             if solvent.name not in solvent_densities.keys():
                 raise ValueError(
@@ -240,6 +246,9 @@ class Configuration(AtomCollection):
 
         "https://chemrxiv.org/engage/chemrxiv/article-details/678621ccfa469535b9ea8786"
 
+        This implementation includes periodic boundary condition handling by creating
+        periodic images of atoms near box boundaries.
+
         ___________________________________________________________________________
 
         Arguments:
@@ -266,9 +275,24 @@ class Configuration(AtomCollection):
         solvent_coords = np.array(
             [atom.coordinate for atom in solvent_molecule.atoms]
         )
-        # Initialise a list to keep track of the inserted solvent molecules, with each element
-        # being the index of the first atom of a molecule
-        mol_list = [0, len(system_coords)]
+
+        # Initialize mol_dict with the original solute molecule
+        if not self.mol_dict:
+            self.mol_dict['solute'] = [
+                {
+                    'start': 0,
+                    'end': len(system_coords),
+                    'formula': self._get_formula_from_atoms(self.atoms),
+                }
+            ]
+
+        # Get solvent name for mol_dict (use formula as fallback)
+        solvent_name = getattr(
+            solvent_molecule, 'name', solvent_molecule.formula
+        )
+        if solvent_name not in self.mol_dict:
+            self.mol_dict[solvent_name] = []
+
         # Initialise a count of the solvents inserted into the box. The ideal solvent number is
         # the number of solvent molecules that fit into the box, but this number might not be reached
         # because the solute might be in the way of some of the solvent molecules
@@ -276,8 +300,13 @@ class Configuration(AtomCollection):
         seeded_random = random.Random(random_seed)
 
         for i in range(n_solvent):
-            # Build a k-d tree from the system coordinates in order to query the nearest neighbours later
-            existing_tree = _build_cKDTree(system_coords)
+            # Create periodic images for boundary condition handling
+            periodic_coords = _create_periodic_images(
+                system_coords, box_size, contact_threshold
+            )
+
+            # Build a k-d tree from the system coordinates including periodic images
+            existing_tree = _build_cKDTree(periodic_coords)
             inserted = False
             attempt = 0
 
@@ -315,10 +344,13 @@ class Configuration(AtomCollection):
                     continue
 
                 # Query the nearest neighbours of the trial coordinates and check if they are within the contact_threshold
-                # If they are, add them to the system coordinates and update the mol_list
+                # This now includes periodic boundary conditions through the periodic images
                 distances, indeces = existing_tree.query(trial_coords)
                 if all(distances > contact_threshold):
                     solvent_translated = deepcopy(solvent_molecule)
+
+                    # Record the starting position of this molecule
+                    start_index = len(self.atoms)
 
                     for n, atom in enumerate(solvent_translated.atoms):
                         atom.coordinate = trial_coords[n]
@@ -327,16 +359,24 @@ class Configuration(AtomCollection):
                     system_coords = np.concatenate(
                         (system_coords, trial_coords)
                     )
+
+                    # Add molecule info to mol_dict
+                    end_index = len(self.atoms)
+                    self.mol_dict[solvent_name].append(
+                        {
+                            'start': start_index,
+                            'end': end_index,
+                            'formula': solvent_molecule.formula,
+                        }
+                    )
+
                     inserted = True
-                    mol_list.append(len(self.atoms))
                     solvents_inserted += 1
 
         logger.info(
             f'Inserted {solvents_inserted} solvent molecules into the box'
         )
 
-        # remove the last element of the mol_list, as this is the index of the last atom in the system
-        self.mol_list = mol_list[:-1]
         return system_coords
 
     def update_attr_from(self, configuration: 'Configuration') -> None:
@@ -423,7 +463,61 @@ class Configuration(AtomCollection):
 
                 print(line, file=exyz_file)
 
+        # Automatically save mol_dict if it exists
+        if self.mol_dict:
+            self.save_mol_dict(filename)
+
         return None
+
+    def save_mol_dict(self, filename: str) -> None:
+        """
+        Save the mol_dict to a hidden .mol_dict.txt file alongside the xyz file.
+
+        Arguments:
+            filename: The xyz filename (mol_dict will be saved as .filename.mol_dict.txt)
+        """
+        if not self.mol_dict:
+            return
+
+        # Create the hidden mol_dict filename
+        directory = os.path.dirname(filename) or '.'
+        base_name = os.path.splitext(os.path.basename(filename))[0]
+        mol_dict_file = os.path.join(directory, f'.{base_name}.mol_dict.txt')
+
+        # Save mol_dict as JSON for easy reading/writing
+        with open(mol_dict_file, 'w') as f:
+            json.dump(self.mol_dict, f, indent=2)
+
+        logger.info(f'Saved mol_dict to {mol_dict_file}')
+
+    def load_mol_dict(self, filename: str) -> bool:
+        """
+        Load mol_dict from a hidden .mol_dict.txt file if it exists.
+
+        Arguments:
+            filename: The xyz filename to check for an associated mol_dict file
+
+        Returns:
+            bool: True if mol_dict was loaded, False if file doesn't exist
+        """
+
+        # Create the hidden mol_dict filename
+        directory = os.path.dirname(filename) or '.'
+        base_name = os.path.splitext(os.path.basename(filename))[0]
+        mol_dict_file = os.path.join(directory, f'.{base_name}.mol_dict.txt')
+
+        if os.path.exists(mol_dict_file):
+            try:
+                with open(mol_dict_file, 'r') as f:
+                    self.mol_dict = json.load(f)
+                logger.info(f'Loaded mol_dict from {mol_dict_file}')
+                return True
+            except (json.JSONDecodeError, IOError) as e:
+                logger.warning(
+                    f'Failed to load mol_dict from {mol_dict_file}: {e}'
+                )
+                return False
+        return False
 
     def single_point(
         self,
@@ -475,6 +569,104 @@ class Configuration(AtomCollection):
 
     def copy(self) -> 'Configuration':
         return deepcopy(self)
+
+    def _get_formula_from_atoms(self, atoms) -> str:
+        """
+        Generate a molecular formula from a list of atoms.
+
+        Arguments:
+            atoms: List of atoms
+
+        Returns:
+            str: Molecular formula (e.g., "H2O", "C2H6O")
+        """
+        from collections import Counter
+
+        # Count atoms by element
+        element_counts = Counter(atom.label for atom in atoms)
+
+        # Build formula string
+        formula_parts = []
+        for element in sorted(element_counts.keys()):
+            count = element_counts[element]
+            if count == 1:
+                formula_parts.append(element)
+            else:
+                formula_parts.append(f'{element}{count}')
+
+        return ''.join(formula_parts)
+
+    @classmethod
+    def from_xyz(
+        cls, filename: str, charge: int = 0, mult: int = 1
+    ) -> 'Configuration':
+        """
+        Create a Configuration from an xyz file and automatically load mol_dict if available.
+
+        Arguments:
+            filename: Path to xyz file
+            charge: Overall charge
+            mult: Spin multiplicity
+
+        Returns:
+            Configuration: New configuration with mol_dict loaded if available
+        """
+        import ase.io
+
+        # Load atoms from xyz file
+        ase_atoms = ase.io.read(filename)
+
+        # Convert to autode atoms
+        from autode.atoms import Atom
+
+        atoms = [
+            Atom(symbol, x=coord[0], y=coord[1], z=coord[2])
+            for symbol, coord in zip(
+                ase_atoms.get_chemical_symbols(), ase_atoms.get_positions()
+            )
+        ]
+
+        # Create box if cell information is available
+        box = None
+        cell_array = np.array(ase_atoms.get_cell())
+        if np.any(cell_array != 0):
+            from mlptrain.box import Box
+
+            box = Box(np.diag(cell_array))
+
+        # Create configuration
+        config = cls(atoms=atoms, charge=charge, mult=mult, box=box)
+
+        # Try to load mol_dict
+        config.load_mol_dict(filename)
+
+        return config
+
+    def validate_mol_dict(self) -> bool:
+        """
+        Validate that the mol_dict indices are consistent with the current atoms.
+
+        Returns:
+            bool: True if mol_dict is valid, False otherwise
+        """
+        if not self.mol_dict:
+            return True
+
+        total_atoms = len(self.atoms)
+
+        for mol_type, molecules in self.mol_dict.items():
+            for i, mol_info in enumerate(molecules):
+                start = mol_info.get('start', 0)
+                end = mol_info.get('end', 0)
+
+                # Check bounds
+                if start < 0 or end > total_atoms or start >= end:
+                    logger.warning(
+                        f'Invalid mol_dict entry: {mol_type}[{i}] has start={start}, end={end}, but total atoms={total_atoms}'
+                    )
+                    return False
+
+        return True
 
 
 def _random_rotation(r1: float, r2: float, r3: float) -> np.ndarray:
@@ -542,6 +734,155 @@ def _get_max_mol_distance(conf_atoms: List[Atom]) -> float:
             for atom2 in conf_atoms
         ]
     )
+
+
+@work_in_tmp_dir()
+def optimise_solvent(solvent: ade.Molecule) -> ade.Molecule:
+    """Optimise a solvent molecule with XTB"""
+    solvent_copy = deepcopy(solvent)
+    solvent_copy.optimise(method=ade.methods.XTB())
+    return solvent_copy
+
+
+def _create_periodic_images(
+    coords: np.ndarray, box_size: float, contact_threshold: float
+) -> np.ndarray:
+    """
+    Create periodic images of atoms that are within contact_threshold distance
+    of the box boundaries to handle periodic boundary conditions.
+
+    Arguments:
+        coords: Original coordinates of atoms in the box
+        box_size: Size of the cubic box
+        contact_threshold: Distance threshold for considering periodic images
+
+    Returns:
+        Combined array of original coordinates and their periodic images
+    """
+    original_coords = coords.copy()
+    periodic_images = []
+
+    # For each atom, check if it's close to any boundary
+    for coord in coords:
+        x, y, z = coord
+
+        # Check each dimension for proximity to boundaries
+        # Create images for atoms within contact_threshold of each face
+        images_to_add = []
+
+        # X-direction boundaries
+        if x < contact_threshold:  # Close to x=0 face
+            images_to_add.append([x + box_size, y, z])
+        if x > (box_size - contact_threshold):  # Close to x=box_size face
+            images_to_add.append([x - box_size, y, z])
+
+        # Y-direction boundaries
+        if y < contact_threshold:  # Close to y=0 face
+            images_to_add.append([x, y + box_size, z])
+        if y > (box_size - contact_threshold):  # Close to y=box_size face
+            images_to_add.append([x, y - box_size, z])
+
+        # Z-direction boundaries
+        if z < contact_threshold:  # Close to z=0 face
+            images_to_add.append([x, y, z + box_size])
+        if z > (box_size - contact_threshold):  # Close to z=box_size face
+            images_to_add.append([x, y, z - box_size])
+
+        # Add corner and edge images for atoms close to multiple boundaries
+        # X-Y corners
+        if x < contact_threshold and y < contact_threshold:
+            images_to_add.append([x + box_size, y + box_size, z])
+        if x < contact_threshold and y > (box_size - contact_threshold):
+            images_to_add.append([x + box_size, y - box_size, z])
+        if x > (box_size - contact_threshold) and y < contact_threshold:
+            images_to_add.append([x - box_size, y + box_size, z])
+        if x > (box_size - contact_threshold) and y > (
+            box_size - contact_threshold
+        ):
+            images_to_add.append([x - box_size, y - box_size, z])
+
+        # X-Z corners
+        if x < contact_threshold and z < contact_threshold:
+            images_to_add.append([x + box_size, y, z + box_size])
+        if x < contact_threshold and z > (box_size - contact_threshold):
+            images_to_add.append([x + box_size, y, z - box_size])
+        if x > (box_size - contact_threshold) and z < contact_threshold:
+            images_to_add.append([x - box_size, y, z + box_size])
+        if x > (box_size - contact_threshold) and z > (
+            box_size - contact_threshold
+        ):
+            images_to_add.append([x - box_size, y, z - box_size])
+
+        # Y-Z corners
+        if y < contact_threshold and z < contact_threshold:
+            images_to_add.append([x, y + box_size, z + box_size])
+        if y < contact_threshold and z > (box_size - contact_threshold):
+            images_to_add.append([x, y + box_size, z - box_size])
+        if y > (box_size - contact_threshold) and z < contact_threshold:
+            images_to_add.append([x, y - box_size, z + box_size])
+        if y > (box_size - contact_threshold) and z > (
+            box_size - contact_threshold
+        ):
+            images_to_add.append([x, y - box_size, z - box_size])
+
+        # 3D corners (8 corner cases)
+        if (
+            x < contact_threshold
+            and y < contact_threshold
+            and z < contact_threshold
+        ):
+            images_to_add.append([x + box_size, y + box_size, z + box_size])
+        if (
+            x < contact_threshold
+            and y < contact_threshold
+            and z > (box_size - contact_threshold)
+        ):
+            images_to_add.append([x + box_size, y + box_size, z - box_size])
+        if (
+            x < contact_threshold
+            and y > (box_size - contact_threshold)
+            and z < contact_threshold
+        ):
+            images_to_add.append([x + box_size, y - box_size, z + box_size])
+        if (
+            x < contact_threshold
+            and y > (box_size - contact_threshold)
+            and z > (box_size - contact_threshold)
+        ):
+            images_to_add.append([x + box_size, y - box_size, z - box_size])
+        if (
+            x > (box_size - contact_threshold)
+            and y < contact_threshold
+            and z < contact_threshold
+        ):
+            images_to_add.append([x - box_size, y + box_size, z + box_size])
+        if (
+            x > (box_size - contact_threshold)
+            and y < contact_threshold
+            and z > (box_size - contact_threshold)
+        ):
+            images_to_add.append([x - box_size, y + box_size, z - box_size])
+        if (
+            x > (box_size - contact_threshold)
+            and y > (box_size - contact_threshold)
+            and z < contact_threshold
+        ):
+            images_to_add.append([x - box_size, y - box_size, z + box_size])
+        if (
+            x > (box_size - contact_threshold)
+            and y > (box_size - contact_threshold)
+            and z > (box_size - contact_threshold)
+        ):
+            images_to_add.append([x - box_size, y - box_size, z - box_size])
+
+        periodic_images.extend(images_to_add)
+
+    # Combine original coordinates with periodic images
+    if periodic_images:
+        periodic_images = np.array(periodic_images)
+        return np.vstack([original_coords, periodic_images])
+    else:
+        return original_coords
 
 
 # Solvent densities were taken from the CRC handbook
