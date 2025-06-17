@@ -313,6 +313,7 @@ def optimise_with_fix_solute(
     return final_traj
 
 
+@work_in_tmp_dir_mlt()
 def calculate_pes(
     mlp: mlt.potentials.MLPotential,
     ts_xyz_fpath: str,
@@ -467,7 +468,7 @@ if __name__ == '__main__':
     solvation_box_size = 14.0
     solvent_density = 0.99657
     react_coords = [(1, 12), (6, 11)]
-    opt_fmax = 0.03
+    opt_fmax = 0.5
     grid_spec = (2.0, 2.2, 2)  # debug
     # grid_spec = (1.50, 3.5, 25) # Current->3.0 Å in 16 steps
 
