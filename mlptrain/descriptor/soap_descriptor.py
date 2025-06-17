@@ -131,11 +131,29 @@ class SoapDescriptor(Descriptor):
         Returns:
             (np.ndarray): Vector, shape = len(configurations)"""
 
-        v1 = self.compute_representation(configuration)[0]
+        v1 = self.compute_representation(configuration)
         m1 = self.compute_representation(configurations)
 
-        # Normalize vectors
-        v1 /= np.linalg.norm(v1)
-        m1 /= np.linalg.norm(m1, axis=1, keepdims=True)
+        if self.average in ['inner', 'outer']:
+            v1 = v1[0]  # Single vector for entire structure
+            m1 = m1  # Each row represents one configuration
 
-        return np.power(np.dot(m1, v1), zeta)
+            # Normalize vectors
+            v1 /= np.linalg.norm(v1)
+            m1 /= np.linalg.norm(m1, axis=1, keepdims=True)
+
+            return np.power(np.dot(m1, v1), zeta)
+
+        elif self.average == 'off':
+            v1 /= np.linalg.norm(v1, axis=1, keepdims=True)
+            m1 /= np.linalg.norm(m1, axis=2, keepdims=True)
+
+            per_atom_similarities = np.einsum(
+                'ad,cad->ca', v1, m1
+            )  # Compute per-atom kernel similarities
+            structure_similarity = np.mean(
+                per_atom_similarities, axis=1
+            )  # Average per-atom similarities
+            structure_similarity = np.power(structure_similarity, zeta)
+
+            return structure_similarity
