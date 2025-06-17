@@ -24,14 +24,12 @@ import torch
 ev_to_ha = 1.0 / 27.2114
 
 # TODO: DEBUG, REMOVE THIS!!!
-N_CORES = 4
+N_CORES = 1
 mlt.Config.n_cores = N_CORES
 ade.Config.n_cores = N_CORES
 
-
 if torch.cuda.is_available():
     mlt.Config.mace_params['calc_device'] = 'cuda'
-# ==================================================
 
 
 def adjust_potential_energy(self, atoms):
@@ -116,6 +114,25 @@ class MLPEST(ExternalMethodOEG):
     """class of machine learning potential fitted for autode package
     original code provided by T. Yang"""
 
+    def __init__(self, 
+                 mlp, 
+                 action, 
+                 path: str, 
+                 opt_fmax: float = 0.01):
+
+        super().__init__(
+            executable_name='mlp',
+            keywords_set=KeywordsSet(),
+            path='',
+            doi_list=[],
+            implicit_solvation_type=None,
+        )
+
+        self.path = path
+        self.mlp = mlp
+        self.action = deepcopy(action)
+        self.opt_fmax = opt_fmax
+
     @property
     def is_available(self):
         return True
@@ -142,7 +159,7 @@ class MLPEST(ExternalMethodOEG):
 
     def execute(self, calc: Calculation):
         """
-        Execute the calculation
+        Execute the calculation.
         Arguments:
             calc (autode.calculations.Calculation):
         """
@@ -154,6 +171,7 @@ class MLPEST(ExternalMethodOEG):
         )
         def execute_mlp():
             if 'opt' in self.action:
+                # run optimisation
                 logger.info('start optimization')
                 ase_atoms = from_autode_to_ase(molecule=calc.molecule)
                 logger.info('start optimise molecule')
@@ -162,7 +180,7 @@ class MLPEST(ExternalMethodOEG):
                 asetraj = ASETrajectory('tmp.traj', 'w', ase_atoms)
                 dyn = BFGS(ase_atoms)
                 dyn.attach(asetraj.write, interval=2)
-                dyn.run(fmax=0.1)
+                dyn.run(fmax=self.opt_fmax)
                 traj = _convert_ase_traj('tmp.traj')
                 final_traj = traj.final_frame
                 final_traj.single_point(self.mlp, n_cores=calc.n_cores)
@@ -260,23 +278,15 @@ class MLPEST(ExternalMethodOEG):
     def uses_external_io(self):
         return True
 
-    def __init__(self, mlp, action, path):
-        super().__init__(
-            executable_name='mlp',
-            keywords_set=KeywordsSet(),
-            path='',
-            doi_list=[],
-            implicit_solvation_type=None,
-        )
-
-        self.path = path
-        self.mlp = mlp
-        self.action = deepcopy(action)
-
 
 @work_in_tmp_dir_mlt()
 def optimise_with_fix_solute(
-    solute, config: mlt.Configuration, fmax, mlp, constraint=True, **kwargs
+    solute: mlt.Configuration, 
+    config: mlt.Configuration, 
+    fmax: float, 
+    mlp: mlt.potentials.MLPotential, 
+    constraint=True, 
+    **kwargs
 ):
     """optimised molecular geometries by MLP with or without constraint"""
     from ase.constraints import FixAtoms
@@ -313,17 +323,18 @@ def optimise_with_fix_solute(
     return final_traj
 
 
-@work_in_tmp_dir_mlt()
+# @work_in_tmp_dir_mlt()
 def calculate_pes(
     mlp: mlt.potentials.MLPotential,
-    ts_xyz_fpath: str,
+    ts_config: mlt.Configuration,
     react_coords: list[tuple],
     save_name: str,
-    solvent_xyz_fpath: str = None,
+    solvent_mol: mlt.Molecule = None,
     solvent_density: float = None,
     solvation_box_size: float = 14.0,
     opt_fmax: float = 0.01,
     grid_spec: tuple = (1.50, 3.5, 25),
+    box_dim: tuple = (100.0, 100.0, 100.0)
 ):
     """
     Calculates an n-dimensional potential energy surface (PES) for a given reactive system about
@@ -343,6 +354,7 @@ def calculate_pes(
         opt_fmax (float): the convergence value for the BFGS optimiser for geometry optimisation
         grid_spec (tuple): a tuple of (start_dist, end_dist, grid_size) where start_dist and end_dist specify the start and
                             ends of the distances between reaction coords in Amstrongs to perform the scan over a grid of grid_size^2.
+        box_dim (tuple): box dimensions for running PES calc (default to 100, for non-periodic cluster)
     """
 
     Hookean.adjust_forces = adjust_forces
@@ -351,18 +363,12 @@ def calculate_pes(
     # set multi start method to avoid CUDA errors
     mp.set_start_method('spawn', force=True)
 
-    box_dim = [100.0, 100.0, 100.0]
+    ts_config.box = Box(box_dim)
     product_fname = f'{save_name}_product.xyz'
-
-    # load transition state
-    ts_set = mlt.ConfigurationSet()
-    ts_set.load_xyz(filename=ts_xyz_fpath, charge=0, mult=1)
-    ts = ts_set[0]
-    ts.box = Box(box_dim)
 
     # print true DFT TS location (in reaction coordinates)
     ts_rs_distances = [
-        np.linalg.norm(ts.atoms[a1].coord - ts.atoms[a2].coord)
+        np.linalg.norm(ts_config.atoms[a1].coord - ts_config.atoms[a2].coord)
         for a1, a2 in react_coords
     ]
     logger.info(
@@ -377,7 +383,7 @@ def calculate_pes(
 
     # 1) run biased MD to go from TS -> Product
     trajectory_product = mlt.md.run_mlp_md(
-        configuration=ts,
+        configuration=ts_config,
         mlp=mlp,
         fs=500,
         temp=300,
@@ -391,7 +397,7 @@ def calculate_pes(
     if solvent_xyz_fpath is not None:
         final_traj_product.solvate(
             box_size=solvation_box_size,
-            solvent_molecule=ade.Molecule(solvent_xyz_fpath),
+            solvent_molecule=solvent_mol,
             solvent_density=solvent_density,
         )
     final_traj_product.save_xyz('final_traj_product')
@@ -399,13 +405,14 @@ def calculate_pes(
 
     # 2) fix the solute and run optimisation of solvent (if there is any)
     traj_product_optimised = optimise_with_fix_solute(
-        solute=ts,
+        solute=ts_config,
         config=final_traj_product,
         fmax=opt_fmax,
         mlp=mlp,
         constraint=False,
     )
 
+    # log product react coord distances
     prod_rs_distances = [
         np.linalg.norm(
             traj_product_optimised.atoms[a1].coord
@@ -433,10 +440,9 @@ def calculate_pes(
     )
 
     # define ade Method
-    # ade_endo = MLPEST(mlp=endo, action=['opt'], path=f'{cwd}/{endo.name}.json')   # for ACE
     ade_mlp_method = MLPEST(
-        mlp=mlp, action=['opt'], path=f'{cwd}/{mlp.name}.model'
-    )  # for MACE
+        mlp=mlp, action=['opt'], path=f'{cwd}/{mlp.name}.model', opt_fmax=opt_fmax
+    )
 
     # calculate the pes
     pes.calculate(
@@ -447,6 +453,7 @@ def calculate_pes(
 
 
 if __name__ == '__main__':
+    
     # ACE models
     # endo = mlt.potentials.ACE('endo_ace_wB97M_imwater', system)
 
@@ -458,28 +465,35 @@ if __name__ == '__main__':
     ts_xyz_fpath = 'cis_endo_TS_wB97M.xyz'
     solvent_xyz_fpath = 'h2o.xyz'
     save_name = 'cis_endo_DA'
+    solvation_box_size = 5.0
+    solvent_density = 0.99657
+    react_coords = [(1, 12), (6, 11)]
+    opt_fmax = 1.0
+    box_dim = [100.0, 100.0, 100.0]
+    grid_spec = (2.0, 2.2, 2)  # debug
 
-    system = mlt.System(box=[100.0, 100.0, 100.0])
+    # load model
+    system = mlt.System(box=box_dim)
     cwd = os.getcwd()
     mlp = mlt.potentials.MACE(
         model_name, system, model_fpath=f'{cwd}/{model_name}.model'
     )
 
-    solvation_box_size = 14.0
-    solvent_density = 0.99657
-    react_coords = [(1, 12), (6, 11)]
-    opt_fmax = 0.5
-    grid_spec = (2.0, 2.2, 2)  # debug
-    # grid_spec = (1.50, 3.5, 25) # Current->3.0 Å in 16 steps
+    # load ts config + solvent mol
+    ts_set = mlt.ConfigurationSet()
+    ts_set.load_xyz(filename=ts_xyz_fpath, charge=0, mult=1)
+    ts_config = ts_set[0]
+    solvent_mol = mlt.Molecule(solvent_xyz_fpath)
 
     calculate_pes(
         mlp,
-        ts_xyz_fpath,
+        ts_config,
         react_coords,
         save_name,
-        solvent_xyz_fpath=solvent_xyz_fpath,
+        solvent_mol=solvent_mol,
         solvent_density=solvent_density,
         solvation_box_size=solvation_box_size,
         opt_fmax=opt_fmax,
         grid_spec=grid_spec,
+        box_dim=box_dim
     )
