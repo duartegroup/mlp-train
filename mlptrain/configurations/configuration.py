@@ -596,6 +596,61 @@ class Configuration(AtomCollection):
 
         return ''.join(formula_parts)
 
+    def load_from_xyz(self, filename: str) -> None:
+        """
+        Load atoms from an xyz file into this configuration, replacing existing atoms.
+
+        Arguments:
+            filename: Path to xyz file
+        """
+        import ase.io
+
+        # Load atoms from xyz file
+        logger.info(f'Loading atoms from {filename} into existing configuration')
+        try:
+            ase_atoms = ase.io.read(filename)
+            logger.info(f'Successfully loaded {len(ase_atoms)} atoms from {filename}')
+        except Exception as e:
+            logger.error(f'Failed to read {filename}: {e}')
+            raise
+
+        # Clear existing atoms
+        self.atoms = []
+
+        # Debug: print ASE atoms info
+        if len(ase_atoms) == 0:
+            logger.warning(f'No atoms found in {filename}')
+            return
+
+        # Convert to autode atoms
+        from autode.atoms import Atom
+
+        symbols = ase_atoms.get_chemical_symbols()
+        positions = ase_atoms.get_positions()
+        
+        logger.info(f'Converting {len(symbols)} atoms to autode format')
+        
+        for i, (symbol, coord) in enumerate(zip(symbols, positions)):
+            try:
+                atom = Atom(symbol, x=coord[0], y=coord[1], z=coord[2])
+                self.atoms.append(atom)
+            except Exception as e:
+                logger.error(f'Failed to create atom {i} ({symbol}): {e}')
+                raise
+        
+        logger.info(f'Successfully loaded {len(self.atoms)} atoms into configuration')
+        
+        # Update box if cell information is available
+        cell_array = np.array(ase_atoms.get_cell())
+        if np.any(cell_array != 0):
+            from mlptrain.box import Box
+            self.box = Box(np.diag(cell_array))
+            logger.info(f'Updated box with dimensions: {np.diag(cell_array)}')
+
+        # Clear and reload mol_dict
+        self.mol_dict = {}
+        self.load_mol_dict(filename)
+
     @classmethod
     def from_xyz(
         cls, filename: str, charge: int = 0, mult: int = 1
@@ -611,35 +666,9 @@ class Configuration(AtomCollection):
         Returns:
             Configuration: New configuration with mol_dict loaded if available
         """
-        import ase.io
-
-        # Load atoms from xyz file
-        ase_atoms = ase.io.read(filename)
-
-        # Convert to autode atoms
-        from autode.atoms import Atom
-
-        atoms = [
-            Atom(symbol, x=coord[0], y=coord[1], z=coord[2])
-            for symbol, coord in zip(
-                ase_atoms.get_chemical_symbols(), ase_atoms.get_positions()
-            )
-        ]
-
-        # Create box if cell information is available
-        box = None
-        cell_array = np.array(ase_atoms.get_cell())
-        if np.any(cell_array != 0):
-            from mlptrain.box import Box
-
-            box = Box(np.diag(cell_array))
-
-        # Create configuration
-        config = cls(atoms=atoms, charge=charge, mult=mult, box=box)
-
-        # Try to load mol_dict
-        config.load_mol_dict(filename)
-
+        # Create new configuration and use instance method to load data
+        config = cls(charge=charge, mult=mult)
+        config.load_from_xyz(filename)
         return config
 
     def validate_mol_dict(self) -> bool:

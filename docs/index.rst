@@ -32,6 +32,7 @@ mlp-train documentation
    examples/example1
    examples/example2
    examples/example3
+   examples/example_solvation
 
 .. toctree::
    :maxdepth: 2
@@ -48,7 +49,7 @@ mlp-train documentation
 
 |
 
-.. note::
+.. note::exa
 
    This documentation is under development. Stay tuned for more functionalities!
 
