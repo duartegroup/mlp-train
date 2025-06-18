@@ -512,7 +512,9 @@ class ConfigurationSet(list):
         Arguments:
             method: Electronic structure method used for calculations
             n_cores_pp: Number of CPU per computation,
-                        if int=0, n_cores will be assigned automatically
+                        if int=0, n_cores will be assigned automatically as follows:
+                        if the number of structures is larger than number of CPUs available, computations will be submitted on 1 CPU until all available CPUs are occupied. If number of CPUs is larger than number of structures, CPUs per process will be assigned as number of CPUs devided by the number of structures, rounded down to the nearest integer.
+
         """
         return self._run_parallel_method(
             function=_single_point_eval,
