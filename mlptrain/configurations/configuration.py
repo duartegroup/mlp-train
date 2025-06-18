@@ -606,10 +606,14 @@ class Configuration(AtomCollection):
         import ase.io
 
         # Load atoms from xyz file
-        logger.info(f'Loading atoms from {filename} into existing configuration')
+        logger.info(
+            f'Loading atoms from {filename} into existing configuration'
+        )
         try:
             ase_atoms = ase.io.read(filename)
-            logger.info(f'Successfully loaded {len(ase_atoms)} atoms from {filename}')
+            logger.info(
+                f'Successfully loaded {len(ase_atoms)} atoms from {filename}'
+            )
         except Exception as e:
             logger.error(f'Failed to read {filename}: {e}')
             raise
@@ -627,9 +631,9 @@ class Configuration(AtomCollection):
 
         symbols = ase_atoms.get_chemical_symbols()
         positions = ase_atoms.get_positions()
-        
+
         logger.info(f'Converting {len(symbols)} atoms to autode format')
-        
+
         for i, (symbol, coord) in enumerate(zip(symbols, positions)):
             try:
                 atom = Atom(symbol, x=coord[0], y=coord[1], z=coord[2])
@@ -637,13 +641,16 @@ class Configuration(AtomCollection):
             except Exception as e:
                 logger.error(f'Failed to create atom {i} ({symbol}): {e}')
                 raise
-        
-        logger.info(f'Successfully loaded {len(self.atoms)} atoms into configuration')
-        
+
+        logger.info(
+            f'Successfully loaded {len(self.atoms)} atoms into configuration'
+        )
+
         # Update box if cell information is available
         cell_array = np.array(ase_atoms.get_cell())
         if np.any(cell_array != 0):
             from mlptrain.box import Box
+
             self.box = Box(np.diag(cell_array))
             logger.info(f'Updated box with dimensions: {np.diag(cell_array)}')
 
