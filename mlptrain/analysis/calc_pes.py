@@ -121,12 +121,15 @@ class MLPEST(ExternalMethodOEG):
     """
     Custom class of machine learning potential fitted for autode package.
     Original code provided by T. Young.
+
+    Arguments:
+        mlp
     """
 
     def __init__(
         self,
-        mlp,
-        action,
+        mlp: mlt.potentials.MLPotential,
+        action: list[str],
         path: str,
         opt_fmax: float = 0.01,
         kept_file_exts: tuple[str] = ('.xyz'),
@@ -155,7 +158,7 @@ class MLPEST(ExternalMethodOEG):
     def generate_input_for(self, calc):
         """
         Just print a .xyz file of the molecule, which can be read
-        as a gap-train  configuration object.
+        as a gap-train configuration object.
         """
 
         calc.molecule.print_xyz_file(filename=calc.input.filename)
@@ -503,7 +506,7 @@ if __name__ == '__main__':
     ts_xyz_fpath = 'cis_endo_TS_wB97M.xyz'
     save_name = 'cis_endo_DA'
     react_coords = [(1, 12), (6, 11)]
-    opt_fmax = 1.0
+    opt_fmax = 0.5
     box_dim = [100.0, 100.0, 100.0]
     grid_spec = (2.0, 2.2, 2)  # debug
 
