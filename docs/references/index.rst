@@ -6,6 +6,7 @@ References
    :maxdepth: 1
 
    box
+   analysis/index
    configurations/index
    descriptor/index
    energy

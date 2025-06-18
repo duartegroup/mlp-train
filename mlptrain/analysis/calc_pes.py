@@ -33,9 +33,11 @@ if torch.cuda.is_available():
 
 
 def adjust_potential_energy(self, atoms):
-    """Returns the difference to the potential energy due to an active
+    """
+    Returns the difference to the potential energy due to an active
     constraint. (That is, the quantity returned is to be added to the
-    potential energy)"""
+    potential energy)
+    """
     positions = atoms.positions
     if self._type == 'plane':
         A, B, C, D = self.plane
@@ -58,6 +60,9 @@ def adjust_potential_energy(self, atoms):
 
 
 def adjust_forces(self, atoms, forces):
+    """
+    Updates atomic forces due to an active constraint.
+    """
     positions = atoms.positions
     if self._type == 'plane':
         A, B, C, D = self.plane
@@ -91,8 +96,10 @@ def adjust_forces(self, atoms, forces):
 
 
 def from_autode_to_ase(molecule, cell_size=100):
-    """convert autode.molecule to ase.atoms
-    maintain the constrain generated during ade.pes.RelaxedPESnD calculation"""
+    """
+    Convert autode.molecule to ase.atoms and maintain the constraint
+    generated during ade.pes.RelaxedPESnD calculation.
+    """
     from ase.atoms import Atoms
 
     atoms = Atoms(
@@ -111,15 +118,19 @@ def from_autode_to_ase(molecule, cell_size=100):
 
 
 class MLPEST(ExternalMethodOEG):
-    """class of machine learning potential fitted for autode package
-    original code provided by T. Yang"""
+    """
+    Custom class of machine learning potential fitted for autode package.
+    Original code provided by T. Young.
+    """
 
-    def __init__(self, 
-                 mlp, 
-                 action, 
-                 path: str, 
-                 opt_fmax: float = 0.01):
-
+    def __init__(
+        self,
+        mlp,
+        action,
+        path: str,
+        opt_fmax: float = 0.01,
+        kept_file_exts: tuple[str] = ('.xyz'),
+    ):
         super().__init__(
             executable_name='mlp',
             keywords_set=KeywordsSet(),
@@ -132,6 +143,7 @@ class MLPEST(ExternalMethodOEG):
         self.mlp = mlp
         self.action = deepcopy(action)
         self.opt_fmax = opt_fmax
+        self.kept_file_exts = kept_file_exts
 
     @property
     def is_available(self):
@@ -141,8 +153,10 @@ class MLPEST(ExternalMethodOEG):
         return f'ML potential (available = {self.is_available})'
 
     def generate_input_for(self, calc):
-        """Just print a .xyz file of the molecule, which can be read
-        as a gap-train  configuration object"""
+        """
+        Just print a .xyz file of the molecule, which can be read
+        as a gap-train  configuration object.
+        """
 
         calc.molecule.print_xyz_file(filename=calc.input.filename)
         calc.input.additional_filenames = [self.path]
@@ -167,7 +181,8 @@ class MLPEST(ExternalMethodOEG):
         from ase.optimize import BFGS
 
         @work_in_tmp_dir_ade(
-            filenames_to_copy=calc.input.filenames, kept_file_exts=('.xyz')
+            filenames_to_copy=calc.input.filenames,
+            kept_file_exts=self.kept_file_exts,
         )
         def execute_mlp():
             if 'opt' in self.action:
@@ -281,14 +296,25 @@ class MLPEST(ExternalMethodOEG):
 
 @work_in_tmp_dir_mlt()
 def optimise_with_fix_solute(
-    solute: mlt.Configuration, 
-    config: mlt.Configuration, 
-    fmax: float, 
-    mlp: mlt.potentials.MLPotential, 
-    constraint=True, 
-    **kwargs
-):
-    """optimised molecular geometries by MLP with or without constraint"""
+    config: mlt.Configuration,
+    fmax: float,
+    mlp: mlt.potentials.MLPotential,
+    solute: mlt.Configuration = None,
+    **kwargs,
+) -> mlt.Configuration:
+    """
+    Optimise the configuration by MLP with a fixed solute (solute coords should be the first in configuration coords).
+
+    Parameters:
+        config (mlt.Configuration): the configuration either in vacuum or in solvent where the first len(solute) atoms
+                                    are those of the solute.
+        fmax (float):               fmax value for BFGS optimiser
+        mlp (mlt.potentials.MLPotential):
+        solute (mlt.Configuration): 'solute' configuration, if specified, takes the number of atoms in this config to determine
+                                    the first n atoms of 'config' to fix with constraints.
+    Returns:
+        mlt.Configuration: final frame config of optimised trajectory.
+    """
     from ase.constraints import FixAtoms
     from ase.optimize import BFGS
     from ase.io.trajectory import Trajectory as ASETrajectory
@@ -304,26 +330,29 @@ def optimise_with_fix_solute(
     os.environ['OMP_NUM_THREADS'] = str(n_cores)
     logger.info(f'Using {n_cores} cores for MLP MD')
 
+    # get ase atoms and load calculator
     ase_atoms = config.ase_atoms
     logger.info(f'{ase_atoms.cell}, {ase_atoms.pbc}')
     ase_atoms.calc = mlp.ase_calculator
 
-    if constraint:
+    # constrain solute atoms if specified
+    if solute is not None:
         solute_idx = list(range(len(solute.atoms)))
         constraints = FixAtoms(indices=solute_idx)
         ase_atoms.set_constraint(constraints)
 
+    # run optimisation
     asetraj = ASETrajectory('tmp.traj', 'w', ase_atoms)
     dyn = BFGS(ase_atoms)
     dyn.attach(asetraj.write, interval=2)
     dyn.run(fmax=fmax)
 
+    # return final optimisation trajectory frame
     traj = _convert_ase_traj('tmp.traj')
     final_traj = traj.final_frame
     return final_traj
 
 
-# @work_in_tmp_dir_mlt()
 def calculate_pes(
     mlp: mlt.potentials.MLPotential,
     ts_config: mlt.Configuration,
@@ -334,7 +363,8 @@ def calculate_pes(
     solvation_box_size: float = 14.0,
     opt_fmax: float = 0.01,
     grid_spec: tuple = (1.50, 3.5, 25),
-    box_dim: tuple = (100.0, 100.0, 100.0)
+    box_dim: tuple = (100.0, 100.0, 100.0),
+    kept_file_exts: tuple[str] = ('.xyz'),
 ):
     """
     Calculates an n-dimensional potential energy surface (PES) for a given reactive system about
@@ -355,6 +385,7 @@ def calculate_pes(
         grid_spec (tuple): a tuple of (start_dist, end_dist, grid_size) where start_dist and end_dist specify the start and
                             ends of the distances between reaction coords in Amstrongs to perform the scan over a grid of grid_size^2.
         box_dim (tuple): box dimensions for running PES calc (default to 100, for non-periodic cluster)
+        kept_file_exts (tuple[str]): tuple of file extensions to keep in directory after run (e.g. .xyz)
     """
 
     Hookean.adjust_forces = adjust_forces
@@ -394,7 +425,7 @@ def calculate_pes(
     final_traj_product = trajectory_product.final_frame
 
     # solvate the product
-    if solvent_xyz_fpath is not None:
+    if solvent_mol is not None:
         final_traj_product.solvate(
             box_size=solvation_box_size,
             solvent_molecule=solvent_mol,
@@ -430,6 +461,7 @@ def calculate_pes(
         )
     )
 
+    # save product to file
     product = mlt.Molecule(name='product', atoms=traj_product_optimised.atoms)
     product.print_xyz_file(filename=product_fname)
 
@@ -441,36 +473,44 @@ def calculate_pes(
 
     # define ade Method
     ade_mlp_method = MLPEST(
-        mlp=mlp, action=['opt'], path=f'{cwd}/{mlp.name}.model', opt_fmax=opt_fmax
+        mlp=mlp,
+        action=['opt'],
+        path=f'{cwd}/{mlp.name}.model',
+        opt_fmax=opt_fmax,
+        kept_file_exts=kept_file_exts,
     )
 
-    # calculate the pes
-    pes.calculate(
-        method=ade_mlp_method, keywords=['opt'], n_cores=mlt.Config.n_cores
+    # check if .npz file of PES already exists, and load
+    npz_fname = f'{save_name}_pes.npz'
+    if os.path.exists(npz_fname):
+        pes.load(npz_fname)
+    else:
+        # calculate the pes
+        pes.calculate(
+            method=ade_mlp_method, keywords=['opt'], n_cores=mlt.Config.n_cores
+        )
+
+    # save npz of PES and save plot
+    pes.save(filename=npz_fname)
+    pes.plot(
+        filename=f'{save_name}_pes.pdf',
     )
-    pes.save(filename=f'{save_name}_pes.npz')
-    pes.plot()
 
 
 if __name__ == '__main__':
-    
-    # ACE models
-    # endo = mlt.potentials.ACE('endo_ace_wB97M_imwater', system)
-
-    # MACE models
-    # model_name = 'GO-MACE-23'
-    # model_name = 'MACE-OFF23_medium'
-    # model_name = 'MACE-MP0'
-    model_name = 'MACE-OFF23_medium_endo_DA_train_fine_tuned'
+    # input params
+    model_name = 'MACE-MP0'
     ts_xyz_fpath = 'cis_endo_TS_wB97M.xyz'
-    solvent_xyz_fpath = 'h2o.xyz'
     save_name = 'cis_endo_DA'
-    solvation_box_size = 5.0
-    solvent_density = 0.99657
     react_coords = [(1, 12), (6, 11)]
     opt_fmax = 1.0
     box_dim = [100.0, 100.0, 100.0]
     grid_spec = (2.0, 2.2, 2)  # debug
+
+    # solvent params
+    solvent_xyz_fpath = 'h2o.xyz'
+    solvation_box_size = 5.0
+    solvent_density = 0.99657
 
     # load model
     system = mlt.System(box=box_dim)
@@ -490,10 +530,11 @@ if __name__ == '__main__':
         ts_config,
         react_coords,
         save_name,
-        solvent_mol=solvent_mol,
+        solvent_mol=None,
         solvent_density=solvent_density,
         solvation_box_size=solvation_box_size,
         opt_fmax=opt_fmax,
         grid_spec=grid_spec,
-        box_dim=box_dim
+        box_dim=box_dim,
+        kept_file_exts=None,
     )
