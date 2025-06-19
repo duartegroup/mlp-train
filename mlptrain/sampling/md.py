@@ -1,12 +1,22 @@
 import os
-import ase
-import mlptrain
-import shutil
-import numpy as np
-import autode as ade
 from copy import deepcopy
+import shutil
 from typing import Optional, Sequence, List, Union
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
+
+import numpy as np
 from numpy.random import RandomState
+import ase
+import autode as ade
+from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+from ase.io.trajectory import Trajectory as ASETrajectory
+from ase.md.nptberendsen import NPTBerendsen
+from ase.md.langevin import Langevin
+from ase.md.verlet import VelocityVerlet
+from ase.io import read
+from ase import units as ase_units
+
+import mlptrain
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
 from mlptrain.sampling.plumed import (
@@ -18,13 +28,20 @@ from mlptrain.sampling.plumed import (
 from mlptrain.log import logger
 from mlptrain.box import Box
 from mlptrain.utils import work_in_tmp_dir
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-from ase.io.trajectory import Trajectory as ASETrajectory
-from ase.md.nptberendsen import NPTBerendsen
-from ase.md.langevin import Langevin
-from ase.md.verlet import VelocityVerlet
-from ase.io import read
-from ase import units as ase_units
+
+
+MAX_DYNAMICS_TIMEOUT = 60 * 60 * 24  # 1 day
+
+
+def run_with_timeout(fn, *args, fn_timeout=MAX_DYNAMICS_TIMEOUT, **kwargs):
+    with ThreadPoolExecutor() as executor:
+        future = executor.submit(fn, *args, **kwargs)
+        try:
+            result = future.result(timeout=fn_timeout)
+            return result, True  # Finished in time
+        except TimeoutError:
+            future.cancel()
+            return None, False  # Timed out
 
 
 def run_mlp_md(
@@ -410,7 +427,10 @@ def _run_dynamics(
         dyn.attach(save_trajectory, interval=_traj_saving_interval(dt, kwargs))
 
     logger.info(f'Running {n_steps:.0f} steps with a timestep of {dt} fs')
-    dyn.run(steps=n_steps)
+    # Run the dynamics but cease after a specified time limit
+    # NOTE: this is not a perfect solution, some kind of periodic divergence
+    # check would be better
+    run_with_timeout(dyn.run, steps=n_steps, fn_timeout=MAX_DYNAMICS_TIMEOUT)
 
     if isinstance(ase_atoms.calc, PlumedCalculator):
         # The calling process waits until PLUMED process has finished
