@@ -76,7 +76,7 @@ def test_outlier_identifier():
     mlp.training_data = configs
 
     # Similar configuration should not be an outlier
-    result1 = mlt.training.selection.outlier_identifier(
+    result1 = mlt.training.selection._outlier_identifier(
         configuration=_similar_methane(),
         configurations=mlp.training_data,
         descriptor=descriptor,
@@ -85,7 +85,7 @@ def test_outlier_identifier():
     assert result1 == 1
 
     # Distorted configuration should be an outlier
-    result2 = mlt.training.selection.outlier_identifier(
+    result2 = mlt.training.selection._outlier_identifier(
         configuration=_distorted_methane(),
         configurations=mlp.training_data,
         descriptor=descriptor,
