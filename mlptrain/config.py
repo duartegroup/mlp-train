@@ -76,7 +76,7 @@ class _ConfigClass:
         'restart_latest': False,
         'save_cpu': True,
         'num_workers': 20,
-        'max_L': 2,
+        'max_L': 1,
         'dtype': 'float32',
     }
 
