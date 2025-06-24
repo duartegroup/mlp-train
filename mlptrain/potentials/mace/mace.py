@@ -98,6 +98,14 @@ class MACE(MLPotential):
             return -((_unrounded_valid_fraction * 100) // -1) / 100
 
     @property
+    def batch_size(self) -> int:
+        """Batch size of the training set"""
+        if len(self.train_configs) < Config.mace_params['batch_size']:
+            return len(self.train_configs)
+        else:
+            return Config.mace_params['batch_size']
+
+    @property
     def args(self) -> 'argparse.Namespace':
         """Namespace containing mostly default MACE parameters"""
 
@@ -129,9 +137,9 @@ class MACE(MLPotential):
             '--scaling',
             'rms_forces_scaling',
             '--batch_size',
-            str(Config.mace_params['batch_size']),
+            str(self.batch_size),
             '--valid_batch_size',
-            str(Config.mace_params['batch_size']),
+            str(self.batch_size),
             '--max_num_epochs',
             str(Config.mace_params['max_num_epochs']),
             '--error_table',
