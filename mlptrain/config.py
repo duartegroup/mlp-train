@@ -75,6 +75,8 @@ class _ConfigClass:
         'amsgrad': True,
         'restart_latest': False,
         'save_cpu': True,
+        'num_workers': 20,
+        'max_L': 2,
         'dtype': 'float32',
     }
 
