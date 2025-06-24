@@ -40,7 +40,7 @@ class MACE(MLPotential):
 
             foundation: (str) Name of the foundation model used in fine-tunning
                          like "medium_off" for MACE-OFF(M), "medium" for MACE-MP-0(M).
-                         Here, only navie fine-tuning is supported.
+                         Here, only naive fine-tuning is supported.
                          More details on https://github.com/ACEsuit/mace/tree/main?tab=readme-ov-file#pretrained-foundation-models
         """
         super().__init__(name=name, system=system)
