@@ -39,7 +39,9 @@ class MACE(MLPotential):
                                       specifying the coordinates
 
             foundation: (str) Name of the foundation model used in fine-tunning
-                         like "medium_off" for MACE-OFF(M), "medium" for MACE-MP-0(M)
+                         like "medium_off" for MACE-OFF(M), "medium" for MACE-MP-0(M).
+                         Here, only navie fine-tuning is supported.
+                         More details on https://github.com/ACEsuit/mace/tree/main?tab=readme-ov-file#pretrained-foundation-models
         """
         super().__init__(name=name, system=system)
 
@@ -113,7 +115,7 @@ class MACE(MLPotential):
             '--name',
             self.name,
             '--max_L',
-            str(1),
+            str(Config.mace_params['max_L']),
             '--train_file',
             f'{self.name}_data.xyz',
             '--valid_fraction',
@@ -169,7 +171,7 @@ class MACE(MLPotential):
             '--forces_key',
             'forces',
             '--num_workers',
-            str(35),
+            str(Config.mace_params['num_workers']),
         ]
 
         if self.foundation is not None:
