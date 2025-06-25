@@ -2,7 +2,7 @@
 Run Metadynamics with MLP model
 ********************************
 
-Once an MLP model is generated, it can be used to run metadynamics simulution, which is supported in mlp-train interfaced to PLUMED (https://www.plumed.org/doc-v2.9/user-doc/html/index).
+Once an MLP model is generated, it can be used to run metadynamics simulation, which is supported in mlp-train interfaced with PLUMED (https://www.plumed.org/doc-v2.9/user-doc/html/index).
 
 
 ---------------------------------------------
