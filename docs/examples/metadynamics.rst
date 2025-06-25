@@ -21,7 +21,7 @@ Firstly, the model is loaded by specifying the system and the model:
        mlt.Molecule("water.xyz", charge=0, mult=1), box=mlt.Box([100,100,100])
    )
 
-   # a random configuration is generated for the latter metadynamics simulation use 
+   # a random configuration is generated for later use in the metadynamics simulation
    config = system.random_configuration()
 
    mace = mlt.potentials.MACE('water', system=system)
