@@ -27,7 +27,7 @@ Firstly, the model is loaded by specifying the system and the model:
    mace = mlt.potentials.MACE('water', system=system)
 
 
-Second, you need to specify the collective variables and associated parameter (type of collective variables, atom indexes, and restrain potentials, etc. More information could be found in Documentations>References>Sampling). Here is an example using dihedral angle as CVs:
+Second, you need to specify the collective variables and associated parameters (type of collective variables, atom indexes, and restraining potentials, etc. More information could be found in Documentations>References>Sampling). Here is an example using dihedral angle as CVs:
 
 .. code-block:: python
 
