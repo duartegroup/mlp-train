@@ -44,6 +44,7 @@ def train(
     pbc: bool = False,
     box_size: Optional[list] = None,
     keep_al_trajs: bool = False,
+    keep_output_files: bool = True,
 ) -> None:
     """
     Train a system using active learning, by propagating dynamics using ML
@@ -145,6 +146,8 @@ def train(
         box_size: (List | None) Size of the box where MLP-MD propagated.
 
         keep_al_trajs: (bool) If True, MLP-MD trajectories generated during AL phase are saved into new folder.
+
+        keep_output_files: (bool) If True, outputs of QM computations are saved to new folder.
     """
     if md_program.lower() == 'openmm':
         if not isinstance(mlp, mlptrain.potentials.MACE):
@@ -162,6 +165,9 @@ def train(
 
     if keep_al_trajs is True:
         os.makedirs('al_trajectories', exist_ok=True)
+
+    if keep_output_files is True:
+        os.makedirs('QM_outputs', exist_ok=True)
 
     if pbc and box_size is None:
         raise ValueError('For PBC in MD, the box_size cannot be None')
@@ -238,6 +244,7 @@ def train(
             pbc=pbc,
             box_size=box_size,
             keep_al_trajs=keep_al_trajs,
+            keep_output_files=keep_output_files,
         )
 
         # Active learning finds no configurations
@@ -369,6 +376,7 @@ def _gen_active_config(
     n_cores: int,
     max_time: float,
     method_name: str,
+    keep_output_files: str,
     **kwargs,
 ) -> Optional['mlptrain.Configuration']:
     """
@@ -515,7 +523,12 @@ def _gen_active_config(
             frame = traj.final_frame
 
         if frame.energy.true is None:
-            frame.single_point(method_name, n_cores=n_cores)
+            frame.single_point(
+                method_name,
+                n_cores=n_cores,
+                keep_output_files=keep_output_files,
+                output_name=f'{method_name}_iter_{kwargs["iteration"]}_{kwargs["idx"]}',
+            )
 
         return frame
 
@@ -531,7 +544,12 @@ def _gen_active_config(
 
             if selector.select:
                 if frame.energy.true is None:
-                    frame.single_point(method_name, n_cores=n_cores)
+                    frame.single_point(
+                        method_name,
+                        n_cores=n_cores,
+                        keep_output_files=keep_output_files,
+                        output_name=f'{method_name}_iter_{kwargs["iteration"]}_{kwargs["idx"]}',
+                    )
 
                 return frame
 
@@ -556,6 +574,7 @@ def _gen_active_config(
         temp=temp,
         curr_time=curr_time,
         n_calls=n_calls + 1,
+        keep_output_files=keep_output_files,
         **kwargs,
     )
 
@@ -564,6 +583,7 @@ def _set_init_training_configs(
     mlp: 'mlptrain.potentials._base.MLPotential',
     init_configs: 'mlptrain.ConfigurationSet',
     method_name: str,
+    keep_output_files: str,
 ) -> None:
     """Set some initial training configurations"""
 
@@ -578,7 +598,9 @@ def _set_init_training_configs(
             f'Initialised with {len(init_configs)} configurations '
             f'all with defined energy'
         )
-        init_configs.single_point(method=method_name)
+        init_configs.single_point(
+            method=method_name, keep_output_files=keep_output_files
+        )
 
     mlp.training_data += init_configs
 
@@ -637,7 +659,9 @@ def _gen_and_set_init_training_configs(
             continue
 
     logger.info(f'Added {num} configurations with min dist = {dist:.3f} Å')
-    init_configs.single_point(method_name)
+    init_configs.single_point(
+        method_name,
+    )
     mlp.training_data += init_configs
     return init_configs
 
