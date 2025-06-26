@@ -24,12 +24,11 @@ class ConfigurationSet(list):
         Construct a configuration set from Configurations, or a saved file.
         This is a set, thus no duplicates configurations are present.
 
-        -----------------------------------------------------------------------
         Arguments:
-            args: Either strings of existing files (e.g. data.npz) or
+            args (Configuration, str): Either strings of existing files (e.g. data.npz) or
                   individual configurations.
 
-            allow_duplicates: Should duplicate configurations be supported? For
+            allow_duplicates (bool): Should duplicate configurations be supported? For
                               a training configuration set this should be false
         """
         super().__init__()
@@ -55,7 +54,6 @@ class ConfigurationSet(list):
         """
         List of true config forces. List of np.ndarray with shape: (n_atoms, 3)
 
-        -----------------------------------------------------------------------
         Returns:
             (np.ndarray | None)
         """
@@ -71,7 +69,6 @@ class ConfigurationSet(list):
         """
         Predicted force tensor. shape = (N, n_atoms, 3)
 
-        -----------------------------------------------------------------------
         Returns:
             (np.ndarray | None)
         """
@@ -96,7 +93,6 @@ class ConfigurationSet(list):
         Determine the lowest energy configuration in this set based on the
         true energies. If not evaluated then returns the first configuration
 
-        -----------------------------------------------------------------------
         Returns:
             (mlptrain.Configuration):
         """
@@ -113,7 +109,6 @@ class ConfigurationSet(list):
         + bias energy) in this set. If not evaluated then returns the first
         configuration
 
-        -----------------------------------------------------------------------
         Returns:
             (mlptrain.Configuration):
         """
@@ -140,7 +135,6 @@ class ConfigurationSet(list):
         (true energy + inherited bias energy) in this set. If not evaluated
         then returns the first configuration
 
-        -----------------------------------------------------------------------
         Returns:
             (mlptrain.Configuration):
         """
@@ -166,7 +160,6 @@ class ConfigurationSet(list):
         Does this set of configurations have a true energy that is undefined
         (i.e. thus is set to None)?
 
-        -----------------------------------------------------------------------
         Returns:
             (bool):
         """
@@ -188,9 +181,8 @@ class ConfigurationSet(list):
         """
         Remove all configuration above a particular *relative* energy
 
-        -----------------------------------------------------------------------
         Arguments:
-            energy: Relative energy (eV) above which to discard configurations
+            energy (float): Relative energy (eV) above which to discard configurations
         """
         min_energy = self.lowest_energy.energy.true
 
@@ -206,9 +198,8 @@ class ConfigurationSet(list):
         configurations, if a time is not specified for a frame then assume
         it was generated at 'zero' time
 
-        -----------------------------------------------------------------------
         Arguments:
-            from_idx: Index from which to consider the minimum time
+            from_idx (int): Index from which to consider the minimum time
 
         Returns:
             (float): Time in fs
@@ -229,9 +220,8 @@ class ConfigurationSet(list):
         Append an item onto these set of configurations. None will not be
         appended
 
-        -----------------------------------------------------------------------
         Arguments:
-            value: Configuration
+            value (Configuration): Structure in a form of Configuration
         """
 
         if value is None:
@@ -253,9 +243,8 @@ class ConfigurationSet(list):
         these set of configurations. Will generate plots of total energies
         over these configurations and save a text file with ∆s
 
-        -----------------------------------------------------------------------
         Arguments:
-            *args: Strings defining the method or MLPs
+            *args (mlptrain.potentials.MLPotential): Strings defining the method or MLPs
         """
         from mlptrain.configurations.plotting import parity_plot
 
@@ -308,13 +297,12 @@ class ConfigurationSet(list):
     ) -> None:
         """Save these configurations to a file
 
-        -----------------------------------------------------------------------
         Arguments:
-            filename:
+            filename (str): File in with .xyz
 
-            true: Save 'true' energies and forces, if they exist
+            true (bool): Save 'true' energies and forces, if they exist
 
-            predicted: Save the MLP predicted energies and forces, if they
+            predicted (bool): Save the MLP predicted energies and forces, if they
                        exist.
         """
 
@@ -350,20 +338,14 @@ class ConfigurationSet(list):
         Load configurations from a .xyz file with optional box, energies and forces if specified.
         Note: this currently assumes that all configurations have the same charge and multiplicity.
 
-        -----------------------------------------------------------------------
         Arguments:
-            filename: name of the input .xyz file
-
-            charge: total charge on all configurations in the set
-
-            mult: total spin multiplicity on all configurations in the set
-
-            box: optionally specify a Box or None, if the configurations
+            filename (str): name of the input .xyz file
+            charge (int): total charge on all configurations in the set
+            mult (int): total spin multiplicity on all configurations in the set
+            box (Box): optionally specify a Box or None, if the configurations
                  are in vacuum (or if 'Lattice' is specified in extended .xyz)
-
-            load_energies: bool - whether to load 'true' configurational energies or not
-
-            load_forces: bool - whether to load 'true' forces from atom lines or not
+            load_energies (bool):  whether to load 'true' configurational energies or not
+            load_forces (bool): whether to load 'true' forces from atom lines or not
         """
 
         def is_xyz_line(_l):
@@ -454,9 +436,8 @@ class ConfigurationSet(list):
         Save all the parameters for this configuration. Overrides any current
         data in that file
 
-        -----------------------------------------------------------------------
         Arguments:
-            filename: Filename, if extension is not .xyz it will be added
+            filename (str): Filename with .xyz or .npz, if extension is not provided, it will be saved as .npz
         """
 
         if len(self) == 0:
@@ -477,11 +458,10 @@ class ConfigurationSet(list):
 
     def load(self, filename: str) -> None:
         """
-        Load energies and forces from a saved numpy compressed array.
+        Load energies and forces from a saved numpy compressed array (.npz).
 
-        -----------------------------------------------------------------------
         Arguments:
-            filename:
+            filename (str): File name with .npz
 
         Raises:
             (ValueError): If an unsupported file extension is present
@@ -508,10 +488,9 @@ class ConfigurationSet(list):
         """
         Evaluate energies and forces on all configuration in this set
 
-        -----------------------------------------------------------------------
         Arguments:
-            method: Electronic structure method used for calculations
-            n_cores_pp: Number of CPU per computation,
+            method (str): Electronic structure method used for calculations
+            n_cores_pp (int): Number of CPU per computation,
                         if int=0, n_cores will be assigned automatically as follows:
                         if the number of structures is larger than number of CPUs available,
                         computations will be submitted on 1 CPU until all available CPUs are occupied.
@@ -531,7 +510,6 @@ class ConfigurationSet(list):
         """
         Coordinates of all the configurations in this set
 
-        -----------------------------------------------------------------------
         Returns:
             (np.ndarray): Coordinates tensor (n, n_atoms, 3),
                           where n is len(self)
@@ -546,7 +524,6 @@ class ConfigurationSet(list):
         """
         PLUMED collective variable values in this set
 
-        -----------------------------------------------------------------------
         Returns:
             (np.ndarray): PLUMED collective variable matrix (n, n_cvs),
                           where n is len(self)
@@ -587,7 +564,6 @@ class ConfigurationSet(list):
         """
         Atomic numbers of atoms in all the configurations in this set
 
-        -----------------------------------------------------------------------
         Returns:
             (np.ndarray): Atomic numbers matrix (n, n_atoms)
         """
@@ -603,7 +579,6 @@ class ConfigurationSet(list):
         Box sizes of all the configurations in this set, if a configuration
         does not have a box then use a zero set of lattice lengths.
 
-        -----------------------------------------------------------------------
         Returns:
             (np.ndarray): Box sizes matrix (n, 3)
         """
@@ -742,7 +717,6 @@ class ConfigurationSet(list):
         """Run a set of electronic structure calculations on this set
         in parallel
 
-        -----------------------------------------------------------------------
         Arguments
             function: A method to calculate energy and forces on a configuration
         """
