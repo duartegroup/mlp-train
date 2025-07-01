@@ -105,11 +105,11 @@ class MACE(MLPotential):
         if (
             self.n_train * (1 - Config.mace_params['valid_fraction'])
              < Config.mace_params['batch_size']
-             ):
+        ):
             return int(
                    np.floor(
-                          self.n_train * (1 - Config.mace_params['valid_fraction']) 
-                   )
+                    self.n_train * (1 - Config.mace_params['valid_fraction'])
+                )
             )
         else:
             return Config.mace_params['batch_size']
