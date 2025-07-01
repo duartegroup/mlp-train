@@ -142,7 +142,7 @@ class MACE(MLPotential):
             '--r_max',
             str(Config.mace_params['r_max']),
             '--lr',
-            str(0.001),
+            str(Config.mace_params['lr']),
             '--scaling',
             'rms_forces_scaling',
             '--batch_size',
