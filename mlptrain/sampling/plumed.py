@@ -1037,7 +1037,8 @@ class PlumedCNCV(_PlumedCV):
     def __init__(
         self,
         name: str,
-        ref: float,
+        r_ref: float,
+        d_ref: float = 0,
         n: int = 6,
         m: int = 12,
         atom_groups: Sequence = None,
@@ -1045,7 +1046,7 @@ class PlumedCNCV(_PlumedCV):
         """
         PLUMED collective variable as a coordination number (CN) between two atoms or groups of atoms
 
-        e.g. [(0, 2)] gives ζ =[1-(r_02/r_ref)^n]/ [1-(r_02/r_ref)^m]
+        e.g. [(0, 2)] gives ζ =[1-((r_02 - d_ref)/r_ref)^n]/ [1-((r_02 - d_ref)/r_ref)^m]
 
         which corresponds to the CN between atoms 0 and 2.
         To ensure that the CN has continuous derivatives,
@@ -1057,7 +1058,9 @@ class PlumedCNCV(_PlumedCV):
 
             name: (str) Name of the collective variable
 
-            ref: (float) Reference values to distinguish different states
+            r_ref: (float) Parameter r_0 in the original switching function
+
+            d_ref: (float) Parmeter d_0 in the original switching function. Default = 0.
 
             n, m: (int) Parameters used to adjust the shape of the function
 
@@ -1069,13 +1072,15 @@ class PlumedCNCV(_PlumedCV):
 
         self._set_units()
 
-        self.ref = ref
+        self.r_ref = r_ref
+
+        self.d_ref = d_ref
 
         self.n = n
 
         self.m = m
 
-        func = f'(1-({self.dof_names[0]}/{self.ref})^{self.n})/(1-({self.dof_names[0]}/{self.ref})^{self.m})'
+        func = f'(1-(({self.dof_names[0]}-{self.d_ref})/{self.r_ref})^{self.n})/(1-(({self.dof_names[0]}-{self.d_ref})/{self.r_ref})^{self.m})'
 
         self.setup.extend(
             [
