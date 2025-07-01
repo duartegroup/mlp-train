@@ -159,7 +159,7 @@ class MACE(MLPotential):
             '--correlation',
             str(Config.mace_params['correlation']),
             '--scheduler_patience',
-            str(20),
+           str(Config.mace_params['scheduler_patience']),
             '--patience',
             str(50),
             '--start_swa',
