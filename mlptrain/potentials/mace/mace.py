@@ -161,7 +161,7 @@ class MACE(MLPotential):
             '--scheduler_patience',
            str(Config.mace_params['scheduler_patience']),
             '--patience',
-            str(50),
+            str(Config.mace_params['patience']),
             '--start_swa',
             str(Config.mace_params['start_swa']),
             '--swa',
