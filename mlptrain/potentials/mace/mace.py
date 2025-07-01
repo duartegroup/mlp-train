@@ -189,7 +189,7 @@ class MACE(MLPotential):
         if Config.mace_params['save_cpu'] is True:
             args_list.append('--save_cpu')
 
-        if Config.mace_params['restart_latest'] is True:
+        if Config.mace_params['restart_latest']:
             args_list.append('--restart_latest')
 
         args = tools.build_default_arg_parser().parse_args(args_list)
