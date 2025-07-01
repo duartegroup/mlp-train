@@ -182,6 +182,15 @@ class MACE(MLPotential):
             str(Config.mace_params['num_workers']),
         ]
 
+        if Config.mace_params['ema']:
+                args_list.append('--ema')
+                args_list.append('--ema_decay')
+                args_list.append(str(Config.mace_params['ema_decay']))
+      
+        if Config.mace_params['swa']:
+                args_list.append('--swa')
+                args_list.append('--start_swa')
+                args_list.append(str(Config.mace_params['start_swa']))
         if self.foundation is not None:
             args_list.append('--foundation_model')
             args_list.append(f'{self.foundation}')
