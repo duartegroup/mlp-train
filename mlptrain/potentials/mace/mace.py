@@ -186,7 +186,7 @@ class MACE(MLPotential):
             args_list.append('--foundation_model')
             args_list.append(f'{self.foundation}')
 
-        if Config.mace_params['save_cpu'] is True:
+        if Config.mace_params['save_cpu']:
             args_list.append('--save_cpu')
 
         if Config.mace_params['restart_latest']:
