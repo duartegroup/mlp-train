@@ -165,7 +165,7 @@ class MACE(MLPotential):
             '--default_dtype',
             str(Config.mace_params['dtype']),
             '--seed',
-           str(Config.mace_params['seed']),
+            str(Config.mace_params['seed']),
             '--energy_key',
             'energy',
             '--forces_key',
