@@ -4,6 +4,7 @@ from mlptrain.config import Config
 from mlptrain.potentials._base import MLPotential
 import os
 import time
+import numpy as np
 import logging
 from mlptrain.log import logger
 import autode as ade
