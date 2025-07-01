@@ -102,8 +102,15 @@ class MACE(MLPotential):
     @property
     def batch_size(self) -> int:
         """Batch size of the training set"""
-        if len(self.train_configs) < Config.mace_params['batch_size']:
-            return len(self.train_configs)
+        if (
+            self.n_train * (1 - Config.mace_params['valid_fraction'])
+             < Config.mace_params['batch_size']
+             ):
+            return int(
+                   np.floor(
+                          self.n_train * (1 - Config.mace_params['valid_fraction']) 
+                   )
+            )
         else:
             return Config.mace_params['batch_size']
 
