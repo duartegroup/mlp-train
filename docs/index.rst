@@ -49,7 +49,5 @@ mlp-train documentation
 
 |
 
-.. note::exa
-
    This documentation is under development. Stay tuned for more functionalities!
 

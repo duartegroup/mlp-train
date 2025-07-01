@@ -46,7 +46,7 @@ class Configuration(AtomCollection):
             charge:
             mult:
             box: Optional box, if None
-            mol_list: List[int] = None
+            mol_dict: Dict[int] = None
 
         """
         super().__init__(atoms=atoms)
@@ -66,6 +66,31 @@ class Configuration(AtomCollection):
 
         self.time: Optional[float] = None  # Time in a trajectory
         self.n_ref_evals = 0  # Number of reference evaluations
+
+    @classmethod
+    def from_xyz(
+        cls, filename: str, charge: int = 0, mult: int = 1
+    ) -> 'Configuration':
+        """
+        Create a Configuration from an xyz file and automatically load mol_dict if available.
+
+        Arguments:
+            filename: Path to xyz file
+            charge: Overall charge
+            mult: Spin multiplicity
+
+        Returns:
+            Configuration: New configuration with mol_dict loaded if available
+        """
+        # Use static method to load data
+        atoms, box, mol_dict = cls._load_from_xyz(filename)
+
+        # Create new configuration with loaded data
+        config = cls(atoms=atoms, charge=charge, mult=mult, box=box)
+        if mol_dict:
+            config.mol_dict = mol_dict
+
+        return config
 
     @property
     def ase_atoms(self) -> 'ase.atoms.Atoms':
@@ -492,7 +517,7 @@ class Configuration(AtomCollection):
 
     def load_mol_dict(self, filename: str) -> bool:
         """
-        Load mol_dict from a hidden .mol_dict.txt file if it exists.
+        Load mol_dict from a hidden .mol_dict.txt file if it exists and assign to self.
 
         Arguments:
             filename: The xyz filename to check for an associated mol_dict file
@@ -500,23 +525,10 @@ class Configuration(AtomCollection):
         Returns:
             bool: True if mol_dict was loaded, False if file doesn't exist
         """
-
-        # Create the hidden mol_dict filename
-        directory = os.path.dirname(filename) or '.'
-        base_name = os.path.splitext(os.path.basename(filename))[0]
-        mol_dict_file = os.path.join(directory, f'.{base_name}.mol_dict.txt')
-
-        if os.path.exists(mol_dict_file):
-            try:
-                with open(mol_dict_file, 'r') as f:
-                    self.mol_dict = json.load(f)
-                logger.info(f'Loaded mol_dict from {mol_dict_file}')
-                return True
-            except (json.JSONDecodeError, IOError) as e:
-                logger.warning(
-                    f'Failed to load mol_dict from {mol_dict_file}: {e}'
-                )
-                return False
+        mol_dict = self._load_mol_dict_from_file(filename)
+        if mol_dict is not None:
+            self.mol_dict = mol_dict
+            return True
         return False
 
     def single_point(
@@ -596,19 +608,51 @@ class Configuration(AtomCollection):
 
         return ''.join(formula_parts)
 
-    def load_from_xyz(self, filename: str) -> None:
+    @staticmethod
+    def _load_mol_dict_from_file(filename: str) -> Optional[Dict]:
         """
-        Load atoms from an xyz file into this configuration, replacing existing atoms.
+        Load mol_dict from a hidden .mol_dict.txt file if it exists.
+
+        Arguments:
+            filename: The xyz filename to check for an associated mol_dict file
+
+        Returns:
+            Optional[Dict]: The mol_dict if loaded successfully, None otherwise
+        """
+        # Create the hidden mol_dict filename
+        directory = os.path.dirname(filename) or '.'
+        base_name = os.path.splitext(os.path.basename(filename))[0]
+        mol_dict_file = os.path.join(directory, f'.{base_name}.mol_dict.txt')
+
+        if os.path.exists(mol_dict_file):
+            try:
+                with open(mol_dict_file, 'r') as f:
+                    mol_dict = json.load(f)
+                logger.info(f'Loaded mol_dict from {mol_dict_file}')
+                return mol_dict
+            except (json.JSONDecodeError, IOError) as e:
+                logger.warning(
+                    f'Failed to load mol_dict from {mol_dict_file}: {e}'
+                )
+        return None
+
+    @staticmethod
+    def _load_from_xyz(filename: str) -> tuple:
+        """
+        Load atoms, box, and mol_dict from an xyz file.
 
         Arguments:
             filename: Path to xyz file
+
+        Returns:
+            tuple: (atoms, box, mol_dict) where box and mol_dict can be None
         """
         import ase.io
+        from autode.atoms import Atom
+        from mlptrain.box import Box
 
         # Load atoms from xyz file
-        logger.info(
-            f'Loading atoms from {filename} into existing configuration'
-        )
+        logger.info(f'Loading atoms from {filename}')
         try:
             ase_atoms = ase.io.read(filename)
             logger.info(
@@ -618,17 +662,16 @@ class Configuration(AtomCollection):
             logger.error(f'Failed to read {filename}: {e}')
             raise
 
-        # Clear existing atoms
-        self.atoms = []
+        atoms = []
+        box = None
+        mol_dict = None
 
         # Debug: print ASE atoms info
         if len(ase_atoms) == 0:
             logger.warning(f'No atoms found in {filename}')
-            return
+            return atoms, box, mol_dict
 
         # Convert to autode atoms
-        from autode.atoms import Atom
-
         symbols = ase_atoms.get_chemical_symbols()
         positions = ase_atoms.get_positions()
 
@@ -637,46 +680,41 @@ class Configuration(AtomCollection):
         for i, (symbol, coord) in enumerate(zip(symbols, positions)):
             try:
                 atom = Atom(symbol, x=coord[0], y=coord[1], z=coord[2])
-                self.atoms.append(atom)
+                atoms.append(atom)
             except Exception as e:
                 logger.error(f'Failed to create atom {i} ({symbol}): {e}')
                 raise
 
-        logger.info(
-            f'Successfully loaded {len(self.atoms)} atoms into configuration'
-        )
+        logger.info(f'Successfully loaded {len(atoms)} atoms')
 
         # Update box if cell information is available
         cell_array = np.array(ase_atoms.get_cell())
         if np.any(cell_array != 0):
-            from mlptrain.box import Box
-
-            self.box = Box(np.diag(cell_array))
+            box = Box(np.diag(cell_array))
             logger.info(f'Updated box with dimensions: {np.diag(cell_array)}')
 
-        # Clear and reload mol_dict
-        self.mol_dict = {}
-        self.load_mol_dict(filename)
+        # Load mol_dict if available
+        mol_dict = Configuration._load_mol_dict_from_file(filename)
 
-    @classmethod
-    def from_xyz(
-        cls, filename: str, charge: int = 0, mult: int = 1
-    ) -> 'Configuration':
+        return atoms, box, mol_dict
+
+    def load_from_xyz(self, filename: str) -> None:
         """
-        Create a Configuration from an xyz file and automatically load mol_dict if available.
+        Load atoms from an xyz file into this configuration, replacing existing atoms.
 
         Arguments:
             filename: Path to xyz file
-            charge: Overall charge
-            mult: Spin multiplicity
-
-        Returns:
-            Configuration: New configuration with mol_dict loaded if available
         """
-        # Create new configuration and use instance method to load data
-        config = cls(charge=charge, mult=mult)
-        config.load_from_xyz(filename)
-        return config
+        atoms, box, mol_dict = self._load_from_xyz(filename)
+
+        # Update this configuration
+        self.atoms = atoms
+        if box is not None:
+            self.box = box
+        if mol_dict is not None:
+            self.mol_dict = mol_dict
+        else:
+            self.mol_dict = {}
 
     def validate_mol_dict(self) -> bool:
         """
