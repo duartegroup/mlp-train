@@ -70,7 +70,7 @@ class _ConfigClass:
         'error_table': 'TotalMAE',
         'swa': True,
         'start_swa': 800,
-        'ema': False,
+        'ema': True,
         'ema_decay': 0.99,
         'lr': 0.001,
         'patience': 50,
