@@ -203,7 +203,9 @@ class Configuration(AtomCollection):
             )
             solvent = get_solvent(solvent_name, kind='implicit')
             solvent_smiles = solvent.smiles
-            solvent_molecule = ade.Molecule(smiles=solvent_smiles)
+            solvent_molecule = ade.Molecule(
+                smiles=solvent_smiles, name=solvent_name
+            )
             solvent_molecule = optimise_solvent(solvent_molecule)
 
             if solvent.name not in solvent_densities.keys():
