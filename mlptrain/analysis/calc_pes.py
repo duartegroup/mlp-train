@@ -502,13 +502,14 @@ def calculate_pes(
 
 if __name__ == '__main__':
     # input params
-    model_name = 'MACE-MP0'
+    model_name = 'MACE-OFF23_medium'
     ts_xyz_fpath = 'cis_endo_TS_wB97M.xyz'
     save_name = 'cis_endo_DA'
     react_coords = [(1, 12), (6, 11)]
     opt_fmax = 0.5
     box_dim = [100.0, 100.0, 100.0]
     grid_spec = (2.0, 2.2, 2)  # debug
+    # grid_spec = (2.0, 2.2, 2)  # debug
 
     # solvent params
     solvent_xyz_fpath = 'h2o.xyz'
