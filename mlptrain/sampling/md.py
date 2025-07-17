@@ -40,6 +40,7 @@ def run_with_timeout(fn, *args, fn_timeout=MAX_DYNAMICS_TIMEOUT, **kwargs):
             result = future.result(timeout=fn_timeout)
             return result, True  # Finished in time
         except TimeoutError:
+            logger.warning(f'Trajectory cancelled due to running over maximum timeout, {fn_timeout} s')
             future.cancel()
             return None, False  # Timed out
 
