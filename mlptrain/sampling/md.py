@@ -30,7 +30,7 @@ from mlptrain.box import Box
 from mlptrain.utils import work_in_tmp_dir
 
 
-MAX_DYNAMICS_TIMEOUT = 60 * 60 * 24  # 1 day
+MAX_DYNAMICS_TIMEOUT = 60 * 60 * 2  # 2 hours
 
 
 def run_with_timeout(fn, *args, fn_timeout=MAX_DYNAMICS_TIMEOUT, **kwargs):
