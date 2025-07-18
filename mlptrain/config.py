@@ -57,6 +57,7 @@ class _ConfigClass:
 
     mace_params = {
         'valid_fraction': 0.1,
+        'max_num_epochs': 1200,
         'config_type_weights': '{"Default":1.0}',
         'model': 'MACE',
         'loss': 'weighted',
@@ -71,11 +72,17 @@ class _ConfigClass:
         'error_table': 'TotalMAE',
         'swa': True,
         'start_swa': 800,
-        'ema': False,
+        'ema': True,
         'ema_decay': 0.99,
+        'lr': 0.001,
+        'patience': 50,
+        'scheduler_patience': 20,
+        'seed': 345,
         'amsgrad': True,
         'restart_latest': False,
         'save_cpu': True,
+        'num_workers': 20,
+        'max_L': 1,
         'dtype': 'float32',
     }
 
