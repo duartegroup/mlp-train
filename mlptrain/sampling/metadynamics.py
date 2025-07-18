@@ -391,7 +391,7 @@ class Metadynamics:
 
         start_metad = time.perf_counter()
 
-        with Pool(processes=n_processes) as pool:
+        with mp.get_context('spawn').Pool(processes=n_processes) as pool:
             for idx in range(n_runs):
                 # Without copy kwargs is overwritten at every iteration
                 kwargs_single = deepcopy(kwargs)
@@ -1517,7 +1517,7 @@ class Metadynamics:
         n_processes = min(Config.n_cores, n_runs)
         fes_processes, fes_grids = [], []
 
-        with Pool(processes=n_processes) as pool:
+        with mp.get_context('spawn').Pool(processes=n_processes) as pool:
             for idx in range(1, n_runs + 1):
                 traj_path = os.path.join(
                     os.getcwd(), f'trajectories/trajectory_{idx}.traj'
