@@ -33,16 +33,39 @@ from mlptrain.utils import work_in_tmp_dir
 MAX_DYNAMICS_TIMEOUT = 60 * 60 * 2  # 2 hours
 
 
-def run_with_timeout(fn, *args, fn_timeout=MAX_DYNAMICS_TIMEOUT, **kwargs):
-    with ThreadPoolExecutor() as executor:
-        future = executor.submit(fn, *args, **kwargs)
-        try:
-            result = future.result(timeout=fn_timeout)
-            return result, True  # Finished in time
-        except TimeoutError:
-            logger.warning(f'Trajectory cancelled due to running over maximum timeout, {fn_timeout} s')
-            future.cancel()
-            return None, False  # Timed out
+# def run_with_timeout(fn, *args, fn_timeout=MAX_DYNAMICS_TIMEOUT, **kwargs):
+#     with ThreadPoolExecutor() as executor:
+#         future = executor.submit(fn, *args, **kwargs)
+#         try:
+#             result = future.result(timeout=fn_timeout)
+#             return result, True  # Finished in time
+#         except TimeoutError:
+#             logger.warning(f'Trajectory cancelled due to running over maximum timeout, {fn_timeout} s')
+#             future.cancel()
+#             return None, False  # Timed out
+
+
+def run_with_timeout(fn, *args, fn_timeout=Config.dynamics_timeout, **kwargs):
+    queue = mp.Queue()
+
+    def wrapper(queue, *args, **kwargs):
+        result = fn(*args, **kwargs)
+        queue.put(result)
+
+    process = mp.Process(target=wrapper, args=(queue,) + args, kwargs=kwargs)
+    process.start()
+    process.join(timeout=fn_timeout)
+
+    if process.is_alive():
+        process.terminate()
+        process.join()
+        logger.warning(
+            f'Trajectory cancelled due to running over maximum timeout, {fn_timeout} s'
+        )
+        return None, False
+
+    return queue.get(), True
+
 
 
 def run_mlp_md(
@@ -431,7 +454,7 @@ def _run_dynamics(
     # Run the dynamics but cease after a specified time limit
     # NOTE: this is not a perfect solution, some kind of periodic divergence
     # check would be better
-    run_with_timeout(dyn.run, steps=n_steps, fn_timeout=MAX_DYNAMICS_TIMEOUT)
+    run_with_timeout(dyn.run, steps=n_steps, fn_timeout=Config.dynamics_timeout)
 
     if isinstance(ase_atoms.calc, PlumedCalculator):
         # The calling process waits until PLUMED process has finished
