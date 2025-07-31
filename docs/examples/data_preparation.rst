@@ -4,9 +4,9 @@ Preparation of initial data
 
 Active learning cycle can be initiated from one structure (e.g., transition state) or from existing data sets in ``.npz`` or ``.xyz`` formats. 
 
----------------------------
-Example 1: Loading xyz data
----------------------------
+----------------
+Loading xyz data
+----------------
 
 You can train MLIP for existing dataset. The structures can be loaded in xyz format as:
 
@@ -51,9 +51,9 @@ You can than load the energies and forces as:
    data.load_xyz('data_set.xyz', charge = 0, mult = 1, load_energies = True, load_forces = True)
 
    
------------------------------------------------------
-Example 2: Label data with reference energy and force
------------------------------------------------------
+------------------------------------------
+Label data with reference energy and force
+------------------------------------------
 
 To train MLIP, the structures need to be labelled by suitable reference. This is typically energy and forces from electronic structure computations.
 ``mlp-train`` currently supports computing the reference data by ``Orca``, ``Gaussian`` or ``xtb``. Below, we discuss the examples how to use them: 
