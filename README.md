@@ -13,7 +13,6 @@ Available models:
 - ACE
 - MACE
 
-
 ## Documentation and tutorial
 
 The (incomplete) readthedocs documentation for the mlp-train package is available [here](https://mlp-train.readthedocs.io/en/latest/index.html)
@@ -35,24 +34,27 @@ Each model is installed into an individual conda environment:
 ./install_mace.sh 
 ```
 
+The environment for ACE requires the installation of Julia (version >= 1.6), which needs to be present in $PATH.
+
+The MACE installation benefits from CUDA acceleration. Depending on your machine, you might need to prefix the mace_install.sh with instructions for conda:
+
+```
+CONDA_OVERRIDE_CUDA="11.2" ./install_mace.sh 
+```
+This is needed in two scenarios:
+
+- To ensure an environment that is compatible with your CUDA driver.
+- To force CUDA builds to be installed, even if the installation is being done from a CPU-only machine. This is typical in a situation where you are installing from a head node without GPUs but intend to run on GPUs and want to install the CUDA builds.
+
 ### Notes
 
 - Units are: distance (Å), energy (eV), force (eV Å$`^{-1}`$), time (fs)
 
 ## Using with OpenMM
 
-The OpenMM backend only works with MACE at the moment. The necessary dependencies are installed automatically via conda:
+The OpenMM backend only works with MACE at the moment. The necessary dependencies are installed automatically during MACE installation.
 
-```
-./install_mace.sh
-```
-
-Depending on your machine, you might need to prefix the command above with something like `CONDA_OVERRIDE_CUDA="11.2"` in two scenarios:
-
-- To ensure an environment that is compatible with your CUDA driver.
-- To force CUDA builds to be installed, even if the installation is being done from a CPU-only machine. This is typical in a situation where you are installing from a head node without GPUs but intend to run on GPUs and want to install the CUDA builds.
-
-You should now be able to run `water_openmm.py` in `./examples` or run the Jupyter notebook on Google Colab [`water_openmm_colab.ipynb`](./examples/water_openmm_colab.ipynb).
+You should then be able to run `water_openmm.py` in `./examples` or run the Jupyter notebook on Google Colab [`water_openmm_colab.ipynb`](./examples/water_openmm_colab.ipynb).
 
 You can use OpenMM during active learning by passing the keyword argument `md_program="OpenMM"` to the `al_train` method.
 You can run MD with OpenMM using `mlptrain.md_openmm.run_mlp_md_openmm()`
