@@ -6,12 +6,18 @@
 [![License](https://img.shields.io/badge/License-MIT%202.0-blue.svg)](https://opensource.org/licenses/mit)
 
 # mlp-train
-General machine learning potentials (MLP) training for molecular systems in gas phase and solution
+General machine learning potentials (MLP) training for molecular systems in the gas phase and solution
 
 Available models:
 - GAP
 - ACE
 - MACE
+
+## Documentation and tutorial
+
+The (incomplete) readthedocs documentation for the mlp-train package is available [here](https://mlp-train.readthedocs.io/en/latest/index.html)
+
+Simple tutorials illustrating the use of mlp-train are available at: [https://github.com/duartegroup/euchems_tutorial](https://github.com/duartegroup/euchems_tutorial).
 
 ## Install
 
@@ -46,25 +52,22 @@ This is needed in two scenarios:
 
 ## Using with OpenMM
 
-The OpenMM backend only works with MACE at the moment. The necessary dependencies are installed automatically via conda:
+The OpenMM backend only works with MACE at the moment. The necessary dependencies are installed automatically during MACE installation.
 
-```
-./install_mace.sh
-```
-You should now be able to run `water_openmm.py` in `./examples` or run the jupyter notebook on Google Colab [`water_openmm_colab.ipynb`](./examples/water_openmm_colab.ipynb).
+You should then be able to run `water_openmm.py` in `./examples` or run the Jupyter notebook on Google Colab [`water_openmm_colab.ipynb`](./examples/water_openmm_colab.ipynb).
 
 You can use OpenMM during active learning by passing the keyword argument `md_program="OpenMM"` to the `al_train` method.
 You can run MD with OpenMM using `mlptrain.md_openmm.run_mlp_md_openmm()`
 
 ## For developers
 
-We are happy to accept pull requests from users. Please first fork mlp-train repository. We use `pre-commit`, `Ruff` and `pytest` to check the code. Your PR needs to pass through these checks before is accepted. `Pre-commit` is installed as one the dependecies. To use it in your repository, run the following command in the mlp-train folder:
+We are happy to accept pull requests from users. Please first fork the mlp-train repository. We use `pre-commit`, `Ruff` and `pytest` to check the code. Your PR needs to pass through these checks before is accepted. `Pre-commit` is installed as one of the dependencies. To use it in your repository, run the following command in the mlp-train folder:
 
 ```
 pre-commit install 
 ```
 
-`Pre-commit` will then run automatically at each commit and will take care of installation and running of `Ruff`.
+`Pre-commit` will then run automatically at each commit and will take care of the installation and running of `Ruff`.
 
 ## Citations
 
