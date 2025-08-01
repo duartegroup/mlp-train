@@ -61,12 +61,12 @@ Finally, you can attach the CVs to the metadynamics object and run metadynamics 
        mlp=mace,
        temp=300,
        dt=0.5,
-       ps=100,
+       ps=10,
        interval=10,
        n_runs=3,
        width=0.2,
        height=0.01,
-       biasfactor=10,
+       biasfactor=100,
    )
 
 
@@ -109,7 +109,7 @@ You can also estimate the suitable width or biasfactors with the functions ``est
         interval=10,
         dt=0.5,
         width=width,
-        biasfactors=(5,10,15),
+        biasfactors=(20, 50, 100),
         plotted_cvs=diff_r,
         ps=2
     )
