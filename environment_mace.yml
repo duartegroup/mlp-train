@@ -29,4 +29,4 @@ dependencies:
   - git
   - pip:
     - ase@git+https://gitlab.com/ase/ase.git@f2615a6e9a # For PLUMED
-    - mace-torch==0.3.6
+    - mace-torch==0.3.10
