@@ -32,6 +32,7 @@ mlp-train documentation
    examples/data_preparation
    examples/example2
    examples/example3
+   examples/metadynamics
 
 .. toctree::
    :maxdepth: 2
