@@ -29,7 +29,7 @@ mlp-train documentation
    :hidden:
    :caption: Examples
 
-   examples/example1
+   examples/data_preparation
    examples/example2
    examples/example3
    examples/metadynamics
