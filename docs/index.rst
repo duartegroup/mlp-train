@@ -30,8 +30,7 @@ mlp-train documentation
    :caption: Examples
 
    examples/data_preparation
-   examples/example2
-   examples/example3
+   examples/example_solvation
    examples/metadynamics
 
 .. toctree::
@@ -48,8 +47,6 @@ mlp-train documentation
   :alt: Figure of summary of active learning cycle
 
 |
-
-.. note::
 
    This documentation is under development. Stay tuned for more functionalities!
 
