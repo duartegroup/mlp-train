@@ -29,10 +29,9 @@ mlp-train documentation
    :hidden:
    :caption: Examples
 
-   examples/example1
-   examples/example2
-   examples/example3
+   examples/data_preparation
    examples/example_solvation
+   examples/metadynamics
 
 .. toctree::
    :maxdepth: 2
