@@ -4,6 +4,13 @@ Generating dataset for reaction in the gas phase
 
 In this tutorial, we will look into using active learing (AL) to generate data set for a simple organic chemical reaction in the gas phase. We will model the Diels-Alder (DA) reaction between cyclopentadiene (CP) and methyl vinyl ketone (MVK) using MACE potential.
 
+.. figure:: ../images/downhill/DA_scheme.pdf
+   :alt: Scheme of the Diels-Alder reaction between cyclopentadiene and methyl vinyl ketone.
+   :width: 80%
+   :align: center
+
+   Fig. 1: Scheme of the Diels-Alder reaction between cyclopentadiene and methyl vinyl ketone.
+
 To accurately model chemical reactivity, MLIP needs to be trained on data set containig reactants, products and the reaction pathway between the point crossing the transition state (TS) region. One of the strategies how to ensure that whole reaction path is covered in the training set is to start the AL from the TS. The subsequent dynamics will ensure that the structure will follow the gradient downhill on the potential energy surface (PES) forward towards products or back to reactants. 
 
 We will start from the TS optimised at PBE0/def2-svp level of theory, which is saved in ``cis_endo_TS_PBE0.xyz`` file.
@@ -137,6 +144,13 @@ After AL, we can check the coverage of the reaction space by the training set by
 
   plt.savefig("r12_dataset.pdf", bbox_inches="tight")
 
+
+.. figure:: ../images/downhill/r12_dataset.pdf
+   :alt: Classification of the structures from the dataset.
+   :width: 80%
+   :align: center
+
+   Fig. 1: Classification of the structures from the dataset based on r1 + r2 .  
 
 You can see that the first 10 data points are very similar to each other - these correspond to initial data set of 10 distorted TS structures. Afterwards, the downhill sampling in AL generates structures of both reactants and products.
 

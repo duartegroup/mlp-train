@@ -79,14 +79,14 @@ The free energy profile can also be plotted using
 
 Here are sample plots:
 
-.. figure:: Figures/fes_convergence_diff.png
+.. figure:: ../images/metadynamics/fes_convergence_diff.png
    :alt: FES convergence plot over simulation time
    :width: 80%
    :align: center
 
    Figure: Convergence of the Free Energy Surface (FES) with Simulation Time.
 
-.. figure:: Figures/metad_free_energy_ch3cl.png
+.. figure:: ../images/metadynamics/metad_free_energy_ch3cl.png
    :alt: Free energy profile for CH3Cl along diff_r
    :width: 80%
    :align: center
