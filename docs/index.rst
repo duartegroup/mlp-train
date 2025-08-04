@@ -18,21 +18,20 @@ mlp-train documentation
 .. toctree::
    :maxdepth: 2
    :hidden:
-   :caption: Tutorials
+   :caption: Examples
 
-   tutorials/tutorial1
-   tutorials/tutorial2
-   tutorials/tutorial3
+   examples/data_preparation
+   examples/metadynamics
+
 
 .. toctree::
    :maxdepth: 2
    :hidden:
-   :caption: Examples
+   :caption: Tutorials
 
-   examples/data_preparation
-   examples/example2
-   examples/example3
-   examples/metadynamics
+   tutorials/downhill_sampling
+   tutorials/tutorial2
+   tutorials/tutorial3
 
 .. toctree::
    :maxdepth: 2
