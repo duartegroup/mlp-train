@@ -4,7 +4,7 @@ Generating dataset for reaction in the gas phase
 
 In this tutorial, we will look into using active learing (AL) to generate data set for a simple organic chemical reaction in the gas phase. We will model the Diels-Alder (DA) reaction between cyclopentadiene (CP) and methyl vinyl ketone (MVK) using MACE potential.
 
-.. figure:: ../images/downhill/DA_scheme.pdf
+.. figure:: ../images/downhill/DA_scheme.png
    :alt: Scheme of the Diels-Alder reaction between cyclopentadiene and methyl vinyl ketone.
    :width: 80%
    :align: center
@@ -100,7 +100,7 @@ Finally, we can define the active learning loop:
 
 First, we set the electronic structure code used in AL (``method_name``) to `'orca'`. We then fix the initial configuration in the AL ``selectfont fix_init_config=True`` to ensure that each AL cycle will start from the TS structure, i.e., the downhill sampling will be used in every run. Finally, we will set ``keep_al_trajs=True``, to save the trajectories sampled during each AL for future reference.
 
-After AL, we can check the coverage of the reaction space by the training set by plotting the data based on the collective variable, defined as $\frac{r_1 + r_2}{2}$, where $r_1$ and $r_2$ are the two bonds formed during the Diels-Alder reaction.
+After AL, we can check the coverage of the reaction space by the training set by plotting the data based on the collective variable, defined as :math:`\frac{r_1 + r_2}{2}`, where :math:`r_1` and :math:`r_2` are the two bonds formed during the Diels-Alder reaction.
 
 .. code-block:: python
   
@@ -145,18 +145,28 @@ After AL, we can check the coverage of the reaction space by the training set by
   plt.savefig("r12_dataset.pdf", bbox_inches="tight")
 
 
-.. figure:: ../images/downhill/r12_dataset.pdf
+.. figure:: ../images/downhill/r12_dataset.png
    :alt: Classification of the structures from the dataset.
    :width: 80%
    :align: center
 
-   Fig. 1: Classification of the structures from the dataset based on r1 + r2 .  
+   Fig. 2: Classification of the structures from the dataset based on :math:`\frac{r_1 + r_2}{2}` .  
 
 You can see that the first 10 data points are very similar to each other - these correspond to initial data set of 10 distorted TS structures. Afterwards, the downhill sampling in AL generates structures of both reactants and products.
 
 We can now check the performance of the MACE over a short 200-fs validation trajectory. 
 
+.. figure:: ../images/downhill/endo_da_mace_orca.png
+   :alt: Validation of MACE over 200 fs dynamics
+   :width: 80%
+   :align: center
+
+   Fig. 3: Validation of MACE over 200 fs dynamics.  
+
+
 The MAD in energy is 29 meV, corresponding to 1.32 meV/atom. MAD in forces is 77 meV/\AA. These errors are realitively high, suggesting that we might need to set the time in the AL longer than in the current settings, which is only 1 ps. 
+
+The validation trajectory obtained in this example correspond to the reaction to products. This demonstrates that despite the errors, our MLIP is capable of describing the formation of the product state. To provide a better estimate of the performance, it might be beneficial to repeat the validation on trajectory which covers all relevant structures, including different orientations of reactants. For simplicity, we will skip this extended validation.
 
 The resulting potential can now be used for other simulations. For instance, we can run an umbrella sampling (US) simulation to compute the free energy barrier of the reaction.
 
@@ -222,3 +232,19 @@ The example script can look like this:
     total_us = mlt.UmbrellaSampling.from_folders("wide_US", "narrow_US", temp=temp)
     total_us.wham()
 
+.. figure:: ../images/downhill/fitted_data.png
+   :alt: Windows sampled during the umbrella sampling.
+   :width: 80%
+   :align: center
+
+   Fig. 4: Windows sampled during the umbrella sampling.
+
+
+.. figure:: ../images/downhill/umbrella_free_energy.png
+   :alt: Free energy profile for the Diels-Alder reaction in the gas phase.
+   :width: 80%
+   :align: center
+
+   Fig. 5: Free energy profile for the Diels-Alder reaction in the gas phase.
+
+   
