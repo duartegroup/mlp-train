@@ -98,7 +98,7 @@ Finally, we can define the active learning loop:
     )
 
 
-First, we set the electronic structure code used in AL (``method_name``) to `'orca'`. We then fix the initial configuration in the AL ``selectfont fix_init_config=True`` to ensure that each AL cycle will start from the TS structure, i.e., the downhill sampling will be used in every run. Finally, we will set ``keep_al_trajs=True``, to save the trajectories sampled during each AL for future reference.
+First, we set the electronic structure code used in AL (``method_name``) to `'orca'`. We then fix the initial configuration in the AL ``fix_init_config=True`` to ensure that each AL cycle will start from the TS structure, i.e., the downhill sampling will be used in every run. Finally, we will set ``keep_al_trajs=True``, to save the trajectories sampled during each AL for future reference.
 
 After AL, we can check the coverage of the reaction space by the training set by plotting the data based on the collective variable, defined as :math:`\frac{r_1 + r_2}{2}`, where :math:`r_1` and :math:`r_2` are the two bonds formed during the Diels-Alder reaction.
 
@@ -164,7 +164,7 @@ We can now check the performance of the MACE over a short 200-fs validation traj
    Fig. 3: Validation of MACE over 200 fs dynamics.  
 
 
-The MAD in energy is 29 meV, corresponding to 1.32 meV/atom. MAD in forces is 77 meV/\AA. These errors are realitively high, suggesting that we might need to set the time in the AL longer than in the current settings, which is only 1 ps. 
+The MAD in energy is 29 meV, corresponding to 1.32 meV/atom. MAD in forces is 77 meV/:math:`\text{Å}`. These errors are realitively high, suggesting that we might need to set the time in the AL longer than in the current settings, which is only 1 ps. 
 
 The validation trajectory obtained in this example correspond to the reaction to products. This demonstrates that despite the errors, our MLIP is capable of describing the formation of the product state. To provide a better estimate of the performance, it might be beneficial to repeat the validation on trajectory which covers all relevant structures, including different orientations of reactants. For simplicity, we will skip this extended validation.
 
