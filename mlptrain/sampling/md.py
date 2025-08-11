@@ -2,12 +2,12 @@ import os
 from copy import deepcopy
 import shutil
 from typing import Optional, Sequence, List, Union
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
+import multiprocessing as mp
 
 import numpy as np
 from numpy.random import RandomState
 import ase
-import autode as ade
+import ase.data as ade
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.md.nptberendsen import NPTBerendsen
@@ -33,24 +33,59 @@ from mlptrain.utils import work_in_tmp_dir
 MAX_DYNAMICS_TIMEOUT = 60 * 60 * 2  # 2 hours
 
 
-# def run_with_timeout(fn, *args, fn_timeout=MAX_DYNAMICS_TIMEOUT, **kwargs):
-#     with ThreadPoolExecutor() as executor:
-#         future = executor.submit(fn, *args, **kwargs)
-#         try:
-#             result = future.result(timeout=fn_timeout)
-#             return result, True  # Finished in time
-#         except TimeoutError:
-#             logger.warning(f'Trajectory cancelled due to running over maximum timeout, {fn_timeout} s')
-#             future.cancel()
-#             return None, False  # Timed out
+def _wrap_signalling(fn, args, kwargs, fn_timeout):
+    """Run fn(*args, **kwargs) with a Unix signal-based timeout in the
+    current (daemon) process. Returns (result, finished_in_time)."""
+    import signal
+
+    class _TimeoutException(Exception):
+        pass
+
+    def _handle_timeout(signum, frame):
+        raise _TimeoutException()
+
+    old_handler = signal.getsignal(signal.SIGALRM)
+    try:
+        # Use setitimer for sub-second precision and real time
+        signal.signal(signal.SIGALRM, _handle_timeout)
+        signal.setitimer(signal.ITIMER_REAL, fn_timeout)
+        try:
+            result = fn(*args, **kwargs)
+            return result, True
+        except _TimeoutException:
+            logger.warning(
+                f'Trajectory cancelled due to running over maximum timeout, {fn_timeout} s'
+            )
+            return None, False
+        finally:
+            # Disable the timer and restore previous handler
+            try:
+                signal.setitimer(signal.ITIMER_REAL, 0)
+            finally:
+                signal.signal(signal.SIGALRM, old_handler)
+    except Exception as e:
+        # If signal-based timeout fails for any reason, log and run without timeout
+        logger.warning(
+            f'Failed to set signal-based timeout inside Pool worker ({e}); running without timeout.'
+        )
+        return fn(*args, **kwargs), True
 
 
-def run_with_timeout(fn, *args, fn_timeout=Config.dynamics_timeout, **kwargs):
+def _wrap_process(fn, args, kwargs, fn_timeout):
+    """Run fn(*args, **kwargs) in a separate process with a timeout.
+    Returns (result, finished_in_time)."""
     queue = mp.Queue()
 
-    def wrapper(queue, *args, **kwargs):
-        result = fn(*args, **kwargs)
-        queue.put(result)
+    def wrapper(q, *a, **kw):
+        try:
+            res = fn(*a, **kw)
+            q.put(('ok', res))
+        except BaseException as e:  # noqa: BLE001
+            # Send a safe, picklable representation
+            try:
+                q.put(('err', repr(e)))
+            except Exception:
+                q.put(('err', 'unpicklable exception'))
 
     process = mp.Process(target=wrapper, args=(queue,) + args, kwargs=kwargs)
     process.start()
@@ -64,8 +99,43 @@ def run_with_timeout(fn, *args, fn_timeout=Config.dynamics_timeout, **kwargs):
         )
         return None, False
 
-    return queue.get(), True
+    # Process exited; retrieve result without blocking
+    try:
+        status, payload = queue.get_nowait()
+    except Exception:
+        # No result available; treat as failure
+        logger.warning('Timed function exited without returning a result.')
+        return None, False
 
+    if status == 'ok':
+        return payload, True
+    else:
+        # The function raised; report and mark as not finished cleanly
+        logger.warning(f'Timed function raised an exception: {payload}')
+        return None, False
+
+
+def run_with_timeout(fn, *args, fn_timeout=Config.dynamics_timeout, **kwargs):
+    """
+    Run a callable with a timeout.
+
+    - If running inside a multiprocessing.Pool worker (daemon process), use a
+      Unix signal-based timeout to avoid spawning child processes.
+    - Otherwise, run the function in a separate process and terminate on timeout.
+
+    Returns: (result, finished_in_time: bool)
+    """
+    try:
+        if mp.current_process().daemon:
+            return _wrap_signalling(fn, args, kwargs, fn_timeout)
+        else:
+            return _wrap_process(fn, args, kwargs, fn_timeout)
+    except Exception as e:
+        # Final fallback: run without timeout to avoid deadlocks in unexpected environments
+        logger.warning(
+            f'run_with_timeout encountered an unexpected error ({e}); running without enforced timeout.'
+        )
+        return fn(*args, **kwargs), True
 
 
 def run_mlp_md(
@@ -79,7 +149,7 @@ def run_mlp_md(
     init_temp: Optional[float] = None,
     fbond_energy: Optional[dict] = None,
     bbond_energy: Optional[dict] = None,
-    bias: Optional = None,
+    bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']] = None,
     restart_files: Optional[List[str]] = None,
     copied_substrings: Optional[Sequence[str]] = None,
     kept_substrings: Optional[Sequence[str]] = None,
@@ -236,7 +306,7 @@ def _run_mlp_md(
     init_temp: Optional[float] = None,
     fbond_energy: Optional[dict] = None,
     bbond_energy: Optional[dict] = None,
-    bias: Optional = None,
+    bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']] = None,
     restart_files: Optional[List[str]] = None,
     **kwargs,
 ) -> 'mlptrain.Trajectory':
@@ -454,7 +524,9 @@ def _run_dynamics(
     # Run the dynamics but cease after a specified time limit
     # NOTE: this is not a perfect solution, some kind of periodic divergence
     # check would be better
-    run_with_timeout(dyn.run, steps=n_steps, fn_timeout=Config.dynamics_timeout)
+    run_with_timeout(
+        dyn.run, steps=n_steps, fn_timeout=Config.dynamics_timeout
+    )
 
     if isinstance(ase_atoms.calc, PlumedCalculator):
         # The calling process waits until PLUMED process has finished
