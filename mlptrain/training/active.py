@@ -192,7 +192,10 @@ def train(
     else:
         init_config = init_configs[0]
         _set_init_training_configs(
-            mlp=mlp, init_configs=init_configs, method_name=method_name
+            mlp=mlp,
+            init_configs=init_configs,
+            method_name=method_name,
+            keep_output_files=keep_output_files,
         )
 
     if isinstance(bias, PlumedBias) and not bias.from_file:
@@ -598,17 +601,18 @@ def _set_init_training_configs(
 
     if not all(cfg.energy.true is not None for cfg in init_configs):
         logger.info(
-            f'Initialised with {len(init_configs)} configurations '
-            f'all with defined energy'
+            f'Initialised with {len(init_configs)} configurations.'
+            f'Not all structures have defined reference.'
         )
 
         output_name = 'initial'
 
         init_configs.single_point(
-            method=method_name,
-            keep_output_files=keep_output_files,
-            output_name=output_name,
+            method_name,
+            output_name,
         )
+    else:
+        logger.info('Using reference defined in input file.')
 
     mlp.training_data += init_configs
 
