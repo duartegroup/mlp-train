@@ -3,6 +3,7 @@ import ase
 import numpy as np
 import os
 import json
+import itertools
 from typing import Optional, Union, List, Dict
 from copy import deepcopy
 from autode.atoms import AtomCollection, Atom
@@ -842,116 +843,24 @@ def _create_periodic_images(
     for coord in coords:
         x, y, z = coord
 
-        # Check each dimension for proximity to boundaries
-        # Create images for atoms within contact_threshold of each face
-        images_to_add = []
+        # Determine which directions need periodic images
+        # For each dimension, we can have shifts in negative, none, or positive direction
+        shifts = []
+        for i, pos in enumerate([x, y, z]):
+            dim_shifts = [0]  # Always include no shift
+            if pos < contact_threshold:  # Close to lower boundary
+                dim_shifts.append(box_size)
+            if pos > (box_size - contact_threshold):  # Close to upper boundary
+                dim_shifts.append(-box_size)
+            shifts.append(dim_shifts)
 
-        # X-direction boundaries
-        if x < contact_threshold:  # Close to x=0 face
-            images_to_add.append([x + box_size, y, z])
-        if x > (box_size - contact_threshold):  # Close to x=box_size face
-            images_to_add.append([x - box_size, y, z])
-
-        # Y-direction boundaries
-        if y < contact_threshold:  # Close to y=0 face
-            images_to_add.append([x, y + box_size, z])
-        if y > (box_size - contact_threshold):  # Close to y=box_size face
-            images_to_add.append([x, y - box_size, z])
-
-        # Z-direction boundaries
-        if z < contact_threshold:  # Close to z=0 face
-            images_to_add.append([x, y, z + box_size])
-        if z > (box_size - contact_threshold):  # Close to z=box_size face
-            images_to_add.append([x, y, z - box_size])
-
-        # Add corner and edge images for atoms close to multiple boundaries
-        # X-Y corners
-        if x < contact_threshold and y < contact_threshold:
-            images_to_add.append([x + box_size, y + box_size, z])
-        if x < contact_threshold and y > (box_size - contact_threshold):
-            images_to_add.append([x + box_size, y - box_size, z])
-        if x > (box_size - contact_threshold) and y < contact_threshold:
-            images_to_add.append([x - box_size, y + box_size, z])
-        if x > (box_size - contact_threshold) and y > (
-            box_size - contact_threshold
-        ):
-            images_to_add.append([x - box_size, y - box_size, z])
-
-        # X-Z corners
-        if x < contact_threshold and z < contact_threshold:
-            images_to_add.append([x + box_size, y, z + box_size])
-        if x < contact_threshold and z > (box_size - contact_threshold):
-            images_to_add.append([x + box_size, y, z - box_size])
-        if x > (box_size - contact_threshold) and z < contact_threshold:
-            images_to_add.append([x - box_size, y, z + box_size])
-        if x > (box_size - contact_threshold) and z > (
-            box_size - contact_threshold
-        ):
-            images_to_add.append([x - box_size, y, z - box_size])
-
-        # Y-Z corners
-        if y < contact_threshold and z < contact_threshold:
-            images_to_add.append([x, y + box_size, z + box_size])
-        if y < contact_threshold and z > (box_size - contact_threshold):
-            images_to_add.append([x, y + box_size, z - box_size])
-        if y > (box_size - contact_threshold) and z < contact_threshold:
-            images_to_add.append([x, y - box_size, z + box_size])
-        if y > (box_size - contact_threshold) and z > (
-            box_size - contact_threshold
-        ):
-            images_to_add.append([x, y - box_size, z - box_size])
-
-        # 3D corners (8 corner cases)
-        if (
-            x < contact_threshold
-            and y < contact_threshold
-            and z < contact_threshold
-        ):
-            images_to_add.append([x + box_size, y + box_size, z + box_size])
-        if (
-            x < contact_threshold
-            and y < contact_threshold
-            and z > (box_size - contact_threshold)
-        ):
-            images_to_add.append([x + box_size, y + box_size, z - box_size])
-        if (
-            x < contact_threshold
-            and y > (box_size - contact_threshold)
-            and z < contact_threshold
-        ):
-            images_to_add.append([x + box_size, y - box_size, z + box_size])
-        if (
-            x < contact_threshold
-            and y > (box_size - contact_threshold)
-            and z > (box_size - contact_threshold)
-        ):
-            images_to_add.append([x + box_size, y - box_size, z - box_size])
-        if (
-            x > (box_size - contact_threshold)
-            and y < contact_threshold
-            and z < contact_threshold
-        ):
-            images_to_add.append([x - box_size, y + box_size, z + box_size])
-        if (
-            x > (box_size - contact_threshold)
-            and y < contact_threshold
-            and z > (box_size - contact_threshold)
-        ):
-            images_to_add.append([x - box_size, y + box_size, z - box_size])
-        if (
-            x > (box_size - contact_threshold)
-            and y > (box_size - contact_threshold)
-            and z < contact_threshold
-        ):
-            images_to_add.append([x - box_size, y - box_size, z + box_size])
-        if (
-            x > (box_size - contact_threshold)
-            and y > (box_size - contact_threshold)
-            and z > (box_size - contact_threshold)
-        ):
-            images_to_add.append([x - box_size, y - box_size, z - box_size])
-
-        periodic_images.extend(images_to_add)
+        # Generate all combinations of shifts (faces, edges, and corners)
+        # This automatically handles 1D (faces), 2D (edges), and 3D (corners) cases
+        for dx, dy, dz in itertools.product(*shifts):
+            # Skip the original position (no shift)
+            if dx == 0 and dy == 0 and dz == 0:
+                continue
+            periodic_images.append([x + dx, y + dy, z + dz])
 
     # Combine original coordinates with periodic images
     if periodic_images:
