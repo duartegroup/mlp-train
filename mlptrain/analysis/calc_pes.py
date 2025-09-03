@@ -501,21 +501,29 @@ def calculate_pes(
 
 
 if __name__ == '__main__':
-    # input params
-    model_name = 'MACE-OFF23_medium'
+
+    solvent_density = None
+    solvent_xyz_fpath = None
+
+    # select model
+    # model_name = 'GO-MACE-23'
+    # model_name = 'MACE-MP0-128-L1'
+    # model_name = 'MACE-OFF23_medium'
+    model_name = 'MACE-OFF23_medium_endo_DA_train_fine_tuned'
+
+    # select input TS and PES options
     ts_xyz_fpath = 'cis_endo_TS_wB97M.xyz'
-    save_name = 'cis_endo_DA'
+    system_name = 'cis_endo_DA'
     react_coords = [(1, 12), (6, 11)]
     opt_fmax = 0.5
     box_dim = [100.0, 100.0, 100.0]
     grid_spec = (2.0, 2.2, 2)  # debug
-    # grid_spec = (2.0, 2.2, 2)  # debug
+    # grid_spec = (1.55, 3.0, 20)  # debug
 
-    # solvent params
-    solvent_xyz_fpath = 'h2o.xyz'
+    # select solvent params
+    solvent_xyz_fpath, solvent_density = 'h2o.xyz', 0.99657
     solvation_box_size = 5.0
-    solvent_density = 0.99657
-
+    
     # load model
     system = mlt.System(box=box_dim)
     cwd = os.getcwd()
@@ -527,7 +535,10 @@ if __name__ == '__main__':
     ts_set = mlt.ConfigurationSet()
     ts_set.load_xyz(filename=ts_xyz_fpath, charge=0, mult=1)
     ts_config = ts_set[0]
-    solvent_mol = mlt.Molecule(solvent_xyz_fpath)
+    solvent_mol = mlt.Molecule(solvent_xyz_fpath) if solvent_xyz_fpath is not None else None
+
+    solvent_str = f"_in_{solvent_xyz_fpath.split('/')[-1].split('.')[0]}" if solvent_xyz_fpath is not None else ""
+    save_name = f'{system_name}{solvent_str}_{model_name}'
 
     calculate_pes(
         mlp,
