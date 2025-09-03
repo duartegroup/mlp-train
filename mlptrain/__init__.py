@@ -30,6 +30,7 @@ __all__ = [
     'Config',
     'Molecule',
     'System',
+    'MLPEST',
     'Box',
     'Bias',
     'PlumedBias',
