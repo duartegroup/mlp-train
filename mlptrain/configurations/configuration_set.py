@@ -257,6 +257,8 @@ class ConfigurationSet(list):
                 'Compare currently only supports a '
                 'single reference method (string).'
             )
+        if keep_output_files is True:
+            os.makedirs('QM_outputs', exist_ok=True)
 
         name = self._comparison_name(*args)
 
@@ -278,7 +280,11 @@ class ConfigurationSet(list):
                         logger.info(
                             f'Running single point calcs with method {arg}'
                         )
-                        self.single_point(method=arg, output_name='comparison')
+                        self.single_point(
+                            method=arg,
+                            output_name='comparison',
+                            keep_output_files=keep_output_files,
+                        )
 
                     elif self.has_a_none_energy:
                         raise ValueError(
@@ -495,6 +501,7 @@ class ConfigurationSet(list):
         method: str,
         output_name: Optional[str] = None,
         n_cores_pp: int = 0,
+        keep_output_files: bool = True,
     ) -> None:
         """
         Evaluate energies and forces on all configuration in this set
@@ -515,6 +522,7 @@ class ConfigurationSet(list):
             method_name=method,
             output_name=output_name,
             n_cores_pp=n_cores_pp,
+            keep_output_files=keep_output_files,
         )
 
     @property
@@ -725,7 +733,9 @@ class ConfigurationSet(list):
         logger.info(f'Current number of configurations is {len(self)}')
         return self
 
-    def _run_parallel_method(self, function, n_cores_pp, **kwargs):
+    def _run_parallel_method(
+        self, function, n_cores_pp, keep_output_files, **kwargs
+    ):
         """Run a set of electronic structure calculations on this set
         in parallel
 
@@ -758,6 +768,7 @@ class ConfigurationSet(list):
             for num, config in enumerate(self):
                 kw = deepcopy(kwargs)
                 kw['index'] = num
+                kw['keep_output_files'] = keep_output_files
                 result = pool.apply_async(
                     func=function, args=(config,), kwds=kw
                 )
@@ -805,7 +816,7 @@ class ConfigurationSet(list):
 
 def _single_point_eval(config, method_name, output_name, **kwargs):
     """Top-level hashable function useful for multiprocessing"""
-
+    print(kwargs)
     if 'index' in kwargs:
         output_name = f'{output_name}_{kwargs.pop("index")}'
         print(f'Computing structure with {output_name}')

@@ -450,13 +450,15 @@ class Configuration(AtomCollection):
         """
         implemented_methods = ['xtb', 'orca', 'g09', 'g16']
 
+        print(kwargs)
         if isinstance(method, str) and method.lower() in implemented_methods:
             if keep_output_files:
                 if method in ['g09', 'g16']:
                     kept_substrings_list = ['.log']
                 else:
                     kept_substrings_list = ['.out']
-
+            else:
+                kept_substrings_list = []
             decorator = work_in_tmp_dir(
                 kept_substrings=kept_substrings_list,
                 output_name=output_name,
@@ -469,7 +471,11 @@ class Configuration(AtomCollection):
                 **kwargs,
             )
 
-            if keep_output_files and output_name is not None:
+            if (
+                keep_output_files
+                and output_name is not None
+                and 'selector' not in kwargs
+            ):
                 shutil.move(
                     src=f'{output_name}{kept_substrings_list[0]}',
                     dst='QM_outputs/',

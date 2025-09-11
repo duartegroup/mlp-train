@@ -163,10 +163,10 @@ def train(
 
     _check_bias(bias=bias, temp=temp, inherit_metad_bias=inherit_metad_bias)
 
-    if keep_al_trajs is True:
+    if keep_al_trajs:
         os.makedirs('al_trajectories', exist_ok=True)
 
-    if keep_output_files is True:
+    if keep_output_files:
         os.makedirs('QM_outputs', exist_ok=True)
 
     if pbc and box_size is None:
@@ -346,7 +346,9 @@ def _add_active_configs(
         for config in configs:
             if config.energy.true is None:
                 config.single_point(
-                    kwargs['method_name'], n_cores=Config.n_cores
+                    kwargs['method_name'],
+                    n_cores=Config.n_cores,
+                    keep_output_files=kwargs['keep_output_files'],
                 )
 
     if (
@@ -382,7 +384,7 @@ def _gen_active_config(
     n_cores: int,
     max_time: float,
     method_name: str,
-    keep_output_files: str,
+    keep_output_files: bool,
     **kwargs,
 ) -> Optional['mlptrain.Configuration']:
     """
@@ -405,6 +407,8 @@ def _gen_active_config(
         max_time: (float) Upper time limit for recursive molecular dynamics
 
         method_name: (str) Name of the method which we try to fit our MLP to
+
+        keep_output_files: (bool) Saving the output files from QM computations
 
     Keyword Arguments:
 
@@ -496,12 +500,21 @@ def _gen_active_config(
     for frame in traj:
         frame.box = Box([100, 100, 100])
     # Evaluate the selector on the final frame
-    selector(traj.final_frame, mlp, method_name=method_name, n_cores=n_cores)
+    selector(
+        traj.final_frame,
+        mlp,
+        method_name=method_name,
+        n_cores=n_cores,
+        keep_output_files=keep_output_files,
+        idx=kwargs['idx'],
+    )
 
     if selector.select:
+        # if selector is AbsDiff():
+
         if selector.check:
             logger.info(
-                'currently applying distance selector,'
+                'Currently applying distance selector,'
                 'to avoid un-physical structures,'
                 'do backtracking in the trajectory to'
                 'find the first configuration in '
@@ -520,7 +533,12 @@ def _gen_active_config(
                     'to determine whether it is the first'
                     'configurations selected by the distance selector'
                 )
-                selector(frame, mlp, method_name=method_name, n_cores=n_cores)
+                selector(
+                    frame,
+                    mlp,
+                    method_name=method_name,
+                    n_cores=n_cores,
+                )
                 if selector.select is False:
                     logger.info(f'Selecting {i-1} th configuration.')
                     frame = back_traj[i - 1]
@@ -608,8 +626,9 @@ def _set_init_training_configs(
         output_name = 'initial'
 
         init_configs.single_point(
-            method_name,
-            output_name,
+            method=method_name,
+            keep_output_files=keep_output_files,
+            output_name=output_name,
         )
     else:
         logger.info('Using reference defined in input file.')
@@ -678,8 +697,9 @@ def _gen_and_set_init_training_configs(
     output_name = 'initial'
 
     init_configs.single_point(
-        method_name,
-        output_name,
+        method=method_name,
+        output_name=output_name,
+        keep_output_files=keep_output_files,
     )
     mlp.training_data += init_configs
     return init_configs
