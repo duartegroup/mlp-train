@@ -471,15 +471,16 @@ class Configuration(AtomCollection):
                 **kwargs,
             )
 
-            if (
-                keep_output_files
-                and output_name is not None
-                and 'selector' not in kwargs
-            ):
-                shutil.move(
-                    src=f'{output_name}{kept_substrings_list[0]}',
-                    dst='QM_outputs/',
-                )
+            if keep_output_files:
+                if output_name is None:
+                    pass
+                elif 'energy' in output_name:
+                    pass
+                else:
+                    shutil.move(
+                        src=f'{output_name}{kept_substrings_list[0]}',
+                        dst='QM_outputs/',
+                    )
 
             self.n_ref_evals += 1
             return None

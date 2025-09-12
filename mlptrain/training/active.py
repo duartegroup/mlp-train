@@ -510,8 +510,6 @@ def _gen_active_config(
     )
 
     if selector.select:
-        # if selector is AbsDiff():
-
         if selector.check:
             logger.info(
                 'Currently applying distance selector,'
@@ -554,6 +552,16 @@ def _gen_active_config(
                 output_name=f'{method_name}_iter_{kwargs["iteration"]}_{kwargs["idx"]}',
             )
 
+        if isinstance(selector, AbsDiffE):
+            if method_name in ['g09', 'g16']:
+                suffix = 'log'
+            else:
+                suffix = 'out'
+            shutil.move(
+                src=f'{method_name}_energy_selector_{kwargs["idx"]}.{suffix}',
+                dst=f'QM_outputs/{method_name}_iter_{kwargs["iteration"]}_{kwargs["idx"]}.{suffix}',
+            )
+
         return frame
 
     if selector.too_large:
@@ -573,6 +581,17 @@ def _gen_active_config(
                         n_cores=n_cores,
                         keep_output_files=keep_output_files,
                         output_name=f'{method_name}_iter_{kwargs["iteration"]}_{kwargs["idx"]}',
+                    )
+
+                # Move the QM outputs of frames selected by energy selector to the QM_outputs_folder
+                if isinstance(selector, AbsDiffE):
+                    if method_name in ['g09', 'g16']:
+                        suffix = 'log'
+                    else:
+                        suffix = 'out'
+                    shutil.move(
+                        src=f'{method_name}_energy_selector_{kwargs["idx"]}.{suffix}',
+                        dst=f'QM_outputs/{method_name}_iter_{kwargs["iteration"]}_{kwargs["idx"]}.{suffix}',
                     )
 
                 return frame
