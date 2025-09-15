@@ -18,20 +18,18 @@ mlp-train documentation
 .. toctree::
    :maxdepth: 2
    :hidden:
-   :caption: Tutorials
+   :caption: Examples
 
-   tutorials/tutorial1
-   tutorials/tutorial2
-   tutorials/tutorial3
+   examples/data_preparation
+   examples/metadynamics
+
 
 .. toctree::
    :maxdepth: 2
    :hidden:
-   :caption: Examples
+   :caption: Tutorials
 
-   examples/example1
-   examples/example2
-   examples/example3
+   tutorials/downhill_sampling
 
 .. toctree::
    :maxdepth: 2
@@ -41,7 +39,7 @@ mlp-train documentation
 
 *mlp-train* is Python package for training machine learning based interatomic potential (MLIP) developed by Duarte group at the University of Oxford. It performs active learning (AL) loop to generate training data set, followed by training of selected MLIP.
 
-.. image:: images/AL_scheme.png
+.. image:: images/dev/AL_scheme.png
   :align: center
   :width: 400
   :alt: Figure of summary of active learning cycle

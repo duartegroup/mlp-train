@@ -11,8 +11,7 @@ Reporting a bug or suggesting changes/improvements
 
 If you think you’ve found a bug in ``mlp-train``, please let us know by
 opening an issue on the main mlp-train GitHub repository. This will give
-the mlp-train developers a chance to confirm the bug, investigate it and…
-fix it!
+the mlp-train developers a chance to confirm the bug, investigate it and fix it!
 
 When reporting an issue, we suggest you follow the following template:
 
@@ -133,11 +132,11 @@ Naming
 
 1. Variables
 
-   -  Variable names should be ``snake_case``.
+   -  Variable names should be ``new_variable``.
 
 2. Functions
 
-   -  Like variables, function names should be ``snake_case``.
+   -  Like variables, function names should be ``new_cool_function``.
 
    -  Functions should always exit with an explicit ``return``
       statement, even if means ``return None``.
@@ -157,7 +156,6 @@ Naming
       .. code:: python
 
          def _plot_reaction_profile_with_complexes(self,
-                               units:       'autode.units.Unit',
                                free_energy: bool,
                                enthalpy:    bool) -> None:
              """Plot a reaction profile with the association complexes of R, P"""
@@ -170,7 +168,7 @@ Naming
 
 3. Classes
 
-   -  Classes names should be ‘CamelCase’.
+   -  Classes names should be ‘NewClass’.
 
 
 Tests
