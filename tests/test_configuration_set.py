@@ -10,6 +10,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 
 @pytest.fixture
+@work_in_tmp_dir()
 def config_set_xyz_with_energies_forces():
     configs = ConfigurationSet()
 
