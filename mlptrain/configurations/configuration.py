@@ -558,6 +558,9 @@ class Configuration(AtomCollection):
         """
         implemented_methods = ['xtb', 'orca', 'g09', 'g16']
 
+        if keep_output_files:
+            os.makedirs('QM_outputs', exist_ok=True)
+
         if isinstance(method, str) and method.lower() in implemented_methods:
             if keep_output_files:
                 if method in ['g09', 'g16']:
@@ -580,7 +583,11 @@ class Configuration(AtomCollection):
 
             if keep_output_files:
                 if output_name is None:
-                    pass
+                    output_name = method
+                    shutil.move(
+                        src=f'tmp_{method}{kept_substrings_list[0]}',
+                        dst=f'QM_outputs/{method}{kept_substrings_list[0]}',
+                    )
                 elif 'energy' in output_name:
                     pass
                 else:

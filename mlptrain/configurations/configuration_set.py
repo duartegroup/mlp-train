@@ -257,8 +257,6 @@ class ConfigurationSet(list):
                 'Compare currently only supports a '
                 'single reference method (string).'
             )
-        if keep_output_files:
-            os.makedirs('QM_outputs', exist_ok=True)
 
         name = self._comparison_name(*args)
 
@@ -517,8 +515,6 @@ class ConfigurationSet(list):
                         rounded down to the nearest integer.
 
         """
-        if keep_output_files:
-            os.makedirs('QM_outputs', exist_ok=True)
 
         if output_name is None:
             output_name = method

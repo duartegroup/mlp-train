@@ -166,9 +166,6 @@ def train(
     if keep_al_trajs:
         os.makedirs('al_trajectories', exist_ok=True)
 
-    if keep_output_files:
-        os.makedirs('QM_outputs', exist_ok=True)
-
     if pbc and box_size is None:
         raise ValueError('For PBC in MD, the box_size cannot be None')
 
