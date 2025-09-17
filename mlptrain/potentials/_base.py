@@ -307,7 +307,9 @@ class MLPotential(ABC):
                 mult=_spin_multiplicites[symbol],
             )
 
-            config.single_point(method=method_name, n_cores=1)
+            config.single_point(
+                method=method_name, n_cores=1, output_name=symbol
+            )
 
             if config.energy.true is None:
                 if symbol == 'H':

@@ -816,7 +816,6 @@ class ConfigurationSet(list):
 
 def _single_point_eval(config, method_name, output_name, **kwargs):
     """Top-level hashable function useful for multiprocessing"""
-    print(kwargs)
     if 'index' in kwargs:
         output_name = f'{output_name}_{kwargs.pop("index")}'
         print(f'Computing structure with {output_name}')

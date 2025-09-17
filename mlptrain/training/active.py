@@ -276,6 +276,7 @@ def train(
         _remove_last_inherited_metad_bias_file(max_active_iters)
 
     logger.info(f'Final dataset size = {mlp.n_train} Active learning = DONE')
+
     return None
 
 
@@ -536,13 +537,18 @@ def _gen_active_config(
                     mlp,
                     method_name=method_name,
                     n_cores=n_cores,
+                    keep_output_files=keep_output_files,
+                    idx=kwargs['idx'],
                 )
                 if selector.select is False:
                     logger.info(f'Selecting {i-1} th configuration.')
                     frame = back_traj[i - 1]
                     break
+                else:
+                    logger.info(f'Structure {i} selected.')
         else:
             frame = traj.final_frame
+            logger.info(f'Structure selected after {md_time} fs.')
 
         if frame.energy.true is None:
             frame.single_point(
@@ -572,7 +578,14 @@ def _gen_active_config(
         stride = max(1, len(traj) // selector.n_backtrack)
 
         for frame in reversed(traj[::stride]):
-            selector(frame, mlp, method_name=method_name, n_cores=n_cores)
+            selector(
+                frame,
+                mlp,
+                method_name=method_name,
+                n_cores=n_cores,
+                keep_output_files=keep_output_files,
+                idx=kwargs['idx'],
+            )
 
             if selector.select:
                 if frame.energy.true is None:
@@ -593,11 +606,24 @@ def _gen_active_config(
                         src=f'{method_name}_energy_selector_{kwargs["idx"]}.{suffix}',
                         dst=f'QM_outputs/{method_name}_iter_{kwargs["iteration"]}_{kwargs["idx"]}.{suffix}',
                     )
-
+                logger.info('Structure selected after backpropagation.')
                 return frame
 
         logger.error('Failed to backtrack to a suitable configuration')
         return None
+
+    # Structure not selected, if AbsEnergy, remove the remaining energy_selector_files
+    if isinstance(selector, AbsDiffE):
+        if method_name in ['g09', 'g16']:
+            suffix = 'log'
+        else:
+            suffix = 'out'
+        try:
+            os.remove(
+                f'{method_name}_energy_selector_{kwargs["idx"]}.{suffix}'
+            )
+        except FileNotFoundError:
+            pass
 
     if curr_time + md_time > max_time:
         logger.info(f'Reached the maximum time {max_time} fs, returning None')

@@ -450,7 +450,6 @@ class Configuration(AtomCollection):
         """
         implemented_methods = ['xtb', 'orca', 'g09', 'g16']
 
-        print(kwargs)
         if isinstance(method, str) and method.lower() in implemented_methods:
             if keep_output_files:
                 if method in ['g09', 'g16']:
