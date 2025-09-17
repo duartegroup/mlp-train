@@ -17,7 +17,6 @@ from mlptrain.box import Box
 from mlptrain.configurations.calculate import run_autode
 from mlptrain.utils import work_in_tmp_dir
 from scipy.spatial import cKDTree
-from mlptrain.utils import work_in_tmp_dir
 import random
 import autode as ade
 from math import dist
