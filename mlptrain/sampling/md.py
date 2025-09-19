@@ -7,7 +7,7 @@ import multiprocessing as mp
 import numpy as np
 from numpy.random import RandomState
 import ase
-import ase.data as ade
+import autode as ade
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.md.nptberendsen import NPTBerendsen
