@@ -6,6 +6,8 @@ from tempfile import mkdtemp
 from functools import wraps
 from typing import Optional, List, Sequence, Union
 from ase import units as ase_units
+import mlptrain as mlt
+from mlptrain.log import logger
 
 
 def work_in_tmp_dir(
@@ -298,3 +300,36 @@ def convert_ase_energy(
         raise ValueError(f'Unknown energy units: {units}')
 
     return energy_array
+
+
+def npz_to_xyz(npz_filename: str) -> str:
+    """
+    Converts a Trajectory or ConfigurationSet saved as an .npz file to a .xyz file.
+
+    ---------------------------------------------------------------------------
+    Arguments:
+
+        npz_file: (str) Name of the .npz file to be converted, eg. "my_data.npz"
+
+
+    Creates a .xyz file named the same way, eg. -> 'my_data.xyz'
+    
+    Returns: None
+    """
+
+    if npz_filename[-4:] != '.npz':
+        raise ValueError('Input filename must end with .npz extension.')
+    
+    xyz_filename = npz_filename[:-4]+'.xyz'
+
+    data = mlt.ConfigurationSet()
+
+    if os.path.exists(npz_filename):
+        data.load(npz_filename)
+        data.save(xyz_filename)
+        logger.info(f'Converted {npz_filename} to {xyz_filename}')
+
+    else:
+        raise FileNotFoundError(f'File {npz_filename} not found.')
+    
+    return None
