@@ -302,7 +302,7 @@ def convert_ase_energy(
     return energy_array
 
 
-def npz_to_xyz(npz_filename: str) -> str:
+def npz_to_xyz(npz_filename: str) -> None:
     """
     Converts a Trajectory or ConfigurationSet saved as an .npz file to a .xyz file.
 
@@ -313,14 +313,14 @@ def npz_to_xyz(npz_filename: str) -> str:
 
 
     Creates a .xyz file named the same way, eg. -> 'my_data.xyz'
-    
+
     Returns: None
     """
 
     if npz_filename[-4:] != '.npz':
         raise ValueError('Input filename must end with .npz extension.')
-    
-    xyz_filename = npz_filename[:-4]+'.xyz'
+
+    xyz_filename = npz_filename[:-4] + '.xyz'
 
     data = mlt.ConfigurationSet()
 
@@ -331,5 +331,5 @@ def npz_to_xyz(npz_filename: str) -> str:
 
     else:
         raise FileNotFoundError(f'File {npz_filename} not found.')
-    
+
     return None
