@@ -317,7 +317,7 @@ def npz_to_xyz(npz_filename: str) -> None:
     Returns: None
     """
 
-    if npz_filename[-4:] != '.npz':
+    if not npz_filename.endswith('.npz'):
         raise ValueError('Input filename must end with .npz extension.')
 
     xyz_filename = npz_filename[:-4] + '.xyz'
