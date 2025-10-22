@@ -25,7 +25,7 @@ from ase.md.langevin import Langevin
 from ase.md.verlet import VelocityVerlet
 from ase.io import read
 from ase import units as ase_units
-from timeit import default_timer as timer
+import time
 
 
 def run_mlp_md(
@@ -160,7 +160,7 @@ def run_mlp_md(
     else:
         logger.info('Running MLP MD')
         if measure_time_taken:
-            start = timer()
+            start_time = time.perf_counter()
 
     decorator = work_in_tmp_dir(
         copied_substrings=copied_substrings_list,
@@ -186,9 +186,8 @@ def run_mlp_md(
     )
 
     if measure_time_taken:
-        end = timer()
-        # print(end - start) # Time in seconds
-        logger.info(f'Finished MLP MD simulation in {end - start} seconds')
+        delta_time = time.perf_counter() - start_time
+        logger.info(f'MLP MD simulation ran in {delta_time / 60:.1f} m.')
 
     return traj
 
