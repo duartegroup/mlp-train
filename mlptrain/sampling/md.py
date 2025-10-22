@@ -46,6 +46,7 @@ def run_mlp_md(
     restart_files: Optional[List[str]] = None,
     copied_substrings: Optional[Sequence[str]] = None,
     kept_substrings: Optional[Sequence[str]] = None,
+    verbose: bool = False,
     **kwargs,
 ) -> 'mlptrain.Trajectory':
     """
@@ -185,7 +186,9 @@ def run_mlp_md(
         **kwargs,
     )
 
-    logger.info('Finished MLP MD simulation')
+    if verbose:
+        logger.info('Finished MLP MD simulation')
+
     return traj
 
 
