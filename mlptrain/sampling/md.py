@@ -25,6 +25,7 @@ from ase.md.langevin import Langevin
 from ase.md.verlet import VelocityVerlet
 from ase.io import read
 from ase import units as ase_units
+from timeit import default_timer as timer
 
 
 def run_mlp_md(
@@ -42,7 +43,7 @@ def run_mlp_md(
     restart_files: Optional[List[str]] = None,
     copied_substrings: Optional[Sequence[str]] = None,
     kept_substrings: Optional[Sequence[str]] = None,
-    verbose: bool = False,
+    measure_time_taken: bool = False,
     **kwargs,
 ) -> 'mlptrain.Trajectory':
     """
@@ -158,6 +159,8 @@ def run_mlp_md(
 
     else:
         logger.info('Running MLP MD')
+        if measure_time_taken:
+            start = timer()
 
     decorator = work_in_tmp_dir(
         copied_substrings=copied_substrings_list,
@@ -182,8 +185,10 @@ def run_mlp_md(
         **kwargs,
     )
 
-    if verbose:
-        logger.info('Finished MLP MD simulation')
+    if measure_time_taken:
+        end = timer()
+        # print(end - start) # Time in seconds
+        logger.info(f'Finished MLP MD simulation in {end - start} seconds')
 
     return traj
 
