@@ -185,6 +185,7 @@ def run_mlp_md(
         **kwargs,
     )
 
+    logger.info('MLP MD complete')
     return traj
 
 
