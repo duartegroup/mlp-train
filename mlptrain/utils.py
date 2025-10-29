@@ -328,9 +328,8 @@ def npz_to_xyz(npz_filename: str) -> None:
         )
         return None
 
-    data = mlt.ConfigurationSet()
-
     if os.path.exists(npz_filename):
+        data = mlt.ConfigurationSet()
         data.load(npz_filename)
         data.save(xyz_filename)
         logger.info(f'Converted {npz_filename} to {xyz_filename}')
