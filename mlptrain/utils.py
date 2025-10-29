@@ -320,7 +320,13 @@ def npz_to_xyz(npz_filename: str) -> None:
     if not npz_filename.endswith('.npz'):
         raise ValueError('Input filename must end with .npz extension.')
 
-    xyz_filename = npz_filename.replace('.npz', '.xyz')
+    xyz_filename = re.sub('.npz$', '.xyz', npz_filename)
+
+    if os.path.exists(xyz_filename):
+        logger.info(
+            f'File {xyz_filename} already exists. Skipping conversion.'
+        )
+        return None
 
     data = mlt.ConfigurationSet()
 
