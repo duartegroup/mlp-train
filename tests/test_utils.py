@@ -2,16 +2,6 @@ import mlptrain as mlt
 from mlptrain import utils
 import os
 from autode.atoms import Atom
-from mlptrain.log import (
-    logger,
-)  # delete later, just while debugging these tests
-
-
-# !!!!!!!!!!!
-# OKAY SO I finally got this working
-# The problem was that I'd been using @workintempdir() or whatever on the test functions themselves
-# but that meant that any files created inside the test functions were in the temp dir and got deleted, causing HEADACHES
-#
 
 
 def save_npz_for_test(
@@ -36,19 +26,16 @@ def save_npz_for_test(
             file=xyz_file,
         )
 
-    assert os.path.exists('tmp.xyz'), 'if this error happens im gonna lose it'
-
     configs.load_xyz(
         'tmp.xyz', charge=0, mult=1, load_energies=True, load_forces=True
     )
 
     configs.save(npz_filename)
-    logger.info(f'Saved test npz file as {npz_filename}')
 
     assert os.path.exists(npz_filename), 'npz file was not created'
 
-    logger.info(os.getcwd())
-    return f'{os.getcwd()}/{npz_filename}'
+    path = f'{os.getcwd()}/{npz_filename}'
+    return path
 
 
 @utils.work_in_tmp_dir()
@@ -112,7 +99,7 @@ def test_save_duplicate_npz():
 @utils.work_in_tmp_dir()
 def test_npz_to_xyz_conversion():
     path = save_npz_for_test(npz_filename='convert_test.npz')
-    logger.info(f'Path to saved npz file: {path}')
+
     assert os.path.exists(
         'convert_test.npz'
     ), 'npz file should exist for the purposes of this test'
@@ -127,6 +114,7 @@ def test_npz_to_xyz_conversion():
         mlt.ConfigurationSet().load_xyz(
             'convert_test.xyz', charge=0, mult=1
         )  # Check that the .xyz file can be loaded without error
+
     except Exception as e:
         assert False, f'Loading the converted .xyz file raised an error: {e}'
 
@@ -135,19 +123,15 @@ def test_npz_to_xyz_conversion():
 def test_npz_to_xyz_missing_extension():
     save_npz_for_test(npz_filename='convert_test.npz')
 
-    try:
-        utils.npz_to_xyz('convert_test')  # No .npz extension provided
-    except ValueError:
-        pass
-    else:
-        assert False, 'Expected ValueError was not raised.'
+    assert (
+        utils.npz_to_xyz('convert_test') is None
+    ), 'Should return None without error when no .npz extension is provided'
 
-    """
     assert os.path.exists(
         'convert_test.xyz'
     )  # Check that the .xyz file was created
 
-    assert mlt.ConfigurationSet().load_xyz(
-        'convert_test.xyz'
+    assert (
+        mlt.ConfigurationSet().load_xyz('convert_test.xyz', charge=0, mult=1)
+        is None
     )  # Check that the .xyz file can be loaded without error
-    """
