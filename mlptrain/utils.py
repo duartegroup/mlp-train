@@ -319,6 +319,9 @@ def npz_to_xyz(npz_filename: str) -> None:
 
     if not npz_filename.endswith('.npz'):
         raise ValueError('Input filename must end with .npz extension.')
+        # Reverting to raising an error rather than appending .npz and continuing
+        # It was causing headaches later on
+        # It's probably also just better to be strict with the user here I think
 
     xyz_filename = re.sub('.npz$', '.xyz', npz_filename)
 
