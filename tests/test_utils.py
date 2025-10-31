@@ -123,15 +123,24 @@ def test_npz_to_xyz_conversion():
 def test_npz_to_xyz_missing_extension():
     save_npz_for_test(npz_filename='convert_test.npz')
 
-    assert (
-        utils.npz_to_xyz('convert_test') is None
-    ), 'Should return None without error when no .npz extension is provided'
+    try:
+        utils.npz_to_xyz('convert_test')
+    except ValueError:
+        pass
+    else:
+        assert False, 'Expected ValueError was not raised.'
 
-    assert os.path.exists(
-        'convert_test.xyz'
-    )  # Check that the .xyz file was created
+    # assert (
+    #    utils.npz_to_xyz('convert_test') is None
+    # ), 'Should return None without error when no .npz extension is provided'
 
-    assert (
-        mlt.ConfigurationSet().load_xyz('convert_test.xyz', charge=0, mult=1)
-        is None
-    )  # Check that the .xyz file can be loaded without error
+    # assert os.path.exists(
+    #    'convert_test.xyz'
+    # )  # Check that the .xyz file was created
+
+    # assert (
+    #    mlt.ConfigurationSet().load_xyz('convert_test.xyz', charge=0, mult=1)
+    #    is None
+    # )  # Check that the .xyz file can be loaded without error
+
+    # The above checks were commented out as the function now raises a ValueError if no .npz extension is provided
