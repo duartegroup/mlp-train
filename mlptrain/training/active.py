@@ -320,10 +320,17 @@ def _add_active_configs(
         pool.close()
         for result in results:
             try:
-                configs.append(result.get(timeout=None))
+                configs.append(result.get(timeout=Config.process_timeout))
 
             # Lots of different exceptions can be raised when trying to
             # generate an active config, continue regardless..
+            except mp.TimeoutError:
+                logger.error(
+                    'Timeout error when trying to generate '
+                    'an active configuration'
+                )
+                # Do we need to append something to configs?
+                continue
             except Exception as err:
                 logger.error(f'Raised an exception in selection: \n{err}')
                 continue
