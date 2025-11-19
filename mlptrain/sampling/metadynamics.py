@@ -1784,10 +1784,8 @@ class Metadynamics:
             else:
                 ax.set_ylabel(f'{cv2.name}')
 
-        for c in mean_contourf.collections:
-            c.set_edgecolor('face')
-        for c in std_error_contourf.collections:
-            c.set_edgecolor('face')
+        mean_contourf.set_edgecolor('face')
+        std_error_contourf.set_edgecolor('face')
 
         fig.tight_layout()
 
