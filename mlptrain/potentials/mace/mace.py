@@ -42,6 +42,7 @@ class MACE(MLPotential):
             foundation: (str) Name of the foundation model used in fine-tunning
                          like "medium_off" for MACE-OFF(M), "medium" for MACE-MP-0(M).
                          Here, only naive fine-tuning is supported.
+                         To initiate naive fine-tuning for MACE-MP-O, set mace_params['multihead'] to False.
                          More details on https://github.com/ACEsuit/mace/tree/main?tab=readme-ov-file#pretrained-foundation-models
         """
         super().__init__(name=name, system=system)
@@ -195,6 +196,10 @@ class MACE(MLPotential):
 
         if Config.mace_params['restart_latest']:
             args_list.append('--restart_latest')
+
+        if Config.mace_params['multihead'] is False:
+            args_list.append('--multiheads_finetuning')
+            args_list.append(str(False))
 
         args = tools.build_default_arg_parser().parse_args(args_list)
         return args
