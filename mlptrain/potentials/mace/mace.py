@@ -196,6 +196,9 @@ class MACE(MLPotential):
         if Config.mace_params['restart_latest']:
             args_list.append('--restart_latest')
 
+        if Config.mace_params['cueq']:
+            args_list.append('--enable_cueq=True')
+
         args = tools.build_default_arg_parser().parse_args(args_list)
         return args
 
@@ -206,6 +209,7 @@ class MACE(MLPotential):
         calculator = MACECalculator(
             model_paths=self.filename,
             device=Config.mace_params['calc_device'],
+            enable_cueq=Config.mace_params['cueq'],
         )
         return calculator
 
