@@ -2,12 +2,19 @@ import mlptrain as mlt
 from mlptrain import utils
 import os
 from autode.atoms import Atom
+import pytest
 
 
 def save_npz_for_test(
     npz_filename: str,
 ):
-    configs = mlt.ConfigurationSet()
+    """
+    Take a filename as input.
+    Save a ConfigurationSet (containing 2 Configurations) as an npz file under that name.
+    Return the path to the directory the file is saved in.
+    Should only be called within a tmp directory while testing.
+    """
+    configset = mlt.ConfigurationSet()
 
     with open('tmp.xyz', 'w') as xyz_file:
         print(
@@ -26,121 +33,90 @@ def save_npz_for_test(
             file=xyz_file,
         )
 
-    configs.load_xyz(
+    configset.load_xyz(
         'tmp.xyz', charge=0, mult=1, load_energies=True, load_forces=True
     )
+    configset.save(npz_filename)
 
-    configs.save(npz_filename)
+    os.remove('tmp.xyz')
 
-    assert os.path.exists(npz_filename), 'npz file was not created'
+    return os.getcwd()
 
-    path = f'{os.getcwd()}/{npz_filename}'
-    return path
+
+@utils.work_in_tmp_dir()
+def test_npz_to_xyz_missing_extension():
+    """Ensure that calling npz_to_xyz(filename) raises ValueError if filename doesn't end with .npz."""
+
+    save_npz_for_test(npz_filename='convert_test.npz')
+
+    with pytest.raises(ValueError):
+        utils.npz_to_xyz('convert_test')
 
 
 @utils.work_in_tmp_dir()
 def test_save_nonexistent_npz():
-    # Ensure that trying to convert a non-existent npz file raises FileNotFoundError
-    try:
+    """Ensure that trying to convert a non-existent npz file raises FileNotFoundError"""
+
+    with pytest.raises(FileNotFoundError):
         utils.npz_to_xyz('nonexistent_file.npz')
-    except FileNotFoundError:
-        pass
-    else:
-        assert False, 'Expected FileNotFoundError was not raised.'
 
 
 @utils.work_in_tmp_dir()
-def test_save_duplicate_npz():
-    # Save a NEW file as test.xyz
+def test_save_duplicate_xyz():
+    """
+    Create an xyz file first, then create an npz file with the same name (excluding extension).
+    Ensure that trying to convert the npz file to an xyz file already exists raises a RuntimeError rather than overwriting the existing file.
+    """
     atoms = [
         Atom('H', 0.0, 0.0, 0.0),
         Atom('H', 1.0, 0.0, 0.0),
         Atom('O', 0.5, 0.5, 0.0),
     ]
-    my_config = mlt.Configuration(
-        atoms=atoms, charge=0, mult=1
-    )  # Simple 3-atom configuration for testing
-    orig_configset = mlt.ConfigurationSet(
-        my_config
-    )  # Create ConfigurationSet with single configuration
+
+    my_config = mlt.Configuration(atoms=atoms, charge=0, mult=1)
+    orig_configset = mlt.ConfigurationSet(my_config)
     orig_configset.save('duplicate_test.xyz')
 
-    save_npz_for_test(
-        npz_filename='duplicate_test.npz'
-    )  # Create an npz file of a different ConfigurationSet, with the same name [excluding extension]
-    assert os.path.exists(
-        'duplicate_test.npz'
-    ), 'npz file should exist for the purposes of this test'
+    # Create an npz file of a different ConfigurationSet, with the same name [excluding extension]
+    save_npz_for_test(npz_filename='duplicate_test.npz')
+
+    with pytest.raises(RuntimeError):
+        utils.npz_to_xyz(npz_filename='duplicate_test.npz')
+
+    assert os.path.exists('duplicate_test.xyz')
+
+    current_configset = mlt.ConfigurationSet()
+    current_configset.load_xyz('duplicate_test.xyz', charge=0, mult=1)
+
+    assert isinstance(current_configset, mlt.ConfigurationSet)
 
     assert (
-        utils.npz_to_xyz(npz_filename='duplicate_test.npz') is None
-    ), 'Should return None without error when trying to overwrite existing .xyz file'
+        len(current_configset) == 1
+    )  # Original xyz file should not have been overwritten
+    assert len(current_configset[0].atoms) == 3
 
-    assert os.path.exists('duplicate_test.xyz'), 'xyz file should still exist'
-
-    # assert (
-    #    mlt.ConfigurationSet().load_xyz("duplicate_test.xyz",charge=0,mult=1) == orig_configset
-    # ), "Previous empty xyz file should not have been overwritten"
-
-    # I made sure the above works by manually checking the contents of duplicate_test.xyz after running this test (with the work_in_tmp_dir bit commented out).
-    # duplicate_test.xyz is correctly unchanged, but the equality check fails.
-    """
-    duplicate_test.xyz contents:
-    3
-    Lattice="0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000" 
-    H 0.00000 0.00000 0.00000 
-    H 1.00000 0.00000 0.00000 
-    O 0.50000 0.50000 0.00000 
-    """
-    # I think the equality check of ConfigurationSets is maybe not implemented properly?
-    # Or more likely I'm just misunderstanding something. But either way this function does work, I checked.
+    assert not hasattr(current_configset[0], 'energy')
 
 
 @utils.work_in_tmp_dir()
 def test_npz_to_xyz_conversion():
+    """Test that converting a regular npz file to xyz works correctly."""
+
     path = save_npz_for_test(npz_filename='convert_test.npz')
 
-    assert os.path.exists(
-        'convert_test.npz'
-    ), 'npz file should exist for the purposes of this test'
+    utils.npz_to_xyz(f'{path}/convert_test.npz')
 
-    utils.npz_to_xyz(path)
+    assert os.path.exists(f'{path}/convert_test.xyz')
 
-    assert os.path.exists(
-        'convert_test.xyz'
-    )  # Check that the .xyz file was created
+    configset = mlt.ConfigurationSet()
+    configset.load_xyz(f'{path}/convert_test.xyz', charge=0, mult=1)
 
-    try:
-        mlt.ConfigurationSet().load_xyz(
-            'convert_test.xyz', charge=0, mult=1
-        )  # Check that the .xyz file can be loaded without error
+    assert isinstance(configset, mlt.ConfigurationSet)
 
-    except Exception as e:
-        assert False, f'Loading the converted .xyz file raised an error: {e}'
+    assert len(configset) == 2
 
+    assert len(configset[0].atoms) == 3
+    assert len(configset[1].atoms) == 2
 
-@utils.work_in_tmp_dir()
-def test_npz_to_xyz_missing_extension():
-    save_npz_for_test(npz_filename='convert_test.npz')
-
-    try:
-        utils.npz_to_xyz('convert_test')
-    except ValueError:
-        pass
-    else:
-        assert False, 'Expected ValueError was not raised.'
-
-    # assert (
-    #    utils.npz_to_xyz('convert_test') is None
-    # ), 'Should return None without error when no .npz extension is provided'
-
-    # assert os.path.exists(
-    #    'convert_test.xyz'
-    # )  # Check that the .xyz file was created
-
-    # assert (
-    #    mlt.ConfigurationSet().load_xyz('convert_test.xyz', charge=0, mult=1)
-    #    is None
-    # )  # Check that the .xyz file can be loaded without error
-
-    # The above checks were commented out as the function now raises a ValueError if no .npz extension is provided
+    assert hasattr(configset[0], 'energy')
+    assert hasattr(configset[1], 'forces')

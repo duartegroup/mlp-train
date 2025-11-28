@@ -7,7 +7,6 @@ from functools import wraps
 from typing import Optional, List, Sequence, Union
 from ase import units as ase_units
 import mlptrain as mlt
-from mlptrain.log import logger
 
 
 def work_in_tmp_dir(
@@ -309,7 +308,7 @@ def npz_to_xyz(npz_filename: str) -> None:
     ---------------------------------------------------------------------------
     Arguments:
 
-        npz_file: (str) Name of the .npz file to be converted, eg. "my_data.npz"
+        npz_file: (str) Name of the .npz file to be converted, eg. "my_data.npz" (.npz extension required)
 
 
     Creates a .xyz file named the same way, eg. -> 'my_data.xyz'
@@ -319,25 +318,17 @@ def npz_to_xyz(npz_filename: str) -> None:
 
     if not npz_filename.endswith('.npz'):
         raise ValueError('Input filename must end with .npz extension.')
-        # Reverting to raising an error rather than appending .npz and continuing
-        # It was causing headaches later on
-        # It's probably also just better to be strict with the user here I think
+
+    if not os.path.exists(npz_filename):
+        raise FileNotFoundError(f'File {npz_filename} not found.')
 
     xyz_filename = re.sub('.npz$', '.xyz', npz_filename)
 
     if os.path.exists(xyz_filename):
-        logger.info(
-            f'File {xyz_filename} already exists. Skipping conversion.'
+        raise RuntimeError(
+            f'Cannot save as {xyz_filename} -  filename already exists.'
         )
-        return None
 
-    if os.path.exists(npz_filename):
-        data = mlt.ConfigurationSet()
-        data.load(npz_filename)
-        data.save(xyz_filename)
-        logger.info(f'Converted {npz_filename} to {xyz_filename}')
-
-    else:
-        raise FileNotFoundError(f'File {npz_filename} not found.')
-
-    return None
+    data = mlt.ConfigurationSet()
+    data.load(npz_filename)
+    data.save(xyz_filename)
