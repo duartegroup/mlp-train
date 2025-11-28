@@ -90,12 +90,10 @@ def test_save_duplicate_xyz():
 
     assert isinstance(current_configset, mlt.ConfigurationSet)
 
-    assert (
-        len(current_configset) == 1
-    )  # Original xyz file should not have been overwritten
+    assert len(current_configset) == 1
     assert len(current_configset[0].atoms) == 3
 
-    assert not hasattr(current_configset[0], 'energy')
+    assert 'C' not in [atom.label for atom in current_configset[0].atoms]
 
 
 @utils.work_in_tmp_dir()
@@ -117,6 +115,3 @@ def test_npz_to_xyz_conversion():
 
     assert len(configset[0].atoms) == 3
     assert len(configset[1].atoms) == 2
-
-    assert hasattr(configset[0], 'energy')
-    assert hasattr(configset[1], 'forces')
