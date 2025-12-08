@@ -43,7 +43,7 @@ class MACE(MLPotential):
                          like "medium_off" for MACE-OFF(M), "medium" for MACE-MP-0(M), or the path to the foundation model.
 
                          Here, naive fine-tuning is default without any other argument specified.
-                        
+
                          To initiate multi-head fine-tuning, set mace_params['multihead'] to True.
                          For MACE-MP models, the replay dataset is provided by MACE through setting mace_params['pt_train']='mp'
                          For other models, the replay dataset path should be provided by setting mace_params['pt_train']=/path/to/replay/dataset
@@ -196,15 +196,16 @@ class MACE(MLPotential):
             args_list.append('--foundation_model')
             args_list.append(f'{self.foundation}')
             args_list.append(f"--multihead={Config.mace_params['multihead']}")
-            if Config.mace_params['multihead']==True:
-                args_list.append(f"--pt_train_file={Config.mace_params['pt_train']}")
+            if Config.mace_params['multihead']:
+                args_list.append(
+                    f"--pt_train_file={Config.mace_params['pt_train']}"
+                )
 
         if Config.mace_params['save_cpu']:
             args_list.append('--save_cpu')
 
         if Config.mace_params['restart_latest']:
             args_list.append('--restart_latest')
-
 
         args = tools.build_default_arg_parser().parse_args(args_list)
         return args

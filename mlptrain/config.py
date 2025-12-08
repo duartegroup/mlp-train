@@ -83,7 +83,7 @@ class _ConfigClass:
         'max_L': 1,
         'dtype': 'float32',
         'multihead': False,
-        'pt_train': None
+        'pt_train': None,
     }
 
     # --------------------- Internal properties ---------------------------
