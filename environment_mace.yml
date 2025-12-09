@@ -14,7 +14,7 @@ dependencies:
   - coloredlogs
   - cython
   - dscribe=2.0
-  - matplotlib-base
+  - matplotlib-base>=3.9.0
   - numpy
   - pytest=8
   - pytest-cov=5
