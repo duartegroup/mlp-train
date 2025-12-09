@@ -1,3 +1,5 @@
+import mlptrain as mlt
+import autode as ade
 from autode.atoms import Atom
 from autode.exceptions import SolventNotFound
 from mlptrain.configurations.configuration import (
@@ -8,6 +10,10 @@ from mlptrain.configurations.configuration import (
 import numpy as np
 import random
 import pytest
+import os
+from mlptrain.potentials._base import MLPotential
+
+ade.config._ConfigClass.max_core = ade.values.Allocation(1, units='GB')
 
 
 def test_equality():
@@ -328,3 +334,85 @@ def test_mol_dict_corrupt_file(tmp_path):
 
     assert not success
     assert len(config.mol_dict) == 0
+
+
+def test_keep_output_files_false(h2o_configuration, chdir_tmp_path):
+    """Test that no files are kept when keep_output_files=False."""
+
+    h2o_configuration.single_point(method='xtb', keep_output_files=False)
+
+    assert os.path.exists('QM_outputs/xtb.out') is False
+
+
+def test_single_point_configuration(h2o_configuration, chdir_tmp_path):
+    """Test single point configuration calculation with a QM method (basic functionality)."""
+    h2o_configuration.single_point(
+        method='xtb', n_cores=1, keep_output_files=True
+    )
+    assert h2o_configuration.n_ref_evals == 1
+    assert os.path.exists('QM_outputs/xtb.out')
+
+
+def test_custom_output_name_file_move(h2o_configuration, chdir_tmp_path):
+    """Test file moving for custom output names (non-energy, non-None)."""
+    h2o_configuration.single_point(
+        method='xtb', output_name='custom_calc', keep_output_files=True
+    )
+
+    assert os.path.exists('QM_outputs/custom_calc.out')
+
+
+class Mock_ml_potential(MLPotential):
+    """Create a mock ML potential with predict method."""
+
+    def predict(self, *args):
+        all_configurations = mlt.ConfigurationSet()
+
+        for arg in args:
+            if isinstance(arg, mlt.ConfigurationSet):
+                all_configurations += arg
+
+            elif isinstance(arg, mlt.Configuration):
+                all_configurations.append(arg)
+
+            else:
+                raise ValueError(
+                    'Cannot predict the energy and forces on ' f'{type(arg)}'
+                )
+
+        for configuration in all_configurations:
+            # evaluate predicted energies and forces
+            configuration.energy.predicted = 10.0
+            configuration.forces.predicted = [0.0, 0.0, 0.0]
+
+
+def test_ml_potential_predict(h2o_configuration, chdir_tmp_path):
+    """Test single point calculation with machine learning potential."""
+    h2o_configuration.single_point(method=Mock_ml_potential)
+
+    # n_ref_evals should not increment for ML potentials
+    assert h2o_configuration.n_ref_evals == 0
+
+
+def test_invalid_string_method_raises_error(h2o_configuration, chdir_tmp_path):
+    """Test that invalid string methods raise ValueError."""
+    with pytest.raises(
+        ValueError,
+        match='Cannot use invalid_method to predict energies and forces',
+    ):
+        h2o_configuration.single_point(method='invalid_method')
+
+
+def test_n_ref_evals_increment_logic(h2o_configuration, chdir_tmp_path):
+    """Test that n_ref_evals increments only for QM methods."""
+    initial_count = 5
+    h2o_configuration.n_ref_evals = initial_count
+
+    # ML potential should not increment
+    h2o_configuration.single_point(method=Mock_ml_potential)
+    assert h2o_configuration.n_ref_evals == initial_count
+
+    # QM method should increment
+
+    h2o_configuration.single_point(method='xtb')
+    assert h2o_configuration.n_ref_evals == initial_count + 1
