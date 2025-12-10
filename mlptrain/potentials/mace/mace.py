@@ -33,11 +33,9 @@ class MACE(MLPotential):
 
         -----------------------------------------------------------------------
         Arguments:
-
             name: (str) Name of the potential, used in naming output files
 
-            system: (mlptrain.System) Object defining the system without
-                                      specifying the coordinates
+            system: (mlptrain.System) Object defining the system without specifying the coordinates
 
             foundation: (str) Either the shortcut of the foundation model used in fine-tunning
                          like "medium_off" for MACE-OFF(M), "medium" for MACE-MP-0(M), or the path to the foundation model.
@@ -197,6 +195,10 @@ class MACE(MLPotential):
             args_list.append(f'{self.foundation}')
             args_list.append(f"--multihead={Config.mace_params['multihead']}")
             if Config.mace_params['multihead']:
+                if Config.mace_params['pt_train'] is None:
+                    raise ValueError(
+                        'Selected multihead fine-tuning, but path to replay dataset is not provided!'
+                    )
                 args_list.append(
                     f"--pt_train_file={Config.mace_params['pt_train']}"
                 )
