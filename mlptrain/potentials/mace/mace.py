@@ -33,15 +33,19 @@ class MACE(MLPotential):
 
         -----------------------------------------------------------------------
         Arguments:
-
             name: (str) Name of the potential, used in naming output files
 
-            system: (mlptrain.System) Object defining the system without
-                                      specifying the coordinates
+            system: (mlptrain.System) Object defining the system without specifying the coordinates
 
-            foundation: (str) Name of the foundation model used in fine-tunning
-                         like "medium_off" for MACE-OFF(M), "medium" for MACE-MP-0(M).
-                         Here, only naive fine-tuning is supported.
+            foundation: (str) Either the shortcut of the foundation model used in fine-tunning
+                         like "medium_off" for MACE-OFF(M), "medium" for MACE-MP-0(M), or the path to the foundation model.
+
+                         Here, naive fine-tuning is default without any other argument specified.
+
+                         To initiate multi-head fine-tuning, set mace_params['multihead'] to True.
+                         For MACE-MP models, the replay dataset is provided by MACE through setting mace_params['pt_train']='mp'
+                         For other models, the replay dataset path should be provided by setting mace_params['pt_train']=/path/to/replay/dataset
+                         Some Replay datasets could be accessed here: https://github.com/ACEsuit/mace-foundations/releases
                          More details on https://github.com/ACEsuit/mace/tree/main?tab=readme-ov-file#pretrained-foundation-models
         """
         super().__init__(name=name, system=system)
@@ -189,6 +193,15 @@ class MACE(MLPotential):
         if self.foundation is not None:
             args_list.append('--foundation_model')
             args_list.append(f'{self.foundation}')
+            args_list.append(f"--multihead={Config.mace_params['multihead']}")
+            if Config.mace_params['multihead']:
+                if Config.mace_params['pt_train'] is None:
+                    raise ValueError(
+                        'Selected multihead fine-tuning, but path to replay dataset is not provided!'
+                    )
+                args_list.append(
+                    f"--pt_train_file={Config.mace_params['pt_train']}"
+                )
 
         if Config.mace_params['save_cpu']:
             args_list.append('--save_cpu')

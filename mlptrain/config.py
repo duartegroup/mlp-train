@@ -82,6 +82,8 @@ class _ConfigClass:
         'num_workers': 20,
         'max_L': 1,
         'dtype': 'float32',
+        'multihead': False,
+        'pt_train': None,
         'cueq': False,
     }
 
