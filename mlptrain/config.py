@@ -84,6 +84,7 @@ class _ConfigClass:
         'dtype': 'float32',
         'multihead': False,
         'pt_train': None,
+        'cueq': False,
     }
 
     # --------------------- Internal properties ---------------------------
