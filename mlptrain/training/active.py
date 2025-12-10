@@ -1,8 +1,10 @@
 import mlptrain
 import os
 import shutil
+import time
 import numpy as np
 import multiprocessing as mp
+import glob
 from copy import deepcopy
 from typing import Optional, Union, List
 from subprocess import Popen
@@ -271,11 +273,23 @@ def _add_active_configs(
     init_config: 'mlptrain.Configuration',
     selection_method: 'mlptrain.training.selection.SelectionMethod',
     n_configs: int = 10,
+    process_timeout: Optional[
+        float
+    ] = 15000,  # secs = 250 mins = 4 hours approx of total run time for all AL simulations
     **kwargs,
 ) -> None:
     """
     Add a number (n_configs) of configurations to the current training data
     based on active learning selection of MLP-MD generated configurations
+
+    TODO
+    ----
+    Make process_timeout adaptive based on:
+    - Number of processes (n_configs): More processes may need longer total timeout
+    - MD timestep length: Longer timesteps require more time per configuration
+    - System size and complexity: Larger systems need more computation time
+    Consider implementing: timeout = base_timeout * n_configs * timestep_factor * system_scale_factor
+
     """
     if Config.n_cores > n_configs and Config.n_cores % n_configs != 0:
         raise NotImplementedError(
@@ -301,7 +315,10 @@ def _add_active_configs(
     configs = ConfigurationSet()
     results = []
 
-    with mp.get_context('spawn').Pool(processes=n_processes) as pool:
+    env = os.environ.copy()
+    with mp.get_context('spawn').Pool(
+        processes=n_processes, initargs=(env,)
+    ) as pool:
         for idx in range(n_configs):
             kwargs['idx'] = idx
 
@@ -318,15 +335,50 @@ def _add_active_configs(
             results.append(result)
 
         pool.close()
-        for result in results:
+        timeout_occurred = False
+
+        start_time = time.time()
+        total_timeout = process_timeout  # Store original timeout
+
+        for i, result in enumerate(results):
+            # Calculate remaining time budget
+            elapsed_time = time.time() - start_time
+            remaining_time = max(0, total_timeout - elapsed_time)
+
+            # Log when overall timeout is reached, but continue checking all processes
+            if remaining_time <= 0 and i == 0:  # Only log once
+                logger.error(
+                    f'Overall timeout reached. Checking remaining processes with immediate timeout '
+                    f'(iteration {kwargs.get("iteration", "unknown")})'
+                )
+                timeout_occurred = True
+
+            process_start = time.time()
             try:
-                configs.append(result.get(timeout=None))
+                configs.append(result.get(timeout=remaining_time))
+                process_time = time.time() - process_start
 
             # Lots of different exceptions can be raised when trying to
             # generate an active config, continue regardless..
-            except Exception as err:
-                logger.error(f'Raised an exception in selection: \n{err}')
+            except mp.TimeoutError:
+                process_time = time.time() - start_time
+                logger.error(
+                    f'Timeout error when trying to generate '
+                    f'an active configuration (iteration {kwargs.get("iteration", "unknown")}, '
+                    f'idx {kwargs.get("idx", "unknown")}, process_time={process_time:.2f}s)'
+                )
+                timeout_occurred = True
                 continue
+            except Exception as err:
+                process_time = time.time() - start_time
+                logger.error(
+                    f'Raised an exception in selection (process_time={process_time:.2f}s): \n{err}'
+                )
+                continue
+
+        if timeout_occurred:
+            pool.terminate()  # Force terminate worker processes
+            _cleanup_tmp_files()
         pool.join()
 
     if 'method_name' in kwargs and configs.has_a_none_energy:
@@ -355,9 +407,27 @@ def _add_active_configs(
             xyz_name = (
                 f'al_trajectories/traj_iter{kwargs["iteration"]}_{traj_id}.xyz'
             )
-            _save_ase_traj_as_xyz(traj_name, xyz_name)
 
-            os.remove(traj_name)
+            # Only process trajectory files that actually exist and are valid
+            if os.path.exists(traj_name):
+                try:
+                    _save_ase_traj_as_xyz(traj_name, xyz_name)
+                    os.remove(traj_name)
+                except Exception as e:
+                    logger.error(
+                        f'Failed to process trajectory file {traj_name}: {e}'
+                    )
+                    logger.info(
+                        f'Removing corrupted trajectory file {traj_name}'
+                    )
+                    try:
+                        os.remove(traj_name)
+                    except OSError:
+                        pass  # File might already be gone
+            else:
+                logger.info(
+                    f'Trajectory file {traj_name} not found - likely due to process timeout'
+                )
 
     return None
 
@@ -1151,3 +1221,17 @@ def _remove_last_inherited_metad_bias_file(max_active_iters: int) -> None:
             break
 
     return None
+
+
+def _cleanup_tmp_files():
+    """Remove any tmp* files and directories left behind by terminated processes"""
+    try:
+        # Remove tmp* files and directories in current directory
+        for item in glob.glob('tmp*'):
+            if os.path.isfile(item):
+                os.remove(item)
+            elif os.path.isdir(item):
+                shutil.rmtree(item)
+        logger.info('Cleaned up tmp* files and directories')
+    except Exception as e:
+        logger.warning(f'Could not clean up tmp* files: {e}')
