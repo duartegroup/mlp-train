@@ -17,6 +17,8 @@ class _ConfigClass:
     """
 
     n_cores = 4
+    process_timeout = None  # no limit
+    dynamics_timeout = 60 * 60 * 2  # 2 hours
     _orca_keywords = None
     _gaussian_keywords = None
 
