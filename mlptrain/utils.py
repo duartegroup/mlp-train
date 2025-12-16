@@ -6,6 +6,7 @@ from tempfile import mkdtemp
 from functools import wraps
 from typing import Optional, List, Sequence, Union
 from ase import units as ase_units
+import mlptrain as mlt
 
 
 def work_in_tmp_dir(
@@ -298,3 +299,41 @@ def convert_ase_energy(
         raise ValueError(f'Unknown energy units: {units}')
 
     return energy_array
+
+
+def npz_to_xyz(npz_filename: str, true=False, predicted=False) -> None:
+    """
+    Converts a Trajectory or ConfigurationSet saved as an .npz file to a .xyz file.
+
+    ---------------------------------------------------------------------------
+    Arguments:
+
+        npz_file: (str) Name of the .npz file to be converted, eg. "my_data.npz" (.npz extension required)
+
+        true (bool): Save 'true' energies and forces, if they exist
+
+        predicted (bool): Save the MLP predicted energies and forces, if they exist.
+
+        NOTE: cannot save two sets of energies and forces -> true and predicted cannot both be True
+
+    Creates a .xyz file named the same way, eg. -> 'my_data.xyz'
+
+    Returns: None
+    """
+
+    if not npz_filename.endswith('.npz'):
+        raise ValueError('Input filename must end with .npz extension.')
+
+    if not os.path.exists(npz_filename):
+        raise FileNotFoundError(f'File {npz_filename} not found.')
+
+    xyz_filename = re.sub('.npz$', '.xyz', npz_filename)
+
+    if os.path.exists(xyz_filename):
+        raise RuntimeError(
+            f'Cannot save as {xyz_filename} -  filename already exists.'
+        )
+
+    data = mlt.ConfigurationSet()
+    data.load(npz_filename)
+    data.save_xyz(xyz_filename, true, predicted)
