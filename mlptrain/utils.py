@@ -301,7 +301,7 @@ def convert_ase_energy(
     return energy_array
 
 
-def npz_to_xyz(npz_filename: str) -> None:
+def npz_to_xyz(npz_filename: str, true=False, predicted=False) -> None:
     """
     Converts a Trajectory or ConfigurationSet saved as an .npz file to a .xyz file.
 
@@ -310,6 +310,11 @@ def npz_to_xyz(npz_filename: str) -> None:
 
         npz_file: (str) Name of the .npz file to be converted, eg. "my_data.npz" (.npz extension required)
 
+        true (bool): Save 'true' energies and forces, if they exist
+
+        predicted (bool): Save the MLP predicted energies and forces, if they exist.
+
+        NOTE: cannot save two sets of energies and forces -> true and predicted cannot both be True
 
     Creates a .xyz file named the same way, eg. -> 'my_data.xyz'
 
@@ -331,4 +336,4 @@ def npz_to_xyz(npz_filename: str) -> None:
 
     data = mlt.ConfigurationSet()
     data.load(npz_filename)
-    data.save(xyz_filename)
+    data.save_xyz(xyz_filename, true, predicted)
