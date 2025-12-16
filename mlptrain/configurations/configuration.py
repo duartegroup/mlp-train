@@ -444,6 +444,8 @@ class Configuration(AtomCollection):
             true: Save the true energy and forces
 
             predicted: Save the predicted energy and forces
+
+        (Note: true and predicted cannot both be True)
         """
         # logger.info(f'Saving configuration to {filename}')
 
