@@ -1,6 +1,7 @@
 import mlptrain as mlt
 import pytest
 from autode.atoms import Atom
+import os
 
 
 @pytest.fixture
@@ -38,6 +39,16 @@ def h2o_configuration(h2o):
     config = system.random_configuration()
 
     return config
+
+
+@pytest.fixture
+def h2o_configuration_set(h2o):
+    system = mlt.System(h2o, box=[50, 50, 50])
+    config_set = mlt.ConfigurationSet()
+    config_set.append(system.random_configuration())
+    config_set.append(system.random_configuration())
+
+    return config_set
 
 
 @pytest.fixture
@@ -232,3 +243,11 @@ def empty_molecule():
     "No molecule inserted"
     molecule = mlt.Molecule()
     return molecule
+
+
+@pytest.fixture
+def chdir_tmp_path(request, tmp_path):
+    """Change to a temporary directory before running the test and reverting to original working directory."""
+    os.chdir(tmp_path)
+    yield tmp_path
+    os.chdir(request.config.invocation_dir)

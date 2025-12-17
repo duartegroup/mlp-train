@@ -1,4 +1,5 @@
 import mlptrain
+import shutil
 import ase
 import numpy as np
 import os
@@ -538,6 +539,9 @@ class Configuration(AtomCollection):
         self,
         method: Union[str, 'mlptrain.potentials._base.MLPotential'],
         n_cores: int = 1,
+        keep_output_files: bool = True,
+        output_name: Optional[str] = None,
+        **kwargs,
     ) -> None:
         """
         Run a single point energy and gradient (force) evaluation using
@@ -549,11 +553,49 @@ class Configuration(AtomCollection):
             method:
 
             n_cores: Number of cores to use for the calculation
+
+            keep_output_files: If true, copy back the QM outputs.
         """
         implemented_methods = ['xtb', 'orca', 'g09', 'g16']
 
+        if keep_output_files:
+            os.makedirs('QM_outputs', exist_ok=True)
+
         if isinstance(method, str) and method.lower() in implemented_methods:
-            run_autode(self, method, n_cores=n_cores)
+            if keep_output_files:
+                if method in ['g09', 'g16']:
+                    kept_substrings_list = ['.log']
+                else:
+                    kept_substrings_list = ['.out']
+            else:
+                kept_substrings_list = []
+            decorator = work_in_tmp_dir(
+                kept_substrings=kept_substrings_list,
+                output_name=output_name,
+            )
+            run_autode_decorated = decorator(run_autode)
+            run_autode_decorated(
+                self,
+                method,
+                n_cores=n_cores,
+                **kwargs,
+            )
+
+            if keep_output_files:
+                if output_name is None:
+                    output_name = method
+                    shutil.move(
+                        src=f'tmp_{method}{kept_substrings_list[0]}',
+                        dst=f'QM_outputs/{method}{kept_substrings_list[0]}',
+                    )
+                elif 'energy' in output_name:
+                    pass
+                else:
+                    shutil.move(
+                        src=f'{output_name}{kept_substrings_list[0]}',
+                        dst='QM_outputs/',
+                    )
+
             self.n_ref_evals += 1
             return None
 

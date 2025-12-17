@@ -101,9 +101,11 @@ class AbsDiffE(SelectionMethod):
 
         if configuration.energy.predicted is None:
             self._configuration.single_point(mlp)
-
         self._configuration.single_point(
-            method_name, n_cores=kwargs.get('n_cores', 1)
+            method_name,
+            n_cores=kwargs['n_cores'],
+            keep_output_files=kwargs['keep_output_files'],
+            output_name=f'{method_name}_energy_selector_{kwargs["idx"]}',
         )
         return None
 
