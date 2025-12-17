@@ -181,7 +181,7 @@ class MACE(MLPotential):
             args_list.append('--ema_decay')
             args_list.append(str(Config.mace_params['ema_decay']))
 
-        if Config.mace_params['swa']:
+        if Config.mace_params['start_swa'] is not None:
             args_list.append('--swa')
             args_list.append('--start_swa')
             args_list.append(str(Config.mace_params['start_swa']))
