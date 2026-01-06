@@ -84,6 +84,7 @@ class _ConfigClass:
         'num_workers': 20,
         'max_L': 1,
         'dtype': 'float32',
+        'cueq': False,
     }
 
     # --------------------- Internal properties ---------------------------
