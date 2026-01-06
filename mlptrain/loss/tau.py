@@ -125,6 +125,11 @@ class TauCalculator(LossFunction):
                 fs=block_time,
                 n_cores=min(Config.n_cores, 4),
             )
+            if traj is None:
+                logger.warning(
+                    'Skipping τ_acc block due to MD timeout.'
+                )
+                return curr_time
 
             try:
                 traj.single_point(method_name)

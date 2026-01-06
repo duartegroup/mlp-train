@@ -154,7 +154,7 @@ def run_mlp_md(
     copied_substrings: Optional[Sequence[str]] = None,
     kept_substrings: Optional[Sequence[str]] = None,
     **kwargs,
-) -> 'mlptrain.Trajectory':
+) -> Optional['mlptrain.Trajectory']:
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics. The function is executed in a temporary
@@ -226,7 +226,7 @@ def run_mlp_md(
 
     Returns:
 
-        (mlptrain.Trajectory):
+        (mlptrain.Trajectory | None):
     """
 
     restart = restart_files is not None
@@ -309,7 +309,7 @@ def _run_mlp_md(
     bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']] = None,
     restart_files: Optional[List[str]] = None,
     **kwargs,
-) -> 'mlptrain.Trajectory':
+) -> Optional['mlptrain.Trajectory']:
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics
@@ -376,7 +376,7 @@ def _run_mlp_md(
         **kwargs,
     )
 
-    _run_dynamics(
+    finished_in_time = _run_dynamics(
         ase_atoms=ase_atoms,
         ase_traj=ase_traj,
         traj_name=traj_name,
@@ -391,6 +391,9 @@ def _run_mlp_md(
         biased_energies=biased_energies,
         **kwargs,
     )
+    if not finished_in_time:
+        logger.warning('Skipping trajectory due to dynamics timeout.')
+        return None
 
     # Duplicate frames removed only if PLUMED bias is initialised not from file
     if restart and isinstance(bias, PlumedBias) and not bias.from_file:
@@ -480,7 +483,7 @@ def _run_dynamics(
     pressure: Optional[float] = None,
     compress: Optional[float] = None,
     **kwargs,
-) -> None:
+) -> bool:
     """Initialise dynamics object and run dynamics"""
 
     if all([value is not None for value in [pressure, compress]]) and temp > 0:
@@ -524,7 +527,7 @@ def _run_dynamics(
     # Run the dynamics but cease after a specified time limit
     # NOTE: this is not a perfect solution, some kind of periodic divergence
     # check would be better
-    run_with_timeout(
+    _, finished_in_time = run_with_timeout(
         dyn.run, steps=n_steps, fn_timeout=Config.dynamics_timeout
     )
 
@@ -532,7 +535,10 @@ def _run_dynamics(
         # The calling process waits until PLUMED process has finished
         ase_atoms.calc.plumed.finalize()
 
-    return None
+    if not finished_in_time:
+        return False
+
+    return True
 
 
 def _save_trajectory(

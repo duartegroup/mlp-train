@@ -484,6 +484,10 @@ def _gen_active_config(
             **kwargs,
         )
 
+    if traj is None:
+        logger.warning('Skipping active learning step due to MD timeout.')
+        return None
+
     traj.t0 = curr_time  # Increment the initial time (t0)
 
     for frame in traj:

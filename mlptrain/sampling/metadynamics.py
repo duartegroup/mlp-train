@@ -8,10 +8,11 @@ import shutil
 import warnings
 import numpy as np
 import multiprocessing as mp
+from concurrent.futures import ProcessPoolExecutor
 import autode as ade
 from typing import Optional, Sequence, Union, Tuple, List
-from multiprocessing import Pool
 from subprocess import Popen
+from multiprocessing import Pool
 from copy import deepcopy
 from ase import units as ase_units
 from ase.io import read as ase_read
@@ -175,8 +176,10 @@ class Metadynamics:
 
             pool.close()
             for width_process in width_processes:
-                all_widths.append(width_process.get())
-                all_widths = np.array(all_widths)
+                widths = width_process.get()
+                if widths:
+                    all_widths.append(widths)
+            all_widths = np.array(all_widths)
             pool.join()
 
         finish = time.perf_counter()
@@ -191,6 +194,11 @@ class Metadynamics:
         move_files(
             [r'\w+_config\d+\.pdf'], dst_folder='width_estimation', regex=True
         )
+
+        if all_widths.size == 0:
+            raise RuntimeError(
+                'Width estimation failed: all runs were skipped due to timeout.'
+            )
 
         opt_widths = list(np.min(all_widths, axis=0))
         opt_widths_strs = []
@@ -221,7 +229,7 @@ class Metadynamics:
 
         kwargs['n_cores'] = 1
 
-        run_mlp_md(
+        traj = run_mlp_md(
             configuration=configuration,
             mlp=mlp,
             temp=temp,
@@ -231,6 +239,11 @@ class Metadynamics:
             kept_substrings=['.dat'],
             **kwargs,
         )
+        if traj is None:
+            logger.warning(
+                'Width estimation MD cancelled due to timeout; skipping.'
+            )
+            return []
 
         widths = []
 
@@ -391,38 +404,47 @@ class Metadynamics:
 
         start_metad = time.perf_counter()
 
-        with mp.get_context('spawn').Pool(processes=n_processes) as pool:
+        with ProcessPoolExecutor(
+            max_workers=n_processes, mp_context=mp.get_context('spawn')
+        ) as executor:
             for idx in range(n_runs):
                 # Without copy kwargs is overwritten at every iteration
                 kwargs_single = deepcopy(kwargs)
                 kwargs_single['idx'] = idx + 1
 
-                metad_process = pool.apply_async(
-                    func=self._run_single_metad,
-                    args=(
-                        configuration,
-                        mlp,
-                        temp,
-                        interval,
-                        dt,
-                        self.bias,
-                        al_iter,
-                        restart,
-                    ),
-                    kwds=kwargs_single,
+                metad_process = executor.submit(
+                    self._run_single_metad,
+                    configuration,
+                    mlp,
+                    temp,
+                    interval,
+                    dt,
+                    self.bias,
+                    al_iter,
+                    restart,
+                    **kwargs_single,
                 )
                 metad_processes.append(metad_process)
 
-            pool.close()
             for metad_process in metad_processes:
-                metad_trajs.append(metad_process.get())
-            pool.join()
+                metad_trajs.append(metad_process.result())
 
         finish_metad = time.perf_counter()
         logger.info(
             'Metadynamics done in '
             f'{(finish_metad - start_metad) / 60:.1f} m'
         )
+
+        metad_trajs = [traj for traj in metad_trajs if traj is not None]
+        if len(metad_trajs) == 0:
+            logger.warning(
+                'All metadynamics trajectories were skipped due to MD timeout.'
+            )
+            return None
+        if len(metad_trajs) != n_runs:
+            logger.warning(
+                'Some metadynamics trajectories were skipped due to MD timeout.'
+            )
 
         # Move .traj files into 'trajectories' folder and compute .xyz files
         self._move_and_save_files(

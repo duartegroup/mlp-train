@@ -4,6 +4,7 @@ import re
 import time
 import glob
 import multiprocessing as mp
+from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.integrate import simpson
@@ -456,7 +457,9 @@ class UmbrellaSampling:
             f'{n_processes} window(s) are run in parallel'
         )
 
-        with mp.get_context('spawn').Pool(processes=n_processes) as pool:
+        with ProcessPoolExecutor(
+            max_workers=n_processes, mp_context=mp.get_context('spawn')
+        ) as executor:
             for idx, ref in enumerate(zeta_refs):
                 # Without copy kwargs is overwritten at every iteration
                 kwargs_single = deepcopy(kwargs)
@@ -474,17 +477,26 @@ class UmbrellaSampling:
 
                 init_frame = self._best_init_frame(bias, _traj)
 
-                window_process = pool.apply_async(
-                    func=self._run_individual_window,
-                    args=(init_frame, mlp, temp, interval, dt, bias),
-                    kwds=kwargs_single,
+                window_process = executor.submit(
+                    self._run_individual_window,
+                    init_frame,
+                    mlp,
+                    temp,
+                    interval,
+                    dt,
+                    bias,
+                    **kwargs_single,
                 )
                 window_processes.append(window_process)
                 biases.append(bias)
 
-            pool.close()
             for window_process, bias in zip(window_processes, biases):
-                window_traj = window_process.get()
+                window_traj = window_process.result()
+                if window_traj is None:
+                    logger.warning(
+                        'Umbrella sampling window cancelled due to MD timeout.'
+                    )
+                    return None
                 window = _Window(
                     obs_zetas=self.zeta_func(window_traj), bias=bias
                 )
@@ -496,7 +508,6 @@ class UmbrellaSampling:
 
                 self.windows.append(window)
                 window_trajs.append(window_traj)
-            pool.join()
 
         finish_umbrella = time.perf_counter()
         logger.info(
