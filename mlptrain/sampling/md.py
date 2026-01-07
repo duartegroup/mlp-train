@@ -1,12 +1,22 @@
 import os
-import ase
-import mlptrain
-import shutil
-import numpy as np
-import autode as ade
 from copy import deepcopy
+import shutil
 from typing import Optional, Sequence, List, Union
+import multiprocessing as mp
+
+import numpy as np
 from numpy.random import RandomState
+import ase
+import autode as ade
+from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+from ase.io.trajectory import Trajectory as ASETrajectory
+from ase.md.nptberendsen import NPTBerendsen
+from ase.md.langevin import Langevin
+from ase.md.verlet import VelocityVerlet
+from ase.io import read
+from ase import units as ase_units
+
+import mlptrain
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
 from mlptrain.sampling.plumed import (
@@ -18,13 +28,114 @@ from mlptrain.sampling.plumed import (
 from mlptrain.log import logger
 from mlptrain.box import Box
 from mlptrain.utils import work_in_tmp_dir
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-from ase.io.trajectory import Trajectory as ASETrajectory
-from ase.md.nptberendsen import NPTBerendsen
-from ase.md.langevin import Langevin
-from ase.md.verlet import VelocityVerlet
-from ase.io import read
-from ase import units as ase_units
+
+
+MAX_DYNAMICS_TIMEOUT = 60 * 60 * 2  # 2 hours
+
+
+def _wrap_signalling(fn, args, kwargs, fn_timeout):
+    """Run fn(*args, **kwargs) with a Unix signal-based timeout in the
+    current (daemon) process. Returns (result, finished_in_time)."""
+    import signal
+
+    class _TimeoutException(Exception):
+        pass
+
+    def _handle_timeout(signum, frame):
+        raise _TimeoutException()
+
+    old_handler = signal.getsignal(signal.SIGALRM)
+    try:
+        # Use setitimer for sub-second precision and real time
+        signal.signal(signal.SIGALRM, _handle_timeout)
+        signal.setitimer(signal.ITIMER_REAL, fn_timeout)
+        try:
+            result = fn(*args, **kwargs)
+            return result, True
+        except _TimeoutException:
+            logger.warning(
+                f'Trajectory cancelled due to running over maximum timeout, {fn_timeout} s'
+            )
+            return None, False
+        finally:
+            # Disable the timer and restore previous handler
+            try:
+                signal.setitimer(signal.ITIMER_REAL, 0)
+            finally:
+                signal.signal(signal.SIGALRM, old_handler)
+    except Exception as e:
+        # If signal-based timeout fails for any reason, log and run without timeout
+        logger.warning(
+            f'Failed to set signal-based timeout inside Pool worker ({e}); running without timeout.'
+        )
+        return fn(*args, **kwargs), True
+
+
+def _wrap_process(fn, args, kwargs, fn_timeout):
+    """Run fn(*args, **kwargs) in a separate process with a timeout.
+    Returns (result, finished_in_time)."""
+    queue = mp.Queue()
+
+    def wrapper(q, *a, **kw):
+        try:
+            res = fn(*a, **kw)
+            q.put(('ok', res))
+        except BaseException as e:  # noqa: BLE001
+            # Send a safe, picklable representation
+            try:
+                q.put(('err', repr(e)))
+            except Exception:
+                q.put(('err', 'unpicklable exception'))
+
+    process = mp.Process(target=wrapper, args=(queue,) + args, kwargs=kwargs)
+    process.start()
+    process.join(timeout=fn_timeout)
+
+    if process.is_alive():
+        process.terminate()
+        process.join()
+        logger.warning(
+            f'Trajectory cancelled due to running over maximum timeout, {fn_timeout} s'
+        )
+        return None, False
+
+    # Process exited; retrieve result without blocking
+    try:
+        status, payload = queue.get_nowait()
+    except Exception:
+        # No result available; treat as failure
+        logger.warning('Timed function exited without returning a result.')
+        return None, False
+
+    if status == 'ok':
+        return payload, True
+    else:
+        # The function raised; report and mark as not finished cleanly
+        logger.warning(f'Timed function raised an exception: {payload}')
+        return None, False
+
+
+def run_with_timeout(fn, *args, fn_timeout=Config.dynamics_timeout, **kwargs):
+    """
+    Run a callable with a timeout.
+
+    - If running inside a multiprocessing.Pool worker (daemon process), use a
+      Unix signal-based timeout to avoid spawning child processes.
+    - Otherwise, run the function in a separate process and terminate on timeout.
+
+    Returns: (result, finished_in_time: bool)
+    """
+    try:
+        if mp.current_process().daemon:
+            return _wrap_signalling(fn, args, kwargs, fn_timeout)
+        else:
+            return _wrap_process(fn, args, kwargs, fn_timeout)
+    except Exception as e:
+        # Final fallback: run without timeout to avoid deadlocks in unexpected environments
+        logger.warning(
+            f'run_with_timeout encountered an unexpected error ({e}); running without enforced timeout.'
+        )
+        return fn(*args, **kwargs), True
 
 
 def run_mlp_md(
@@ -38,12 +149,12 @@ def run_mlp_md(
     init_temp: Optional[float] = None,
     fbond_energy: Optional[dict] = None,
     bbond_energy: Optional[dict] = None,
-    bias: Optional = None,
+    bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']] = None,
     restart_files: Optional[List[str]] = None,
     copied_substrings: Optional[Sequence[str]] = None,
     kept_substrings: Optional[Sequence[str]] = None,
     **kwargs,
-) -> 'mlptrain.Trajectory':
+) -> Optional['mlptrain.Trajectory']:
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics. The function is executed in a temporary
@@ -115,7 +226,7 @@ def run_mlp_md(
 
     Returns:
 
-        (mlptrain.Trajectory):
+        (mlptrain.Trajectory | None):
     """
 
     restart = restart_files is not None
@@ -195,10 +306,10 @@ def _run_mlp_md(
     init_temp: Optional[float] = None,
     fbond_energy: Optional[dict] = None,
     bbond_energy: Optional[dict] = None,
-    bias: Optional = None,
+    bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']] = None,
     restart_files: Optional[List[str]] = None,
     **kwargs,
-) -> 'mlptrain.Trajectory':
+) -> Optional['mlptrain.Trajectory']:
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics
@@ -265,7 +376,7 @@ def _run_mlp_md(
         **kwargs,
     )
 
-    _run_dynamics(
+    finished_in_time = _run_dynamics(
         ase_atoms=ase_atoms,
         ase_traj=ase_traj,
         traj_name=traj_name,
@@ -280,6 +391,9 @@ def _run_mlp_md(
         biased_energies=biased_energies,
         **kwargs,
     )
+    if not finished_in_time:
+        logger.warning('Skipping trajectory due to dynamics timeout.')
+        return None
 
     # Duplicate frames removed only if PLUMED bias is initialised not from file
     if restart and isinstance(bias, PlumedBias) and not bias.from_file:
@@ -369,7 +483,7 @@ def _run_dynamics(
     pressure: Optional[float] = None,
     compress: Optional[float] = None,
     **kwargs,
-) -> None:
+) -> bool:
     """Initialise dynamics object and run dynamics"""
 
     if all([value is not None for value in [pressure, compress]]) and temp > 0:
@@ -410,13 +524,21 @@ def _run_dynamics(
         dyn.attach(save_trajectory, interval=_traj_saving_interval(dt, kwargs))
 
     logger.info(f'Running {n_steps:.0f} steps with a timestep of {dt} fs')
-    dyn.run(steps=n_steps)
+    # Run the dynamics but cease after a specified time limit
+    # NOTE: this is not a perfect solution, some kind of periodic divergence
+    # check would be better
+    _, finished_in_time = run_with_timeout(
+        dyn.run, steps=n_steps, fn_timeout=Config.dynamics_timeout
+    )
 
     if isinstance(ase_atoms.calc, PlumedCalculator):
         # The calling process waits until PLUMED process has finished
         ase_atoms.calc.plumed.finalize()
 
-    return None
+    if not finished_in_time:
+        return False
+
+    return True
 
 
 def _save_trajectory(
