@@ -42,9 +42,8 @@ class MACE(MLPotential):
 
                          Here, naive fine-tuning is default without any other argument specified.
 
-                         To initiate multi-head fine-tuning, set mace_params['multihead'] to True.
+                         To initiate multi-head fine-tuning, specify mace_params['pt_train']=/path/to/replay/dataset
                          For MACE-MP models, the replay dataset is provided by MACE through setting mace_params['pt_train']='mp'
-                         For other models, the replay dataset path should be provided by setting mace_params['pt_train']=/path/to/replay/dataset
                          Some Replay datasets could be accessed here: https://github.com/ACEsuit/mace-foundations/releases
                          More details on https://github.com/ACEsuit/mace/tree/main?tab=readme-ov-file#pretrained-foundation-models
         """
@@ -193,15 +192,39 @@ class MACE(MLPotential):
         if self.foundation is not None:
             args_list.append('--foundation_model')
             args_list.append(f'{self.foundation}')
-            args_list.append(f"--multihead={Config.mace_params['multihead']}")
-            if Config.mace_params['multihead']:
-                if Config.mace_params['pt_train'] is None:
+
+            pt = Config.mace_params.get('pt_train')
+            mh = Config.mace_params.get('multihead')
+
+            if pt:
+                if mh is False:
                     raise ValueError(
-                        'Selected multihead fine-tuning, but path to replay dataset is not provided!'
+                        'Invalid configuration: pt_train provided but multihead=False.'
                     )
-                args_list.append(
-                    f"--pt_train_file={Config.mace_params['pt_train']}"
+                if not isinstance(pt, str) or not pt.strip():
+                    raise ValueError(
+                        'pt_train must be a non-empty path string.'
+                    )
+                if pt != 'mp' and not os.path.exists(pt):
+                    raise FileNotFoundError(
+                        f'pt_train path does not exist: {pt}'
+                    )
+
+                Config.mace_params['multihead'] = True
+                args_list.append(f'--pt_train_file={pt}')
+                logger.info('Multihead fine-tuning launched')
+
+            else:
+                if mh is True:
+                    raise ValueError(
+                        'Invalid configuration: multihead=True but pt_train not provided'
+                    )
+                Config.mace_params['multihead'] = False
+                logger.info(
+                    'Naive fine-tuning launched since no pt_train provided.'
                 )
+
+            args_list.append(f"--multihead={Config.mace_params['multihead']}")
 
         if Config.mace_params['save_cpu']:
             args_list.append('--save_cpu')
