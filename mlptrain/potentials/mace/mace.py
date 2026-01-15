@@ -192,39 +192,27 @@ class MACE(MLPotential):
         if self.foundation is not None:
             args_list.append('--foundation_model')
             args_list.append(f'{self.foundation}')
+            pt_train = Config.mace_params['pt_train']
 
-            pt = Config.mace_params.get('pt_train')
-            mh = Config.mace_params.get('multihead')
-
-            if pt:
-                if mh is False:
-                    raise ValueError(
-                        'Invalid configuration: pt_train provided but multihead=False.'
-                    )
-                if not isinstance(pt, str) or not pt.strip():
+            if pt_train is not None:
+                if not isinstance(pt_train, str) or not pt_train.strip():
                     raise ValueError(
                         'pt_train must be a non-empty path string.'
                     )
-                if pt != 'mp' and not os.path.exists(pt):
+                if pt_train != 'mp' and not os.path.exists(pt_train):
                     raise FileNotFoundError(
-                        f'pt_train path does not exist: {pt}'
+                        f'pt_train path does not exist: {pt_train}'
                     )
 
-                Config.mace_params['multihead'] = True
-                args_list.append(f'--pt_train_file={pt}')
+                args_list.append(f'--pt_train_file={pt_train}')
+                args_list.append('--multihead=True')
                 logger.info('Multihead fine-tuning launched')
 
             else:
-                if mh is True:
-                    raise ValueError(
-                        'Invalid configuration: multihead=True but pt_train not provided'
-                    )
-                Config.mace_params['multihead'] = False
+                args_list.append('--multihead=False')
                 logger.info(
                     'Naive fine-tuning launched since no pt_train provided.'
                 )
-
-            args_list.append(f"--multihead={Config.mace_params['multihead']}")
 
         if Config.mace_params['save_cpu']:
             args_list.append('--save_cpu')
