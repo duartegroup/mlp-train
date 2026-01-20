@@ -3,7 +3,6 @@ import os
 import shutil
 import numpy as np
 import multiprocessing as mp
-from concurrent.futures import ProcessPoolExecutor, TimeoutError
 from copy import deepcopy
 from typing import Optional, Union, List
 from subprocess import Popen
@@ -302,40 +301,40 @@ def _add_active_configs(
     configs = ConfigurationSet()
     results = []
 
-    with ProcessPoolExecutor(
-        max_workers=n_processes, mp_context=mp.get_context('spawn')
-    ) as executor:
+    with mp.get_context('spawn').Pool(processes=n_processes) as pool:
         for idx in range(n_configs):
-            kwargs_single = deepcopy(kwargs)
-            kwargs_single['idx'] = idx
+            kwargs['idx'] = idx
 
-            result = executor.submit(
+            result = pool.apply_async(
                 _gen_active_config,
-                init_config.copy(),
-                mlp.copy(),
-                selection_method.copy(),
-                n_cores_pp,
-                **kwargs_single,
+                args=(
+                    init_config.copy(),
+                    mlp.copy(),
+                    selection_method.copy(),
+                    n_cores_pp,
+                ),
+                kwds=deepcopy(kwargs),
             )
             results.append(result)
 
+        pool.close()
         for result in results:
             try:
-                config = result.result(timeout=Config.process_timeout)
-                if config is not None:
-                    configs.append(config)
+                configs.append(result.get(timeout=Config.process_timeout))
 
             # Lots of different exceptions can be raised when trying to
             # generate an active config, continue regardless..
-            except TimeoutError:
+            except mp.TimeoutError:
                 logger.error(
                     'Timeout error when trying to generate '
                     'an active configuration'
                 )
+                # Do we need to append something to configs?
                 continue
             except Exception as err:
                 logger.error(f'Raised an exception in selection: \n{err}')
                 continue
+        pool.join()
 
     if 'method_name' in kwargs and configs.has_a_none_energy:
         for config in configs:
