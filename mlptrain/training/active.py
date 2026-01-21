@@ -893,21 +893,55 @@ def _generate_inheritable_metad_bias(n_configs: int, kwargs: dict) -> None:
     bias_start_iter = kwargs['bias_start_iter']
 
     hills_files = [f'HILLS_{iteration}_{idx}.dat' for idx in range(n_configs)]
-    using_hills = all(os.path.exists(fname) for fname in hills_files)
+    existing_hills_files = [
+        fname for fname in hills_files if os.path.exists(fname)
+    ]
 
-    if using_hills:
-        _generate_inheritable_metad_bias_hills(
-            n_configs=n_configs,
-            hills_files=hills_files,
-            iteration=iteration,
-            bias_start_iter=bias_start_iter,
+    def _hills_has_data(path: str) -> bool:
+        with open(path, 'r') as hills_file:
+            for line in hills_file:
+                if line.strip() and not line.startswith('#'):
+                    return True
+        return False
+
+    valid_hills_files = [
+        fname for fname in existing_hills_files if _hills_has_data(fname)
+    ]
+    missing_hills_files = sorted(
+        set(hills_files) - set(existing_hills_files)
+    )
+    empty_hills_files = [
+        fname
+        for fname in existing_hills_files
+        if fname not in valid_hills_files
+    ]
+
+    if missing_hills_files:
+        logger.warning(
+            'Missing HILLS files detected for metadynamics bias '
+            f'inheritance: {missing_hills_files}'
         )
 
-    else:
+    if empty_hills_files:
+        logger.warning(
+            'Empty HILLS files detected for metadynamics bias '
+            f'inheritance (skipping): {empty_hills_files}'
+        )
+
+    if len(valid_hills_files) == 0:
         logger.error(
-            'All files required for generating inheritable '
-            'metadynamics bias could not be found'
+            'No non-empty HILLS files were found for generating '
+            'inheritable metadynamics bias'
         )
+        # Throw exception here?
+        return None
+
+    _generate_inheritable_metad_bias_hills(
+        n_configs=len(valid_hills_files),
+        hills_files=valid_hills_files,
+        iteration=iteration,
+        bias_start_iter=bias_start_iter,
+    )
 
     return None
 
