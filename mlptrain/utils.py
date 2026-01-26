@@ -2,10 +2,13 @@ import os
 import re
 import shutil
 import numpy as np
+import mlptrain as mlt
+import autode as ade
 from tempfile import mkdtemp
 from functools import wraps
 from typing import Optional, List, Sequence, Union
 from ase import units as ase_units
+from autode.values import PotentialEnergy, Gradient
 
 
 def work_in_tmp_dir(
@@ -298,3 +301,133 @@ def convert_ase_energy(
         raise ValueError(f'Unknown energy units: {units}')
 
     return energy_array
+
+
+def orca_output_to_npz(
+    file_names: List[str],
+    units: str = 'eV',
+    output_name: str = 'custom_orca_training_set',
+    load_energies: bool = True,
+    load_forces: bool = True,
+    load_dipole: bool = False,
+    save_xyz: bool = True,
+) -> None:
+    """
+    Generate npz file from existing otuputs of orca calculations.
+
+    -----------------------------------------------------------
+    Arguments:
+
+    file_names: (List[str]) List of files to save in npz format.
+
+    units: (str) Units printed in the file. Default eV.
+
+    output_name: (str) Output file name without .
+
+    load_energies: (bool) If True, load energies from the files.
+
+    load_forces: (bool) If True, load forces from the files.
+
+    load_dipole : (bool) If True, load dipole moments form the files.
+
+    save_xyz: (bool) If True database will be saved as extxyz.
+    """
+
+    dataset = mlt.ConfigurationSet()
+
+    for filename in file_names:
+        if os.path.exists(filename):
+            if filename.endswith('.out') is False:
+                raise TypeError('Function require ORCA output file .out')
+
+            open_file = open(filename, 'r', encoding='utf-8', errors='ignore')
+            lines = open_file.readlines()
+            atoms = []
+
+            print_coord = False
+
+            for cline in lines:
+                if 'Total Charge' in cline:
+                    charge = cline.split()[4]
+
+            for mline in lines:
+                if 'Multiplicity           Mult' in mline:
+                    mult = mline.split()[3]
+
+            for line in lines:
+                if 'CARTESIAN COORDINATES (ANGSTROEM)' in line:
+                    atoms = []
+                    print_coord = True
+                elif line in ['\n', '\r\n']:
+                    print_coord = False
+
+                if (
+                    print_coord
+                    and '----' not in line
+                    and 'CARTESIAN COORDINATES (ANGSTROEM)' not in line
+                ):
+                    element, x, y, z = line.split()
+                    atom = ade.atoms.Atom(
+                        atomic_symbol=element,
+                        x=float(x),
+                        y=float(y),
+                        z=float(z),
+                    )
+                    atoms.append(atom)
+
+            if load_energies:
+                for en_line in reversed(lines):
+                    if 'FINAL SINGLE POINT ENERGY' in en_line:
+                        energy = PotentialEnergy(
+                            en_line.split()[4], units='Ha'
+                        )
+
+            if load_forces:
+                # Add numerical forces and MP2 gradients
+                print_forces = False
+                for line in lines:
+                    if (
+                        'CARTESIAN GRADIENT'
+                        or 'The final MP2 gradient' in line
+                    ):
+                        gradients = []
+                        print_forces = True
+                    elif 'Difference to translation invariance' in line:
+                        print_forces = False
+
+                    elif 'Norm of the Cartesian gradient' in line:
+                        print_forces = False
+
+                    elif 'NORM OF THE MP2 GRADIENT:' in line:
+                        print_forces = False
+
+                    if print_forces:
+                        if len(line.split()) <= 3:
+                            continue
+                        else:
+                            dadx, dady, dadz = line.split()[-3:]
+                            gradients.append(
+                                [float(dadx), float(dady), float(dadz)]
+                            )
+                            forces = -Gradient(gradients, units='Ha a0^-1').to(
+                                'Ha Å^-1'
+                            )
+
+            if load_dipole:
+                for d_line in reversed(lines):
+                    if 'Total Dipole Moment' in d_line:
+                        dipx, dipy, dipz = line.split()[-3:]
+                        dipole = [float(dipx), float(dipy), float(dipz)]
+
+            config = mlt.Configuration(atoms=atoms, charge=charge, mult=mult)
+
+            config.dipole.true = dipole.to()
+            config.energy.true = energy.to('eV')
+            config.forces.true = forces.to('eV Å^-1')
+
+        dataset.append(config)
+
+    dataset.save(output_name)
+
+    if save_xyz:
+        dataset.save_xyz(true=True)
