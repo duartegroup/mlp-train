@@ -317,7 +317,7 @@ class ConfigurationSet(list):
             )
             true = True
 
-        open(filename, 'w').close()  # Empty the file
+        # open(filename, 'w').close()  # Empty the file
 
         for configuration in self:
             configuration.save_xyz(
