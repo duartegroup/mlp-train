@@ -92,18 +92,18 @@ def _add_energy_time_plot(config_set, axis) -> None:
 
     axis.legend()
     axis.set_xlabel(xlabel)
-    axis.set_ylabel('$E$ / eV')
+    axis.set_ylabel('$E - E_{min, true}$ (eV)')
 
     return None
 
 
 def _add_energy_parity_plot(config_set, axis) -> None:
     """Plot true vs predicted energies"""
-    xs = np.array(config_set.true_energies)
-    xs -= np.min(xs)  # Only relative energies matter
+    x = np.array(config_set.true_energies)
+    xs = x - np.min(x)  # Only relative energies matter
 
-    ys = np.array(config_set.predicted_energies)
-    ys -= np.min(ys)
+    y = np.array(config_set.predicted_energies)
+    ys = y - np.min(y)
 
     min_e = min([np.min(xs), np.min(ys)])
     max_e = min([np.max(xs), np.max(ys)])
@@ -112,13 +112,13 @@ def _add_energy_parity_plot(config_set, axis) -> None:
 
     axis.plot([min_e, max_e], [min_e, max_e], c='k', lw=1.0)
 
-    _add_r_sq_and_mad(axis, xs=xs, ys=ys)
+    _add_r_sq_and_mad(axis, x=x, y=y, xs=xs, ys=ys)
 
     axis.set_xlim(min_e, max_e)
     axis.set_ylim(min_e, max_e)
 
-    axis.set_xlabel('$E_{true}$ / eV')
-    axis.set_ylabel('$E_{predicted}$ / eV')
+    axis.set_xlabel('$E_{rel, true}$ (eV)')
+    axis.set_ylabel('$E_{rel, predicted}$ (eV)')
 
     return None
 
@@ -166,7 +166,7 @@ def _add_force_component_plot(config_set, axis) -> None:
         axis.hist2d(
             xs,
             ys,
-            bins=40,
+            bins=100,
             label='$F_{x}$',
             cmap=cmaps[idx],
             norm=mpl.colors.LogNorm(),
@@ -175,8 +175,8 @@ def _add_force_component_plot(config_set, axis) -> None:
     axis.set_ylim(min_f, max_f)
     axis.set_xlim(min_f, max_f)
 
-    axis.set_xlabel('$F_{true}$ / eV Å$^{-1}$')
-    axis.set_ylabel('$F_{predicted}$ / eV Å$^{-1}$')
+    axis.set_xlabel('$F_{true}$ (eV Å$^{-1})$')
+    axis.set_ylabel('$F_{predicted}$ (eV Å$^{-1})$')
 
     return None
 
@@ -184,47 +184,64 @@ def _add_force_component_plot(config_set, axis) -> None:
 def _add_force_magnitude_plot(config_set, axis) -> None:
     """Add a parity plot of the force magnitudes"""
 
-    xs, ys = [], []
+    x, y = [], []
     for config in config_set:
-        xs += np.linalg.norm(config.forces.true, axis=1).tolist()
-        ys += np.linalg.norm(config.forces.predicted, axis=1).tolist()
+        x += np.linalg.norm(config.forces.true, axis=1).tolist()
+        y += np.linalg.norm(config.forces.predicted, axis=1).tolist()
 
-    min_f = min([np.min(xs), np.min(ys)])
-    max_f = min([np.max(xs), np.max(ys)])
+    min_f = min([np.min(x), np.min(y)])
+    max_f = min([np.max(x), np.max(y)])
 
     axis.hist2d(
-        xs,
-        ys,
+        x,
+        y,
         range=[[min_f, max_f], [min_f, max_f]],
-        bins=50,
+        bins=100,
         cmap=plt.get_cmap('Blues'),
         norm=mpl.colors.LogNorm(),
     )
 
-    _add_r_sq_and_mad(axis, xs=np.array(xs), ys=np.array(ys))
+    _add_r_sq_and_mad(axis, x=np.array(x), y=np.array(y))
 
     axis.set_ylim(min_f, max_f)
     axis.set_xlim(min_f, max_f)
 
-    axis.set_xlabel('$|{\\bf{F}}|_{true}$ / eV Å$^{-1}$')
-    axis.set_ylabel('$|{\\bf{F}}|_{predicted}$ / eV Å$^{-1}$')
+    axis.set_xlabel('$|{\\bf{F}}|_{true}$ (eV Å$^{-1}$)')
+    axis.set_ylabel('$|{\\bf{F}}|_{predicted}$ (eV Å$^{-1}$)')
 
     return None
 
 
-def _add_r_sq_and_mad(axis, xs, ys):
-    """Add an annotation of the correlation and MAD between the data"""
+def _add_r_sq_and_mad(axis, x, y, xs=None, ys=None):
+    """Add an annotation of the correlation and MAD between the data
+    xs, ys: Values shifted by minimum value, optional.
+    x,y : Non-modified values"""
 
-    slope, intercept, r, p, se = linregress(xs, ys)
-    axis.annotate(
-        f'$R^2$ = {r**2:.3f},\n' f' MAD = {np.mean(np.abs(xs - ys)):.3f} eV',
-        xy=(1, 0),
-        xycoords='axes fraction',
-        fontsize=12,
-        xytext=(-5, 5),
-        textcoords='offset points',
-        ha='right',
-        va='bottom',
-    )
+    if xs is not None and ys is not None:
+        slope, intercept, r, p, se = linregress(xs, ys)
+        axis.annotate(
+            f'$R^2$ = {r**2:.3f},\n'
+            f' MAD$_{{relative}}$ = {np.mean(np.abs(xs - ys)):.3f} eV,\n'
+            f'MAD = {np.mean(np.abs(x - y)):.3f} eV',
+            xy=(1, 0),
+            xycoords='axes fraction',
+            fontsize=12,
+            xytext=(-5, 5),
+            textcoords='offset points',
+            ha='right',
+            va='bottom',
+        )
+    else:
+        slope, intercept, r, p, se = linregress(x, y)
+        axis.annotate(
+            f'$R^2$ = {r**2:.3f},\n' f'MAD = {np.mean(np.abs(x - y)):.3f} eV',
+            xy=(1, 0),
+            xycoords='axes fraction',
+            fontsize=12,
+            xytext=(-5, 5),
+            textcoords='offset points',
+            ha='right',
+            va='bottom',
+        )
 
     return None
