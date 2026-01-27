@@ -355,8 +355,8 @@ def orca_output_to_npz(
                 charge = cline.split()[4]
 
         for line in lines:
-            if 'Multiplicity' in line and 'Mult' in line:
-                mult = line.split()[3]
+            if 'Multiplicity' in line:
+                mult = line.split()[-1]
 
         for line in lines:
             if 'CARTESIAN COORDINATES (ANGSTROEM)' in line:
