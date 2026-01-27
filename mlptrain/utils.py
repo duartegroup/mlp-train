@@ -305,7 +305,6 @@ def convert_ase_energy(
 
 def orca_output_to_npz(
     file_names: List[str],
-    units: str = 'eV',
     output_name: str = 'custom_orca_training_set',
     load_energies: bool = True,
     load_forces: bool = True,
@@ -319,8 +318,6 @@ def orca_output_to_npz(
     Arguments:
 
     file_names: (List[str]) List of files to save in npz format.
-
-    units: (str) Units printed in the file. Default eV.
 
     output_name: (str) Output file name without .
 
@@ -337,16 +334,16 @@ def orca_output_to_npz(
     dataset = mlt.ConfigurationSet()
 
     for filename in file_names:
-        if filename.endswith('.out') is False:
+        if not filename.endswith('.out'):
             raise TypeError('Function require ORCA output file .out')
 
-        if os.path.exists(filename) is False:
+        if not os.path.exists(filename):
             raise FileNotFoundError(f'File {filename} was not found.')
 
         open_file = open(filename, 'r', encoding='utf-8', errors='ignore')
         lines = open_file.readlines()
 
-        if any('ORCA TERMINATED NORMALLY' in line for line in lines) is False:
+        if not any('ORCA TERMINATED NORMALLY' in line for line in lines):
             raise RuntimeError('ORCA did not terminate normally.')
 
         atoms = []
@@ -357,9 +354,9 @@ def orca_output_to_npz(
             if 'Total Charge' in cline:
                 charge = cline.split()[4]
 
-        for mline in lines:
-            if 'Multiplicity           Mult' in mline:
-                mult = mline.split()[3]
+        for line in lines:
+            if 'Multiplicity' in line and 'Mult' in line:
+                mult = line.split()[3]
 
         for line in lines:
             if 'CARTESIAN COORDINATES (ANGSTROEM)' in line:
@@ -398,12 +395,9 @@ def orca_output_to_npz(
         if load_forces:
             print_forces = False
 
-            if (
-                any(
-                    'CARTESIAN GRADIENT' or 'The final MP2 gradient' in line
-                    for line in lines
-                )
-                is False
+            if not any(
+                'CARTESIAN GRADIENT' or 'The final MP2 gradient' in line
+                for line in lines
             ):
                 raise ValueError('Gradients not found. Check the output file.')
 
