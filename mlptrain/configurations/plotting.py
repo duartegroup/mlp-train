@@ -1,5 +1,6 @@
 import mlptrain
 import numpy as np
+import seaborn as sns
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
@@ -44,6 +45,32 @@ def parity_plot(
     plt.tight_layout()
     plt.savefig(f'{name}.pdf')
     return None
+
+
+def error_histogram(
+    config_set: 'mlptrain.ConfigurationSet', name: str = 'error_histogram'
+) -> None:
+    """
+    Plot distribution of errors in energies and forces for given configuration set
+
+    ------------------------------------------------------------------------------
+    Arguments:
+        config_set: Set of configurations
+
+        name: name of the file
+
+    """
+
+    fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(8, 7.5))
+
+    if _all_energies_are_defined(config_set):
+        _add_energy_error_histogram(config_set, axis=ax[0, 0])
+
+    if _all_forces_are_defined(config_set):
+        _add_force_error_histogram(config_set, axis=ax[0, 1])
+
+    plt.tight_layout()
+    plt.savefig(f'{name}.pdf')
 
 
 def _all_energies_are_defined(cfgs) -> bool:
@@ -112,7 +139,7 @@ def _add_energy_parity_plot(config_set, axis) -> None:
 
     axis.plot([min_e, max_e], [min_e, max_e], c='k', lw=1.0)
 
-    _add_r_sq_and_mad(axis, x=x, y=y, xs=xs, ys=ys)
+    _add_r_sq_and_mad(axis, x=x, y=y, xs=xs, ys=ys, unit='meV')
 
     axis.set_xlim(min_e, max_e)
     axis.set_ylim(min_e, max_e)
@@ -201,7 +228,7 @@ def _add_force_magnitude_plot(config_set, axis) -> None:
         norm=mpl.colors.LogNorm(),
     )
 
-    _add_r_sq_and_mad(axis, x=np.array(x), y=np.array(y))
+    _add_r_sq_and_mad(axis, x=np.array(x), y=np.array(y), unit='meV Å$^{-1}$)')
 
     axis.set_ylim(min_f, max_f)
     axis.set_xlim(min_f, max_f)
@@ -212,17 +239,92 @@ def _add_force_magnitude_plot(config_set, axis) -> None:
     return None
 
 
-def _add_r_sq_and_mad(axis, x, y, xs=None, ys=None):
-    """Add an annotation of the correlation and MAD between the data
+def _add_energy_error_histogram(config_set, axis, per_atom=True) -> None:
+    """Add histogram of energy errors"""
+
+    x = np.array(config_set.true_energies)
+
+    y = np.array(config_set.predicted_energies)
+
+    n_atoms = len(config_set[0].atoms)
+
+    if per_atom:
+        error_abs = np.abs(x - y) * 1000 / n_atoms
+    else:
+        error_abs = np.abs(x - y) * 1000
+
+    min_e = min(error_abs)
+    max_e = max(error_abs)
+
+    sns.histplot(
+        error_abs, bins=30, color='blue', alpha=0.7, kde=False, ax=axis
+    )
+
+    axis.set_xlim(min_e, max_e)
+    # axis.set_ylim(min_e, max_e)
+
+    if per_atom:
+        _add_max_and_mad(
+            axis, x=x / n_atoms, y=y / n_atoms, unit='meV atom$^{-1}$'
+        )
+
+        axis.set_xlabel('Error on energy (meV atom$^{-1}$)')
+    else:
+        _add_max_and_mad(axis, x=x, y=y, units='meV')
+        axis.set_xlabel('Error on energy (meV)')
+
+    axis.set_ylabel('Occurence')
+
+
+def _add_force_error_histogram(config_set, axis) -> None:
+    """Add histogram of force errors"""
+
+    x, y = [], []
+    for config in config_set:
+        x.append(np.linalg.norm(config.forces.true, axis=1))
+        y.append(np.linalg.norm(config.forces.predicted, axis=1))
+
+    force_errors = np.concatenate(np.abs(np.array(y) - np.array(x)) * 1000)
+
+    min_f = min(force_errors)
+    max_f = max(force_errors)
+
+    sns.histplot(
+        force_errors,
+        bins=30,
+        color='orange',
+        alpha=0.7,
+        kde=False,
+        ax=axis,
+    )
+
+    _add_max_and_mad(axis, x=np.array(x), y=np.array(y), unit='meV Å$^{-1}$')
+
+    axis.set_xlim(min_f, max_f)
+    # axis.set_ylim(min_e, max_e)
+
+    axis.set_xlabel('Error on $|{\\bf{F}}|$ (meV Å$^{-1}$)')
+
+    axis.set_yscale('log')
+    axis.set_ylabel('Occurence')
+
+
+def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
+    """
+    Add an annotation of the correlation and MAD between the data
+    -------------------------------------------------------------
+    Arguments:
     xs, ys: Values shifted by minimum value, optional.
-    x,y : Non-modified values"""
+    x,y : Non-modified values
+
+    """
 
     if xs is not None and ys is not None:
         slope, intercept, r, p, se = linregress(xs, ys)
         axis.annotate(
             f'$R^2$ = {r**2:.3f},\n'
-            f' MAD$_{{relative}}$ = {np.mean(np.abs(xs - ys)):.3f} eV,\n'
-            f'MAD = {np.mean(np.abs(x - y)):.3f} eV',
+            f' MAD$_{{relative}}$ = {np.mean(np.abs(xs - ys)):.3f} {unit},\n'
+            f'MAD = {np.mean(np.abs(x - y)):.3f} {unit}',
             xy=(1, 0),
             xycoords='axes fraction',
             fontsize=12,
@@ -234,7 +336,8 @@ def _add_r_sq_and_mad(axis, x, y, xs=None, ys=None):
     else:
         slope, intercept, r, p, se = linregress(x, y)
         axis.annotate(
-            f'$R^2$ = {r**2:.3f},\n' f'MAD = {np.mean(np.abs(x - y)):.3f} eV',
+            f'$R^2$ = {r**2:.3f},\n'
+            f'MAD = {np.mean(np.abs(x - y)):.3f} {unit}',
             xy=(1, 0),
             xycoords='axes fraction',
             fontsize=12,
@@ -243,5 +346,29 @@ def _add_r_sq_and_mad(axis, x, y, xs=None, ys=None):
             ha='right',
             va='bottom',
         )
+
+    return None
+
+
+def _add_max_and_mad(axis, x, y, unit):
+    """
+    Add an annotation of the MAD and maximum value between the data
+    ---------------------------------------------------------------
+    Arguments:
+       x,y : Non-modified values
+       unit: (str)
+    """
+
+    axis.annotate(
+        f'MAD = {np.mean(np.abs(x - y))*1000:.3f} {unit},\n'
+        f'MAX = {np.max(np.abs(x - y))*1000:.3f} {unit}',
+        xy=(1, 1),
+        xycoords='axes fraction',
+        fontsize=12,
+        xytext=(-5, -5),
+        textcoords='offset points',
+        ha='right',
+        va='top',
+    )
 
     return None
