@@ -21,6 +21,7 @@ dependencies:
   - scipy
   - xtb
   - scikit-learn
+  - seaborn
   - pip:
     - julia   # Python-Julia integration (this will not install Julia itself!)
     - pyjulip@git+https://github.com/casv2/pyjulip.git@72280a6ac3 # Integration with ACE
