@@ -396,7 +396,8 @@ def orca_output_to_npz(
             print_forces = False
 
             if not any(
-                'CARTESIAN GRADIENT' or 'The final MP2 gradient' in line
+                ('CARTESIAN GRADIENT' in line)
+                or ('The final MP2 gradient' in line)
                 for line in lines
             ):
                 raise ValueError('Gradients not found. Check the output file.')
