@@ -264,16 +264,23 @@ def _add_energy_error_histogram(config_set, axis, per_atom=True) -> None:
     # axis.set_ylim(min_e, max_e)
 
     if per_atom:
-        _add_max_and_mad(
+        mad = _add_max_and_mad(
             axis, x=x / n_atoms, y=y / n_atoms, unit='meV atom$^{-1}$'
         )
 
         axis.set_xlabel('Error on energy (meV atom$^{-1}$)')
     else:
-        _add_max_and_mad(axis, x=x, y=y, units='meV')
+        mad = _add_max_and_mad(axis, x=x, y=y, units='meV')
         axis.set_xlabel('Error on energy (meV)')
 
     axis.set_ylabel('Occurence')
+
+    data = mlptrain.ConfigurationSet()
+    for i, structure in enumerate(config_set):
+        if error_abs[i] >= 3 * mad:
+            data.append(structure)
+
+    data.save_xyz('structure_3_mad_en_error.xyz')
 
 
 def _add_force_error_histogram(config_set, axis) -> None:
@@ -358,9 +365,10 @@ def _add_max_and_mad(axis, x, y, unit):
        x,y : Non-modified values
        unit: (str)
     """
+    mad = np.mean(np.abs(x - y)) * 1000
 
     axis.annotate(
-        f'MAD = {np.mean(np.abs(x - y))*1000:.3f} {unit},\n'
+        f'MAD = {mad:.3f} {unit},\n'
         f'MAX = {np.max(np.abs(x - y))*1000:.3f} {unit}',
         xy=(1, 1),
         xycoords='axes fraction',
@@ -371,4 +379,4 @@ def _add_max_and_mad(axis, x, y, unit):
         va='top',
     )
 
-    return None
+    return mad
