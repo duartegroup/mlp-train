@@ -61,13 +61,13 @@ def error_histogram(
 
     """
 
-    fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(8, 7.5))
+    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(8, 3.75))
 
     if _all_energies_are_defined(config_set):
-        _add_energy_error_histogram(config_set, axis=ax[0, 0])
+        _add_energy_error_histogram(config_set, axis=ax[0])
 
     if _all_forces_are_defined(config_set):
-        _add_force_error_histogram(config_set, axis=ax[0, 1])
+        _add_force_error_histogram(config_set, axis=ax[1])
 
     plt.tight_layout()
     plt.savefig(f'{name}.pdf')
@@ -239,7 +239,9 @@ def _add_force_magnitude_plot(config_set, axis) -> None:
     return None
 
 
-def _add_energy_error_histogram(config_set, axis, per_atom=True) -> None:
+def _add_energy_error_histogram(
+    config_set, axis, per_atom=True, print_structures=True, N=3
+) -> None:
     """Add histogram of energy errors"""
 
     x = np.array(config_set.true_energies)
@@ -275,15 +277,18 @@ def _add_energy_error_histogram(config_set, axis, per_atom=True) -> None:
 
     axis.set_ylabel('Occurence')
 
-    data = mlptrain.ConfigurationSet()
-    for i, structure in enumerate(config_set):
-        if error_abs[i] >= 3 * mad:
-            data.append(structure)
+    if print_structures:
+        data = mlptrain.ConfigurationSet()
+        for i, structure in enumerate(config_set):
+            if error_abs[i] >= N * mad:
+                data.append(structure)
 
-    data.save_xyz('structure_3_mad_en_error.xyz')
+        data.save_xyz(f'structure_{N}_mad_en_error.xyz')
 
 
-def _add_force_error_histogram(config_set, axis) -> None:
+def _add_force_error_histogram(
+    config_set, axis, print_structures=True, N=5
+) -> None:
     """Add histogram of force errors"""
 
     x, y = [], []
@@ -291,13 +296,15 @@ def _add_force_error_histogram(config_set, axis) -> None:
         x.append(np.linalg.norm(config.forces.true, axis=1))
         y.append(np.linalg.norm(config.forces.predicted, axis=1))
 
-    force_errors = np.concatenate(np.abs(np.array(y) - np.array(x)) * 1000)
+    force_errors = np.abs(np.array(y) - np.array(x)) * 1000
 
-    min_f = min(force_errors)
-    max_f = max(force_errors)
+    force_errors_all = np.concatenate(np.abs(np.array(y) - np.array(x)) * 1000)
+
+    min_f = min(force_errors_all)
+    max_f = max(force_errors_all)
 
     sns.histplot(
-        force_errors,
+        force_errors_all,
         bins=30,
         color='orange',
         alpha=0.7,
@@ -305,15 +312,24 @@ def _add_force_error_histogram(config_set, axis) -> None:
         ax=axis,
     )
 
-    _add_max_and_mad(axis, x=np.array(x), y=np.array(y), unit='meV Å$^{-1}$')
+    mad = _add_max_and_mad(
+        axis, x=np.array(x), y=np.array(y), unit='meV Å$^{-1}$'
+    )
 
     axis.set_xlim(min_f, max_f)
-    # axis.set_ylim(min_e, max_e)
 
     axis.set_xlabel('Error on $|{\\bf{F}}|$ (meV Å$^{-1}$)')
 
     axis.set_yscale('log')
     axis.set_ylabel('Occurence')
+
+    if print_structures:
+        data = mlptrain.ConfigurationSet()
+        for i, structure in enumerate(config_set):
+            if any(force_errors[i] >= N * mad):
+                data.append(structure)
+
+        data.save_xyz(f'structure_{N}_mad_f_error.xyz')
 
 
 def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
@@ -329,8 +345,8 @@ def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
     if xs is not None and ys is not None:
         slope, intercept, r, p, se = linregress(xs, ys)
         axis.annotate(
-            f'$R^2$ = {r**2:.3f},\n'
-            f' MAD$_{{relative}}$ = {np.mean(np.abs(xs - ys)):.3f} {unit},\n'
+            f'$R^2$ = {r**2:.3f}\n'
+            f' MAD$_{{relative}}$ = {np.mean(np.abs(xs - ys)):.3f} {unit}\n'
             f'MAD = {np.mean(np.abs(x - y)):.3f} {unit}',
             xy=(1, 0),
             xycoords='axes fraction',
@@ -343,7 +359,7 @@ def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
     else:
         slope, intercept, r, p, se = linregress(x, y)
         axis.annotate(
-            f'$R^2$ = {r**2:.3f},\n'
+            f'$R^2$ = {r**2:.3f}\n'
             f'MAD = {np.mean(np.abs(x - y)):.3f} {unit}',
             xy=(1, 0),
             xycoords='axes fraction',
@@ -368,7 +384,7 @@ def _add_max_and_mad(axis, x, y, unit):
     mad = np.mean(np.abs(x - y)) * 1000
 
     axis.annotate(
-        f'MAD = {mad:.3f} {unit},\n'
+        f'MAD = {mad:.3f} {unit}\n'
         f'MAX = {np.max(np.abs(x - y))*1000:.3f} {unit}',
         xy=(1, 1),
         xycoords='axes fraction',
