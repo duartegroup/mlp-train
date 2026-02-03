@@ -44,6 +44,7 @@ def train(
     pbc: bool = False,
     box_size: Optional[list] = None,
     keep_al_trajs: bool = False,
+    extra_configs: Optional['mlptrain.ConfigurationSet'] = None
 ) -> None:
     """
     Train a system using active learning, by propagating dynamics using ML
@@ -145,7 +146,10 @@ def train(
         box_size: (List | None) Size of the box where MLP-MD propagated.
 
         keep_al_trajs: (bool) If True, MLP-MD trajectories generated during AL phase are saved into new folder.
+
+        extra_configs: If provided, MLP will be trained with extra_configs added each iteration, without any bias added to extra_configs
     """
+
     if md_program.lower() == 'openmm':
         if not isinstance(mlp, mlptrain.potentials.MACE):
             raise ValueError(
@@ -191,10 +195,23 @@ def train(
             init_configs=mlp.training_data, bias=bias
         )
 
-    if mlp.requires_atomic_energies:
-        mlp.set_atomic_energies(method_name=method_name)
+    if extra_configs is None:
+        if mlp.requires_atomic_energies:
+            mlp.set_atomic_energies(method_name=method_name)
+        mlp.train()
+    else:
+        original_training_data = mlp.training_data
 
-    mlp.train()
+        temp_training = deepcopy(original_training_data)
+        temp_training += extra_configs
+        mlp.training_data = temp_training
+        try:
+            if mlp.requires_atomic_energies:
+                mlp.set_atomic_energies(method_name=method_name)
+            logger.info(f'Iter {iteration}: calling mlp.train() on {len(mlp.training_data)} configs, with {len(original_training_data)} AL configs')
+            mlp.train()
+        finally:
+            mlp.training_data = original_training_data
 
     # Run the active learning loop, running iterative MLP-MD
     for iteration in range(max_active_iters):
@@ -257,7 +274,24 @@ def train(
         if mlp.training_data.has_a_none_energy:
             mlp.training_data.remove_none_energy()
 
-        mlp.train()
+        if extra_configs is None:
+            if mlp.requires_atomic_energies:
+                mlp.set_atomic_energies(method_name=method_name)
+            mlp.train()
+        else:
+            original_training_data = mlp.training_data
+
+            temp_training = deepcopy(original_training_data)
+            temp_training += extra_configs
+            mlp.training_data = temp_training
+            try:
+                if mlp.requires_atomic_energies:
+                    mlp.set_atomic_energies(method_name=method_name)
+                logger.info(f'Iter {iteration}: calling mlp.train() on {len(mlp.training_data)} configs, with {len(original_training_data)} AL configs')
+                mlp.train()
+            finally:
+                mlp.training_data = original_training_data
+
 
     if inherit_metad_bias:
         _remove_last_inherited_metad_bias_file(max_active_iters)
