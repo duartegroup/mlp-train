@@ -1,4 +1,5 @@
 import mlptrain
+import math
 import numpy as np
 import seaborn as sns
 import matplotlib as mpl
@@ -68,6 +69,30 @@ def error_histogram(
 
     if _all_forces_are_defined(config_set):
         _add_force_error_histogram(config_set, axis=ax[1])
+
+    plt.tight_layout()
+    plt.savefig(f'{name}.pdf')
+
+    return None
+
+
+def error_histogram_elements(
+    config_set: 'mlptrain.ConfigurationSet',
+    name: str = 'error_histogram_elements',
+) -> None:
+    """
+    Plot distribution of errors in forces per element type for given configuration set
+
+    ------------------------------------------------------------------------------
+    Arguments:
+        config_set: Set of configurations
+
+        name: name of the file
+
+    """
+
+    if _all_forces_are_defined(config_set):
+        _add_force_histogram_per_elements(config_set)
 
     plt.tight_layout()
     plt.savefig(f'{name}.pdf')
@@ -289,7 +314,14 @@ def _add_energy_error_histogram(
 def _add_force_error_histogram(
     config_set, axis, print_structures=True, N=5
 ) -> None:
-    """Add histogram of force errors"""
+    """
+    Add histogram of force errors
+    -----------------------------
+    config_set: Configuration set containing structures, predicted and true energies and forces
+    axis: Position of the plot
+    Print_structures: If True, print structures with force error large than N * MAD
+    N: Multiplication of MAD for force errors
+    """
 
     x, y = [], []
     for config in config_set:
@@ -330,6 +362,71 @@ def _add_force_error_histogram(
                 data.append(structure)
 
         data.save_xyz(f'structure_{N}_mad_f_error.xyz')
+
+
+def _add_force_histogram_per_elements(config_set) -> None:
+    """
+    Print histogram of force errors for each element separately. Assumes that every configration contains the same structures.
+    """
+
+    elements = []
+    for atom in config_set[0].atoms:
+        elements.append(atom.label)
+
+    element_list = np.unique(elements)
+
+    N_elements = len(element_list)
+
+    nrows, ncols = _choose_grid(N_elements, max_cols=3)
+
+    fig, axes = plt.subplots(
+        nrows, ncols, squeeze=False, figsize=(4 * ncols, 3 * nrows)
+    )
+
+    axes_flat = axes.ravel()
+
+    cmap = plt.get_cmap('tab10')
+    colors = [cmap(i) for i in range(N_elements)]
+
+    for i, (ax, elem) in enumerate(zip(axes_flat, element_list)):
+        force_errors_elem = []
+
+        for structure in config_set:
+            force_errors = (
+                np.abs(
+                    np.array(
+                        structure.forces.true[
+                            [atom.label == elem for atom in structure.atoms]
+                        ]
+                    )
+                    - np.array(
+                        structure.forces.predicted[
+                            [atom.label == elem for atom in structure.atoms]
+                        ]
+                    )
+                )
+                * 1000
+            )
+            force_errors_elem.append(force_errors)
+        force_errors_elem = np.concatenate(force_errors_elem)
+
+        sns.histplot(
+            force_errors_elem,
+            bins=30,
+            color=colors[i],
+            alpha=0.7,
+            kde=False,
+            ax=ax,
+        )
+
+        ax.set_title(f'Element {elem}')
+
+    # Turn off any unused axes (when grid has extra cells)
+    for ax in axes_flat[N_elements:]:
+        ax.axis('off')
+
+    fig.tight_layout()
+    return fig, axes
 
 
 def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
@@ -396,3 +493,30 @@ def _add_max_and_mad(axis, x, y, unit):
     )
 
     return mad
+
+
+def _choose_grid(n: int, max_cols: int = 3) -> tuple[int, int]:
+    """
+    Return (nrows, ncols) for n subplots, with:
+      - if n <= 3: 1 row
+      - otherwise: up to max_cols columns
+      - choose the most 'square' layout (minimize |rows - cols|, then unused cells)
+    """
+    if n <= 0:
+        raise ValueError('n must be >= 1')
+
+    if n <= max_cols:
+        return 1, n
+
+    candidates = []
+    for ncols in range(2, max_cols + 1):
+        nrows = math.ceil(n / ncols)
+        unused = nrows * ncols - n
+        squareness = abs(nrows - ncols)
+        candidates.append((squareness, unused, nrows, ncols))
+
+    _, _, nrows, ncols = sorted(candidates, key=lambda t: (t[0], t[1], t[2]))[
+        0
+    ]
+
+    return nrows, ncols
