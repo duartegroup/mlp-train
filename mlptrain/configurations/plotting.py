@@ -76,28 +76,6 @@ def error_histogram(
     return None
 
 
-def error_histogram_elements(
-    config_set: 'mlptrain.ConfigurationSet',
-    name: str = 'error_histogram_elements',
-) -> None:
-    """
-    Plot distribution of errors in forces per element type for given configuration set
-
-    ------------------------------------------------------------------------------
-    Arguments:
-        config_set: Set of configurations
-
-        name: name of the file
-
-    """
-
-    if _all_forces_are_defined(config_set):
-        _add_force_histogram_per_elements(config_set)
-
-    plt.tight_layout()
-    plt.savefig(f'{name}.pdf')
-
-
 def _all_energies_are_defined(cfgs) -> bool:
     """Are all the energies defined in a configuration set?"""
     return all(
@@ -364,10 +342,18 @@ def _add_force_error_histogram(
         data.save_xyz(f'structure_{N}_mad_f_error.xyz')
 
 
-def _add_force_histogram_per_elements(config_set) -> None:
+def error_force_histogram_per_elements(
+    config_set: 'mlptrain.ConfigurationSet',
+    name: str = 'force_error_hist_elements',
+) -> None:
     """
     Print histogram of force errors for each element separately. Assumes that every configration contains the same structures.
     """
+
+    if not _all_forces_are_defined(config_set):
+        raise ValueError(
+            'Some configurations are mising forces. Check the dataset.'
+        )
 
     elements = []
     for atom in config_set[0].atoms:
@@ -390,8 +376,21 @@ def _add_force_histogram_per_elements(config_set) -> None:
 
     for i, (ax, elem) in enumerate(zip(axes_flat, element_list)):
         force_errors_elem = []
+        x, y = [], []
 
         for structure in config_set:
+            x.append(
+                structure.forces.true[
+                    [atom.label == elem for atom in structure.atoms]
+                ]
+            )
+
+            y.append(
+                structure.forces.predicted[
+                    [atom.label == elem for atom in structure.atoms]
+                ]
+            )
+
             force_errors = (
                 np.abs(
                     np.array(
@@ -407,8 +406,12 @@ def _add_force_histogram_per_elements(config_set) -> None:
                 )
                 * 1000
             )
+            force_errors = np.concatenate(force_errors)
             force_errors_elem.append(force_errors)
         force_errors_elem = np.concatenate(force_errors_elem)
+
+        min_f = min(force_errors_elem)
+        max_f = max(force_errors_elem)
 
         sns.histplot(
             force_errors_elem,
@@ -420,13 +423,23 @@ def _add_force_histogram_per_elements(config_set) -> None:
         )
 
         ax.set_title(f'Element {elem}')
+        _add_max_and_mad(ax, x=np.array(x), y=np.array(y), unit='meV Å$^{-1}$')
+
+        ax.set_xlim(min_f, max_f)
+
+        ax.set_xlabel('Error on $F_{x,y,z}$ (meV Å$^{-1}$)')
+
+        ax.set_yscale('log')
+        ax.set_ylabel('Occurence')
 
     # Turn off any unused axes (when grid has extra cells)
     for ax in axes_flat[N_elements:]:
         ax.axis('off')
 
-    fig.tight_layout()
-    return fig, axes
+    plt.tight_layout()
+    plt.savefig(f'{name}.pdf')
+
+    return None
 
 
 def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
