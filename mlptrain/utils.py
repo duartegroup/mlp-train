@@ -338,6 +338,7 @@ def orca_output_to_npz(
     dataset = mlt.ConfigurationSet()
 
     logger.info(f"Processing {len(file_paths)} ORCA .out files")
+    err_count = 0
     for fpath in file_paths:
         if not fpath.endswith('.out'):
             raise TypeError('Function require ORCA output file .out')
@@ -349,7 +350,9 @@ def orca_output_to_npz(
         lines = open_file.readlines()
 
         if not any('ORCA TERMINATED NORMALLY' in line for line in lines):
-            raise RuntimeError('ORCA did not terminate normally.')
+            logger.warning(f'ORCA did not terminate normally for {fpath}. Skipping...')
+            err_count += 1
+            continue
 
         atoms = []
 
@@ -453,12 +456,12 @@ def orca_output_to_npz(
 
         dataset.append(config)
     
-    logger.info(f"Successfully processed {len(dataset)} configs")
+    logger.info(f"Successfully processed {len(dataset)} configs with {err_count} errors")
 
     out_fpath = f"{out_dir}/{out_name}"
-    logger.info(f"Saving npz file to {out_fpath}.npz")
+    logger.info(f"Saving {len(dataset)} configs to npz file: {out_fpath}.npz")
     dataset.save(out_fpath + '.npz')
 
     if save_xyz:
-        logger.info(f"Saving xyz file to {out_fpath}.xyz")
+        logger.info(f"Saving {len(dataset)} configs to xyz file: {out_fpath}.xyz")
         dataset.save_xyz(out_fpath + '.xyz', true=True)
