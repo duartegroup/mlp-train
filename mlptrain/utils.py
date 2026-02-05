@@ -3,6 +3,7 @@ import re
 import shutil
 import numpy as np
 import mlptrain as mlt
+from mlptrain.log import logger
 import autode as ade
 from tempfile import mkdtemp
 from functools import wraps
@@ -336,6 +337,7 @@ def orca_output_to_npz(
 
     dataset = mlt.ConfigurationSet()
 
+    logger.info(f"Processing {len(file_paths)} ORCA .out files")
     for fpath in file_paths:
         if not fpath.endswith('.out'):
             raise TypeError('Function require ORCA output file .out')
@@ -450,8 +452,13 @@ def orca_output_to_npz(
         config.forces.true = forces.to('eV Å^-1')
 
         dataset.append(config)
+    
+    logger.info(f"Successfully processed {len(dataset)} configs")
 
-    dataset.save(f"{out_dir}/{out_name}")
+    out_fpath = f"{out_dir}/{out_name}"
+    logger.info(f"Saving npz file to {out_fpath}.npz")
+    dataset.save(out_fpath + '.npz')
 
     if save_xyz:
-        dataset.save_xyz(f"{out_dir}/{out_name}", true=True)
+        logger.info(f"Saving xyz file to {out_fpath}.xyz")
+        dataset.save_xyz(out_fpath + '.xyz', true=True)
