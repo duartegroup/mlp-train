@@ -5,6 +5,7 @@ import seaborn as sns
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
+from typing import List, Union
 
 
 mpl.rcParams['figure.dpi'] = 400
@@ -69,6 +70,35 @@ def error_histogram(
 
     if _all_forces_are_defined(config_set):
         _add_force_error_histogram(config_set, axis=ax[1])
+
+    plt.tight_layout()
+    plt.savefig(f'{name}.pdf')
+
+    return None
+
+
+def error_histogram_index(
+    config_set: 'mlptrain.ConfigurationSet',
+    index: Union[List[int], None] = None,
+    name: str = 'error_histogram_index',
+) -> None:
+    """
+    Plot distribution of errors in energies and forces for given configuration set
+
+    ------------------------------------------------------------------------------
+    Arguments:
+        config_set: Set of configurations
+
+        Index: List of atom indices to plot
+
+        name: name of the file
+
+    """
+
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 3.75))
+
+    if _all_forces_are_defined(config_set):
+        _add_force_error_histogram(config_set=config_set, index=index, axis=ax)
 
     plt.tight_layout()
     plt.savefig(f'{name}.pdf')
@@ -290,21 +320,28 @@ def _add_energy_error_histogram(
 
 
 def _add_force_error_histogram(
-    config_set, axis, print_structures=True, N=5
+    config_set, axis, index=None, print_structures=True, N=5
 ) -> None:
     """
     Add histogram of force errors
     -----------------------------
     config_set: Configuration set containing structures, predicted and true energies and forces
     axis: Position of the plot
+    index: List of atom indices. If None, print whole system
     Print_structures: If True, print structures with force error large than N * MAD
     N: Multiplication of MAD for force errors
     """
 
     x, y = [], []
     for config in config_set:
-        x.append(np.linalg.norm(config.forces.true, axis=1))
-        y.append(np.linalg.norm(config.forces.predicted, axis=1))
+        if index is None:
+            x.append(np.linalg.norm(config.forces.true, axis=1))
+            y.append(np.linalg.norm(config.forces.predicted, axis=1))
+        else:
+            index = np.unique(index)  # Removing accidental duplicities
+
+            x.append(np.linalg.norm(config.forces.true[index], axis=1))
+            y.append(np.linalg.norm(config.forces.predicted[index], axis=1))
 
     force_errors = np.abs(np.array(y) - np.array(x)) * 1000
 
@@ -325,6 +362,9 @@ def _add_force_error_histogram(
     mad = _add_max_and_mad(
         axis, x=np.array(x), y=np.array(y), unit='meV Å$^{-1}$'
     )
+
+    if index is not None:
+        axis.set_title(f'Indices {index}')
 
     axis.set_xlim(min_f, max_f)
 
