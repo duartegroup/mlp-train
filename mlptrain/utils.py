@@ -304,8 +304,9 @@ def convert_ase_energy(
 
 
 def orca_output_to_npz(
-    file_names: List[str],
-    output_name: str = 'custom_orca_training_set',
+    file_paths: List[str],
+    out_name: str = 'custom_orca_training_set',
+    out_dir: str = '.',
     load_energies: bool = True,
     load_forces: bool = True,
     load_dipole: bool = False,
@@ -317,30 +318,32 @@ def orca_output_to_npz(
     -----------------------------------------------------------
     Arguments:
 
-    file_names: (List[str]) List of files to save in npz format.
+    file_paths: (List[str]) List of orca .out file paths to save in npz format.
 
-    output_name: (str) Output file name without .
+    out_name: (str) Output file name without file extension.
+    
+    out_dir: (str) Output directory.
 
     load_energies: (bool) If True, load energies from the files.
 
     load_forces: (bool) If True, load forces from the files.
 
     # load_dipole : (bool) If True, load dipole moments form the files.
-    #Dipole will be implement after autode modification
+    # NOTE: (Dipole will be implement after autode modification)
 
     save_xyz: (bool) If True database will be saved as extxyz.
     """
 
     dataset = mlt.ConfigurationSet()
 
-    for filename in file_names:
-        if not filename.endswith('.out'):
+    for fpath in file_paths:
+        if not fpath.endswith('.out'):
             raise TypeError('Function require ORCA output file .out')
 
-        if not os.path.exists(filename):
-            raise FileNotFoundError(f'File {filename} was not found.')
+        if not os.path.exists(fpath):
+            raise FileNotFoundError(f'File {fpath} was not found.')
 
-        open_file = open(filename, 'r', encoding='utf-8', errors='ignore')
+        open_file = open(fpath, 'r', encoding='utf-8', errors='ignore')
         lines = open_file.readlines()
 
         if not any('ORCA TERMINATED NORMALLY' in line for line in lines):
@@ -448,7 +451,7 @@ def orca_output_to_npz(
 
         dataset.append(config)
 
-    dataset.save(output_name)
+    dataset.save(f"{out_dir}/{out_name}")
 
     if save_xyz:
-        dataset.save_xyz(output_name, true=True)
+        dataset.save_xyz(f"{out_dir}/{out_name}", true=True)
