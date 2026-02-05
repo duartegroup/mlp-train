@@ -322,7 +322,7 @@ def orca_output_to_npz(
     file_paths: (List[str]) List of orca .out file paths to save in npz format.
 
     out_name: (str) Output file name without file extension.
-    
+
     out_dir: (str) Output directory.
 
     load_energies: (bool) If True, load energies from the files.
@@ -337,7 +337,7 @@ def orca_output_to_npz(
 
     dataset = mlt.ConfigurationSet()
 
-    logger.info(f"Processing {len(file_paths)} ORCA .out files")
+    logger.info(f'Processing {len(file_paths)} ORCA .out files')
     err_count = 0
     for fpath in file_paths:
         if not fpath.endswith('.out'):
@@ -350,7 +350,9 @@ def orca_output_to_npz(
         lines = open_file.readlines()
 
         if not any('ORCA TERMINATED NORMALLY' in line for line in lines):
-            logger.warning(f'ORCA did not terminate normally for {fpath}. Skipping...')
+            logger.warning(
+                f'ORCA did not terminate normally for {fpath}. Skipping...'
+            )
             err_count += 1
             continue
 
@@ -455,13 +457,17 @@ def orca_output_to_npz(
         config.forces.true = forces.to('eV Å^-1')
 
         dataset.append(config)
-    
-    logger.info(f"Successfully processed {len(dataset)} configs with {err_count} errors")
 
-    out_fpath = f"{out_dir}/{out_name}"
-    logger.info(f"Saving {len(dataset)} configs to npz file: {out_fpath}.npz")
+    logger.info(
+        f'Successfully processed {len(dataset)} configs with {err_count} errors'
+    )
+
+    out_fpath = f'{out_dir}/{out_name}'
+    logger.info(f'Saving {len(dataset)} configs to npz file: {out_fpath}.npz')
     dataset.save(out_fpath + '.npz')
 
     if save_xyz:
-        logger.info(f"Saving {len(dataset)} configs to xyz file: {out_fpath}.xyz")
+        logger.info(
+            f'Saving {len(dataset)} configs to xyz file: {out_fpath}.xyz'
+        )
         dataset.save_xyz(out_fpath + '.xyz', true=True)
