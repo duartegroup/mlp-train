@@ -261,7 +261,7 @@ def _add_force_magnitude_plot(config_set, axis) -> None:
         norm=mpl.colors.LogNorm(),
     )
 
-    _add_r_sq_and_mad(axis, x=np.array(x), y=np.array(y), unit='meV Å$^{-1}$)')
+    _add_r_sq_and_mad(axis, x=np.array(x), y=np.array(y), unit='meV Å$^{-1}$')
 
     axis.set_ylim(min_f, max_f)
     axis.set_xlim(min_f, max_f)
@@ -492,12 +492,16 @@ def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
 
     """
 
+    if 'meV' in unit:
+        factor = 1000
+    else:
+        factor = 1
     if xs is not None and ys is not None:
         slope, intercept, r, p, se = linregress(xs, ys)
         axis.annotate(
             f'$R^2$ = {r**2:.3f}\n'
-            f' MAD$_{{relative}}$ = {np.mean(np.abs(xs - ys)):.3f} {unit}\n'
-            f'MAD = {np.mean(np.abs(x - y)):.3f} {unit}',
+            f' MAD$_{{relative}}$ = {np.mean(np.abs(xs - ys))*factor:.3f} {unit}\n'
+            f'MAD = {np.mean(np.abs(x - y))*factor:.3f} {unit}',
             xy=(1, 0),
             xycoords='axes fraction',
             fontsize=12,
@@ -510,7 +514,7 @@ def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
         slope, intercept, r, p, se = linregress(x, y)
         axis.annotate(
             f'$R^2$ = {r**2:.3f}\n'
-            f'MAD = {np.mean(np.abs(x - y)):.3f} {unit}',
+            f'MAD = {np.mean(np.abs(x - y))*factor:.3f} {unit}',
             xy=(1, 0),
             xycoords='axes fraction',
             fontsize=12,
