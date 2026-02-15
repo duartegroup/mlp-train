@@ -3,11 +3,11 @@ import os
 import re
 import time
 import glob
+import multiprocessing as mp
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.integrate import simpson
 from typing import Optional, List, Callable, Tuple
-from multiprocessing import Pool
 from copy import deepcopy
 from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.io import write as ase_write
@@ -456,7 +456,7 @@ class UmbrellaSampling:
             f'{n_processes} window(s) are run in parallel'
         )
 
-        with Pool(processes=n_processes) as pool:
+        with mp.get_context('spawn').Pool(processes=n_processes) as pool:
             for idx, ref in enumerate(zeta_refs):
                 # Without copy kwargs is overwritten at every iteration
                 kwargs_single = deepcopy(kwargs)
