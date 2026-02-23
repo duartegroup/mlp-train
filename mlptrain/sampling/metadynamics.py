@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import mlptrain
 import ase
 import os
@@ -263,7 +265,7 @@ class Metadynamics:
         dt: float,
         pace: int = 100,
         height: Optional[float] = None,
-        width: Optional[list[float] | float] = None,
+        width: Optional[Union[list[float], float]] = None,
         biasfactor: Optional[float] = None,
         al_iter: Optional[int] = None,
         n_runs: int = 1,
@@ -750,7 +752,7 @@ class Metadynamics:
         biasfactors: Sequence[float],
         pace: int = 500,
         height: Optional[float] = None,
-        width: Optional[list[float] | float] = None,
+        width: Optional[Union[list[float], float]] = None,
         plotted_cvs: Optional[Sequence[_PlumedCV]] = None,
         **kwargs,
     ) -> None:
