@@ -3,6 +3,7 @@ import argparse
 from mlptrain.config import Config
 from mlptrain.potentials._base import MLPotential
 import os
+import glob
 import time
 import numpy as np
 import logging
@@ -274,5 +275,8 @@ class MACE(MLPotential):
 
         gc.collect()
         torch.cuda.empty_cache()
+
+        for file in glob.glob('./checkpoints/*.pt'):
+            os.remove(file)
 
         return None

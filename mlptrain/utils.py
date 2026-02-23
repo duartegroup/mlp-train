@@ -7,7 +7,7 @@ from mlptrain.log import logger
 import autode as ade
 from tempfile import mkdtemp
 from functools import wraps
-from typing import Optional, List, Sequence, Union
+from typing import Optional, List, Sequence, Union, overload
 from ase import units as ase_units
 from autode.values import PotentialEnergy, Gradient
 
@@ -237,7 +237,7 @@ def convert_exponents(string: str) -> str:
 
 def convert_ase_time(
     time_array: Union[np.ndarray, float], units: str
-) -> np.ndarray:
+) -> Union[np.ndarray, float]:
     """
     Converts ASE time units to different time units.
 
@@ -271,9 +271,19 @@ def convert_ase_time(
     return time_array
 
 
+@overload
+def convert_ase_energy(energy_array: np.ndarray, units: str) -> np.ndarray:
+    ...
+
+
+@overload
+def convert_ase_energy(energy_array: float, units: str) -> float:
+    ...
+
+
 def convert_ase_energy(
     energy_array: Union[np.ndarray, float], units: str
-) -> np.ndarray:
+) -> Union[np.ndarray, float]:
     """
     Converts ASE energy units to different energy units.
 
