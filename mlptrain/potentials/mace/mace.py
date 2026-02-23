@@ -89,19 +89,22 @@ class MACE(MLPotential):
 
     @property
     def valid_fraction(self) -> float:
-        """Fraction of the whole dataset to be used as validation set"""
-        _min_dataset = -(1 // -Config.mace_params['valid_fraction'])
-
-        if self.n_train == 1:
-            raise ValueError(
-                'MACE training requires at least ' '2 configurations'
-            )
-        elif self.n_train >= _min_dataset:
-            return Config.mace_params['valid_fraction']
+        """Fraction of the training dataset to be used as validation set"""
+        if self._validation_data is not None:
+            return 0.0  # Pass --valid_fraction = 0 to args if a separate validation dataset has been specified
         else:
-            # Valid fraction which sets at least 1 datapoint for validation
-            _unrounded_valid_fraction = 1 / self.n_train
-            return -((_unrounded_valid_fraction * 100) // -1) / 100
+            _min_dataset = -(1 // -Config.mace_params['valid_fraction'])
+
+            if self.n_train == 1:
+                raise ValueError(
+                    'MACE training requires at least ' '2 configurations'
+                )
+            elif self.n_train >= _min_dataset:
+                return Config.mace_params['valid_fraction']
+            else:
+                # Valid fraction which sets at least 1 datapoint for validation
+                _unrounded_valid_fraction = 1 / self.n_train
+                return -((_unrounded_valid_fraction * 100) // -1) / 100
 
     @property
     def batch_size(self) -> int:
