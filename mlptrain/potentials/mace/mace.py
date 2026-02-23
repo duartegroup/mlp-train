@@ -262,6 +262,37 @@ class MACE(MLPotential):
 
         self.training_data.save_xyz(filename=f'{self.name}_data.xyz')
 
+        # start patch
+        args = self.args
+
+        valid_filename = f'{self.name}_valid.xyz'
+        wrote_valid = False
+
+        # If the wrapper has a validation set attached, save it and tell MACE to use it
+        if (
+            hasattr(self, '_validation_data')
+            and getattr(self, '_validation_data') is not None
+        ):
+            try:
+                # only use non-empty validation_data
+                if len(self._validation_data) > 0:
+                    self._validation_data.save_xyz(filename=valid_filename)
+                    wrote_valid = True
+                    # Tell the MACE args to use the valid file instead of a fraction
+                    # parsed args is a Namespace so set attributes directly:
+                    setattr(args, 'valid_file', valid_filename)
+                    # Make sure MACE won't try to use valid_fraction in addition
+                    setattr(args, 'valid_fraction', 0.0)
+                    logger.info(
+                        f'Using explicit validation file: {valid_filename} '
+                        f'with {len(self._validation_data)} configs'
+                    )
+            except Exception as e:
+                logger.error(
+                    f'Failed to write or attach explicit validation set: {e}'
+                )
+        # end patch
+
         start_time = time.perf_counter()
 
         train_mace(self.args)
@@ -271,6 +302,14 @@ class MACE(MLPotential):
         logger.info(f'MACE training ran in {delta_time / 60:.1f} m.')
 
         os.remove(f'{self.name}_data.xyz')
+
+        # resume patch - cleanup temporary files
+        if wrote_valid and os.path.exists(valid_filename):
+            try:
+                os.remove(valid_filename)
+            except Exception:
+                logger.warning(f'Could not remove {valid_filename}')
+        # end patch again
 
         gc.collect()
         torch.cuda.empty_cache()
