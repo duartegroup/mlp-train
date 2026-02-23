@@ -356,8 +356,8 @@ def orca_output_to_npz(
         if not os.path.exists(fpath):
             raise FileNotFoundError(f'File {fpath} was not found.')
 
-        open_file = open(fpath, 'r', encoding='utf-8', errors='ignore')
-        lines = open_file.readlines()
+        with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
 
         if not any('ORCA TERMINATED NORMALLY' in line for line in lines):
             logger.warning(
