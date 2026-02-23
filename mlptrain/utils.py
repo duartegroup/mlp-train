@@ -324,7 +324,7 @@ def orca_output_to_npz(
     save_xyz: bool = True,
 ) -> None:
     """
-    Generate npz file from existing otuputs of orca calculations.
+    Generate npz file from existing outputs of orca calculations.
 
     -----------------------------------------------------------
     Arguments:
