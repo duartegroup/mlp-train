@@ -474,7 +474,7 @@ def orca_output_to_npz(
 
     out_fpath = f'{out_dir}/{out_name}'
     logger.info(f'Saving {len(dataset)} configs to npz file: {out_fpath}.npz')
-    dataset.save(out_fpath + '.npz')
+    dataset.save(f'{out_fpath}..npz')
 
     if save_xyz:
         logger.info(
