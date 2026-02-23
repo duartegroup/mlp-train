@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import mlptrain
 import numpy as np
@@ -212,7 +214,7 @@ class PlumedBias(ASEConstraint):
         width: Union[Sequence[float], float],
         height: float,
         biasfactor: Optional[float] = None,
-        cvs: Optional = None,
+        cvs: Optional[_PlumedCV] = None,
         grid_min: Union[Sequence[float], float] = None,
         grid_max: Union[Sequence[float], float] = None,
         grid_bin: Union[Sequence[float], float] = None,
@@ -487,7 +489,7 @@ class PlumedBias(ASEConstraint):
         pace: int = 20,
         height: Optional[float] = None,
         biasfactor: Optional[float] = None,
-        cvs: Optional = None,
+        cvs: Optional[_PlumedCV] = None,
         grid_min: Union[Sequence[float], float] = None,
         grid_max: Union[Sequence[float], float] = None,
         grid_bin: Union[Sequence[float], float] = None,

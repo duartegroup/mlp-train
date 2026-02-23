@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import ase
 import mlptrain
@@ -9,8 +11,8 @@ from typing import Optional, Sequence, List, Union
 from numpy.random import RandomState
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
+from mlptrain.sampling import PlumedBias
 from mlptrain.sampling.plumed import (
-    PlumedBias,
     PlumedCalculator,
     plumed_setup,
     get_colvar_filename,
@@ -38,7 +40,7 @@ def run_mlp_md(
     init_temp: Optional[float] = None,
     fbond_energy: Optional[dict] = None,
     bbond_energy: Optional[dict] = None,
-    bias: Optional = None,
+    bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']] = None,
     restart_files: Optional[List[str]] = None,
     copied_substrings: Optional[Sequence[str]] = None,
     kept_substrings: Optional[Sequence[str]] = None,
@@ -195,7 +197,7 @@ def _run_mlp_md(
     init_temp: Optional[float] = None,
     fbond_energy: Optional[dict] = None,
     bbond_energy: Optional[dict] = None,
-    bias: Optional = None,
+    bias: Optional[mlptrain.Bias | mlptrain.PlumedBias] = None,
     restart_files: Optional[List[str]] = None,
     **kwargs,
 ) -> 'mlptrain.Trajectory':
