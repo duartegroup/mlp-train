@@ -280,9 +280,9 @@ class MACE(MLPotential):
                     wrote_valid = True
                     # Tell the MACE args to use the valid file instead of a fraction
                     # parsed args is a Namespace so set attributes directly:
-                    setattr(args, 'valid_file', valid_filename)
+                    setattr(args, '--valid_file', valid_filename)
                     # Make sure MACE won't try to use valid_fraction in addition
-                    setattr(args, 'valid_fraction', 0.0)
+                    setattr(args, '--valid_fraction', 0.0)
                     logger.info(
                         f'Using explicit validation file: {valid_filename} '
                         f'with {len(self._validation_data)} configs'
