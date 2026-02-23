@@ -574,7 +574,10 @@ class Configuration(AtomCollection):
             and other.n_atoms == self.n_atoms
             and other.mult == self.mult
             and other.charge == self.charge
-            and other.box == self.box
+            and (
+                (self.box is None and other.box is None)
+                or (self.box == other.box)
+            )
         )
 
         if eq and self.n_atoms > 0:
