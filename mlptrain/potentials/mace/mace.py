@@ -223,6 +223,12 @@ class MACE(MLPotential):
         if Config.mace_params['cueq']:
             args_list.append('--enable_cueq=True')
 
+        if getattr(self, '_validation_data', None) is not None:
+            valid_filename = f'{self.name}_valid.xyz'
+            self._validation_data.save_xyz(filename=valid_filename)
+            args_list.append(f'--valid_file={valid_filename}')
+            args_list.append('--valid_fraction=0.0')
+
         args = tools.build_default_arg_parser().parse_args(args_list)
         return args
 
@@ -263,7 +269,7 @@ class MACE(MLPotential):
         self.training_data.save_xyz(filename=f'{self.name}_data.xyz')
 
         # start patch
-        args = self.args
+        # args = self.args
 
         valid_filename = f'{self.name}_valid.xyz'
         wrote_valid = False
@@ -276,13 +282,8 @@ class MACE(MLPotential):
             try:
                 # only use non-empty validation_data
                 if len(self._validation_data) > 0:
-                    self._validation_data.save_xyz(filename=valid_filename)
                     wrote_valid = True
-                    # Tell the MACE args to use the valid file instead of a fraction
-                    # parsed args is a Namespace so set attributes directly:
-                    setattr(args, '--valid_file', valid_filename)
-                    # Make sure MACE won't try to use valid_fraction in addition
-                    setattr(args, '--valid_fraction', 0.0)
+
                     logger.info(
                         f'Using explicit validation file: {valid_filename} '
                         f'with {len(self._validation_data)} configs'
@@ -294,6 +295,8 @@ class MACE(MLPotential):
         # end patch
 
         start_time = time.perf_counter()
+
+        # logger.info(f'About to call MACE: cwd={os.getcwd()}, train_file={getattr(self.args,"train_file",None)}, valid_file={getattr(self.args,"valid_file",None)}')
 
         train_mace(self.args)
 

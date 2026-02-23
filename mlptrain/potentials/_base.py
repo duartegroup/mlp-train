@@ -26,7 +26,7 @@ class MLPotential(ABC):
         self.system = system
 
         self._training_data = mlt.ConfigurationSet()
-        self._validation_data = None
+        # self._validation_data = None
         self.atomic_energies = {}
 
     def train(
