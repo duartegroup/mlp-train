@@ -316,7 +316,7 @@ def convert_ase_energy(
 
 def orca_output_to_npz(
     file_paths: List[str],
-    out_name: str = 'custom_orca_training_set',
+    out_name: str,
     out_dir: str = '.',
     load_energies: bool = True,
     load_forces: bool = True,
