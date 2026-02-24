@@ -270,8 +270,6 @@ class MACE(MLPotential):
                 config.box = mlt.box.Box([100, 100, 100])
 
         self.training_data.save_xyz(filename=f'{self.name}_data.xyz')
-        if self._validation_data is not None:
-            self._validation_data.save_xyz(filename=f'{self.name}_valid.xyz')
 
         start_time = time.perf_counter()
 
@@ -282,10 +280,7 @@ class MACE(MLPotential):
         logger.info(f'MACE training ran in {delta_time / 60:.1f} m.')
 
         os.remove(f'{self.name}_data.xyz')
-
-        if self._validation_data is not None and os.path.exists(
-            f'{self.name}_valid.xyz'
-        ):
+        if os.path.exists(f'{self.name}_valid.xyz'):
             os.remove(f'{self.name}_valid.xyz')
 
         gc.collect()
