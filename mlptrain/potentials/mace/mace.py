@@ -90,8 +90,14 @@ class MACE(MLPotential):
     @property
     def valid_fraction(self) -> float:
         """Fraction of the training dataset to be used as validation set"""
-        if self._validation_data is not None:
-            return 0.0  # Pass --valid_fraction = 0 to args if a separate validation dataset has been specified
+
+        if getattr(self, '_validation_data', None) is not None:
+            valid_filename = f'{self.name}_valid.xyz'
+            self._validation_data.save_xyz(filename=valid_filename)
+            return 0.0
+        #            args_list.append(f'--valid_file={valid_filename}')
+        #            args_list.append('--valid_fraction=0.0')
+
         else:
             _min_dataset = -(1 // -Config.mace_params['valid_fraction'])
 
@@ -227,10 +233,11 @@ class MACE(MLPotential):
             args_list.append('--enable_cueq=True')
 
         if getattr(self, '_validation_data', None) is not None:
-            valid_filename = f'{self.name}_valid.xyz'
-            self._validation_data.save_xyz(filename=valid_filename)
-            args_list.append(f'--valid_file={valid_filename}')
-            args_list.append('--valid_fraction=0.0')
+            # These has now been done in self.valid_fraction():
+            # valid_filename = f'{self.name}_valid.xyz'
+            # self._validation_data.save_xyz(filename=valid_filename)
+            # args_list.append('--valid_fraction=0.0')
+            args_list.append(f'--valid_file={self.name}_valid.xyz')
 
         args = tools.build_default_arg_parser().parse_args(args_list)
         return args
