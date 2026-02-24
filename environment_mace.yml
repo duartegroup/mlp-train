@@ -10,7 +10,7 @@ dependencies:
   - libgfortran=14.*
   - pre-commit
   - ase
-  - autode=1.3.3
+  - autode=1.4.5
   - coloredlogs
   - cython
   - dscribe=2.0
