@@ -2,7 +2,6 @@ import os
 from copy import deepcopy
 import shutil
 from typing import Optional, Sequence, List, Union
-import multiprocessing as mp
 
 import numpy as np
 from numpy.random import RandomState
@@ -30,12 +29,23 @@ from mlptrain.box import Box
 from mlptrain.utils import work_in_tmp_dir
 
 
-MAX_DYNAMICS_TIMEOUT = 60 * 60 * 2  # 2 hours
+def run_with_timeout(fn, *args, fn_timeout=Config.dynamics_timeout, **kwargs):
+    """
+    Run a callable with a best-effort signal-based timeout.
 
+    Uses Unix SIGALRM to interrupt *fn* after *fn_timeout* seconds.
+    This is lightweight (no child processes) and works in any context
+    (daemon workers, Pool workers, standalone processes).
 
-def _wrap_signalling(fn, args, kwargs, fn_timeout):
-    """Run fn(*args, **kwargs) with a Unix signal-based timeout in the
-    current (daemon) process. Returns (result, finished_in_time)."""
+    Note: SIGALRM can be masked or consumed by C-extension code
+    (e.g. PLUMED, PyTorch).  If that happens the signal will not
+    fire and the function will run to completion.  The caller (or
+    parent process) should maintain a hard-kill safety net via
+    ``Config.process_timeout`` for robustness.
+
+    Returns:
+        (result, finished_in_time: bool)
+    """
     import signal
 
     class _TimeoutException(Exception):
@@ -46,7 +56,6 @@ def _wrap_signalling(fn, args, kwargs, fn_timeout):
 
     old_handler = signal.getsignal(signal.SIGALRM)
     try:
-        # Use setitimer for sub-second precision and real time
         signal.signal(signal.SIGALRM, _handle_timeout)
         signal.setitimer(signal.ITIMER_REAL, fn_timeout)
         try:
@@ -54,86 +63,24 @@ def _wrap_signalling(fn, args, kwargs, fn_timeout):
             return result, True
         except _TimeoutException:
             logger.warning(
-                f'Trajectory cancelled due to running over maximum timeout, {fn_timeout} s'
+                f'Trajectory cancelled due to running over '
+                f'maximum timeout, {fn_timeout} s'
             )
             return None, False
         finally:
-            # Disable the timer and restore previous handler
+            # Always disarm the timer and restore the previous handler
             try:
                 signal.setitimer(signal.ITIMER_REAL, 0)
             finally:
                 signal.signal(signal.SIGALRM, old_handler)
     except Exception as e:
-        # If signal-based timeout fails for any reason, log and run without timeout
+        # signal module unavailable or handler setup failed;
+        # run without an inner timeout — the parent process
+        # enforces the hard-kill via Config.process_timeout
         logger.warning(
-            f'Failed to set signal-based timeout inside Pool worker ({e}); running without timeout.'
-        )
-        return fn(*args, **kwargs), True
-
-
-def _wrap_process(fn, args, kwargs, fn_timeout):
-    """Run fn(*args, **kwargs) in a separate process with a timeout.
-    Returns (result, finished_in_time)."""
-    queue = mp.Queue()
-
-    def wrapper(q, *a, **kw):
-        try:
-            res = fn(*a, **kw)
-            q.put(('ok', res))
-        except BaseException as e:  # noqa: BLE001
-            # Send a safe, picklable representation
-            try:
-                q.put(('err', repr(e)))
-            except Exception:
-                q.put(('err', 'unpicklable exception'))
-
-    process = mp.Process(target=wrapper, args=(queue,) + args, kwargs=kwargs)
-    process.start()
-    process.join(timeout=fn_timeout)
-
-    if process.is_alive():
-        process.terminate()
-        process.join()
-        logger.warning(
-            f'Trajectory cancelled due to running over maximum timeout, {fn_timeout} s'
-        )
-        return None, False
-
-    # Process exited; retrieve result without blocking
-    try:
-        status, payload = queue.get_nowait()
-    except Exception:
-        # No result available; treat as failure
-        logger.warning('Timed function exited without returning a result.')
-        return None, False
-
-    if status == 'ok':
-        return payload, True
-    else:
-        # The function raised; report and mark as not finished cleanly
-        logger.warning(f'Timed function raised an exception: {payload}')
-        return None, False
-
-
-def run_with_timeout(fn, *args, fn_timeout=Config.dynamics_timeout, **kwargs):
-    """
-    Run a callable with a timeout.
-
-    - If running inside a multiprocessing.Pool worker (daemon process), use a
-      Unix signal-based timeout to avoid spawning child processes.
-    - Otherwise, run the function in a separate process and terminate on timeout.
-
-    Returns: (result, finished_in_time: bool)
-    """
-    try:
-        if mp.current_process().daemon:
-            return _wrap_signalling(fn, args, kwargs, fn_timeout)
-        else:
-            return _wrap_process(fn, args, kwargs, fn_timeout)
-    except Exception as e:
-        # Final fallback: run without timeout to avoid deadlocks in unexpected environments
-        logger.warning(
-            f'run_with_timeout encountered an unexpected error ({e}); running without enforced timeout.'
+            f'Failed to set signal-based timeout ({e}); '
+            'running without inner timeout. The parent process '
+            'timeout (Config.process_timeout) remains as safety net.'
         )
         return fn(*args, **kwargs), True
 
