@@ -191,12 +191,6 @@ def train(
             mlp=mlp, method_name=method_name, num=n_init_configs
         )
 
-    elif len(init_configs) < n_init_configs:
-        logger.warning(
-            'Fewer initial configs supplied than n_init_configs; decreasing n_init_configs to match'
-        )
-        n_init_configs = len(init_configs)
-
     else:
         init_config = init_configs[0]
         _set_init_training_configs(
