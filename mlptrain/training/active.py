@@ -3,6 +3,8 @@ import os
 import shutil
 import numpy as np
 import multiprocessing as mp
+import time
+from queue import Empty
 from copy import deepcopy
 from typing import Optional, Union, List
 from subprocess import Popen
@@ -17,6 +19,29 @@ from mlptrain.training.selection import SelectionMethod, AbsDiffE
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.log import logger
 from mlptrain.box import Box
+
+
+def _gen_active_config_worker(
+    result_queue: 'mp.queues.Queue',
+    idx: int,
+    config: 'mlptrain.Configuration',
+    mlp: 'mlptrain.potentials._base.MLPotential',
+    selector: 'mlptrain.training.selection.SelectionMethod',
+    n_cores: int,
+    kwargs: dict,
+) -> None:
+    """Run one active-learning task and send result to the parent process."""
+    try:
+        result = _gen_active_config(
+            config,
+            mlp,
+            selector,
+            n_cores,
+            **kwargs,
+        )
+        result_queue.put((idx, 'ok', result, None))
+    except BaseException as err:  # noqa: BLE001
+        result_queue.put((idx, 'error', None, repr(err)))
 
 
 def train(
@@ -299,44 +324,111 @@ def _add_active_configs(
         kwargs['bias'] = _remove_bias_potential(kwargs['bias'])
 
     configs = ConfigurationSet()
-    results = []
+    worker_results = {}
+    timeout_s = Config.process_timeout
+    ctx = mp.get_context('spawn')
+    result_queue = ctx.Queue()
+    workers = []
+    start_times = {}
 
-    with mp.get_context('spawn').Pool(processes=n_processes) as pool:
-        for idx in range(n_configs):
-            kwargs['idx'] = idx
+    for idx in range(n_configs):
+        kwargs['idx'] = idx
+        kwargs_single = deepcopy(kwargs)
+        worker = ctx.Process(
+            target=_gen_active_config_worker,
+            args=(
+                result_queue,
+                idx,
+                init_config.copy(),
+                mlp.copy(),
+                selection_method.copy(),
+                n_cores_pp,
+                kwargs_single,
+            ),
+        )
+        worker.start()
+        logger.info(
+            f'Started active-learning worker idx={idx} pid={worker.pid}'
+        )
+        workers.append((idx, worker))
+        start_times[idx] = time.monotonic()
 
-            result = pool.apply_async(
-                _gen_active_config,
-                args=(
-                    init_config.copy(),
-                    mlp.copy(),
-                    selection_method.copy(),
-                    n_cores_pp,
-                ),
-                kwds=deepcopy(kwargs),
-            )
-            results.append(result)
+    pending = {idx for idx, _ in workers}
+    while pending:
+        now = time.monotonic()
+        for idx, worker in workers:
+            if idx not in pending:
+                continue
 
-        pool.close()
-        for result in results:
-            try:
-                configs.append(result.get(timeout=Config.process_timeout))
+            if not worker.is_alive():
+                worker.join(timeout=0)
+                pending.remove(idx)
+                continue
 
-            # Lots of different exceptions can be raised when trying to
-            # generate an active config, continue regardless..
-            except mp.TimeoutError:
+            if timeout_s is not None and (now - start_times[idx]) > timeout_s:
                 logger.error(
-                    'Timeout error when trying to generate '
-                    'an active configuration'
+                    'Timeout error when trying to generate an active '
+                    f'configuration idx={idx}. Terminating pid={worker.pid}'
                 )
-                # Do we need to append something to configs?
-                continue
-            except Exception as err:
-                logger.error(f'Raised an exception in selection: \n{err}')
-                continue
-        pool.join()
+                worker.terminate()
+                worker.join(timeout=5)
+                if worker.is_alive():
+                    logger.error(
+                        f'Worker idx={idx} pid={worker.pid} did not '
+                        'terminate gracefully; killing'
+                    )
+                    if hasattr(worker, 'kill'):
+                        worker.kill()
+                        worker.join()
+                    else:
+                        logger.error(
+                            f'Worker idx={idx} pid={worker.pid} could not '
+                            'be force-killed on this Python version'
+                        )
+                pending.remove(idx)
+                worker_results[idx] = None
 
-    if 'method_name' in kwargs and configs.has_a_none_energy:
+        time.sleep(0.2)
+
+    while True:
+        try:
+            idx, status, config, err = result_queue.get_nowait()
+        except Empty:
+            break
+
+        if status == 'ok':
+            worker_results[idx] = config
+        else:
+            logger.error(
+                f'Raised an exception in selection for idx={idx}: \n{err}'
+            )
+            worker_results[idx] = None
+
+    for idx in range(n_configs):
+        configs.append(worker_results.get(idx, None))
+
+    n_succeeded = len(configs)
+    n_failed = n_configs - n_succeeded
+    if n_failed > 0:
+        logger.warning(
+            f'{n_failed}/{n_configs} active learning workers failed '
+            'or timed out'
+        )
+    if n_succeeded == 0:
+        logger.error(
+            'All active learning workers failed or timed out; '
+            'no new configurations generated this iteration'
+        )
+    else:
+        logger.info(
+            f'Collected {n_succeeded}/{n_configs} active configurations'
+        )
+
+    if (
+        'method_name' in kwargs
+        and len(configs) > 0
+        and configs.has_a_none_energy
+    ):
         for config in configs:
             if config.energy.true is None:
                 config.single_point(
@@ -362,8 +454,13 @@ def _add_active_configs(
             xyz_name = (
                 f'al_trajectories/traj_iter{kwargs["iteration"]}_{traj_id}.xyz'
             )
-            _save_ase_traj_as_xyz(traj_name, xyz_name)
+            if not os.path.exists(traj_name):
+                logger.warning(
+                    f'Trajectory file not found for idx={traj_id}; skipping save'
+                )
+                continue
 
+            _save_ase_traj_as_xyz(traj_name, xyz_name)
             os.remove(traj_name)
 
     return None
@@ -907,9 +1004,7 @@ def _generate_inheritable_metad_bias(n_configs: int, kwargs: dict) -> None:
     valid_hills_files = [
         fname for fname in existing_hills_files if _hills_has_data(fname)
     ]
-    missing_hills_files = sorted(
-        set(hills_files) - set(existing_hills_files)
-    )
+    missing_hills_files = sorted(set(hills_files) - set(existing_hills_files))
     empty_hills_files = [
         fname
         for fname in existing_hills_files
