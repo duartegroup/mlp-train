@@ -86,8 +86,8 @@ def train(
                           iterations to perform. Will break if we hit the
                           early stopping criteria
 
-        n_init_configs: (int) Number of initial configurations to generate,
-                        will be ignored if init_configs is not None
+        n_init_configs: (int) Number of initial configurations to automatically
+                          generate if only 1 initial config provided
 
         init_configs: (gt.ConfigurationSet) A set of configurations from
                       which to start the active learning from
