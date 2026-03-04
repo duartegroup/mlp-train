@@ -1,5 +1,6 @@
 import mlptrain
 import os
+import sys
 import shutil
 import numpy as np
 import multiprocessing as mp
@@ -31,6 +32,10 @@ def _gen_active_config_worker(
     kwargs: dict,
 ) -> None:
     """Run one active-learning task and send result to the parent process."""
+    pid = os.getpid()
+    logger.info(f'Worker idx={idx} pid={pid} starting _gen_active_config')
+    sys.stdout.flush()
+    sys.stderr.flush()
     try:
         result = _gen_active_config(
             config,
@@ -39,9 +44,24 @@ def _gen_active_config_worker(
             n_cores,
             **kwargs,
         )
+        logger.info(
+            f'Worker idx={idx} pid={pid} _gen_active_config returned '
+            f'(result is {"None" if result is None else "a Configuration"})'
+        )
+        sys.stdout.flush()
+        sys.stderr.flush()
         result_queue.put((idx, 'ok', result, None))
+        logger.info(f'Worker idx={idx} pid={pid} put result on queue')
+        sys.stdout.flush()
+        sys.stderr.flush()
     except BaseException as err:  # noqa: BLE001
+        logger.error(f'Worker idx={idx} pid={pid} caught exception: {err!r}')
+        sys.stdout.flush()
+        sys.stderr.flush()
         result_queue.put((idx, 'error', None, repr(err)))
+        logger.info(f'Worker idx={idx} pid={pid} put error on queue')
+        sys.stdout.flush()
+        sys.stderr.flush()
 
 
 def train(
@@ -354,14 +374,70 @@ def _add_active_configs(
         start_times[idx] = time.monotonic()
 
     pending = {idx for idx, _ in workers}
+    loop_start = time.monotonic()
+    last_status_log = loop_start
+    max_loop_s = (timeout_s or 7200) + 120  # safety: timeout + 2 min buffer
+    logger.info(
+        f'Entering worker poll loop. pending={sorted(pending)}, '
+        f'process_timeout={timeout_s}s, max_loop={max_loop_s}s'
+    )
+    sys.stdout.flush()
+    sys.stderr.flush()
+
     while pending:
         now = time.monotonic()
+
+        # Periodic status logging (every 60s)
+        if now - last_status_log > 60:
+            elapsed_loop = now - loop_start
+            alive_info = {i: w.is_alive() for i, w in workers if i in pending}
+            logger.info(
+                f'Worker poll loop: {elapsed_loop:.0f}s elapsed. '
+                f'pending={sorted(pending)}, alive={alive_info}'
+            )
+            sys.stdout.flush()
+            sys.stderr.flush()
+            last_status_log = now
+
+        # Safety: break out if the loop itself exceeds a hard limit
+        if (now - loop_start) > max_loop_s:
+            logger.error(
+                f'Worker poll loop exceeded max duration '
+                f'({max_loop_s}s). Force-killing remaining '
+                f'workers: {sorted(pending)}'
+            )
+            for i, w in workers:
+                if i in pending and w.is_alive():
+                    logger.error(f'Force-killing worker idx={i} pid={w.pid}')
+                    try:
+                        w.kill()
+                        w.join(timeout=5)
+                    except Exception as e:
+                        logger.error(f'Failed to kill idx={i}: {e}')
+            pending.clear()
+            sys.stdout.flush()
+            sys.stderr.flush()
+            break
+
         for idx, worker in workers:
             if idx not in pending:
                 continue
 
             if not worker.is_alive():
-                worker.join(timeout=0)
+                exit_code = worker.exitcode
+                logger.info(
+                    f'Worker idx={idx} pid={worker.pid} is no longer '
+                    f'alive (exitcode={exit_code}). Joining...'
+                )
+                sys.stdout.flush()
+                sys.stderr.flush()
+                worker.join(timeout=5)
+                logger.info(
+                    f'Worker idx={idx} pid={worker.pid} joined '
+                    f'(is_alive={worker.is_alive()})'
+                )
+                sys.stdout.flush()
+                sys.stderr.flush()
                 pending.remove(idx)
                 continue
 
@@ -370,16 +446,45 @@ def _add_active_configs(
                     'Timeout error when trying to generate an active '
                     f'configuration idx={idx}. Terminating pid={worker.pid}'
                 )
+                sys.stdout.flush()
+                sys.stderr.flush()
                 worker.terminate()
+                logger.info(
+                    f'Sent SIGTERM to idx={idx} pid={worker.pid}. '
+                    'Calling join(timeout=5)...'
+                )
+                sys.stdout.flush()
+                sys.stderr.flush()
                 worker.join(timeout=5)
+                logger.info(
+                    f'join(timeout=5) returned for idx={idx} '
+                    f'pid={worker.pid}. is_alive={worker.is_alive()}'
+                )
+                sys.stdout.flush()
+                sys.stderr.flush()
                 if worker.is_alive():
                     logger.error(
                         f'Worker idx={idx} pid={worker.pid} did not '
-                        'terminate gracefully; killing'
+                        'terminate gracefully; sending SIGKILL'
                     )
+                    sys.stdout.flush()
+                    sys.stderr.flush()
                     if hasattr(worker, 'kill'):
                         worker.kill()
-                        worker.join()
+                        logger.info(
+                            f'Sent SIGKILL to idx={idx} pid={worker.pid}. '
+                            'Calling join(timeout=10)...'
+                        )
+                        sys.stdout.flush()
+                        sys.stderr.flush()
+                        worker.join(timeout=10)
+                        logger.info(
+                            f'join after kill returned for idx={idx} '
+                            f'pid={worker.pid}. '
+                            f'is_alive={worker.is_alive()}'
+                        )
+                        sys.stdout.flush()
+                        sys.stderr.flush()
                     else:
                         logger.error(
                             f'Worker idx={idx} pid={worker.pid} could not '
@@ -388,21 +493,52 @@ def _add_active_configs(
                 pending.remove(idx)
                 worker_results[idx] = None
 
+        # Drain queue during the loop to prevent join/queue deadlocks
+        while True:
+            try:
+                q_idx, q_status, q_config, q_err = result_queue.get_nowait()
+                if q_status == 'ok':
+                    worker_results[q_idx] = q_config
+                    logger.info(
+                        f'Drained result from queue: idx={q_idx} '
+                        f'status={q_status}'
+                    )
+                else:
+                    logger.error(
+                        f'Drained error from queue: idx={q_idx}: ' f'{q_err}'
+                    )
+                    worker_results[q_idx] = None
+            except Empty:
+                break
+
         time.sleep(0.2)
 
+    logger.info('Worker poll loop exited. Performing final queue drain...')
+    sys.stdout.flush()
+    sys.stderr.flush()
+
+    # Final queue drain (pick up any remaining results)
+    drain_count = 0
     while True:
         try:
             idx, status, config, err = result_queue.get_nowait()
         except Empty:
             break
 
+        drain_count += 1
         if status == 'ok':
             worker_results[idx] = config
+            logger.info(f'Final drain: idx={idx} status={status}')
         else:
-            logger.error(
-                f'Raised an exception in selection for idx={idx}: \n{err}'
-            )
+            logger.error(f'Final drain: exception for idx={idx}: \n{err}')
             worker_results[idx] = None
+
+    logger.info(
+        f'Queue drain complete. Got {drain_count} item(s). '
+        f'worker_results keys={sorted(worker_results.keys())}'
+    )
+    sys.stdout.flush()
+    sys.stderr.flush()
 
     for idx in range(n_configs):
         configs.append(worker_results.get(idx, None))
