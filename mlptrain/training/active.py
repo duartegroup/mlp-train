@@ -1116,6 +1116,26 @@ def _modify_kwargs_for_metad_bias_inheritance(kwargs: dict) -> dict:
     return kwargs
 
 
+def _is_valid_hills_line(fields: List[str], expected_ncols=None) -> bool:
+    """Check that a HILLS data line contains only valid numeric values.
+
+    Returns False if any field is NaN, Inf, or non-numeric, or if the
+    line has an unexpected number of columns.
+    """
+    if expected_ncols is not None and len(fields) != expected_ncols:
+        return False
+
+    for val in fields:
+        try:
+            f = float(val)
+            if not np.isfinite(f):
+                return False
+        except ValueError:
+            return False
+
+    return True
+
+
 def _generate_inheritable_metad_bias(n_configs: int, kwargs: dict) -> None:
     """
     Generate files containing metadynamics bias to be inherited in the next
@@ -1237,6 +1257,9 @@ def _generate_inheritable_metad_bias_hills(
         # In some cases PLUMED fails to fully print the last line
         # Therefore, the number of columns is compared to the previous line
         if len(f_lines[-1].split()) != len(f_lines[-2].split()):
+            logger.warning(
+                f'Truncated last line detected in {fname}; ' 'removing it'
+            )
             f_lines.pop()
 
         height_column_index = f_lines[0].split().index('height') - 2
@@ -1250,8 +1273,16 @@ def _generate_inheritable_metad_bias_hills(
             for _ in range(n_lines_in_header):
                 f_lines.pop(0)
 
+            n_skipped = 0
             for line in f_lines:
                 line_list = line.split()
+
+                # Validate: skip lines with wrong column count,
+                # non-numeric values, or NaN/Inf
+                if not _is_valid_hills_line(line_list, expected_ncols=None):
+                    n_skipped += 1
+                    continue
+
                 height = float(line_list[height_column_index])
                 line_list[height_column_index] = f'{height / n_configs:.9f}'
 
@@ -1259,6 +1290,11 @@ def _generate_inheritable_metad_bias_hills(
                 line = separator.join(line_list)
 
                 final_hills_file.write(f'{line}\n')
+
+            if n_skipped > 0:
+                logger.warning(
+                    f'Skipped {n_skipped} invalid/NaN line(s) ' f'in {fname}'
+                )
 
         os.remove(fname)
 
@@ -1298,9 +1334,19 @@ def _attach_inherited_bias_energies(
             return None
 
         else:
-            _generate_grid_from_hills(
+            grid_ok = _generate_grid_from_hills(
                 configurations=configurations, iteration=iteration, bias=bias
             )
+            if not grid_ok:
+                logger.warning(
+                    'Failed to generate bias grid from HILLS file. '
+                    'Falling back to zero inherited bias for all '
+                    'configurations this iteration.'
+                )
+                for config in configurations:
+                    config.energy.inherited_bias = 0
+
+                return None
 
         cvs_cols = range(0, bias.n_metad_cvs)
         cvs_grid = np.loadtxt(
@@ -1366,9 +1412,12 @@ def _generate_grid_from_hills(
     configurations: 'mlptrain.ConfigurationSet',
     iteration: int,
     bias: 'mlptrain.PlumedBias',
-) -> None:
+) -> bool:
     """
     Generate bias_grid_{iteration-1}.dat from HILLS_{iteration-1}.dat
+
+    Returns:
+        True if the grid file was generated successfully, False otherwise.
     """
 
     min_params, max_params = [], []
@@ -1394,15 +1443,18 @@ def _generate_grid_from_hills(
     min_sequence = ','.join(str(param) for param in min_params)
     max_sequence = ','.join(str(param) for param in max_params)
 
+    hills_path = f'HILLS_{iteration-1}.dat'
+    grid_path = f'bias_grid_{iteration-1}.dat'
+
     sum_hills_process = Popen(
         [
             'plumed',
             'sum_hills',
             '--negbias',
             '--hills',
-            f'HILLS_{iteration-1}.dat',
+            hills_path,
             '--outfile',
-            f'bias_grid_{iteration-1}.dat',
+            grid_path,
             '--bin',
             bin_sequence,
             '--min',
@@ -1411,9 +1463,25 @@ def _generate_grid_from_hills(
             max_sequence,
         ]
     )
-    sum_hills_process.wait()
+    rc = sum_hills_process.wait()
 
-    return None
+    if rc != 0:
+        logger.error(
+            f'plumed sum_hills failed with exit code {rc}. '
+            f'The HILLS file ({hills_path}) may contain corrupt '
+            'data (e.g. NaN from a timed-out trajectory).'
+        )
+        return False
+
+    if not os.path.exists(grid_path) or os.path.getsize(grid_path) == 0:
+        logger.error(
+            f'plumed sum_hills did not produce a valid output '
+            f'file ({grid_path}). The HILLS file ({hills_path}) '
+            'may be corrupt.'
+        )
+        return False
+
+    return True
 
 
 def _remove_last_inherited_metad_bias_file(max_active_iters: int) -> None:
