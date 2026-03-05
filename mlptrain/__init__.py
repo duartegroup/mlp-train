@@ -17,6 +17,7 @@ from mlptrain.sampling.reaction_coord import (
 from mlptrain.sampling.plumed import (
     PlumedAverageCV,
     PlumedDifferenceCV,
+    PlumedCNCV,
     PlumedCustomCV,
 )
 
@@ -39,6 +40,7 @@ __all__ = [
     'DifferenceDistance',
     'PlumedAverageCV',
     'PlumedDifferenceCV',
+    'PlumedCNCV',
     'PlumedCustomCV',
     'plot_cv_versus_time',
     'plot_cv1_and_cv2',

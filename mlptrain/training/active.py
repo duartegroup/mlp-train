@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import mlptrain
 import os
 import shutil
@@ -39,7 +41,7 @@ def train(
     restart_iter: Optional[int] = None,
     inherit_metad_bias: bool = False,
     constraints: Optional[List] = None,
-    bias: Optional = None,
+    bias: mlptrain.Bias | mlptrain.PlumedBias | None = None,
     md_program: str = 'ASE',
     pbc: bool = False,
     box_size: Optional[list] = None,
@@ -200,7 +202,7 @@ def train(
     for iteration in range(max_active_iters):
         if restart_iter is not None and iteration <= restart_iter:
             continue
-        if isinstance(bias, PlumedBias) and iteration > bias_start_iter:
+        if isinstance(bias, PlumedBias) and iteration >= bias_start_iter:
             extra_time = 0
         else:
             extra_time = mlp.training_data.t_min(-n_configs_iter)
@@ -813,7 +815,7 @@ def _check_bias_parameters(
     return None
 
 
-def _check_bias_for_metad_bias_inheritance(bias: Optional) -> None:
+def _check_bias_for_metad_bias_inheritance(bias: PlumedBias) -> None:
     """
     Check if the bias is suitable to inherit metadynamics bias during
     active learning
@@ -821,7 +823,7 @@ def _check_bias_for_metad_bias_inheritance(bias: Optional) -> None:
 
     if not isinstance(bias, PlumedBias):
         raise TypeError(
-            'Metadynamics bias can only be inherited when ' 'using PlumedBias'
+            'Metadynamics bias can only be inherited when using PlumedBias'
         )
 
     if bias.from_file:
@@ -834,8 +836,8 @@ def _check_bias_for_metad_bias_inheritance(bias: Optional) -> None:
 
 
 def _remove_bias_potential(
-    bias: Optional,
-) -> Union['mlptrain.sampling.PlumedBias', None]:
+    bias: mlptrain.Bias | PlumedBias | None = None,
+) -> PlumedBias | None:
     """
     Remove bias potential from a bias, except LOWER_WALLS and UPPER_WALLS
     when the bias is PlumedBias
