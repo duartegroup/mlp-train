@@ -17,7 +17,7 @@ class _ConfigClass:
     """
 
     n_cores = 4
-    process_timeout = 60 * 60 * 8 # 8 hours
+    process_timeout = 60 * 60 * 8  # 8 hours
     dynamics_timeout = 60 * 60 * 2  # 2 hours
     _orca_keywords = None
     _gaussian_keywords = None
@@ -84,6 +84,7 @@ class _ConfigClass:
         'num_workers': 20,
         'max_L': 1,
         'dtype': 'float32',
+        'pt_train': None,
         'cueq': False,
     }
 

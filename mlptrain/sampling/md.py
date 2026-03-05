@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from copy import deepcopy
 import shutil
@@ -18,8 +20,8 @@ from ase import units as ase_units
 import mlptrain
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
+from mlptrain.sampling import PlumedBias
 from mlptrain.sampling.plumed import (
-    PlumedBias,
     PlumedCalculator,
     plumed_setup,
     get_colvar_filename,
@@ -253,7 +255,7 @@ def _run_mlp_md(
     init_temp: Optional[float] = None,
     fbond_energy: Optional[dict] = None,
     bbond_energy: Optional[dict] = None,
-    bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']] = None,
+    bias: Optional[mlptrain.Bias | mlptrain.PlumedBias] = None,
     restart_files: Optional[List[str]] = None,
     **kwargs,
 ) -> Optional['mlptrain.Trajectory']:

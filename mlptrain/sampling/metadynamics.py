@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import mlptrain
 import ase
 import os
@@ -10,9 +12,9 @@ import numpy as np
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor
 import autode as ade
-from typing import Optional, Sequence, Union, Tuple, List
-from subprocess import Popen
+from typing import TYPE_CHECKING, Optional, Sequence, Union, Tuple, List
 from multiprocessing import Pool
+from subprocess import Popen
 from copy import deepcopy
 from ase import units as ase_units
 from ase.io import read as ase_read
@@ -37,6 +39,9 @@ from mlptrain.utils import (
     convert_exponents,
 )
 
+if TYPE_CHECKING:
+    from mlptrain.sampling.plumed import _PlumedCV
+
 
 class Metadynamics:
     """Metadynamics class for running biased molecular dynamics using
@@ -44,7 +49,7 @@ class Metadynamics:
 
     def __init__(
         self,
-        cvs: Union[Sequence['mlptrain._PlumedCV'], 'mlptrain._PlumedCV'],
+        cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'],
         bias: Optional['mlptrain.PlumedBias'] = None,
         temp: Optional[float] = None,
     ):
@@ -273,7 +278,7 @@ class Metadynamics:
         dt: float,
         pace: int = 100,
         height: Optional[float] = None,
-        width: Optional = None,
+        width: Optional[Union[list[float], float]] = None,
         biasfactor: Optional[float] = None,
         al_iter: Optional[int] = None,
         n_runs: int = 1,
@@ -769,8 +774,8 @@ class Metadynamics:
         biasfactors: Sequence[float],
         pace: int = 500,
         height: Optional[float] = None,
-        width: Optional = None,
-        plotted_cvs: Optional = None,
+        width: Optional[Union[list[float], float]] = None,
+        plotted_cvs: Optional[Sequence[_PlumedCV]] = None,
         **kwargs,
     ) -> None:
         """
@@ -934,7 +939,7 @@ class Metadynamics:
         interval: int,
         dt: float,
         bias: 'mlptrain.PlumedBias',
-        plotted_cvs: Optional,
+        plotted_cvs: Sequence[_PlumedCV],
         **kwargs,
     ):
         """
