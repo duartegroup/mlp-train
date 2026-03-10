@@ -3,7 +3,7 @@ import mlptrain as mlt
 from mlptrain.box import Box
 from mlptrain.log import logger
 from mlptrain.config import Config
-from mlptrain.md import _convert_ase_traj
+from mlptrain.sampling.md import _convert_ase_traj
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from numpy.random import RandomState
 import numpy as np
@@ -270,7 +270,7 @@ def get_reactant_states(TS, solution, mlp):
 
 @mlt.utils.work_in_tmp_dir(copied_exts=['.xml', '.json', '.pth'])
 def baised_md(configuration, mlp, temp, dt, interval, bias, **kwargs):
-    from mltrain.md import _convert_ase_traj, _n_simulation_steps
+    from mlptrain.sampling.md import _convert_ase_traj, _n_simulation_steps
     from ase.io.trajectory import Trajectory as ASETrajectory
     from ase.md.langevin import Langevin
     from ase.md.verlet import VelocityVerlet

@@ -116,11 +116,11 @@ class Configuration(AtomCollection):
 
     def solvate(
         self,
-        box_size: float = None,
-        buffer_distance: float = 10,
-        solvent_name: str = None,
-        solvent_density: float = None,
-        solvent_molecule: ade.Molecule = None,
+        box_size: float | None = None,
+        buffer_distance: float = 10.0,
+        solvent_name: str | None = None,
+        solvent_density: float | None = None,
+        solvent_molecule: ade.Molecule | None = None,
         contact_threshold: float = 1.8,
         random_seed: int = 42,
     ) -> None:
