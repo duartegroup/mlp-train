@@ -641,7 +641,6 @@ def _gen_and_set_init_training_configs(
     logger.info(f'Added {num} configurations with min dist = {dist:.3f} Å')
     init_configs.single_point(method_name)
     mlp.training_data += init_configs
-    return init_configs
 
 
 def _save_ase_traj_as_xyz(

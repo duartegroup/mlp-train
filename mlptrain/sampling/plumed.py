@@ -591,7 +591,7 @@ class PlumedBias(ASEConstraint):
 
     @staticmethod
     def _check_cvs_format(
-        cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'],
+        cvs: list['_PlumedCV'] | tuple['_PlumedCV', ...] | '_PlumedCV',
     ) -> List['_PlumedCV']:
         """
         Check if the supplied collective variables are in the correct
@@ -602,23 +602,20 @@ class PlumedBias(ASEConstraint):
         if isinstance(cvs, list) or isinstance(cvs, tuple):
             if len(cvs) == 0:
                 raise TypeError(
-                    'The provided collective variable ' 'sequence is empty'
+                    'The provided collective variable sequence is empty'
                 )
 
-            elif all(issubclass(cv.__class__, _PlumedCV) for cv in cvs):
-                pass
-
-            else:
+            elif not all(issubclass(cv.__class__, _PlumedCV) for cv in cvs):
                 raise TypeError('Supplied CVs are in incorrect format')
+
+            return list(cvs)
 
         # e.g. cvs == cv1
         elif issubclass(cvs.__class__, _PlumedCV):
-            cvs = [cvs]
+            return [cvs]
 
         else:
             raise TypeError('Supplied CVs are in incorrect format')
-
-        return cvs
 
     def adjust_potential_energy(self, atoms) -> float:
         """Adjust the energy of the system by adding PLUMED bias"""
@@ -1357,7 +1354,7 @@ def plumed_setup(
         interval: (int) Interval between saving the geometry
     """
 
-    setup = []
+    setup: list[str] = []
 
     # Converting PLUMED units to ASE units
     time_conversion = 1 / (ase_units.fs * 1000)
