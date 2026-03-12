@@ -10,11 +10,12 @@ if __name__ == '__main__':
 
     # e.g. endo DA vac wB97M TS
     input_config_fp = 'cis_endo_TS_wB97M.xyz'
+    ref_ts_fp = 'cis_endo_TS_wB97M.xyz'  # optional reference comparison
     save_name = 'endo_DA_vac'
     react_coords = [(1, 12), (6, 11)]
 
     # === 2. SELECT MODEL(S) ===
-    model_fpaths = ['./OFF_FT_42.model']
+    model_fpaths = ['./OFF_FT_42.model']  # ADD YOUR MODEL FPATH HERE!
 
     # === 3. SELECT OPTIMISER SETTINGS ===
     fmax = 0.001  # default = 0.001
@@ -42,6 +43,7 @@ if __name__ == '__main__':
             model,
             react_coords,
             save_name,
+            ref_ts_fp=ref_ts_fp,
             displace_mag=displace_mag,
             reverse_displace=reverse_displace,
             fmax=fmax,
