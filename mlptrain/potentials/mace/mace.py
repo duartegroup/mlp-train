@@ -3,7 +3,9 @@ import argparse
 from mlptrain.config import Config
 from mlptrain.potentials._base import MLPotential
 import os
+import glob
 import time
+import numpy as np
 import logging
 from mlptrain.log import logger
 import autode as ade
@@ -26,25 +28,29 @@ class MACE(MLPotential):
         name: str,
         system: 'mlt.System',
         foundation: Optional[str] = None,
-        model_fpath: str = None,
+        model_fpath: Optional[str] = None,
     ) -> None:
         """
         MACE machine learning potential
 
         -----------------------------------------------------------------------
         Arguments:
-
             name: (str) Name of the potential, used in naming output files
 
-            system: (mlptrain.System) Object defining the system without
-                                      specifying the coordinates
+            system: (mlptrain.System) Object defining the system without specifying the coordinates
 
-            foundation: (str) Name of the foundation model used in fine-tunning
-                         like "medium_off" for MACE-OFF(M), "medium" for MACE-MP-0(M)
+            foundation: (str) Either the shortcut of the foundation model used in fine-tunning
+                         like "medium_off" for MACE-OFF(M), "medium" for MACE-MP-0(M), or the path to the foundation model.
 
-            model_fpath: (str) Optional specific fpath for the base model,
-                         if None the model file_name defaults to f'{name}.model' in the current
-                         working dir.
+                         Here, naive fine-tuning is default without any other argument specified.
+
+                         To initiate multi-head fine-tuning, specify mace_params['pt_train']=/path/to/replay/dataset
+                         For MACE-MP models, the replay dataset is provided by MACE through setting mace_params['pt_train']='mp'
+                         Some Replay datasets could be accessed here: https://github.com/ACEsuit/mace-foundations/releases
+                         More details on https://github.com/ACEsuit/mace/tree/main?tab=readme-ov-file#pretrained-foundation-models
+
+            model_fpath: (str) Optional specific fpath for the base model, if None the model file_name defaults to f'{name}.model'
+                               in the current working dir.
         """
         super().__init__(name=name, system=system)
 
@@ -107,6 +113,21 @@ class MACE(MLPotential):
             return -((_unrounded_valid_fraction * 100) // -1) / 100
 
     @property
+    def batch_size(self) -> int:
+        """Batch size of the training set"""
+        if (
+            self.n_train * (1 - Config.mace_params['valid_fraction'])
+            < Config.mace_params['batch_size']
+        ):
+            return int(
+                np.floor(
+                    self.n_train * (1 - Config.mace_params['valid_fraction'])
+                )
+            )
+        else:
+            return Config.mace_params['batch_size']
+
+    @property
     def args(self) -> 'argparse.Namespace':
         """Namespace containing mostly default MACE parameters"""
 
@@ -114,7 +135,7 @@ class MACE(MLPotential):
             '--name',
             self.name,
             '--max_L',
-            str(1),
+            str(Config.mace_params['max_L']),
             '--train_file',
             f'{self.name}_data.xyz',
             '--valid_fraction',
@@ -134,13 +155,13 @@ class MACE(MLPotential):
             '--r_max',
             str(Config.mace_params['r_max']),
             '--lr',
-            str(0.001),
+            str(Config.mace_params['lr']),
             '--scaling',
             'rms_forces_scaling',
             '--batch_size',
-            str(Config.mace_params['batch_size']),
+            str(self.batch_size),
             '--valid_batch_size',
-            str(Config.mace_params['batch_size']),
+            str(self.batch_size),
             '--max_num_epochs',
             str(Config.mace_params['max_num_epochs']),
             '--error_table',
@@ -150,38 +171,66 @@ class MACE(MLPotential):
             '--correlation',
             str(Config.mace_params['correlation']),
             '--scheduler_patience',
-            str(20),
+            str(Config.mace_params['scheduler_patience']),
             '--patience',
-            str(50),
-            '--start_swa',
-            str(Config.mace_params['start_swa']),
-            '--swa',
-            '--ema',
-            '--ema_decay',
-            str(0.999),
+            str(Config.mace_params['patience']),
             '--device',
             str(Config.mace_params['device']),
             '--default_dtype',
             str(Config.mace_params['dtype']),
             '--seed',
-            str(345),
+            str(Config.mace_params['seed']),
             '--energy_key',
             'energy',
             '--forces_key',
             'forces',
             '--num_workers',
-            str(35),
+            str(Config.mace_params['num_workers']),
         ]
+
+        if Config.mace_params['ema']:
+            args_list.append('--ema')
+            args_list.append('--ema_decay')
+            args_list.append(str(Config.mace_params['ema_decay']))
+
+        if Config.mace_params['swa']:
+            args_list.append('--swa')
+            args_list.append('--start_swa')
+            args_list.append(str(Config.mace_params['start_swa']))
 
         if self.foundation is not None:
             args_list.append('--foundation_model')
             args_list.append(f'{self.foundation}')
+            pt_train = Config.mace_params['pt_train']
 
-        if Config.mace_params['save_cpu'] is True:
+            if pt_train is not None:
+                if not isinstance(pt_train, str) or not pt_train.strip():
+                    raise ValueError(
+                        'pt_train must be a non-empty path string.'
+                    )
+                if pt_train != 'mp' and not os.path.exists(pt_train):
+                    raise FileNotFoundError(
+                        f'pt_train path does not exist: {pt_train}'
+                    )
+
+                args_list.append(f'--pt_train_file={pt_train}')
+                args_list.append('--multihead=True')
+                logger.info('Multihead fine-tuning launched')
+
+            else:
+                args_list.append('--multihead=False')
+                logger.info(
+                    'Naive fine-tuning launched since no pt_train provided.'
+                )
+
+        if Config.mace_params['save_cpu']:
             args_list.append('--save_cpu')
 
-        if Config.mace_params['restart_latest'] is True:
+        if Config.mace_params['restart_latest']:
             args_list.append('--restart_latest')
+
+        if Config.mace_params['cueq']:
+            args_list.append('--enable_cueq=True')
 
         args = tools.build_default_arg_parser().parse_args(args_list)
         return args
@@ -193,6 +242,7 @@ class MACE(MLPotential):
         calculator = MACECalculator(
             model_paths=self.filename,
             device=Config.mace_params['calc_device'],
+            enable_cueq=Config.mace_params['cueq'],
         )
         return calculator
 
@@ -233,5 +283,8 @@ class MACE(MLPotential):
 
         gc.collect()
         torch.cuda.empty_cache()
+
+        for file in glob.glob('./checkpoints/*.pt'):
+            os.remove(file)
 
         return None

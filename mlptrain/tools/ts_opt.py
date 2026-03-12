@@ -169,3 +169,15 @@ def mlip_dimer_method(
 
     # return optimised TS
     return opt_ts_config
+
+    # model_fpath: (str) Optional specific fpath for the base model,
+    #                 if None the model file_name defaults to f'{name}.model' in the current
+    #                 working dir.
+
+    @property
+    def filename(self) -> str:
+        """Name of the file where potential is stored"""
+        if self.model_fpath is not None:
+            return self.model_fpath
+        else:
+            return f'{os.getcwd()}/{self.name}.model'
