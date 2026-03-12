@@ -80,6 +80,7 @@ class _Window:
         if self._gaussian_pdf is None:
             self._fit_gaussian(normalised=True)
 
+        assert self._gaussian_pdf is not None
         return self._gaussian_pdf
 
     @property

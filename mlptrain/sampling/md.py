@@ -471,9 +471,9 @@ def _get_traj_name(restart_files: Optional[List[str]] = None, **kwargs) -> str:
     else:
         for filename in restart_files:
             if filename.endswith('.traj'):
-                traj_name = filename
+                return filename
 
-                return traj_name
+    raise ValueError('Could not determine trajectory file name')
 
 
 def _convert_ase_traj(
