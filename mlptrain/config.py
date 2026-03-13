@@ -64,6 +64,7 @@ class _ConfigClass:
         'hidden_irreps': '128x0e + 128x1o',
         'batch_size': 10,
         'r_max': 5.0,
+        'ell_max': 3,
         'correlation': 3,
         'device': mace_device,
         'calc_device': 'cpu',

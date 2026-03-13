@@ -146,6 +146,8 @@ class MACE(MLPotential):
             str(Config.mace_params['hidden_irreps']),
             '--r_max',
             str(Config.mace_params['r_max']),
+            '--max_ell',
+            str(Config.mace_params['ell_max']),
             '--lr',
             str(Config.mace_params['lr']),
             '--scaling',
