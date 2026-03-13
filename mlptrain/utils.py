@@ -2,10 +2,14 @@ import os
 import re
 import shutil
 import numpy as np
+import mlptrain as mlt
+from mlptrain.log import logger
+import autode as ade
 from tempfile import mkdtemp
 from functools import wraps
 from typing import Optional, List, Sequence, Union, overload
 from ase import units as ase_units
+from autode.values import PotentialEnergy, Gradient
 
 
 def work_in_tmp_dir(
@@ -308,3 +312,174 @@ def convert_ase_energy(
         raise ValueError(f'Unknown energy units: {units}')
 
     return energy_array
+
+
+def orca_output_to_npz(
+    file_paths: List[str],
+    out_name: str,
+    out_dir: str = '.',
+    load_energies: bool = True,
+    load_forces: bool = True,
+    load_dipole: bool = False,
+    save_xyz: bool = True,
+) -> None:
+    """
+    Generate npz file from existing outputs of orca calculations.
+
+    -----------------------------------------------------------
+    Arguments:
+
+    file_paths: (List[str]) List of orca .out file paths to save in npz format.
+
+    out_name: (str) Output file name without file extension.
+
+    out_dir: (str) Output directory.
+
+    load_energies: (bool) If True, load energies from the files.
+
+    load_forces: (bool) If True, load forces from the files.
+
+    # load_dipole : (bool) If True, load dipole moments form the files.
+    # NOTE: (Dipole will be implement after autode modification)
+
+    save_xyz: (bool) If True database will be saved as extxyz.
+    """
+
+    dataset = mlt.ConfigurationSet()
+
+    logger.info(f'Processing {len(file_paths)} ORCA .out files')
+    err_count = 0
+    for fpath in file_paths:
+        if not fpath.endswith('.out'):
+            raise TypeError('Function require ORCA output file .out')
+
+        if not os.path.exists(fpath):
+            raise FileNotFoundError(f'File {fpath} was not found.')
+
+        with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+
+        if not any('ORCA TERMINATED NORMALLY' in line for line in lines):
+            logger.warning(
+                f'ORCA did not terminate normally for {fpath}. Skipping...'
+            )
+            err_count += 1
+            continue
+
+        atoms = []
+
+        print_coord = False
+
+        for cline in lines:
+            if 'Total Charge' in cline:
+                charge = cline.split()[4]
+
+        for line in lines:
+            if 'Multiplicity' in line:
+                mult = line.split()[-1]
+
+        for line in lines:
+            if 'CARTESIAN COORDINATES (ANGSTROEM)' in line:
+                atoms = []
+                print_coord = True
+            elif line in ['\n', '\r\n']:
+                print_coord = False
+
+            if (
+                print_coord
+                and '----' not in line
+                and 'CARTESIAN COORDINATES (ANGSTROEM)' not in line
+            ):
+                element, x, y, z = line.split()
+                atom = ade.atoms.Atom(
+                    atomic_symbol=element,
+                    x=float(x),
+                    y=float(y),
+                    z=float(z),
+                )
+                atoms.append(atom)
+
+        if load_energies:
+            if (
+                any('FINAL SINGLE POINT ENERGY' in line for line in lines)
+                is False
+            ):
+                raise ValueError(
+                    'Single point energy not found. Check the output file.'
+                )
+
+            for en_line in reversed(lines):
+                if 'FINAL SINGLE POINT ENERGY' in en_line:
+                    energy = PotentialEnergy(en_line.split()[4], units='Ha')
+
+        if load_forces:
+            print_forces = False
+
+            if not any(
+                ('CARTESIAN GRADIENT' in line)
+                or ('The final MP2 gradient' in line)
+                for line in lines
+            ):
+                raise ValueError('Gradients not found. Check the output file.')
+
+            for line in lines:
+                gradient_start = [
+                    'CARTESIAN GRADIENT',
+                    'The final MP2 gradient',
+                ]
+
+                gradient_ends = [
+                    'Difference to translation invariance',
+                    'Norm of the Cartesian gradient',
+                    'NORM OF THE MP2 GRADIENT:',
+                ]
+
+                if any(substring in line for substring in gradient_start):
+                    gradients = []
+                    print_forces = True
+                elif any(substring in line for substring in gradient_ends):
+                    print_forces = False
+
+                if print_forces:
+                    if len(line.split()) <= 3:
+                        continue
+                    else:
+                        dadx, dady, dadz = line.split()[-3:]
+
+                        gradients.append(
+                            [float(dadx), float(dady), float(dadz)]
+                        )
+                        forces = -Gradient(gradients, units='Ha a0^-1').to(
+                            'Ha Å^-1'
+                        )
+
+        # Dipole implementation provided here but currently not used - waiting for autode update
+        # if load_dipole:
+        #    for d_line in reversed(lines):
+        #        if 'Total Dipole Moment' in d_line:
+        #            dipx, dipy, dipz = line.split()[-3:]
+        #            dipole = [float(dipx), float(dipy), float(dipz)]
+
+        config = mlt.Configuration(atoms=atoms, charge=charge, mult=mult)
+
+        #   config.dipole.true = dipole.to()
+        config.energy.true = energy.to('eV')
+        config.forces.true = forces.to('eV Å^-1')
+
+        dataset.append(config)
+
+    logger.info(
+        f'Successfully processed {len(dataset)} configs with {err_count} errors'
+    )
+
+    out_fpath = f'{out_dir}/{out_name}'
+    logger.info(
+        f'Saving {len(dataset)} configurations to npz file: {out_fpath}.npz'
+    )
+    dataset.save(f'{out_fpath}..npz')
+
+    if save_xyz:
+        logger.info(
+            f'Saving {len(dataset)} configs to xyz file: {out_fpath}.xyz'
+        )
+        dataset.save_xyz(f'{out_fpath}.xyz', true=True)
