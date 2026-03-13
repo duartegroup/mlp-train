@@ -9,7 +9,7 @@ dependencies:
   - pip
   - libgfortran=14.*
   - pre-commit
-  - ase
+  - ase=3.27.0
   - autode=1.4.5
   - coloredlogs
   - cython

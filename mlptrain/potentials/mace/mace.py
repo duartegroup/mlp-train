@@ -28,6 +28,7 @@ class MACE(MLPotential):
         name: str,
         system: 'mlt.System',
         foundation: Optional[str] = None,
+        model_fpath: Optional[str] = None,
     ) -> None:
         """
         MACE machine learning potential
@@ -47,6 +48,9 @@ class MACE(MLPotential):
                          For MACE-MP models, the replay dataset is provided by MACE through setting mace_params['pt_train']='mp'
                          Some Replay datasets could be accessed here: https://github.com/ACEsuit/mace-foundations/releases
                          More details on https://github.com/ACEsuit/mace/tree/main?tab=readme-ov-file#pretrained-foundation-models
+
+            model_fpath: (str) Optional specific fpath for the base model, if None the model file_name defaults to f'{name}.model'
+                               in the current working dir.
         """
         super().__init__(name=name, system=system)
 
@@ -59,6 +63,7 @@ class MACE(MLPotential):
             )
 
         self.foundation = foundation
+        self.model_fpath = model_fpath
         logging.info(f'MACE version: {mace.__version__}')
 
         tools.set_seeds(345)
@@ -67,7 +72,10 @@ class MACE(MLPotential):
     @property
     def filename(self) -> str:
         """Name of the file where potential is stored"""
-        return f'{self.name}.model'
+        if self.model_fpath is not None:
+            return self.model_fpath
+        else:
+            return f'{os.getcwd()}/{self.name}.model'
 
     @property
     def requires_atomic_energies(self) -> bool:
