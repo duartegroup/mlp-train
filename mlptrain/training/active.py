@@ -683,7 +683,9 @@ def _initialise_restart(
 
 
 def _attach_plumed_coords_to_init_configs(
-    init_configs: 'mlptrain.ConfigurationSet', bias: 'mlptrain.PlumedBias'
+    init_configs: 'mlptrain.ConfigurationSet',
+    bias: 'mlptrain.PlumedBias',
+    mcfilename: Optional[str] = None,
 ) -> None:
     """
     Attach PLUMED collective variable values to the configurations in the
@@ -713,18 +715,21 @@ def _attach_plumed_coords_to_init_configs(
         for line in driver_setup:
             f.write(f'{line}\n')
 
-    driver_process = Popen(
-        [
-            'plumed',
-            'driver',
-            '--ixyz',
-            'init_configs_driver.xyz',
-            '--plumed',
-            'driver_setup.dat',
-            '--length-units',
-            'A',
-        ]
-    )
+    driver_command = [
+        'plumed',
+        'driver',
+        '--ixyz',
+        'init_configs_driver.xyz',
+        '--plumed',
+        'driver_setup.dat',
+        '--length-units',
+        'A',
+    ]
+
+    if mcfilename is not None:
+        driver_command.extend(['--mc', mcfilename])
+
+    driver_process = Popen(driver_command)
     driver_process.wait()
 
     os.remove('init_configs_driver.xyz')
