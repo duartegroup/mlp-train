@@ -26,24 +26,32 @@ class MLPotential(ABC):
         self.system = system
 
         self._training_data = mlt.ConfigurationSet()
+        # self._validation_data = None
         self.atomic_energies = {}
 
     def train(
-        self, configurations: Optional['mlt.ConfigurationSet'] = None
+        self,
+        train_configs: Optional['mlt.ConfigurationSet'] = None,
+        valid_configs: Optional['mlt.ConfigurationSet'] = None,
     ) -> None:
         """
         Train this potential on a set of configurations
 
         -----------------------------------------------------------------------
         Arguments:
-            configurations: Set of configurations to train on, if None then
+            train_configs: Set of configurations to train on, if None then
                             will use self._training_data
+            valid_configs: Set of configurations to validate with; if None then
+                            will use a random split of training data
 
         Raises:
             (RuntimeError):
         """
-        if configurations is not None:
-            self._training_data = configurations
+        if train_configs is not None:
+            self._training_data = train_configs
+
+        if valid_configs is not None:
+            self._validation_data = valid_configs
 
         if len(self.training_data) == 0:
             raise RuntimeError(
@@ -136,7 +144,7 @@ class MLPotential(ABC):
 
     @training_data.setter
     def training_data(self, value: Optional['mlt.ConfigurationSet']):
-        """Set the training date for this MLP"""
+        """Set the training data for this MLP"""
 
         if value is None:
             self._training_data.clear()

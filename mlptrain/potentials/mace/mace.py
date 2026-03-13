@@ -90,19 +90,28 @@ class MACE(MLPotential):
 
     @property
     def valid_fraction(self) -> float:
-        """Fraction of the whole dataset to be used as validation set"""
-        _min_dataset = -(1 // -Config.mace_params['valid_fraction'])
+        """Fraction of the training dataset to be used as validation set"""
 
-        if self.n_train == 1:
-            raise ValueError(
-                'MACE training requires at least ' '2 configurations'
-            )
-        elif self.n_train >= _min_dataset:
-            return Config.mace_params['valid_fraction']
+        if getattr(self, '_validation_data', None) is not None:
+            valid_filename = f'{self.name}_valid.xyz'
+            self._validation_data.save_xyz(filename=valid_filename)
+            return 0.0
+        #            args_list.append(f'--valid_file={valid_filename}')
+        #            args_list.append('--valid_fraction=0.0')
+
         else:
-            # Valid fraction which sets at least 1 datapoint for validation
-            _unrounded_valid_fraction = 1 / self.n_train
-            return -((_unrounded_valid_fraction * 100) // -1) / 100
+            _min_dataset = -(1 // -Config.mace_params['valid_fraction'])
+
+            if self.n_train == 1:
+                raise ValueError(
+                    'MACE training requires at least ' '2 configurations'
+                )
+            elif self.n_train >= _min_dataset:
+                return Config.mace_params['valid_fraction']
+            else:
+                # Valid fraction which sets at least 1 datapoint for validation
+                _unrounded_valid_fraction = 1 / self.n_train
+                return -((_unrounded_valid_fraction * 100) // -1) / 100
 
     @property
     def batch_size(self) -> int:
@@ -224,6 +233,13 @@ class MACE(MLPotential):
         if Config.mace_params['cueq']:
             args_list.append('--enable_cueq=True')
 
+        if getattr(self, '_validation_data', None) is not None:
+            # These has now been done in self.valid_fraction():
+            # valid_filename = f'{self.name}_valid.xyz'
+            # self._validation_data.save_xyz(filename=valid_filename)
+            # args_list.append('--valid_fraction=0.0')
+            args_list.append(f'--valid_file={self.name}_valid.xyz')
+
         args = tools.build_default_arg_parser().parse_args(args_list)
         return args
 
@@ -272,6 +288,8 @@ class MACE(MLPotential):
         logger.info(f'MACE training ran in {delta_time / 60:.1f} m.')
 
         os.remove(f'{self.name}_data.xyz')
+        if os.path.exists(f'{self.name}_valid.xyz'):
+            os.remove(f'{self.name}_valid.xyz')
 
         gc.collect()
         torch.cuda.empty_cache()
