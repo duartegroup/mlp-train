@@ -2,13 +2,13 @@ import mlptrain
 import autode
 from typing import Tuple
 from mlptrain.log import logger
-from mlptrain.utils import work_in_tmp_dir
 from mlptrain.config import Config
 
 
-@work_in_tmp_dir()
 def run_autode(
-    configuration: 'mlptrain.Configuration', method_name: str, n_cores: int = 1
+    configuration: 'mlptrain.Configuration',
+    method_name: str,
+    n_cores: int = 1,
 ) -> None:
     """
     Run an autodE calculation
@@ -20,6 +20,7 @@ def run_autode(
         method_name: Name of the method. Case insensitive
 
         n_cores: Number of cores to use for the calculation
+
     """
     from autode.species import Species
     from autode.calculations import Calculation

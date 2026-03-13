@@ -11,6 +11,7 @@ from ase import units as ase_units
 def work_in_tmp_dir(
     kept_substrings: Optional[Sequence[str]] = None,
     copied_substrings: Optional[Sequence[str]] = None,
+    output_name: Optional[str] = None,
 ):
     """
     Execute a function in a temporary directory
@@ -24,6 +25,8 @@ def work_in_tmp_dir(
 
         copied_substrings: List of substrings with which files are copied to
                            the temporary directory
+
+        output_name: If provided, files copied via kept_substrings will be renamed accordingly.
     """
 
     def func_decorator(func):
@@ -58,9 +61,15 @@ def work_in_tmp_dir(
                             substrings=kept_substrings,
                             regex=False,
                         ):
+                            if output_name is not None:
+                                extension = filename.split('.')[-1]
+                                final_name = f'{output_name}.{extension}'
+                            else:
+                                final_name = filename
+
                             shutil.copy(
                                 src=os.path.join(tmpdir_path, filename),
-                                dst=os.path.join(here_path, filename),
+                                dst=os.path.join(here_path, final_name),
                             )
 
                 os.chdir(here_path)
