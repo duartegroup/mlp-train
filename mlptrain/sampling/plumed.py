@@ -77,7 +77,7 @@ class PlumedBias(ASEConstraint):
 
     def __init__(
         self,
-        cvs: Union[Sequence['_PlumedCV'], '_PlumedCV', None] = None,
+        cvs: Sequence[_PlumedCV] | _PlumedCV | None = None,
         filename: str | None = None,
     ):
         """
@@ -108,7 +108,7 @@ class PlumedBias(ASEConstraint):
         for param_name in ['min', 'max', 'bin', 'wstride', 'wfile', 'rfile']:
             setattr(self, f'metad_grid_{param_name}', None)
 
-        self.cvs: tuple['_PlumedCV'] = ()
+        self.cvs: tuple['_PlumedCV', ...] = ()
 
         if filename is not None:
             self._from_file(filename)
@@ -214,7 +214,7 @@ class PlumedBias(ASEConstraint):
         width: Union[Sequence[float], float],
         height: float,
         biasfactor: Optional[float] = None,
-        cvs: Optional[_PlumedCV] = None,
+        cvs: Sequence[_PlumedCV] | _PlumedCV | None = None,
         grid_min: Union[Sequence[float], float, None] = None,
         grid_max: Union[Sequence[float], float, None] = None,
         grid_bin: Union[Sequence[float], float, None] = None,
