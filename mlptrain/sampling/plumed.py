@@ -77,7 +77,7 @@ class PlumedBias(ASEConstraint):
 
     def __init__(
         self,
-        cvs: Union[Sequence['_PlumedCV'], '_PlumedCV', None] = None,
+        cvs: Sequence[_PlumedCV] | _PlumedCV | None = None,
         filename: str | None = None,
     ):
         """
@@ -108,13 +108,13 @@ class PlumedBias(ASEConstraint):
         for param_name in ['min', 'max', 'bin', 'wstride', 'wfile', 'rfile']:
             setattr(self, f'metad_grid_{param_name}', None)
 
+        self.cvs: tuple['_PlumedCV', ...] = ()
+
         if filename is not None:
-            self.cvs = None
             self._from_file(filename)
 
         elif cvs is not None:
-            cvs = self._check_cvs_format(cvs)
-            self.cvs = cvs
+            self.cvs = self._check_cvs_format(cvs)
 
         else:
             raise TypeError(
@@ -214,7 +214,7 @@ class PlumedBias(ASEConstraint):
         width: Union[Sequence[float], float],
         height: float,
         biasfactor: Optional[float] = None,
-        cvs: Optional[_PlumedCV] = None,
+        cvs: Sequence[_PlumedCV] | _PlumedCV | None = None,
         grid_min: Union[Sequence[float], float, None] = None,
         grid_max: Union[Sequence[float], float, None] = None,
         grid_bin: Union[Sequence[float], float, None] = None,
@@ -489,7 +489,7 @@ class PlumedBias(ASEConstraint):
         pace: int = 20,
         height: Optional[float] = None,
         biasfactor: Optional[float] = None,
-        cvs: Optional[_PlumedCV] = None,
+        cvs: Sequence[_PlumedCV] | _PlumedCV | None = None,
         grid_min: Union[Sequence[float], float, None] = None,
         grid_max: Union[Sequence[float], float, None] = None,
         grid_bin: Union[Sequence[float], float, None] = None,
@@ -591,34 +591,25 @@ class PlumedBias(ASEConstraint):
 
     @staticmethod
     def _check_cvs_format(
-        cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'],
-    ) -> List['_PlumedCV']:
+        cvs: Sequence['_PlumedCV'] | '_PlumedCV',
+    ) -> tuple['_PlumedCV', ...]:
         """
         Check if the supplied collective variables are in the correct
         format
         """
 
-        # e.g. cvs == [cv1, cv2]; (cv1, cv2)
-        if isinstance(cvs, list) or isinstance(cvs, tuple):
-            if len(cvs) == 0:
-                raise TypeError(
-                    'The provided collective variable ' 'sequence is empty'
-                )
+        if isinstance(cvs, _PlumedCV):
+            return (cvs,)
 
-            elif all(issubclass(cv.__class__, _PlumedCV) for cv in cvs):
-                pass
+        elif len(cvs) == 0:
+            raise TypeError(
+                'The provided collective variable sequence is empty'
+            )
 
-            else:
-                raise TypeError('Supplied CVs are in incorrect format')
+        elif not all(isinstance(cv, _PlumedCV) for cv in cvs):
+            raise TypeError(f'Supplied CVs are in incorrect format "{cvs}"')
 
-        # e.g. cvs == cv1
-        elif issubclass(cvs.__class__, _PlumedCV):
-            cvs = [cvs]
-
-        else:
-            raise TypeError('Supplied CVs are in incorrect format')
-
-        return cvs
+        return tuple(cvs)
 
     def adjust_potential_energy(self, atoms) -> float:
         """Adjust the energy of the system by adding PLUMED bias"""
@@ -1357,7 +1348,7 @@ def plumed_setup(
         interval: (int) Interval between saving the geometry
     """
 
-    setup = []
+    setup: list[str] = []
 
     # Converting PLUMED units to ASE units
     time_conversion = 1 / (ase_units.fs * 1000)
