@@ -1,6 +1,8 @@
+from __future__ import annotations
 import os
-import ase
 import shutil
+import typing as t
+
 import numpy as np
 from time import time
 from subprocess import Popen, PIPE
@@ -8,6 +10,9 @@ from mlptrain.potentials._base import MLPotential
 from mlptrain.config import Config
 from mlptrain.log import logger
 from mlptrain.utils import unique_name
+
+if t.TYPE_CHECKING:
+    from ase.calculators.calculator import Calculator as ASECalculator
 
 
 class NequIP(MLPotential):
@@ -31,7 +36,7 @@ class NequIP(MLPotential):
         return None
 
     @property
-    def ase_calculator(self) -> 'ase.calculators.calculator.Calculator':
+    def ase_calculator(self) -> 'ASECalculator':
         """
         Instance of an ASE calculator for a NequIP potential
 

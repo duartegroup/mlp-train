@@ -7,7 +7,7 @@ import shutil
 import numpy as np
 import autode as ade
 from copy import deepcopy
-from typing import Optional, Sequence, List, Union
+from typing import TYPE_CHECKING, Optional, Sequence, List, Union
 from numpy.random import RandomState
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
@@ -28,10 +28,14 @@ from ase.md.verlet import VelocityVerlet
 from ase.io import read
 from ase import units as ase_units
 
+if TYPE_CHECKING:
+    from ase.io.trajectory import Trajectory as ASETrajectory
+    from mlptrain.potentials._base import MLPotential
+
 
 def run_mlp_md(
     configuration: 'mlptrain.Configuration',
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     temp: float,
     dt: float,
     interval: int,
@@ -359,7 +363,7 @@ def _attach_calculator_and_constraints(
 
 def _run_dynamics(
     ase_atoms: 'ase.atoms.Atoms',
-    ase_traj: 'ase.io.trajectory.Trajectory',
+    ase_traj: ASETrajectory,
     traj_name: str,
     interval: int,
     temp: float,
@@ -422,7 +426,7 @@ def _run_dynamics(
 
 
 def _save_trajectory(
-    ase_traj: 'ase.io.trajectory.Trajectory', traj_name: str, **kwargs
+    ase_traj: ASETrajectory, traj_name: str, **kwargs
 ) -> None:
     """
     Save the trajectory with a unique name based on the current simulation
@@ -438,6 +442,11 @@ def _save_trajectory(
         if key in kwargs:
             specified_key = key
             break
+
+    if specified_key is None:
+        raise ValueError(
+            'Could not determine time units for saving the trajectory'
+        )
 
     traj_basename = traj_name[:-5]
     time_units = specified_key.split('_')[-1]
@@ -608,7 +617,7 @@ def _initialise_traj(
     restart: bool,
     traj_name: str,
     remove_last: bool = True,
-) -> 'ase.io.trajectory.Trajectory':
+) -> ASETrajectory:
     """Initialise ASE trajectory object"""
 
     if not restart:

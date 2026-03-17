@@ -6,7 +6,7 @@ import shutil
 import numpy as np
 import multiprocessing as mp
 from copy import deepcopy
-from typing import Optional, Union, List
+from typing import TYPE_CHECKING, Optional, Union, List
 from subprocess import Popen
 from ase import units as ase_units
 from ase.io import write as ase_write
@@ -20,9 +20,12 @@ from mlptrain.configurations import ConfigurationSet
 from mlptrain.log import logger
 from mlptrain.box import Box
 
+if TYPE_CHECKING:
+    from mlptrain.potentials._base import MLPotential
+
 
 def train(
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     method_name: str,
     selection_method: SelectionMethod = AbsDiffE(),
     max_active_time: float = 1000,
@@ -269,9 +272,9 @@ def train(
 
 
 def _add_active_configs(
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     init_config: 'mlptrain.Configuration',
-    selection_method: 'mlptrain.training.selection.SelectionMethod',
+    selection_method: SelectionMethod,
     n_configs: int = 10,
     **kwargs,
 ) -> None:
@@ -366,8 +369,8 @@ def _add_active_configs(
 
 def _gen_active_config(
     config: 'mlptrain.Configuration',
-    mlp: 'mlptrain.potentials._base.MLPotential',
-    selector: 'mlptrain.training.selection.SelectionMethod',
+    mlp: 'MLPotential',
+    selector: SelectionMethod,
     n_cores: int,
     max_time: float,
     method_name: str,
@@ -563,7 +566,7 @@ def _gen_active_config(
 
 
 def _set_init_training_configs(
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: 'MLPotential',
     init_configs: 'mlptrain.ConfigurationSet',
     method_name: str,
 ) -> None:
@@ -588,7 +591,7 @@ def _set_init_training_configs(
 
 
 def _gen_and_set_init_training_configs(
-    mlp: 'mlptrain.potentials._base.MLPotential', method_name: str, num: int
+    mlp: MLPotential, method_name: str, num: int
 ) -> None:
     """
     Generate a set of initial configurations for a system, if init_configs
@@ -658,7 +661,7 @@ def _save_ase_traj_as_xyz(
 
 
 def _initialise_restart(
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     restart_iter: int,
     inherit_metad_bias: bool,
 ) -> None:
@@ -745,7 +748,7 @@ def _attach_plumed_coords_to_init_configs(
 
 def _update_init_config(
     init_config: 'mlptrain.Configuration',
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     fix_init_config: bool,
     bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
     inherit_metad_bias: bool,

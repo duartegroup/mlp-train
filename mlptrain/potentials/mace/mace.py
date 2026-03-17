@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import mlptrain as mlt
 import argparse
 from mlptrain.config import Config
@@ -9,8 +11,7 @@ import numpy as np
 import logging
 from mlptrain.log import logger
 import autode as ade
-from typing import Optional
-import ase
+from typing import TYPE_CHECKING, Optional
 
 try:
     from mace.calculators import MACECalculator
@@ -20,6 +21,9 @@ try:
     import gc
 except ModuleNotFoundError:
     pass
+
+if TYPE_CHECKING:
+    from ase.calculators.calculator import Calculator as ASECalculator
 
 
 class MACE(MLPotential):
@@ -235,7 +239,7 @@ class MACE(MLPotential):
         return args
 
     @property
-    def ase_calculator(self) -> 'ase.calculators.calculator.Calculator':
+    def ase_calculator(self) -> ASECalculator:
         """ASE calculator for MACE potential"""
 
         calculator = MACECalculator(

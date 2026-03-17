@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import mlptrain
 import os
 import re
 import numpy as np
 from time import time
 from multiprocessing import Pool
-from typing import Optional, List, Union
+from typing import TYPE_CHECKING, Optional, List, Union
 from autode.atoms import elements, Atom
 from mlptrain.config import Config
 from mlptrain.log import logger
@@ -12,6 +14,9 @@ from mlptrain.forces import Forces
 from mlptrain.energy import Energy
 from mlptrain.configurations.configuration import Configuration
 from mlptrain.box import Box
+
+if TYPE_CHECKING:
+    from mlptrain.potentials._base import MLPotential
 
 
 class ConfigurationSet(list):
@@ -235,9 +240,7 @@ class ConfigurationSet(list):
 
         return super().append(value)
 
-    def compare(
-        self, *args: Union['mlptrain.potentials.MLPotential', str]
-    ) -> None:
+    def compare(self, *args: MLPotential | str) -> None:
         """
         Compare methods e.g. a MLP to a ground truth reference method over
         these set of configurations. Will generate plots of total energies

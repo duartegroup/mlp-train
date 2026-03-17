@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import os
 from copy import deepcopy
-from typing import List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, List, Optional, Sequence, Union
 
 import ase
+import ase.units
 
 import mlptrain as mlt
 from mlptrain.log import logger
@@ -26,11 +29,15 @@ except ImportError:
     _HAS_OPENMM = False
 
 try:
-    from openmmml import MLPotential
+    import openmmml
 
     _HAS_OPENMM_ML = True
 except ImportError:
     _HAS_OPENMM_ML = False
+
+if TYPE_CHECKING:
+    from ase.io.trajectory import Trajectory as ASETrajectory
+    from mlptrain.potentials._base import MLPotential
 
 # Conversion factor from kJ/mol to eV
 _KJ_PER_MOL_TO_EV = (ase.units.kJ / ase.units.mol) / ase.units.eV
@@ -38,7 +45,7 @@ _KJ_PER_MOL_TO_EV = (ase.units.kJ / ase.units.mol) / ase.units.eV
 
 def run_mlp_md_openmm(
     configuration: 'mlt.Configuration',
-    mlp: 'mlt.potentials._base.MLPotential',
+    mlp: MLPotential,
     temp: float,
     dt: float,
     interval: int,
@@ -217,7 +224,7 @@ def run_mlp_md_openmm(
 
 def _run_mlp_md_openmm(
     configuration: 'mlt.Configuration',
-    mlp: 'mlt.potentials._base.MLPotential',
+    mlp: MLPotential,
     temp: float,
     dt: float,
     interval: int,
@@ -255,16 +262,13 @@ def _run_mlp_md_openmm(
     # Create the OpenMM topology
     topology = _create_openmm_topology(ase_atoms)
 
-    # Get the OpenMM platform
-    platform = _get_openmm_platform(platform)
-
     # Create the OpenMM simulation object
     simulation = _create_openmm_simulation(
         mlp=mlp,
         topology=topology,
         temp=temp,
         dt=dt,
-        platform=platform,
+        platform=_get_openmm_platform(platform),
     )
 
     # Set the initial positions and velocities
@@ -396,7 +400,7 @@ def _get_openmm_platform(platform: Optional[str] = None) -> 'mm.Platform':
 
 
 def _create_openmm_simulation(
-    mlp: 'mlt.potentials._base.MLPotential',
+    mlp: MLPotential,
     topology: 'app.Topology',
     temp: float,
     dt: float,
@@ -406,7 +410,7 @@ def _create_openmm_simulation(
     logger.info('Creating the OpenMM simulation object')
 
     # Use the mace model with openmm-ml and make sure the total energy is used.
-    potential = MLPotential('mace', modelPath=mlp.filename)
+    potential = openmmml.MLPotential('mace', modelPath=mlp.filename)
     system = potential.createSystem(topology, returnEnergyType='energy')
 
     # Use a Langevin integrator if temp>0 (NVT ensemble).
@@ -481,7 +485,7 @@ def _run_dynamics(
     simulation: 'app.Simulation',
     simulation_name: str,
     ase_atoms: 'ase.Atoms',
-    ase_traj: 'ase.io.trajectory.Trajectory',
+    ase_traj: ASETrajectory,
     traj_name: str,
     dt: float,
     interval: int,

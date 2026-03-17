@@ -12,7 +12,7 @@ class _DeltaLossFunction(LossFunction, ABC):
     def __call__(
         self,
         configurations: 'mlptrain.ConfigurationSet',
-        mlp: 'mlptrain.potentials.MLPotential',
+        mlp: 'mlptrain.potentials._base.MLPotential',
         **kwargs,
     ) -> LossValue:
         """Calculate the value of the loss

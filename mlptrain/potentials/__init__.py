@@ -3,4 +3,7 @@ from mlptrain.potentials.ace.ace import ACE
 from mlptrain.potentials.nequip._nequip import NequIP
 from mlptrain.potentials.mace.mace import MACE
 
-__all__ = ['GAP', 'ACE', 'NequIP', 'MACE']
+# Useful for typing
+from ._base import MLPotential
+
+__all__ = ['GAP', 'ACE', 'NequIP', 'MACE', 'MLPotential']

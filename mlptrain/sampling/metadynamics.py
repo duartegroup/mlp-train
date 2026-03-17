@@ -39,7 +39,9 @@ from mlptrain.utils import (
 )
 
 if TYPE_CHECKING:
+    import ase.io
     from mlptrain.sampling.plumed import _PlumedCV
+    from mlptrain.potentials._base import MLPotential
 
 
 class Metadynamics:
@@ -102,7 +104,7 @@ class Metadynamics:
         configurations: Union[
             'mlptrain.Configuration', 'mlptrain.ConfigurationSet'
         ],
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: MLPotential,
         temp: float = 300,
         interval: int = 10,
         dt: float = 1,
@@ -212,7 +214,7 @@ class Metadynamics:
     def _get_width_for_single(
         self,
         configuration: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: MLPotential,
         temp: float,
         dt: float,
         interval: int,
@@ -259,7 +261,7 @@ class Metadynamics:
     def run_metadynamics(
         self,
         configuration: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
@@ -523,7 +525,7 @@ class Metadynamics:
     def _run_single_metad(
         self,
         configuration: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
@@ -625,7 +627,7 @@ class Metadynamics:
     def _set_previous_parameters(
         self,
         configuration: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: MLPotential,
         temp: float,
         dt: float,
         interval: int,
@@ -745,7 +747,7 @@ class Metadynamics:
     def try_multiple_biasfactors(
         self,
         configuration: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
@@ -912,7 +914,7 @@ class Metadynamics:
     def _try_single_biasfactor(
         self,
         configuration: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
