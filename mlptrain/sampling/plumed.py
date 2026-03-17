@@ -598,7 +598,7 @@ class PlumedBias(ASEConstraint):
         format
         """
 
-        if issubclass(cvs.__class__, _PlumedCV):
+        if isinstance(cvs, _PlumedCV):
             return (cvs,)
 
         elif len(cvs) == 0:
@@ -606,7 +606,7 @@ class PlumedBias(ASEConstraint):
                 'The provided collective variable sequence is empty'
             )
 
-        elif not all(issubclass(cv.__class__, _PlumedCV) for cv in cvs):
+        elif not all(isinstance(cv, _PlumedCV) for cv in cvs):
             raise TypeError(f'Supplied CVs are in incorrect format "{cvs}"')
 
         return tuple(cvs)
