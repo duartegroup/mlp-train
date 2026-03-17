@@ -489,7 +489,7 @@ class PlumedBias(ASEConstraint):
         pace: int = 20,
         height: Optional[float] = None,
         biasfactor: Optional[float] = None,
-        cvs: Optional[_PlumedCV] = None,
+        cvs: Sequence[_PlumedCV] | _PlumedCV | None = None,
         grid_min: Union[Sequence[float], float, None] = None,
         grid_max: Union[Sequence[float], float, None] = None,
         grid_bin: Union[Sequence[float], float, None] = None,
