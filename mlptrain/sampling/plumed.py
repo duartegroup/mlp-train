@@ -108,13 +108,13 @@ class PlumedBias(ASEConstraint):
         for param_name in ['min', 'max', 'bin', 'wstride', 'wfile', 'rfile']:
             setattr(self, f'metad_grid_{param_name}', None)
 
+        self.cvs: tuple['_PlumedCV'] = ()
+
         if filename is not None:
-            self.cvs = None
             self._from_file(filename)
 
         elif cvs is not None:
-            cvs = self._check_cvs_format(cvs)
-            self.cvs = cvs
+            self.cvs = self._check_cvs_format(cvs)
 
         else:
             raise TypeError(
@@ -591,31 +591,25 @@ class PlumedBias(ASEConstraint):
 
     @staticmethod
     def _check_cvs_format(
-        cvs: list['_PlumedCV'] | tuple['_PlumedCV', ...] | '_PlumedCV',
-    ) -> List['_PlumedCV']:
+        cvs: Sequence['_PlumedCV'] | '_PlumedCV',
+    ) -> tuple['_PlumedCV', ...]:
         """
         Check if the supplied collective variables are in the correct
         format
         """
 
-        # e.g. cvs == [cv1, cv2]; (cv1, cv2)
-        if isinstance(cvs, list) or isinstance(cvs, tuple):
-            if len(cvs) == 0:
-                raise TypeError(
-                    'The provided collective variable sequence is empty'
-                )
+        if issubclass(cvs.__class__, _PlumedCV):
+            return (cvs,)
 
-            elif not all(issubclass(cv.__class__, _PlumedCV) for cv in cvs):
-                raise TypeError('Supplied CVs are in incorrect format')
+        elif len(cvs) == 0:
+            raise TypeError(
+                'The provided collective variable sequence is empty'
+            )
 
-            return list(cvs)
+        elif not all(issubclass(cv.__class__, _PlumedCV) for cv in cvs):
+            raise TypeError(f'Supplied CVs are in incorrect format "{cvs}"')
 
-        # e.g. cvs == cv1
-        elif issubclass(cvs.__class__, _PlumedCV):
-            return [cvs]
-
-        else:
-            raise TypeError('Supplied CVs are in incorrect format')
+        return tuple(cvs)
 
     def adjust_potential_energy(self, atoms) -> float:
         """Adjust the energy of the system by adding PLUMED bias"""
