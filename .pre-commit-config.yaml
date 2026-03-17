@@ -30,7 +30,6 @@ repos:
     - id: ty
       name: ty
       entry: ty check
-      args: [--ignore, all, --error, invalid-type-form, --error, invalid-return-type, --error, invalid-parameter-default]
       language: python
       types: [python]
       require_serial: true
