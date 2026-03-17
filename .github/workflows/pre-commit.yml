@@ -2,16 +2,19 @@ name: "Lint"
 
 on:
   push:
+    branches: [main]
   pull_request:
+
 
 env:
   FORCE_COLOR: 1
 
 jobs:
   pre-commit:
-    env:
-      SKIP: 'no-commit-to-branch'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
 
     steps:
       - name: Checkout repository
@@ -27,3 +30,5 @@ jobs:
 
       - name: Run pre-commit
         run: pre-commit run --all-files || ( git status --short ; git diff ; exit 1 )
+        env:
+          SKIP: 'no-commit-to-branch'
