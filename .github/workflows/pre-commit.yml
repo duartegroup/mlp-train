@@ -20,6 +20,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      # We need to install the dependencies for the `ty` type checker
+      # For now, we install the mace environment, as that's the most important one
       - uses: mamba-org/setup-micromamba@v2
         with:
           # the create command looks like this:
