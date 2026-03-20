@@ -3,7 +3,7 @@ default_language_version:
     python: python3
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: no-commit-to-branch
       - id: check-executables-have-shebangs
@@ -22,3 +22,15 @@ repos:
       - id: ruff
         args: [--show-source, --fix]
       - id: ruff-format
+
+  - repo: local
+
+    hooks:
+
+    - id: ty
+      name: ty
+      entry: ty check
+      language: python
+      types: [python]
+      require_serial: true
+      pass_filenames: false
