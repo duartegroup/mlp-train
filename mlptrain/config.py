@@ -84,6 +84,7 @@ class _ConfigClass:
         'dtype': 'float32',
         'pt_train': None,
         'cueq': False,
+        'extra_mace_params': {},
     }
 
     # --------------------- Internal properties ---------------------------
