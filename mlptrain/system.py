@@ -174,7 +174,7 @@ class System:
     def mult(self) -> int:
         """Get the total spin multiplicity on the system"""
         n_unpaired = sum((mol.mult - 1) / 2 for mol in self.molecules)
-        return 2 * n_unpaired + 1
+        return int(2 * n_unpaired + 1)
 
     @property
     def atoms(self) -> List['autode.atoms.Atom']:

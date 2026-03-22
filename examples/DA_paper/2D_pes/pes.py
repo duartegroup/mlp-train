@@ -9,7 +9,7 @@ from ase.constraints import Hookean
 from ase.geometry import find_mic
 from mlptrain.log import logger
 from mlptrain.config import Config
-from mlptrain.md import _convert_ase_traj
+from mlptrain.sampling.md import _convert_ase_traj
 import numpy as np
 from copy import deepcopy
 

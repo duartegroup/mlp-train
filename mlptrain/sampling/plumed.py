@@ -77,8 +77,8 @@ class PlumedBias(ASEConstraint):
 
     def __init__(
         self,
-        cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'] = None,
-        filename: str = None,
+        cvs: Sequence[_PlumedCV] | _PlumedCV | None = None,
+        filename: str | None = None,
     ):
         """
         Class for storing collective variables and parameters used in biased
@@ -108,13 +108,13 @@ class PlumedBias(ASEConstraint):
         for param_name in ['min', 'max', 'bin', 'wstride', 'wfile', 'rfile']:
             setattr(self, f'metad_grid_{param_name}', None)
 
+        self.cvs: tuple['_PlumedCV', ...] = ()
+
         if filename is not None:
-            self.cvs = None
             self._from_file(filename)
 
         elif cvs is not None:
-            cvs = self._check_cvs_format(cvs)
-            self.cvs = cvs
+            self.cvs = self._check_cvs_format(cvs)
 
         else:
             raise TypeError(
@@ -214,10 +214,10 @@ class PlumedBias(ASEConstraint):
         width: Union[Sequence[float], float],
         height: float,
         biasfactor: Optional[float] = None,
-        cvs: Optional[_PlumedCV] = None,
-        grid_min: Union[Sequence[float], float] = None,
-        grid_max: Union[Sequence[float], float] = None,
-        grid_bin: Union[Sequence[float], float] = None,
+        cvs: Sequence[_PlumedCV] | _PlumedCV | None = None,
+        grid_min: Union[Sequence[float], float, None] = None,
+        grid_max: Union[Sequence[float], float, None] = None,
+        grid_bin: Union[Sequence[float], float, None] = None,
         grid_wstride: Optional[int] = None,
         grid_wfile: Optional[str] = None,
         grid_rfile: Optional[str] = None,
@@ -316,7 +316,7 @@ class PlumedBias(ASEConstraint):
         return None
 
     def _set_metad_cvs(
-        self, cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'] = None
+        self, cvs: Union[Sequence['_PlumedCV'], '_PlumedCV', None] = None
     ) -> None:
         """
         Attach PLUMED collective variables to PlumedBias which will be used in
@@ -354,9 +354,9 @@ class PlumedBias(ASEConstraint):
 
     def _set_metad_grid_params(
         self,
-        grid_min: Union[Sequence[float], float] = None,
-        grid_max: Union[Sequence[float], float] = None,
-        grid_bin: Union[Sequence[float], float] = None,
+        grid_min: Union[Sequence[float], float, None] = None,
+        grid_max: Union[Sequence[float], float, None] = None,
+        grid_bin: Union[Sequence[float], float, None] = None,
         grid_wstride: Optional[int] = None,
         grid_wfile: Optional[str] = None,
         grid_rfile: Optional[str] = None,
@@ -489,10 +489,10 @@ class PlumedBias(ASEConstraint):
         pace: int = 20,
         height: Optional[float] = None,
         biasfactor: Optional[float] = None,
-        cvs: Optional[_PlumedCV] = None,
-        grid_min: Union[Sequence[float], float] = None,
-        grid_max: Union[Sequence[float], float] = None,
-        grid_bin: Union[Sequence[float], float] = None,
+        cvs: Sequence[_PlumedCV] | _PlumedCV | None = None,
+        grid_min: Union[Sequence[float], float, None] = None,
+        grid_max: Union[Sequence[float], float, None] = None,
+        grid_bin: Union[Sequence[float], float, None] = None,
     ) -> None:
         """
         Initialise PlumedBias for metadynamics active learning by setting the
@@ -591,34 +591,25 @@ class PlumedBias(ASEConstraint):
 
     @staticmethod
     def _check_cvs_format(
-        cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'],
-    ) -> List['_PlumedCV']:
+        cvs: Sequence['_PlumedCV'] | '_PlumedCV',
+    ) -> tuple['_PlumedCV', ...]:
         """
         Check if the supplied collective variables are in the correct
         format
         """
 
-        # e.g. cvs == [cv1, cv2]; (cv1, cv2)
-        if isinstance(cvs, list) or isinstance(cvs, tuple):
-            if len(cvs) == 0:
-                raise TypeError(
-                    'The provided collective variable ' 'sequence is empty'
-                )
+        if isinstance(cvs, _PlumedCV):
+            return (cvs,)
 
-            elif all(issubclass(cv.__class__, _PlumedCV) for cv in cvs):
-                pass
+        elif len(cvs) == 0:
+            raise TypeError(
+                'The provided collective variable sequence is empty'
+            )
 
-            else:
-                raise TypeError('Supplied CVs are in incorrect format')
+        elif not all(isinstance(cv, _PlumedCV) for cv in cvs):
+            raise TypeError(f'Supplied CVs are in incorrect format "{cvs}"')
 
-        # e.g. cvs == cv1
-        elif issubclass(cvs.__class__, _PlumedCV):
-            cvs = [cvs]
-
-        else:
-            raise TypeError('Supplied CVs are in incorrect format')
-
-        return cvs
+        return tuple(cvs)
 
     def adjust_potential_energy(self, atoms) -> float:
         """Adjust the energy of the system by adding PLUMED bias"""
@@ -644,9 +635,9 @@ class _PlumedCV:
 
     def __init__(
         self,
-        name: str = None,
-        atom_groups: Sequence = None,
-        filename: str = None,
+        name: str | None = None,
+        atom_groups: Sequence | None = None,
+        filename: str | None = None,
         component: Optional[str] = None,
     ):
         """
@@ -959,7 +950,7 @@ class PlumedAverageCV(_PlumedCV):
     """Class used to initialise a PLUMED collective variable as an average
     between multiple degrees of freedom"""
 
-    def __init__(self, name: str, atom_groups: Sequence = None):
+    def __init__(self, name: str, atom_groups: Sequence | None = None):
         """
         PLUMED collective variable as an average between multiple degrees of
         freedom (distances, angles, torsions),
@@ -997,7 +988,7 @@ class PlumedDifferenceCV(_PlumedCV):
     """Class used to initialise a PLUMED collective variable as a difference
     between two degrees of freedom"""
 
-    def __init__(self, name: str, atom_groups: Sequence = None):
+    def __init__(self, name: str, atom_groups: Sequence | None = None):
         """
         PLUMED collective variable as a difference between two degrees of
         freedom (distances, angles, torsions),
@@ -1043,7 +1034,7 @@ class PlumedCNCV(_PlumedCV):
         d_ref: float = 0,
         n: int = 6,
         m: int = 12,
-        atom_groups: Sequence = None,
+        atom_groups: Sequence | None = None,
     ):
         """
         PLUMED collective variable as a coordination number (CN) between two atoms or groups of atoms
@@ -1357,7 +1348,7 @@ def plumed_setup(
         interval: (int) Interval between saving the geometry
     """
 
-    setup = []
+    setup: list[str] = []
 
     # Converting PLUMED units to ASE units
     time_conversion = 1 / (ase_units.fs * 1000)
