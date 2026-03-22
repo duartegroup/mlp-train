@@ -31,3 +31,13 @@ quote-style = "single"
 
 [tool.pytest.ini_options]
 addopts = "--cov-report term --cov-report xml"
+
+[tool.ty.terminal]
+# Error if ty emits any warning-level diagnostics.
+error-on-warning = true
+
+[tool.ty.rules]
+all = "ignore"
+invalid-type-form = "error"
+invalid-return-type = "error"
+invalid-parameter-default = "error"
