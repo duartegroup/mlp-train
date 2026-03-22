@@ -264,7 +264,7 @@ class ConfigurationSet(list):
             for arg in args:
                 # if is an mlp model with a 'predict' function
                 if hasattr(arg, 'predict'):
-                    arg.predict(self)
+                    arg.predict(self)  # ty:ignore[call-non-callable]
 
                 # if is a string reference to a QM calculation method
                 elif isinstance(arg, str):
@@ -695,7 +695,7 @@ class ConfigurationSet(list):
     def __add__(
         self,
         other: Union['mlptrain.Configuration', 'mlptrain.ConfigurationSet'],
-    ):
+    ):  # ty:ignore[invalid-method-override]
         """Add another configuration or set of configurations onto this one"""
 
         if isinstance(other, Configuration):
