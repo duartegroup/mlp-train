@@ -3,6 +3,7 @@ import argparse
 from mlptrain.config import Config
 from mlptrain.potentials._base import MLPotential
 import os
+import glob
 import time
 import numpy as np
 import logging
@@ -33,15 +34,18 @@ class MACE(MLPotential):
 
         -----------------------------------------------------------------------
         Arguments:
-
             name: (str) Name of the potential, used in naming output files
 
-            system: (mlptrain.System) Object defining the system without
-                                      specifying the coordinates
+            system: (mlptrain.System) Object defining the system without specifying the coordinates
 
-            foundation: (str) Name of the foundation model used in fine-tunning
-                         like "medium_off" for MACE-OFF(M), "medium" for MACE-MP-0(M).
-                         Here, only naive fine-tuning is supported.
+            foundation: (str) Either the shortcut of the foundation model used in fine-tunning
+                         like "medium_off" for MACE-OFF(M), "medium" for MACE-MP-0(M), or the path to the foundation model.
+
+                         Here, naive fine-tuning is default without any other argument specified.
+
+                         To initiate multi-head fine-tuning, specify mace_params['pt_train']=/path/to/replay/dataset
+                         For MACE-MP models, the replay dataset is provided by MACE through setting mace_params['pt_train']='mp'
+                         Some Replay datasets could be accessed here: https://github.com/ACEsuit/mace-foundations/releases
                          More details on https://github.com/ACEsuit/mace/tree/main?tab=readme-ov-file#pretrained-foundation-models
         """
         super().__init__(name=name, system=system)
@@ -87,14 +91,15 @@ class MACE(MLPotential):
     @property
     def valid_fraction(self) -> float:
         """Fraction of the whole dataset to be used as validation set"""
-        _min_dataset = -(1 // -Config.mace_params['valid_fraction'])
+        valid_fraction = float(Config.mace_params['valid_fraction'])
+        _min_dataset = -(1 // -valid_fraction)
 
         if self.n_train == 1:
             raise ValueError(
-                'MACE training requires at least ' '2 configurations'
+                'MACE training requires at least 2 configurations'
             )
         elif self.n_train >= _min_dataset:
-            return Config.mace_params['valid_fraction']
+            return valid_fraction
         else:
             # Valid fraction which sets at least 1 datapoint for validation
             _unrounded_valid_fraction = 1 / self.n_train
@@ -113,7 +118,13 @@ class MACE(MLPotential):
                 )
             )
         else:
-            return Config.mace_params['batch_size']
+            batch_size = Config.mace_params['batch_size']
+            if not isinstance(int, batch_size):
+                raise ValueError(
+                    f"Invalid parameter batch_size '{batch_size}'"
+                )
+            else:
+                return int(batch_size)
 
     @property
     def args(self) -> 'argparse.Namespace':
@@ -189,6 +200,27 @@ class MACE(MLPotential):
         if self.foundation is not None:
             args_list.append('--foundation_model')
             args_list.append(f'{self.foundation}')
+            pt_train = Config.mace_params['pt_train']
+
+            if pt_train is not None:
+                if not isinstance(pt_train, str) or not pt_train.strip():
+                    raise ValueError(
+                        'pt_train must be a non-empty path string.'
+                    )
+                if pt_train != 'mp' and not os.path.exists(pt_train):
+                    raise FileNotFoundError(
+                        f'pt_train path does not exist: {pt_train}'
+                    )
+
+                args_list.append(f'--pt_train_file={pt_train}')
+                args_list.append('--multihead=True')
+                logger.info('Multihead fine-tuning launched')
+
+            else:
+                args_list.append('--multihead=False')
+                logger.info(
+                    'Naive fine-tuning launched since no pt_train provided.'
+                )
 
         if Config.mace_params['save_cpu']:
             args_list.append('--save_cpu')
@@ -250,5 +282,8 @@ class MACE(MLPotential):
 
         gc.collect()
         torch.cuda.empty_cache()
+
+        for file in glob.glob('./checkpoints/*.pt'):
+            os.remove(file)
 
         return None

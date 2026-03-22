@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import mlptrain
 import os
 import shutil
@@ -39,7 +41,7 @@ def train(
     restart_iter: Optional[int] = None,
     inherit_metad_bias: bool = False,
     constraints: Optional[List] = None,
-    bias: Optional = None,
+    bias: mlptrain.Bias | mlptrain.PlumedBias | None = None,
     md_program: str = 'ASE',
     pbc: bool = False,
     box_size: Optional[list] = None,
@@ -744,7 +746,6 @@ def _gen_and_set_init_training_configs(
         keep_output_files=keep_output_files,
     )
     mlp.training_data += init_configs
-    return init_configs
 
 
 def _save_ase_traj_as_xyz(
@@ -918,7 +919,7 @@ def _check_bias_parameters(
     return None
 
 
-def _check_bias_for_metad_bias_inheritance(bias: Optional) -> None:
+def _check_bias_for_metad_bias_inheritance(bias: PlumedBias) -> None:
     """
     Check if the bias is suitable to inherit metadynamics bias during
     active learning
@@ -926,7 +927,7 @@ def _check_bias_for_metad_bias_inheritance(bias: Optional) -> None:
 
     if not isinstance(bias, PlumedBias):
         raise TypeError(
-            'Metadynamics bias can only be inherited when ' 'using PlumedBias'
+            'Metadynamics bias can only be inherited when using PlumedBias'
         )
 
     if bias.from_file:
@@ -939,8 +940,8 @@ def _check_bias_for_metad_bias_inheritance(bias: Optional) -> None:
 
 
 def _remove_bias_potential(
-    bias: Optional,
-) -> Union['mlptrain.sampling.PlumedBias', None]:
+    bias: mlptrain.Bias | PlumedBias | None = None,
+) -> PlumedBias | None:
     """
     Remove bias potential from a bias, except LOWER_WALLS and UPPER_WALLS
     when the bias is PlumedBias

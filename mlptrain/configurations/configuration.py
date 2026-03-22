@@ -117,11 +117,11 @@ class Configuration(AtomCollection):
 
     def solvate(
         self,
-        box_size: float = None,
-        buffer_distance: float = 10,
-        solvent_name: str = None,
-        solvent_density: float = None,
-        solvent_molecule: ade.Molecule = None,
+        box_size: float | None = None,
+        buffer_distance: float = 10.0,
+        solvent_name: str | None = None,
+        solvent_density: float | None = None,
+        solvent_molecule: ade.Molecule | None = None,
         contact_threshold: float = 1.8,
         random_seed: int = 42,
     ) -> None:
@@ -600,7 +600,7 @@ class Configuration(AtomCollection):
             return None
 
         elif hasattr(method, 'predict'):
-            method.predict(self)
+            method.predict(self)  # ty:ignore[call-non-callable]
 
         else:
             raise ValueError(
@@ -621,7 +621,7 @@ class Configuration(AtomCollection):
 
         if eq and self.n_atoms > 0:
             rmsd = np.linalg.norm(self.coordinates - other.coordinates)
-            return eq and rmsd < 1e-10
+            return bool(rmsd < 1e-10)
         return eq
 
     def copy(self) -> 'Configuration':
