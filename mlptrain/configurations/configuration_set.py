@@ -697,8 +697,8 @@ class ConfigurationSet(list):
 
     def __add__(
         self,
-        other: Union['mlptrain.Configuration', 'mlptrain.ConfigurationSet'],
-    ):  # ty:ignore[invalid-method-override]
+        other: 'Configuration | ConfigurationSet',
+    ) -> 'ConfigurationSet':  # ty:ignore[invalid-method-override]
         """Add another configuration or set of configurations onto this one"""
 
         if isinstance(other, Configuration):
