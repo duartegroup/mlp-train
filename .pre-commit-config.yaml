@@ -11,7 +11,16 @@ repos:
         exclude: examples/WTMetaD_paper/r2/free_energy/wtmetad_ib/accumulated_bias/bias_after_iter_15.dat
       - id: check-added-large-files
         args: ['--maxkb=500', '--enforce-all']
-        exclude: 'tests/data/data.zip|docs/*'
+        exclude: >-
+          (?x)^(
+            tests/data/data.zip|
+            docs/images/metadynamics/fes_convergence_diff.png|
+            docs/images/metadynamics/metad_free_energy_ch3cl.png|
+            docs/images/downhill/endo_da_mace_orca.png|
+            docs/images/downhill/fitted_data.png|
+            docs/images/downhill/umbrella_free_energy.png|
+            docs/images/dev/AL_scheme.png|
+          )$
       - id: check-yaml
       - id: check-toml
 
