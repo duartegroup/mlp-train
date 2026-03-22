@@ -3,6 +3,7 @@ import argparse
 from mlptrain.config import Config
 from mlptrain.potentials._base import MLPotential
 import os
+import glob
 import time
 import numpy as np
 import logging
@@ -90,14 +91,15 @@ class MACE(MLPotential):
     @property
     def valid_fraction(self) -> float:
         """Fraction of the whole dataset to be used as validation set"""
-        _min_dataset = -(1 // -Config.mace_params['valid_fraction'])
+        valid_fraction = float(Config.mace_params['valid_fraction'])
+        _min_dataset = -(1 // -valid_fraction)
 
         if self.n_train == 1:
             raise ValueError(
-                'MACE training requires at least ' '2 configurations'
+                'MACE training requires at least 2 configurations'
             )
         elif self.n_train >= _min_dataset:
-            return Config.mace_params['valid_fraction']
+            return valid_fraction
         else:
             # Valid fraction which sets at least 1 datapoint for validation
             _unrounded_valid_fraction = 1 / self.n_train
@@ -116,7 +118,13 @@ class MACE(MLPotential):
                 )
             )
         else:
-            return Config.mace_params['batch_size']
+            batch_size = Config.mace_params['batch_size']
+            if not isinstance(int, batch_size):
+                raise ValueError(
+                    f"Invalid parameter batch_size '{batch_size}'"
+                )
+            else:
+                return int(batch_size)
 
     @property
     def args(self) -> 'argparse.Namespace':
@@ -274,5 +282,8 @@ class MACE(MLPotential):
 
         gc.collect()
         torch.cuda.empty_cache()
+
+        for file in glob.glob('./checkpoints/*.pt'):
+            os.remove(file)
 
         return None
