@@ -67,7 +67,7 @@ def from_ase_to_autode(atoms):
     return autode_atoms
 
 
-@mlt.utils.work_in_tmp_dir(copied_exts=['.xml', '.json'])
+@mlt.utils.work_in_tmp_dir(copied_substrings=['.xml', '.json'])
 def md_with_file(
     configuration, mlp, temp, dt, interval, init_temp=None, **kwargs
 ):
