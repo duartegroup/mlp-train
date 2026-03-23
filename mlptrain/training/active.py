@@ -131,7 +131,8 @@ def train(
                             a previous iteration to the next during active
                             learning
 
-        use_mcfile: (bool) If True, PLUMED driver needs to access a mass and charge file (mcfile), eg. if a centre of mass is computed as a CV
+        use_mcfile: (bool) If True, PLUMED driver needs to access a mass and charge
+                        file (mcfile), eg. if a centre of mass is computed as a CV
 
         constraints: (List) List of ASE contraints to use in the dynamics
                             during active learning
