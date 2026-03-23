@@ -88,7 +88,7 @@ class ACE(MLPotential):
         """ASE calculator for this potential"""
 
         try:
-            import pyjulip
+            import pyjulip  # ty:ignore[unresolved-import]
 
         except ModuleNotFoundError:
             raise RuntimeError(

@@ -7,12 +7,14 @@ from ase.calculators.lj import LennardJones
 class HarmonicPotential(Calculator):
     __test__ = False
 
-    def get_potential_energy(self, atoms):
+    def get_potential_energy(
+        self, atoms
+    ):  # ty:ignore[invalid-method-override]
         r = atoms.get_distance(0, 1)
 
         return (r - 1) ** 2
 
-    def get_forces(self, atoms):
+    def get_forces(self, atoms):  # ty:ignore[invalid-method-override]
         derivative = np.zeros((len(atoms), 3))
 
         r = atoms.get_distance(0, 1)
