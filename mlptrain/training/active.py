@@ -684,7 +684,7 @@ def _initialise_restart(
 def _attach_plumed_coords_to_init_configs(
     init_configs: 'mlptrain.ConfigurationSet',
     bias: 'mlptrain.PlumedBias',
-    mcfilename: Optional[str] = None,
+    use_mcfile: bool = False,
 ) -> None:
     """
     Attach PLUMED collective variable values to the configurations in the
@@ -725,8 +725,8 @@ def _attach_plumed_coords_to_init_configs(
         'A',
     ]
 
-    if mcfilename is not None:
-        driver_command.extend(['--mc', mcfilename])
+    if use_mcfile:
+        driver_command.extend(['--mc', 'mcfile'])
 
     driver_process = Popen(driver_command)
     driver_process.wait()
