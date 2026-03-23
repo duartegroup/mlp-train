@@ -5,6 +5,7 @@ from copy import deepcopy
 from typing import TYPE_CHECKING, List, Optional, Sequence, Union
 
 import ase
+import ase.io
 import ase.units
 
 import mlptrain as mlt
@@ -36,7 +37,6 @@ except ImportError:
     _HAS_OPENMM_ML = False
 
 if TYPE_CHECKING:
-    from ase.io.trajectory import Trajectory as ASETrajectory
     from mlptrain.potentials._base import MLPotential
 
 # Conversion factor from kJ/mol to eV
@@ -485,7 +485,7 @@ def _run_dynamics(
     simulation: 'app.Simulation',
     simulation_name: str,
     ase_atoms: 'ase.Atoms',
-    ase_traj: ASETrajectory,
+    ase_traj: 'ase.io.trajectory.TrajectoryWriter',
     traj_name: str,
     dt: float,
     interval: int,

@@ -1143,7 +1143,7 @@ class Metadynamics:
         return bias, temp, dt, interval
 
     @staticmethod
-    def _save_ase_traj_as_xyz(ase_traj: 'ase.io.trajectory.Trajectory'):
+    def _save_ase_traj_as_xyz(ase_traj: 'ase.io.trajectory.TrajectoryWriter'):
         """Save ASE trajectory as .xyz file"""
 
         _mlt_configuration_set = ConfigurationSet(allow_duplicates=True)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import ase
+import ase.io
 import mlptrain
 import shutil
 import numpy as np
@@ -29,7 +30,6 @@ from ase.io import read
 from ase import units as ase_units
 
 if TYPE_CHECKING:
-    from ase.io.trajectory import Trajectory as ASETrajectory
     from mlptrain.potentials._base import MLPotential
 
 
@@ -363,7 +363,7 @@ def _attach_calculator_and_constraints(
 
 def _run_dynamics(
     ase_atoms: 'ase.atoms.Atoms',
-    ase_traj: ASETrajectory,
+    ase_traj: ase.io.trajectory.TrajectoryWriter,
     traj_name: str,
     interval: int,
     temp: float,
@@ -426,7 +426,7 @@ def _run_dynamics(
 
 
 def _save_trajectory(
-    ase_traj: ASETrajectory, traj_name: str, **kwargs
+    ase_traj: ase.io.trajectory.TrajectoryWriter, traj_name: str, **kwargs
 ) -> None:
     """
     Save the trajectory with a unique name based on the current simulation
@@ -617,7 +617,7 @@ def _initialise_traj(
     restart: bool,
     traj_name: str,
     remove_last: bool = True,
-) -> ASETrajectory:
+) -> ase.io.trajectory.TrajectoryWriter:
     """Initialise ASE trajectory object"""
 
     if not restart:
