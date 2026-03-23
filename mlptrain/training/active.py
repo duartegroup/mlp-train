@@ -251,6 +251,10 @@ def train(
             else:
                 logger.info('No AL configurations found. Skipping training')
                 continue
+        else:
+            logger.info(
+                f'{mlp.n_train-previous_n_train} AL configurations found'
+            )
 
         # If required, remove high-lying energy configurations from the data
         if max_e_threshold is not None:
