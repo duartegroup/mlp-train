@@ -40,6 +40,7 @@ def train(
     bias_start_iter: int = 0,
     restart_iter: Optional[int] = None,
     inherit_metad_bias: bool = False,
+    use_mcfile: bool = False,
     constraints: Optional[List] = None,
     bias: mlptrain.Bias | mlptrain.PlumedBias | None = None,
     md_program: str = 'ASE',
@@ -130,6 +131,8 @@ def train(
                             a previous iteration to the next during active
                             learning
 
+        use_mcfile: (bool) If True, PLUMED driver needs to access a mass and charge file (mcfile), eg. if a centre of mass is computed as a CV
+
         constraints: (List) List of ASE contraints to use in the dynamics
                             during active learning
 
@@ -190,7 +193,7 @@ def train(
 
     if isinstance(bias, PlumedBias) and not bias.from_file:
         _attach_plumed_coords_to_init_configs(
-            init_configs=mlp.training_data, bias=bias
+            init_configs=mlp.training_data, bias=bias, use_mcfile=use_mcfile
         )
 
     if mlp.requires_atomic_energies:
