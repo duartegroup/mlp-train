@@ -351,42 +351,53 @@ def orca_output_to_npz(
     err_count = 0
     for fpath in file_paths:
         if not fpath.endswith('.out'):
-            raise TypeError('Function require ORCA output file .out')
+            raise ValueError(
+                f'Invalid file {fpath}. ORCA output files should have .out suffix'
+            )
 
-        if not os.path.exists(fpath):
-            raise FileNotFoundError(f'File {fpath} was not found.')
-
-        with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
+        with open(fpath, 'r', encoding='utf-8') as f:
             lines = f.readlines()
 
+        # TODO: Make sure we're actually looking at the ORCA output file!!!
+        # If not, it should be a hard error. Look at how cclib does it.
         if not any('ORCA TERMINATED NORMALLY' in line for line in lines):
             logger.warning(
-                f'ORCA did not terminate normally for {fpath}. Skipping...'
+                f'ORCA did not terminate normally in file {fpath}. Skipping...'
             )
             err_count += 1
             continue
 
         atoms = []
 
-        print_coord = False
+        read_coord = False
 
+        charge = None
+        mult = None
         for cline in lines:
             if 'Total Charge' in cline:
-                charge = cline.split()[4]
+                charge = int(cline.split()[4])
+
+        assert (
+            charge is not None
+        ), f'Could not determine charge from output file {fpath}'
 
         for line in lines:
             if 'Multiplicity' in line:
-                mult = line.split()[-1]
+                mult = int(line.split()[-1])
+
+        assert (
+            mult is not None
+        ), f'Could not determine multiplicity from output file {fpath}'
 
         for line in lines:
             if 'CARTESIAN COORDINATES (ANGSTROEM)' in line:
                 atoms = []
-                print_coord = True
+                read_coord = True
             elif line in ['\n', '\r\n']:
-                print_coord = False
+                read_coord = False
 
             if (
-                print_coord
+                read_coord
                 and '----' not in line
                 and 'CARTESIAN COORDINATES (ANGSTROEM)' not in line
             ):
@@ -398,6 +409,8 @@ def orca_output_to_npz(
                     z=float(z),
                 )
                 atoms.append(atom)
+
+        num_atoms = len(atoms)
 
         if load_energies:
             if (
@@ -413,8 +426,6 @@ def orca_output_to_npz(
                     energy = PotentialEnergy(en_line.split()[4], units='Ha')
 
         if load_forces:
-            print_forces = False
-
             if not any(
                 ('CARTESIAN GRADIENT' in line)
                 or ('The final MP2 gradient' in line)
@@ -422,25 +433,27 @@ def orca_output_to_npz(
             ):
                 raise ValueError('Gradients not found. Check the output file.')
 
+            gradient_start = [
+                'CARTESIAN GRADIENT',
+                'The final MP2 gradient',
+            ]
+
+            gradient_ends = [
+                'Difference to translation invariance',
+                'Norm of the Cartesian gradient',
+                'NORM OF THE MP2 GRADIENT:',
+            ]
+
+            gradients = []
+            read_forces = False
+
             for line in lines:
-                gradient_start = [
-                    'CARTESIAN GRADIENT',
-                    'The final MP2 gradient',
-                ]
-
-                gradient_ends = [
-                    'Difference to translation invariance',
-                    'Norm of the Cartesian gradient',
-                    'NORM OF THE MP2 GRADIENT:',
-                ]
-
                 if any(substring in line for substring in gradient_start):
-                    gradients = []
-                    print_forces = True
+                    read_forces = True
                 elif any(substring in line for substring in gradient_ends):
-                    print_forces = False
+                    read_forces = False
 
-                if print_forces:
+                if read_forces:
                     if len(line.split()) <= 3:
                         continue
                     else:
@@ -449,11 +462,18 @@ def orca_output_to_npz(
                         gradients.append(
                             [float(dadx), float(dady), float(dadz)]
                         )
-                        forces = -Gradient(gradients, units='Ha a0^-1').to(
-                            'Ha Å^-1'
-                        )
+
+            assert (
+                len(gradients) == num_atoms
+            ), 'Number of gradient lines ({len(gradients)}) != number of atoms ({num_atoms})'
+            forces = -Gradient(gradients, units='Ha a0^-1').to('Ha Å^-1')
 
         # Dipole implementation provided here but currently not used - waiting for autode update
+        if load_dipole:
+            raise NotImplementedError(
+                'Loading dipole moments currently not implemented'
+            )
+
         # if load_dipole:
         #    for d_line in reversed(lines):
         #        if 'Total Dipole Moment' in d_line:
@@ -463,8 +483,10 @@ def orca_output_to_npz(
         config = mlt.Configuration(atoms=atoms, charge=charge, mult=mult)
 
         #   config.dipole.true = dipole.to()
-        config.energy.true = energy.to('eV')
-        config.forces.true = forces.to('eV Å^-1')
+        if load_energies:
+            config.energy.true = energy.to('eV')
+        if load_forces:
+            config.forces.true = forces.to('eV Å^-1')
 
         dataset.append(config)
 
@@ -476,7 +498,7 @@ def orca_output_to_npz(
     logger.info(
         f'Saving {len(dataset)} configurations to npz file: {out_fpath}.npz'
     )
-    dataset.save(f'{out_fpath}..npz')
+    dataset.save(f'{out_fpath}.npz')
 
     if save_xyz:
         logger.info(
