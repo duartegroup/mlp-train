@@ -314,26 +314,19 @@ def convert_ase_energy(
     return energy_array
 
 
-def orca_output_to_npz(
+def load_orca_output_files(
     file_paths: List[str],
-    out_name: str,
-    out_dir: str = '.',
     load_energies: bool = True,
     load_forces: bool = True,
     load_dipole: bool = False,
-    save_xyz: bool = True,
-) -> None:
+) -> mlt.ConfigurationSet:
     """
-    Generate npz file from existing outputs of orca calculations.
+    Generate ConfigurationSet out of existing orca calculation output files.
 
     -----------------------------------------------------------
     Arguments:
 
-    file_paths: (List[str]) List of orca .out file paths to save in npz format.
-
-    out_name: (str) Output file name without file extension.
-
-    out_dir: (str) Output directory.
+    file_paths: (List[str]) List of orca .out file paths.
 
     load_energies: (bool) If True, load energies from the files.
 
@@ -341,13 +334,10 @@ def orca_output_to_npz(
 
     # load_dipole : (bool) If True, load dipole moments form the files.
     # NOTE: (Dipole will be implement after autode modification)
-
-    save_xyz: (bool) If True database will be saved as extxyz.
     """
 
     dataset = mlt.ConfigurationSet()
 
-    logger.info(f'Processing {len(file_paths)} ORCA .out files')
     err_count = 0
     for fpath in file_paths:
         if not fpath.endswith('.out'):
@@ -491,17 +481,6 @@ def orca_output_to_npz(
         dataset.append(config)
 
     logger.info(
-        f'Successfully processed {len(dataset)} configs with {err_count} errors'
+        f'Successfully processed {len(dataset)} configs. {err_count} ORCA files had errors'
     )
-
-    out_fpath = f'{out_dir}/{out_name}'
-    logger.info(
-        f'Saving {len(dataset)} configurations to npz file: {out_fpath}.npz'
-    )
-    dataset.save(f'{out_fpath}.npz')
-
-    if save_xyz:
-        logger.info(
-            f'Saving {len(dataset)} configs to xyz file: {out_fpath}.xyz'
-        )
-        dataset.save_xyz(f'{out_fpath}.xyz', true=True)
+    return dataset
