@@ -1,16 +1,20 @@
 import os
 import re
 import shutil
+from typing import TYPE_CHECKING
+
 import numpy as np
 import mlptrain as mlt
 from mlptrain.log import logger
-from mlptrain.configurations import ConfigurationSet
 import autode as ade
 from tempfile import mkdtemp
 from functools import wraps
 from typing import Optional, List, Sequence, Union, overload
 from ase import units as ase_units
 from autode.values import PotentialEnergy, Gradient
+
+if TYPE_CHECKING:
+    from mlptrain import ConfigurationSet
 
 
 def work_in_tmp_dir(
@@ -320,7 +324,7 @@ def load_orca_output_files(
     load_energies: bool = True,
     load_forces: bool = True,
     load_dipole: bool = False,
-) -> ConfigurationSet:
+) -> 'ConfigurationSet':
     """
     Generate ConfigurationSet out of existing orca calculation output files.
 
@@ -337,7 +341,7 @@ def load_orca_output_files(
     # NOTE: (Dipole will be implement after autode modification)
     """
 
-    dataset = ConfigurationSet()
+    dataset = mlt.ConfigurationSet()
 
     err_count = 0
     for fpath in file_paths:
