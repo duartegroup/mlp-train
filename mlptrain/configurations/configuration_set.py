@@ -325,6 +325,66 @@ class ConfigurationSet(list):
             )
         return None
 
+    # TODO: Add parameter whether to skip unfinished output files
+    @classmethod
+    def from_orca_file(
+        cls,
+        file_paths: list[str],
+        load_energies: bool = True,
+        load_forces: bool = True,
+        load_dipole: bool = False,
+    ) -> 'ConfigurationSet':
+        """
+        Create ConfigurationSet from existing ORCA calculation output files.
+
+        -----------------------------------------------------------
+        Arguments:
+
+        file_paths: (list[str]) List of orca output file paths.
+
+        load_energies: (bool) If True, load energies from the files.
+
+        load_forces: (bool) If True, load forces from the files.
+
+        # load_dipole : (bool) If True, load dipole moments form the files.
+        # NOTE: (Dipole will be implement after autode modification)
+        """
+
+        dataset = cls()
+
+        err_count = 0
+        for fpath in file_paths:
+            try:
+                config = Configuration.from_orca_output_file(
+                    fpath, load_energies, load_forces, load_dipole
+                )
+            except RuntimeError as e:
+                logger.info(e)
+                err_count += 1
+            else:
+                dataset.append(config)
+
+        logger.info(
+            f'Successfully processed {len(dataset)} configs. {err_count} ORCA files had errors'
+        )
+        return dataset
+
+    @classmethod
+    def from_xyz_file(
+        cls,
+        filename: str,
+        charge: int,
+        mult: int,
+        box: Optional[Box] = None,
+        load_energies: bool = False,
+        load_forces: bool = False,
+    ) -> 'ConfigurationSet':
+        config_set = cls()
+        config_set.load_xyz(
+            filename, charge, mult, box, load_energies, load_forces
+        )
+        return config_set
+
     def load_xyz(
         self,
         filename: str,
