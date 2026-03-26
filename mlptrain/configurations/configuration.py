@@ -4,7 +4,7 @@ import numpy as np
 import os
 import json
 import itertools
-from typing import Optional, Union, List, Literal, Dict
+from typing import Optional, Union, List, Dict
 from copy import deepcopy
 from autode.atoms import AtomCollection, Atom
 import autode.atoms
@@ -95,13 +95,12 @@ class Configuration(AtomCollection):
         return config
 
     @classmethod
-    def from_orca_output_file(
+    def from_orca_file(
         cls,
         file_path: str,
         *,
-        load_energies: bool = True,
+        load_energy: bool = True,
         load_forces: bool = True,
-        load_dipoles: Literal[False] = False,
     ) -> 'Configuration':
         """
         Return Configuration from existing ORCA calculation output files.
@@ -111,12 +110,9 @@ class Configuration(AtomCollection):
 
         file_path: (str) Path to orca output file.
 
-        load_energies: (bool) If True, load energies from the files.
+        load_energy: (bool) If True, load energies from the files.
 
         load_forces: (bool) If True, load forces from the files.
-
-        # load_dipoles : (bool) If True, load dipole moments form the files.
-        # NOTE: (Dipole will be implement after autode modification)
         """
 
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -173,7 +169,7 @@ class Configuration(AtomCollection):
 
         num_atoms = len(atoms)
 
-        if load_energies:
+        if load_energy:
             if not any('FINAL SINGLE POINT ENERGY' in line for line in lines):
                 raise ValueError(
                     f'Single point energy not found in output file {file_path}'
@@ -229,11 +225,8 @@ class Configuration(AtomCollection):
 
             forces = -Gradient(gradients, units='Ha a0^-1').to('Ha Å^-1')
 
-        # Dipole implementation provided here but currently not used - waiting for autode update
-        if load_dipoles:
-            raise NotImplementedError(
-                'Loading dipole moments currently not implemented'
-            )
+        # TODO: Add load_dipole parameter
+        # if load_dipoles:
         #    for d_line in reversed(lines):
         #        if 'Total Dipole Moment' in d_line:
         #            dipx, dipy, dipz = line.split()[-3:]
@@ -241,11 +234,11 @@ class Configuration(AtomCollection):
 
         config = cls(atoms=atoms, charge=charge, mult=mult)
 
-        if load_energies:
+        if load_energy:
             config.energy.true = energy.to('eV')
         if load_forces:
             config.forces.true = forces.to('eV Å^-1')
-        # if load_dipoles:
+        # if load_dipole:
         #   config.dipole.true = dipole.to()
 
         return config

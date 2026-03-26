@@ -327,13 +327,12 @@ class ConfigurationSet(list):
 
     # TODO: Add parameter whether to skip unfinished output files
     @classmethod
-    def from_orca_file(
+    def from_orca_files(
         cls,
         file_paths: list[str],
         *,
         load_energies: bool = True,
         load_forces: bool = True,
-        load_dipoles: Literal[False] = False,
     ) -> 'ConfigurationSet':
         """
         Create ConfigurationSet from existing ORCA calculation output files.
@@ -346,9 +345,6 @@ class ConfigurationSet(list):
         load_energies: (bool) If True, load energies from the files.
 
         load_forces: (bool) If True, load forces from the files.
-
-        # load_dipoles : (bool) If True, load dipole moments form the files.
-        # NOTE: (Dipole will be implement after autode modification)
         """
 
         dataset = cls()
@@ -356,11 +352,10 @@ class ConfigurationSet(list):
         err_count = 0
         for fpath in file_paths:
             try:
-                config = Configuration.from_orca_output_file(
+                config = Configuration.from_orca_file(
                     fpath,
-                    load_energies=load_energies,
+                    load_energy=load_energies,
                     load_forces=load_forces,
-                    load_dipoles=load_dipoles,
                 )
             except RuntimeError as e:
                 logger.info(e)
@@ -374,7 +369,7 @@ class ConfigurationSet(list):
         return dataset
 
     @classmethod
-    def from_xyz_file(
+    def from_xyz(
         cls,
         filename: str,
         *,
