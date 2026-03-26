@@ -661,13 +661,15 @@ class ConfigurationSet(list):
         """Total spin multiplicities of all configurations in this set"""
         return np.array([c.mult for c in self])
 
-    def _forces(self, kind: str) -> Optional[np.ndarray]:
+    def _forces(
+        self, kind: Literal['true', 'predicted']
+    ) -> Optional[np.ndarray]:
         """True or predicted forces. Returns a 3D np.ndarray."""
 
         all_forces = []
         for config in self:
             if getattr(config.forces, kind) is None:
-                logger.error(f'{kind} forces not defined - returning None')
+                logger.warning(f'{kind} forces not defined - returning None')
                 return None
 
             all_forces.append(getattr(config.forces, kind))
