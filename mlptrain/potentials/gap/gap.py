@@ -70,7 +70,7 @@ class GAP(MLPotential):
         :return: (ase.Calculator)
         """
         try:
-            import quippy
+            import quippy  # ty:ignore[unresolved-import]
         except ModuleNotFoundError:
             raise ModuleNotFoundError(
                 'Quippy was not installed. Try\n' 'pip install quippy-ase'

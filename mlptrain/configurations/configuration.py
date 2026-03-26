@@ -708,7 +708,7 @@ class Configuration(AtomCollection):
             return None
 
         elif hasattr(method, 'predict'):
-            method.predict(self)
+            method.predict(self)  # ty:ignore[call-non-callable]
 
         else:
             raise ValueError(
