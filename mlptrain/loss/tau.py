@@ -106,7 +106,9 @@ class TauCalculator(LossFunction):
 
         # Calculate τ_acc as the average ± the standard error in the mean
         return Tau(
-            np.average(taus), error=np.std(taus) / np.sqrt(len(taus) - 1)
+            np.average(taus),
+            error=np.std(taus)
+            / np.sqrt(len(taus) - 1),  # ty:ignore[unknown-argument]
         )
 
     def _calculate_single(self, config, mlp, method_name):

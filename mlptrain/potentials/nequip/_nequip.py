@@ -41,7 +41,9 @@ class NequIP(MLPotential):
         """
 
         try:
-            from nequip.dynamics.nequip_calculator import NequIPCalculator
+            from nequip.dynamics.nequip_calculator import (  # ty:ignore[unresolved-import]
+                NequIPCalculator,
+            )
 
         except ModuleNotFoundError:
             raise ModuleNotFoundError(

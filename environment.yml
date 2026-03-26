@@ -9,7 +9,7 @@ dependencies:
   - pip
   - pre-commit
   - ase
-  - autode=1.3.3
+  - autode=1.4.5
   - coloredlogs
   - cython
   - dscribe=2.0
@@ -25,3 +25,4 @@ dependencies:
   - pip:
     - quippy-ase # GAP
     - ase@git+https://gitlab.com/ase/ase.git@f2615a6e9a # For PLUMED
+    - ty==0.0.24  # type checking
