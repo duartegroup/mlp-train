@@ -4,7 +4,7 @@ import re
 import numpy as np
 from time import time
 from multiprocessing import Pool
-from typing import Optional, List, Union
+from typing import Optional, List, Literal, Union
 from autode.atoms import elements, Atom
 from mlptrain.config import Config
 from mlptrain.log import logger
@@ -330,9 +330,10 @@ class ConfigurationSet(list):
     def from_orca_file(
         cls,
         file_paths: list[str],
+        *,
         load_energies: bool = True,
         load_forces: bool = True,
-        load_dipole: bool = False,
+        load_dipoles: Literal[False] = False,
     ) -> 'ConfigurationSet':
         """
         Create ConfigurationSet from existing ORCA calculation output files.
@@ -346,7 +347,7 @@ class ConfigurationSet(list):
 
         load_forces: (bool) If True, load forces from the files.
 
-        # load_dipole : (bool) If True, load dipole moments form the files.
+        # load_dipoles : (bool) If True, load dipole moments form the files.
         # NOTE: (Dipole will be implement after autode modification)
         """
 
@@ -356,7 +357,10 @@ class ConfigurationSet(list):
         for fpath in file_paths:
             try:
                 config = Configuration.from_orca_output_file(
-                    fpath, load_energies, load_forces, load_dipole
+                    fpath,
+                    load_energies=load_energies,
+                    load_forces=load_forces,
+                    load_dipoles=load_dipoles,
                 )
             except RuntimeError as e:
                 logger.info(e)
@@ -373,6 +377,7 @@ class ConfigurationSet(list):
     def from_xyz_file(
         cls,
         filename: str,
+        *,
         charge: int,
         mult: int,
         box: Optional[Box] = None,

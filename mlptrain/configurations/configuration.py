@@ -4,7 +4,7 @@ import numpy as np
 import os
 import json
 import itertools
-from typing import Optional, Union, List, Dict
+from typing import Optional, Union, List, Literal, Dict
 from copy import deepcopy
 from autode.atoms import AtomCollection, Atom
 import autode.atoms
@@ -98,9 +98,10 @@ class Configuration(AtomCollection):
     def from_orca_output_file(
         cls,
         file_path: str,
+        *,
         load_energies: bool = True,
         load_forces: bool = True,
-        load_dipole: bool = False,
+        load_dipoles: Literal[False] = False,
     ) -> 'Configuration':
         """
         Return Configuration from existing ORCA calculation output files.
@@ -114,7 +115,7 @@ class Configuration(AtomCollection):
 
         load_forces: (bool) If True, load forces from the files.
 
-        # load_dipole : (bool) If True, load dipole moments form the files.
+        # load_dipoles : (bool) If True, load dipole moments form the files.
         # NOTE: (Dipole will be implement after autode modification)
         """
 
@@ -229,7 +230,7 @@ class Configuration(AtomCollection):
             forces = -Gradient(gradients, units='Ha a0^-1').to('Ha Å^-1')
 
         # Dipole implementation provided here but currently not used - waiting for autode update
-        if load_dipole:
+        if load_dipoles:
             raise NotImplementedError(
                 'Loading dipole moments currently not implemented'
             )
@@ -244,7 +245,7 @@ class Configuration(AtomCollection):
             config.energy.true = energy.to('eV')
         if load_forces:
             config.forces.true = forces.to('eV Å^-1')
-        # if load_dipole:
+        # if load_dipoles:
         #   config.dipole.true = dipole.to()
 
         return config
