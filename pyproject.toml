@@ -20,6 +20,7 @@ dev = [
   'ty==0.0.24',
 ]
 
+[project.optional-dependencies]
 docs = [
   'sphinx~=7.4.7',
   'sphinx-copybutton~=0.5.2',
