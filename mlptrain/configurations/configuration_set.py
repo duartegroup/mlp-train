@@ -6,11 +6,7 @@ import re
 import numpy as np
 from time import time
 from multiprocessing import Pool
-<<<<<<< fix-some-invalid-attributes
-from typing import TYPE_CHECKING, Optional, List, Union
-=======
-from typing import Optional, List, Literal, Union
->>>>>>> main
+from typing import TYPE_CHECKING, Optional, List, Literal, Union
 from autode.atoms import elements, Atom
 from mlptrain.config import Config
 from mlptrain.log import logger
