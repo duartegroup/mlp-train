@@ -8,6 +8,3 @@ docs/_build/
 **/__MACOSX/
 .coverage*
 .pytest_cache
-# pixi environments
-.pixi/*
-!.pixi/config.toml
