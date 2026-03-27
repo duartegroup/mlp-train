@@ -1629,7 +1629,9 @@ class Metadynamics:
             )
 
         fes_files = [
-            fname for fname in os.listdir() if fname.startswith('fes') and fname.endswith('.dat')
+            fname 
+            for fname in os.listdir() 
+            if fname.startswith('fes') and fname.endswith('.dat')
         ]
         for fname in fes_files:
             os.remove(fname)
@@ -2125,7 +2127,11 @@ class Metadynamics:
         grid_shape = tuple([n_bins for _ in range(self.n_cvs)])
 
         # Sort names to retain ordering in the final grid
-        unordered_fes_files = [name for name in os.listdir() if name.startswith('fes') and name.endswith('.dat')]
+        unordered_fes_files = [
+            name 
+            for name in os.listdir() 
+            if name.startswith('fes') and name.endswith('.dat')
+        ]
 
         # 'fes_1_12.dat' -> int(112)
         def _get_combined_index(name):
