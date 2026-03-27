@@ -4,7 +4,7 @@ import re
 import numpy as np
 from time import time
 from multiprocessing import Pool
-from typing import Optional, List, Union
+from typing import Optional, List, Literal, Union
 from autode.atoms import elements, Atom
 from mlptrain.config import Config
 from mlptrain.log import logger
@@ -317,13 +317,73 @@ class ConfigurationSet(list):
             )
             true = True
 
-        open(filename, 'w').close()  # Empty the file
+        open(filename, 'w').close()  # close the file
 
         for configuration in self:
             configuration.save_xyz(
                 filename, true=true, predicted=predicted, append=True
             )
         return None
+
+    # TODO: Add parameter whether to skip unfinished output files
+    @classmethod
+    def from_orca_files(
+        cls,
+        file_paths: list[str],
+        *,
+        load_energies: bool = True,
+        load_forces: bool = True,
+    ) -> 'ConfigurationSet':
+        """
+        Create ConfigurationSet from existing ORCA calculation output files.
+
+        -----------------------------------------------------------
+        Arguments:
+
+        file_paths: (list[str]) List of orca output file paths.
+
+        load_energies: (bool) If True, load energies from the files.
+
+        load_forces: (bool) If True, load forces from the files.
+        """
+
+        dataset = cls()
+
+        err_count = 0
+        for fpath in file_paths:
+            try:
+                config = Configuration.from_orca_file(
+                    fpath,
+                    load_energy=load_energies,
+                    load_forces=load_forces,
+                )
+            except RuntimeError as e:
+                logger.info(e)
+                err_count += 1
+            else:
+                dataset.append(config)
+
+        logger.info(
+            f'Successfully processed {len(dataset)} configs. {err_count} ORCA files had errors'
+        )
+        return dataset
+
+    @classmethod
+    def from_xyz(
+        cls,
+        filename: str,
+        *,
+        charge: int,
+        mult: int,
+        box: Optional[Box] = None,
+        load_energies: bool = False,
+        load_forces: bool = False,
+    ) -> 'ConfigurationSet':
+        config_set = cls()
+        config_set.load_xyz(
+            filename, charge, mult, box, load_energies, load_forces
+        )
+        return config_set
 
     def load_xyz(
         self,
@@ -596,13 +656,15 @@ class ConfigurationSet(list):
         """Total spin multiplicities of all configurations in this set"""
         return np.array([c.mult for c in self])
 
-    def _forces(self, kind: str) -> Optional[np.ndarray]:
+    def _forces(
+        self, kind: Literal['true', 'predicted']
+    ) -> Optional[np.ndarray]:
         """True or predicted forces. Returns a 3D np.ndarray."""
 
         all_forces = []
         for config in self:
             if getattr(config.forces, kind) is None:
-                logger.error(f'{kind} forces not defined - returning None')
+                logger.warning(f'{kind} forces not defined - returning None')
                 return None
 
             all_forces.append(getattr(config.forces, kind))
