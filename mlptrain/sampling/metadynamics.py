@@ -959,7 +959,6 @@ class Metadynamics:
         return None
 
     def block_analysis(
-        self,
         start_time: float,
         idx: int = 1,
         energy_units: str = 'kcal mol-1',
@@ -1629,7 +1628,7 @@ class Metadynamics:
             )
 
         fes_files = [
-            fname for fname in os.listdir() if fname.startswith('fes')
+            fname for fname in os.listdir() if fname.startswith('fes') and fname.endswith('.dat')
         ]
         for fname in fes_files:
             os.remove(fname)
@@ -2050,7 +2049,6 @@ class Metadynamics:
             idx: (int) Integer which specifies which metadynamics run to use
                        for plotting the FES convergence
         """
-
         if not any(filename.startswith('HILLS') for filename in os.listdir()):
             raise FileNotFoundError(
                 'No HILLS.dat files were found in '
@@ -2126,7 +2124,8 @@ class Metadynamics:
         grid_shape = tuple([n_bins for _ in range(self.n_cvs)])
 
         # Sort names to retain ordering in the final grid
-        unordered_fes_files = [name for name in os.listdir() if 'fes' in name]
+        unordered_fes_files = [name for name in os.listdir() if name.startswith('fes') and name.endswith('.dat')]
+        print(unordered_fes_files)
 
         # 'fes_1_12.dat' -> int(112)
         def _get_combined_index(name):
