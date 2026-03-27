@@ -30,6 +30,9 @@ jobs:
           environment-name: gha-test-env
           cache-environment: true
 
+      - name: Install pre-commit
+        run: pip install --group dev
+
       - name: Run pre-commit
         run: pre-commit run --all-files || ( git status --short ; git diff ; exit 1 )
         env:
