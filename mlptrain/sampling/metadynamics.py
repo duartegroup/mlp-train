@@ -959,6 +959,7 @@ class Metadynamics:
         return None
 
     def block_analysis(
+        self,
         start_time: float,
         idx: int = 1,
         energy_units: str = 'kcal mol-1',
@@ -2125,7 +2126,6 @@ class Metadynamics:
 
         # Sort names to retain ordering in the final grid
         unordered_fes_files = [name for name in os.listdir() if name.startswith('fes') and name.endswith('.dat')]
-        print(unordered_fes_files)
 
         # 'fes_1_12.dat' -> int(112)
         def _get_combined_index(name):
