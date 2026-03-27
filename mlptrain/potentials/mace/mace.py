@@ -123,7 +123,7 @@ class MACE(MLPotential):
             )
         else:
             batch_size = Config.mace_params['batch_size']
-            if not isinstance(int, batch_size):
+            if not isinstance(batch_size, int):
                 raise ValueError(
                     f"Invalid parameter batch_size '{batch_size}'"
                 )
