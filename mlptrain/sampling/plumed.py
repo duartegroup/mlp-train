@@ -96,7 +96,7 @@ class PlumedBias(ASEConstraint):
         """
 
         self.setup: Optional[List[str]] = None
-        self.cv_files: Optional[Tuple[str, str]] = None
+        self.cv_files: list[tuple[str, str]] | None = None
 
         self.pace: Optional[int] = None
         self.width: Optional[Union[Sequence[float], float]] = None
@@ -675,7 +675,7 @@ class _PlumedCV:
         """
 
         self.setup: List = []
-        self.files: Optional[Tuple[str, str]] = None
+        self.files: list[tuple[str, str]] | None = None
 
         self.name: Optional[str] = None
         self.units: Optional[str] = None
@@ -899,6 +899,9 @@ class _PlumedCV:
 
         if len(atom_list) < 2:
             raise ValueError('Atom group must contain at least two atoms')
+
+        assert self.dof_names is not None
+        assert self.dof_units is not None
 
         if len(atom_list) == 2:
             dof_name = f'{self.name}_dist{idx + 1}'

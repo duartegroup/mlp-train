@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import mlptrain
 import os
 import re
 import time
+import typing as t
 import glob
 import multiprocessing as mp
 import numpy as np
@@ -18,6 +21,10 @@ from mlptrain.sampling.md import run_mlp_md
 from mlptrain.utils import move_files, convert_ase_energy, convert_exponents
 from mlptrain.config import Config
 from mlptrain.log import logger
+
+if t.TYPE_CHECKING:
+    from mlptrain.potentials import MLPotential
+    from mlptrain.sampling.reaction_coord import ReactionCoordinate
 
 
 class _Window:
@@ -303,7 +310,7 @@ class UmbrellaSampling:
 
     def __init__(
         self,
-        zeta_func: 'mlptrain.sampling.reaction_coord.ReactionCoordinate',
+        zeta_func: ReactionCoordinate,
         kappa: float,
         temp: Optional[float] = None,
     ):
@@ -377,7 +384,7 @@ class UmbrellaSampling:
     def run_umbrella_sampling(
         self,
         traj: 'mlptrain.ConfigurationSet',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: 'MLPotential',
         temp: float,
         interval: int,
         dt: float,
@@ -515,7 +522,7 @@ class UmbrellaSampling:
     def _run_individual_window(
         self,
         frame: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: 'MLPotential',
         temp: float,
         interval: int,
         dt: float,

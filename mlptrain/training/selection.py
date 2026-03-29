@@ -2,10 +2,13 @@ import mlptrain
 import numpy as np
 from copy import deepcopy
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from mlptrain.log import logger
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.decomposition import PCA
+
+if TYPE_CHECKING:
+    from mlptrain.potentials import MLPotential
 
 
 class SelectionMethod(ABC):
@@ -24,7 +27,7 @@ class SelectionMethod(ABC):
     def __call__(
         self,
         configuration: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials.MLPotential',
+        mlp: 'MLPotential',
         **kwargs,
     ) -> None:
         """Evaluate the selector"""
@@ -112,6 +115,7 @@ class AbsDiffE(SelectionMethod):
         """
         10 E_T > |E_predicted - E_true| > E_T
         """
+        assert self._configuration is not None
         abs_dE = abs(self._configuration.energy.delta)
         logger.info(f'|E_MLP - E_true| = {abs_dE:.4} eV')
         return 10 * self.e_thresh > abs_dE > self.e_thresh
@@ -119,6 +123,7 @@ class AbsDiffE(SelectionMethod):
     @property
     def too_large(self) -> bool:
         """|E_predicted - E_true| > 10*E_T"""
+        assert self._configuration is not None
         return abs(self._configuration.energy.delta) > 10 * self.e_thresh
 
     @property
@@ -156,7 +161,7 @@ class AtomicEnvSimilarity(SelectionMethod):
     def __call__(
         self,
         configuration: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials.MLPotential',
+        mlp: 'MLPotential',
         **kwargs,
     ) -> None:
         """
