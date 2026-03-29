@@ -23,7 +23,7 @@ from mlptrain.config import Config
 from mlptrain.log import logger
 
 if t.TYPE_CHECKING:
-    from mlptrain.potentials._base import MLPotential
+    from mlptrain.potentials import MLPotential
     from mlptrain.sampling.reaction_coord import ReactionCoordinate
 
 

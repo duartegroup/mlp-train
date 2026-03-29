@@ -3,7 +3,7 @@ from __future__ import annotations
 import mlptrain as mlt
 import argparse
 from mlptrain.config import Config
-from mlptrain.potentials._base import MLPotential
+from mlptrain.potentials import MLPotential
 import os
 import glob
 import time

@@ -41,7 +41,7 @@ from mlptrain.utils import (
 if TYPE_CHECKING:
     import ase.io
     from mlptrain.sampling.plumed import _PlumedCV
-    from mlptrain.potentials._base import MLPotential
+    from mlptrain.potentials import MLPotential
 
 
 class Metadynamics:

@@ -37,7 +37,7 @@ except ImportError:
     _HAS_OPENMM_ML = False
 
 if TYPE_CHECKING:
-    from mlptrain.potentials._base import MLPotential
+    from mlptrain.potentials import MLPotential
 
 # Conversion factor from kJ/mol to eV
 _KJ_PER_MOL_TO_EV = (ase.units.kJ / ase.units.mol) / ase.units.eV

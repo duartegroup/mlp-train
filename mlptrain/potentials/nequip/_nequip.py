@@ -6,7 +6,7 @@ import typing as t
 import numpy as np
 from time import time
 from subprocess import Popen, PIPE
-from mlptrain.potentials._base import MLPotential
+from mlptrain.potentials import MLPotential
 from mlptrain.config import Config
 from mlptrain.log import logger
 from mlptrain.utils import unique_name

@@ -8,7 +8,7 @@ from time import time
 from autode.atoms import Atom
 from mlptrain.config import Config
 from mlptrain.log import logger
-from mlptrain.potentials._base import MLPotential
+from mlptrain.potentials import MLPotential
 
 
 class GAP(MLPotential):

@@ -30,7 +30,7 @@ from ase.io import read
 from ase import units as ase_units
 
 if TYPE_CHECKING:
-    from mlptrain.potentials._base import MLPotential
+    from mlptrain.potentials import MLPotential
 
 
 def run_mlp_md(
@@ -192,7 +192,7 @@ def run_mlp_md(
 
 def _run_mlp_md(
     configuration: 'mlptrain.Configuration',
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     temp: float,
     dt: float,
     interval: int,
@@ -311,7 +311,7 @@ def _run_mlp_md(
 
 def _attach_calculator_and_constraints(
     ase_atoms: 'ase.atoms.Atoms',
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
     temp: float,
     interval: int,

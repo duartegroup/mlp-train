@@ -21,7 +21,7 @@ from mlptrain.log import logger
 from mlptrain.box import Box
 
 if TYPE_CHECKING:
-    from mlptrain.potentials._base import MLPotential
+    from mlptrain.potentials import MLPotential
 
 
 def train(

@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from mlptrain.potentials._base import MLPotential
+    from mlptrain.potentials import MLPotential
 
 
 class LossValue(ABC, float):

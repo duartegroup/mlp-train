@@ -8,7 +8,7 @@ from sklearn.neighbors import LocalOutlierFactor
 from sklearn.decomposition import PCA
 
 if TYPE_CHECKING:
-    from mlptrain.potentials._base import MLPotential
+    from mlptrain.potentials import MLPotential
 
 
 class SelectionMethod(ABC):

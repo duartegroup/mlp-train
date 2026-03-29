@@ -11,7 +11,7 @@ from scipy.spatial import distance_matrix
 from mlptrain.box import Box
 from mlptrain.log import logger
 from mlptrain.config import Config
-from mlptrain.potentials._base import MLPotential
+from mlptrain.potentials import MLPotential
 
 if t.TYPE_CHECKING:
     from ase.calculators.calculator import Calculator as ASECalculator

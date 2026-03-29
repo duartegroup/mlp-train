@@ -24,7 +24,7 @@ from math import dist
 from autode.solvent.solvents import get_solvent
 
 if TYPE_CHECKING:
-    from mlptrain.potentials._base import MLPotential
+    from mlptrain.potentials import MLPotential
 
 
 class Configuration(AtomCollection):
