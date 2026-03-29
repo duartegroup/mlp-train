@@ -4,13 +4,21 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "mlptrain"
+version = "1.0.0b0"
 description = "Machine Learning Potential Training"
 authors = [{name = "Duarte Group"}]
 readme = "README.md"
 license = {file = "LICENSE.md"}
 classifiers = ["License :: OSI Approved :: MIT License"]
-dynamic = ["version"]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
+
+[dependency-groups]
+dev = [
+  'pre-commit>=3.6',
+  'pytest~=8.0',
+  'pytest-cov~=5.0',
+  'ty==0.0.24',
+]
 
 [project.optional-dependencies]
 docs = [
