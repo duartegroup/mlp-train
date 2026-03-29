@@ -1,9 +1,9 @@
-from mlptrain.potentials.gap.gap import GAP
-from mlptrain.potentials.ace.ace import ACE
-from mlptrain.potentials.nequip._nequip import NequIP
-from mlptrain.potentials.mace.mace import MACE
-
 # Useful for typing
 from ._base import MLPotential
+
+from .gap.gap import GAP
+from .ace.ace import ACE
+from .nequip._nequip import NequIP
+from .mace.mace import MACE
 
 __all__ = ['GAP', 'ACE', 'NequIP', 'MACE', 'MLPotential']
