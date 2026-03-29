@@ -65,6 +65,22 @@ def config_set_xyz_with_energies_forces():
 
 
 @work_in_tmp_dir()
+def test_configurations_print(config_set_xyz_with_energies_forces):
+    """Regression test for https://github.com/duartegroup/mlp-train/issues/223"""
+    # Test that printing (converting to str) empty set works
+    configs = ConfigurationSet()
+    assert str(configs)
+
+    # Print a config without energies and forces
+    configs.append(Configuration(atoms=[Atom('Xe')]))
+    assert str(configs)
+
+    # Test printing of bigger ConfigurationSet with energies and forces
+    configs, _ = config_set_xyz_with_energies_forces
+    assert str(configs)
+
+
+@work_in_tmp_dir()
 def test_configurations_save():
     configs = ConfigurationSet()
 
