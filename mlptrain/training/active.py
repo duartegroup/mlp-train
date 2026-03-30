@@ -212,8 +212,6 @@ def train(
 
         previous_n_train = mlp.n_train
 
-        logger.info(f'Starting AL iteration {iteration}')
-
         init_config_iter = _update_init_config(
             init_config=init_config,
             mlp=mlp,
@@ -298,14 +296,13 @@ def _add_active_configs(
     n_processes = min(n_configs, Config.n_cores)
     n_cores_pp = max(Config.n_cores // n_configs, 1)
     logger.info(
-        'Searching for "active" configurations with '
+        f'Iteration {kwargs["iteration"]}: Searching for "active" configurations with '
         f'{n_processes} processes using {n_cores_pp} cores / process'
     )
 
     if 'bias' in kwargs and kwargs['iteration'] < kwargs['bias_start_iter']:
         logger.info(
-            f'Iteration {kwargs["iteration"]}: the bias potential '
-            'is not applied'
+            f'Bias potential is not applied until iteration {kwargs["bias_start_iter"]}'
         )
         kwargs['bias'] = _remove_bias_potential(kwargs['bias'])
 
