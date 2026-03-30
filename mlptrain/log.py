@@ -1,18 +1,32 @@
 import logging
 import os
 
-ll = os.environ.get('MLT_LOG_LEVEL', default='INFO')
-
-logging.basicConfig(
-    level=getattr(logging, ll),
-    format='%(name)-12s: %(levelname)-8s %(message)s',
+_LOGGING_FORMAT = (
+    '%(asctime)s %(name)s[%(process)d] %(levelname)-8s %(message)s'
 )
-logger = logging.getLogger(__name__)
 
+# Users can specify the logging level by setting the MLT_LOG_LEVEL environment variable before
+# running the python program. e.g. to only print warning message:
+#
+#     $ export MLT_LOG_LEVEL=WARNING
+#
+# Valid logging levels are defined as attributes of the logging module, see:
+# https://docs.python.org/3/library/logging.html#logging-levels
+ll = os.environ.get('MLT_LOG_LEVEL', default='INFO')
+try:
+    _level = getattr(logging, ll)
+except AttributeError:
+    _level = logging.INFO
+    print(f'Invalid value of MLT_LOG_LEVEL: "{ll}"')
+    print('Falling back to INFO level')
+
+logging.basicConfig(level=_level, format=_LOGGING_FORMAT)
+
+logger = logging.getLogger('mlptrain')
 # Try and use colourful logs
 try:
     import coloredlogs
 
-    coloredlogs.install(level=getattr(logging, ll), logger=logger)
+    coloredlogs.install(level=_level, logger=logger, fmt=_LOGGING_FORMAT)
 except ImportError:
     pass
