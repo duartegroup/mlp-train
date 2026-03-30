@@ -212,6 +212,8 @@ def train(
 
         previous_n_train = mlp.n_train
 
+        logger.info(f'Starting AL iteration {iteration}')
+
         init_config_iter = _update_init_config(
             init_config=init_config,
             mlp=mlp,
