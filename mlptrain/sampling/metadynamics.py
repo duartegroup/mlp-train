@@ -2066,7 +2066,7 @@ class Metadynamics:
 
         if cvs_bounds is not None:
             bin_param_seq = ','.join(
-                str(n_bins - 1) if cvs_bounds[_][0] >= 0 else str(n_bins)
+                str(n_bins - 1) if cvs_bounds[_][0] > 0 else str(n_bins)
                 for _ in range(self.n_cvs)
             )
         else:
