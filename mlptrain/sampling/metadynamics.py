@@ -2074,8 +2074,6 @@ class Metadynamics:
                 str(n_bins - 1)
                 for _ in range(self.n_cvs)
             )
-            # Don't think there's anything to fix if cvs_bounds is unspecified
-
         min_param_seq, max_param_seq = self._get_min_max_params(cvs_bounds)
 
         label = '*' if idx is None else idx
