@@ -61,13 +61,13 @@ You can run MD with OpenMM using `mlptrain.md_openmm.run_mlp_md_openmm()`
 
 ## For developers
 
-We are happy to accept pull requests from users. Please first fork the mlp-train repository. We use `pre-commit`, `Ruff` and `pytest` to check the code. Your PR needs to pass through these checks before is accepted. `Pre-commit` is installed as one of the dependencies. To use it in your repository, run the following command in the mlp-train folder:
+We are happy to accept pull requests from users. Please first fork the mlp-train repository. We use `pre-commit`, `Ruff` and `pytest` to check the code. Your PR needs to pass through these checks before is accepted. `pre-commit` is installed as one of the dependencies. To use it in your repository, run the following command in the mlp-train folder:
 
 ```
 pre-commit install 
 ```
 
-`Pre-commit` will then run automatically at each commit and will take care of the installation and running of `Ruff`.
+`pre-commit` will then run automatically at each commit and will take care of the installation and running of `ruff`.
 
 ## Citations
 

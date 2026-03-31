@@ -24,9 +24,8 @@ dependencies:
   - nnpops
   - openmm-ml=1.2
   - git
+  - cuequivariance==0.1.0
+  - cuequivariance-torch==0.1.0
   - pip:
     - ase@git+https://gitlab.com/ase/ase.git@f2615a6e9a # For PLUMED
     - mace-torch==0.3.10
-    - cuequivariance==0.1.0
-    - cuequivariance-torch==0.1.0
-    - cuequivariance-ops-torch-cu11==0.1.0
