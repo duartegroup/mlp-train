@@ -1631,10 +1631,10 @@ class Metadynamics:
         fes_files = [
             fname 
             for fname in os.listdir() 
-            if fname.startswith('fes') and fname.endswith('.dat')
+            if fname.startswith('fes_') and fname.endswith('.dat')
         ]
         for fname in fes_files:
-            os.remove(fname)
+            os.rename(fname, f"bck.{fname}")
 
         self._generate_fes_files(n_bins=n_bins, cvs_bounds=cvs_bounds)
 
@@ -2052,7 +2052,7 @@ class Metadynamics:
             idx: (int) Integer which specifies which metadynamics run to use
                        for plotting the FES convergence
         """
-        if not any(filename.startswith('HILLS') for filename in os.listdir()):
+        if not any((filename.startswith('HILLS_') and filename.endswith('.dat')) for filename in os.listdir()):
             raise FileNotFoundError(
                 'No HILLS.dat files were found in '
                 'plumed_files, make sure to run '
@@ -2130,7 +2130,7 @@ class Metadynamics:
         unordered_fes_files = [
             name 
             for name in os.listdir() 
-            if name.startswith('fes') and name.endswith('.dat')
+            if name.startswith('fes_') and name.endswith('.dat')
         ]
 
         # 'fes_1_12.dat' -> int(112)
