@@ -50,7 +50,7 @@ def test_selection_on_structures():
     selector1 = AtomicEnvSimilarity(descriptor=SoapDescriptor1, threshold=0.9)
     selector2 = AtomicEnvSimilarity(descriptor=SoapDescriptor2, threshold=0.9)
 
-    mlp = mlt.potentials.GAP('blank')
+    mlp = mlt.potentials.MLPotential('blank')
     mlp.training_data = configs
 
     selector1(configuration=_similar_methane(), mlp=mlp)
@@ -74,7 +74,7 @@ def test_outlier_identifier():
 
     descriptor = SoapDescriptor(average='outer', r_cut=6.0, n_max=8, l_max=8)
 
-    mlp = mlt.potentials.GAP('blank')
+    mlp = mlt.potentials.MLPotential('blank')
     mlp.training_data = configs
 
     # Similar configuration should not be an outlier

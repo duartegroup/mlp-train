@@ -1,4 +1,21 @@
+import os
+
 from autode.wrappers.keywords import GradientKeywords
+
+
+class _DefaultMACEDevice:
+    """Class to define default torch device.
+
+    We're just trying to hide the torch import.
+    """
+
+    def __str__(self) -> str:
+        try:
+            import torch
+
+            return 'cuda' if torch.cuda.is_available() else 'cpu'
+        except ImportError:
+            return 'cpu'
 
 
 class _ConfigClass:
@@ -46,13 +63,6 @@ class _ConfigClass:
 
     # MACE params
 
-    try:
-        import torch
-
-        mace_device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    except ImportError:
-        mace_device = 'cpu'
-
     mace_params = {
         'valid_fraction': 0.1,
         'max_num_epochs': 1200,
@@ -65,7 +75,7 @@ class _ConfigClass:
         'batch_size': 10,
         'r_max': 5.0,
         'correlation': 3,
-        'device': mace_device,
+        'device': _DefaultMACEDevice(),
         'calc_device': 'cpu',
         'error_table': 'TotalMAE',
         'swa': True,
@@ -79,7 +89,7 @@ class _ConfigClass:
         'amsgrad': True,
         'restart_latest': False,
         'save_cpu': True,
-        'num_workers': 20,
+        'num_workers': os.cpu_count(),
         'max_L': 1,
         'dtype': 'float32',
         'pt_train': None,

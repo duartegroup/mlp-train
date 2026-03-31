@@ -4,8 +4,6 @@ from copy import deepcopy
 from abc import ABC, abstractmethod
 from typing import Optional, TYPE_CHECKING
 from mlptrain.log import logger
-from sklearn.neighbors import LocalOutlierFactor
-from sklearn.decomposition import PCA
 
 if TYPE_CHECKING:
     from mlptrain.potentials import MLPotential
@@ -241,6 +239,9 @@ def _outlier_identifier(
 
     -1 for anomalies/outliers and +1 for inliers.
     """
+    from sklearn.decomposition import PCA
+    from sklearn.neighbors import LocalOutlierFactor
+
     if not hasattr(descriptor, 'compute_representation'):
         raise ValueError(
             "The provided descriptor does not have a 'compute_representation' method."

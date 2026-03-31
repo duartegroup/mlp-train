@@ -61,6 +61,7 @@ possibly-missing-submodule = "error"
 include = [
   "mlptrain/config.py",
   "mlptrain/log.py",
+  "mlptrain/sampling/md_openmm.py",
 ]
 
 [tool.ty.overrides.rules]
