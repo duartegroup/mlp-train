@@ -56,3 +56,12 @@ call-non-callable = "error"
 unresolved-import = "error"
 unused-ignore-comment = "error"
 possibly-missing-submodule = "error"
+
+[[tool.ty.overrides]]
+include = [
+  "mlptrain/config.py",
+  "mlptrain/log.py",
+]
+
+[tool.ty.overrides.rules]
+all = "error"

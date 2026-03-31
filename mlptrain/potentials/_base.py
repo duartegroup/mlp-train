@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import numpy as np
 import mlptrain as mlt
 from copy import deepcopy
@@ -68,6 +69,7 @@ class MLPotential(ABC):
                 f'are not set. Set e.g. mlp.atomic_energies '
                 '= {"H": -13.}'
             )
+        logger.info(f'Training on nodename: {os.uname().nodename}')
         self._train()
         return None
 
