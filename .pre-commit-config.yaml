@@ -39,6 +39,7 @@ repos:
     - id: ty
       name: ty
       entry: ty check
+      args: [mlptrain/, tests/, examples/]
       language: system
       types: [python]
       require_serial: true
