@@ -2062,6 +2062,28 @@ class Metadynamics:
         logger.info('Generating fes.dat files from HILLS.dat files')
 
         bin_param_seq = ','.join(str(n_bins - 1) for _ in range(self.n_cvs))
+
+        print(bin_param_seq)
+
+        bin_param_seq = ""
+        for _ in range(self.n_cvs):
+            if _ != 0:
+                bin_param_seq += ","
+            if cvs_bounds[_][0] >= 0:
+                bin_param_seq += str(n_bins - 1)
+            else:
+                bin_param_seq += str(n_bins)
+
+        #bin_param_seq = ','.join(str(n_bins - 1) : for _ in range(self.n_cvs))
+
+        """
+        for _ in range(self.n_cvs):
+            if cvs_bounds[_][0] < 0:
+                bin_param_seq = ','.join(str(n_bins))
+            else:
+                bin_param_seq = ','.join(str(n_bins - 1))
+        """
+
         min_param_seq, max_param_seq = self._get_min_max_params(cvs_bounds)
 
         label = '*' if idx is None else idx
