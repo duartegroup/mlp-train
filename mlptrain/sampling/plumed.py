@@ -103,7 +103,7 @@ class PlumedBias(ASEConstraint):
         self.height: Optional[float] = None
         self.biasfactor: Optional[float] = None
 
-        self.metad_cvs: Optional[List['_PlumedCV']] = None
+        self.metad_cvs: Optional[Sequence['_PlumedCV']] = None
 
         for param_name in ['min', 'max', 'bin', 'wstride', 'wfile', 'rfile']:
             setattr(self, f'metad_grid_{param_name}', None)
@@ -285,7 +285,7 @@ class PlumedBias(ASEConstraint):
                 raise ValueError('Gaussian width (σ) must be positive')
 
             else:
-                self.width = [width]
+                self.width = [width]  # ty: ignore[invalid-assignment]
 
         if len(self.width) != self.n_metad_cvs:
             raise ValueError(
@@ -1364,6 +1364,7 @@ def plumed_setup(
     ]
 
     if bias.from_file:
+        assert bias.setup is not None
         setup = bias.setup
 
         if 'UNITS' in setup[0]:
