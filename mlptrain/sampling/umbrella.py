@@ -199,6 +199,8 @@ class _Window:
 
         gaussian = _FittedGaussian()
 
+        assert self.hist
+
         a_0, mu_0, sigma_0 = (
             np.max(self.hist),
             np.average(self._obs_zetas),
