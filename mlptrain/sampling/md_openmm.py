@@ -324,7 +324,7 @@ def _create_openmm_topology(ase_atoms: 'ase.Atoms') -> 'openmm.app.Topology':
     from openmm import app, unit
 
     logger.info('Creating the OpenMM topology')
-    topology = openmm.app.Topology()
+    topology = app.Topology()
     chain = topology.addChain()
 
     atomic_numbers = ase_atoms.get_atomic_numbers()
