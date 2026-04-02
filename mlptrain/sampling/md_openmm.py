@@ -388,7 +388,7 @@ def _create_openmm_simulation(
     platform: 'openmm.Platform',
 ) -> 'openmm.app.Simulation':
     """Create an OpenMM simulation object."""
-    from openmm import app, unit
+    from openmm import app, unit, LangevinMiddleIntegrator
     import openmmml
 
     logger.info('Creating the OpenMM simulation object')
@@ -403,7 +403,7 @@ def _create_openmm_simulation(
         logger.info(
             f'Using Langevin integrator (NVT) with temperture={temp} K'
         )
-        integrator = openmm.LangevinMiddleIntegrator(
+        integrator = LangevinMiddleIntegrator(
             temp * unit.kelvin,  # ty: ignore[unsupported-operator]
             1.0 / unit.picoseconds,  # ty: ignore[unresolved-attribute]
             dt * unit.femtoseconds,  # ty: ignore[unresolved-attribute]
