@@ -471,7 +471,8 @@ class ConfigurationSet(list):
                         line
                     ), f'There was an error in parsing your xyz file on line: {line_id}'
                     line_split = line.split()
-                    atoms.append(Atom(*line_split[:4]))
+                    atom, x, y, z = line_split[:4]
+                    atoms.append(Atom(atom, x, y, z))
 
                     if load_forces:
                         # add forces to forces dict in configuration
@@ -680,13 +681,13 @@ class ConfigurationSet(list):
         np.savez(
             filename,
             R=self._coordinates,
-            R_plumed=self.plumed_coordinates,
-            E_true=self.true_energies,
-            E_predicted=self.predicted_energies,
-            E_bias=self.bias_energies,
-            E_inherited_bias=self.inherited_bias_energies,
-            F_true=self.true_forces,
-            F_predicted=self.predicted_forces,
+            R_plumed=self.plumed_coordinates,  # ty: ignore[invalid-argument-type]
+            E_true=self.true_energies,  # ty: ignore[invalid-argument-type]
+            E_predicted=self.predicted_energies,  # ty: ignore[invalid-argument-type]
+            E_bias=self.bias_energies,  # ty: ignore[invalid-argument-type]
+            E_inherited_bias=self.inherited_bias_energies,  # ty: ignore[invalid-argument-type]
+            F_true=self.true_forces,  # ty: ignore[invalid-argument-type]
+            F_predicted=self.predicted_forces,  # ty: ignore[invalid-argument-type]
             Z=self._atomic_numbers,
             L=self._box_sizes,
             C=self._charges,
@@ -831,8 +832,8 @@ class ConfigurationSet(list):
             f'  Has Predicted Energies:     {any(x is not None for x in self.predicted_energies)}\n'
             f'  Has Bias Energies:          {any(x is not None for x in self.bias_energies)}\n'
             f'  Has Inherit. Bias Energies: {any(x is not None for x in self.inherited_bias_energies)}\n'
-            f'  True Forces Dim:            {self.true_forces.shape}\n'
-            f'  Predicted Forces Dim:       {self.predicted_forces.shape}\n'
+            f'  True Forces Dim:            {self.true_forces.shape if self.true_forces is not None else None}\n'
+            f'  Predicted Forces Dim:       {self.predicted_forces.shape if self.predicted_forces is not None else None}\n'
             f'  Atomic Numbers Dim:         {self._atomic_numbers.shape}\n'
             f'  Unique Box Sizes:           {np.unique(self._box_sizes)}\n'
             f'  Unique Charges:             {np.unique(self._charges)}\n'
