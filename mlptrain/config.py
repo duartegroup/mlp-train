@@ -1,5 +1,3 @@
-import os
-
 from autode.wrappers.keywords import GradientKeywords
 
 
@@ -89,7 +87,7 @@ class _ConfigClass:
         'amsgrad': True,
         'restart_latest': False,
         'save_cpu': True,
-        'num_workers': os.cpu_count(),
+        'num_workers': 20,
         'max_L': 1,
         'dtype': 'float32',
         'pt_train': None,
