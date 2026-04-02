@@ -232,7 +232,7 @@ class _GAPParameters:
             if atom_symbols.count(symbol) == 1:
                 params['other'].remove(symbol)
 
-            for other_symbol in params['other']:
+            for other_symbol in params['other']:  # ty: ignore[not-iterable]
                 added_pairs.append(symbol + other_symbol)
 
             if len(params['other']) == 0:

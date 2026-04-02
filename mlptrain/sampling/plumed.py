@@ -99,7 +99,7 @@ class PlumedBias(ASEConstraint):
         self.cv_files: list[tuple[str, str]] | None = None
 
         self.pace: Optional[int] = None
-        self.width: Optional[Union[Sequence[float], float]] = None
+        self.width: Optional[Sequence[float]] = None
         self.height: Optional[float] = None
         self.biasfactor: Optional[float] = None
 
@@ -155,6 +155,7 @@ class PlumedBias(ASEConstraint):
         String containing names of collective variables used in metadynamics
         separated by commas
         """
+        assert self.metad_cvs is not None
         metad_cv_names = (cv.name for cv in self.metad_cvs)
         return ','.join(metad_cv_names)  # ty: ignore[no-matching-overload]
 

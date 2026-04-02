@@ -60,6 +60,7 @@ invalid-assignment = "error"
 ignore-comment-unknown-rule = "error"
 no-matching-overload = "error"
 missing-argument = "error"
+not-iterable = "error"
 
 [[tool.ty.overrides]]
 include = [
