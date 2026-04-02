@@ -1128,9 +1128,9 @@ class Metadynamics:
         _parameters = [temp, dt, interval]
 
         if len(self._previous_run_parameters) != 0:
-            temp = self._previous_run_parameters['temp']
-            dt = self._previous_run_parameters['dt']
-            interval = self._previous_run_parameters['interval']
+            temp = float(self._previous_run_parameters['temp'])
+            dt = float(self._previous_run_parameters['dt'])
+            interval = int(self._previous_run_parameters['interval'])
 
         elif any(param is None for param in _parameters):
             raise TypeError(

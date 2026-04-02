@@ -43,7 +43,7 @@ class ACE(MLPotential):
         # Run the training using a specified number of total cores
         os.environ['JULIA_NUM_THREADS'] = str(Config.n_cores)
 
-        p = Popen(
+        p = Popen(  # ty: ignore[no-matching-overload]
             [shutil.which('julia'), f'{self.name}.jl'],
             shell=False,
             encoding='utf-8',

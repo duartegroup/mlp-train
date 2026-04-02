@@ -220,7 +220,7 @@ class _GAPParameters:
 
             # Add all the atomic symbols that aren't this one, the neighbour
             # density for which also hasn't been added already
-            params['other'] = [
+            params['other'] = [  # ty: ignore[invalid-assignment]
                 s
                 for s in set(atom_symbols)
                 if s + symbol not in added_pairs

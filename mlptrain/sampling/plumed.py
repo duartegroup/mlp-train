@@ -103,7 +103,7 @@ class PlumedBias(ASEConstraint):
         self.height: Optional[float] = None
         self.biasfactor: Optional[float] = None
 
-        self.metad_cvs: Optional[List['_PlumedCV']] = None
+        self.metad_cvs: Optional[Sequence['_PlumedCV']] = None
 
         for param_name in ['min', 'max', 'bin', 'wstride', 'wfile', 'rfile']:
             setattr(self, f'metad_grid_{param_name}', None)
@@ -147,7 +147,7 @@ class PlumedBias(ASEConstraint):
         """
 
         cv_names = (cv.name for cv in self.cvs)
-        return ','.join(cv_names)
+        return ','.join(cv_names)  # type: ignore[no-matching-overload]
 
     @property
     def metad_cv_sequence(self) -> str:
@@ -156,7 +156,7 @@ class PlumedBias(ASEConstraint):
         separated by commas
         """
         metad_cv_names = (cv.name for cv in self.metad_cvs)
-        return ','.join(metad_cv_names)
+        return ','.join(metad_cv_names)  # ty: ignore[no-matching-overload]
 
     @property
     def metadynamics(self) -> bool:
@@ -285,7 +285,7 @@ class PlumedBias(ASEConstraint):
                 raise ValueError('Gaussian width (σ) must be positive')
 
             else:
-                self.width = [width]
+                self.width = [width]  # ty: ignore[invalid-assignment]
 
         if len(self.width) != self.n_metad_cvs:
             raise ValueError(
@@ -702,6 +702,7 @@ class _PlumedCV:
     def dof_sequence(self) -> str:
         """String containing names of DOFs separated by commas"""
 
+        assert self.dof_names
         return ','.join(self.dof_names)
 
     def attach_lower_wall(
@@ -973,6 +974,7 @@ class PlumedAverageCV(_PlumedCV):
 
         self._set_units()
 
+        assert self.dof_names
         dof_sum = '+'.join(self.dof_names)
         func = f'{1 / len(self.dof_names)}*({dof_sum})'
 
@@ -1364,6 +1366,7 @@ def plumed_setup(
     ]
 
     if bias.from_file:
+        assert bias.setup is not None
         setup = bias.setup
 
         if 'UNITS' in setup[0]:
