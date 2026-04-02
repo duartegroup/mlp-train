@@ -1102,9 +1102,11 @@ def _generate_grid_from_hills(
     """
     Generate bias_grid_{iteration-1}.dat from HILLS_{iteration-1}.dat
     """
+    assert configurations.plumed_coordinates is not None
+    assert bias.metad_cvs is not None
+    assert bias.width is not None
 
     min_params, max_params = [], []
-    assert bias.metad_cvs is not None
     metad_cv_idxs = [bias.cvs.index(cv) for cv in bias.metad_cvs]
 
     for j in metad_cv_idxs:
@@ -1116,7 +1118,6 @@ def _generate_grid_from_hills(
         min_params.append(min_value - difference * extension_coefficient)
         max_params.append(max_value + difference * extension_coefficient)
 
-    assert bias.width is not None
     bin_widths = [(width / 5) for width in bias.width]
     n_bins = [
         int((max_params[i] - min_params[i]) / bin_widths[i])

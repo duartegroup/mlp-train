@@ -505,7 +505,7 @@ def _convert_ase_traj(
 
         # Set the atom_pair_list of every atom in the configuration
         for i, position in enumerate(atoms.get_positions()):
-            config.atoms[i].coord = position
+            config.atoms[i].coord = position  # ty: ignore[not-subscriptable]
 
         mlt_traj.append(config)
 

@@ -1156,7 +1156,9 @@ class Metadynamics:
             config.atoms = [ade.Atom(label) for label in atoms.symbols]
 
             for i, position in enumerate(atoms.get_positions()):
-                config.atoms[i].coord = position
+                config.atoms[
+                    i
+                ].coord = position  # ty: ignore[not-subscriptable]
 
             _mlt_configuration_set.append(config)
 
@@ -1693,6 +1695,7 @@ class Metadynamics:
                 label='Confidence interval',
             )
 
+        assert self.bias.metad_cvs is not None
         cv = self.bias.metad_cvs[0]
         if cv.units is not None:
             ax.set_xlabel(f'{cv.name} / {cv.units}')
@@ -1779,6 +1782,8 @@ class Metadynamics:
         std_error_cbar.set_label(
             label='Confidence interval / ' f'{convert_exponents(energy_units)}'
         )
+
+        assert self.bias.metad_cvs is not None
 
         cv1 = self.bias.metad_cvs[0]
         cv2 = self.bias.metad_cvs[1]
@@ -1999,6 +2004,8 @@ class Metadynamics:
         Plot multiple 1D free energy surfaces as a function of simulation time
         """
         import matplotlib.pyplot as plt
+
+        assert self.bias.metad_cvs is not None
 
         plotted_cv = self.bias.metad_cvs[0]
 

@@ -1014,7 +1014,7 @@ class PlumedDifferenceCV(_PlumedCV):
 
         self._set_units()
 
-        if len(self.dof_names) != 2:
+        if self.dof_names is None or len(self.dof_names) != 2:
             raise ValueError(
                 'DifferenceCV must comprise exactly two ' 'groups of atoms'
             )
@@ -1070,6 +1070,8 @@ class PlumedCNCV(_PlumedCV):
         super().__init__(name=name, atom_groups=atom_groups)
 
         self._set_units()
+
+        assert self.dof_names is not None
 
         self.r_ref = r_ref
 
