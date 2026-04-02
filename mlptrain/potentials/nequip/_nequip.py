@@ -199,7 +199,7 @@ class NequIP(MLPotential):
         """Deploy a NeQUIP model, i.e. save a TorchScript version of it"""
         logger.info('Deploying a NeQUIP potential')
 
-        p = Popen(
+        p = Popen(  # type: ignore[no-matching-overload]
             [
                 shutil.which('nequip-deploy'),
                 'build',
