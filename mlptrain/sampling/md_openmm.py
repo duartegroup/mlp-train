@@ -394,7 +394,7 @@ def _create_openmm_simulation(
     logger.info('Creating the OpenMM simulation object')
 
     # Use the mace model with openmm-ml and make sure the total energy is used.
-    potential = openmmml.MLPotential('mace', modelPath=mlp.file_name)
+    potential = openmmml.MLPotential('mace', modelPath=mlp.filename)
     system = potential.createSystem(topology, returnEnergyType='energy')
 
     # Use a Langevin integrator if temp>0 (NVT ensemble).
