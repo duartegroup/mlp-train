@@ -59,6 +59,7 @@ possibly-missing-submodule = "error"
 invalid-assignment = "error"
 ignore-comment-unknown-rule = "error"
 no-matching-overload = "error"
+missing-argument = "error"
 
 [[tool.ty.overrides]]
 include = [
@@ -68,3 +69,11 @@ include = [
 
 [tool.ty.overrides.rules]
 all = "error"
+
+# Ignore python scripts from examples/*_paper/
+[[tool.ty.overrides]]
+include = [
+  "examples/*_paper/*",
+]
+[tool.ty.overrides.rules]
+all = "ignore"
