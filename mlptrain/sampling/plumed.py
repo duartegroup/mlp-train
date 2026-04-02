@@ -147,7 +147,7 @@ class PlumedBias(ASEConstraint):
         """
 
         cv_names = (cv.name for cv in self.cvs)
-        return ','.join(cv_names)
+        return ','.join(cv_names)  # type: ignore[no-matching-overload]
 
     @property
     def metad_cv_sequence(self) -> str:
@@ -156,7 +156,7 @@ class PlumedBias(ASEConstraint):
         separated by commas
         """
         metad_cv_names = (cv.name for cv in self.metad_cvs)
-        return ','.join(metad_cv_names)
+        return ','.join(metad_cv_names)  # ty: ignore[no-matching-overload]
 
     @property
     def metadynamics(self) -> bool:
@@ -702,6 +702,7 @@ class _PlumedCV:
     def dof_sequence(self) -> str:
         """String containing names of DOFs separated by commas"""
 
+        assert self.dof_names
         return ','.join(self.dof_names)
 
     def attach_lower_wall(
@@ -973,6 +974,7 @@ class PlumedAverageCV(_PlumedCV):
 
         self._set_units()
 
+        assert self.dof_names
         dof_sum = '+'.join(self.dof_names)
         func = f'{1 / len(self.dof_names)}*({dof_sum})'
 

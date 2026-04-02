@@ -57,6 +57,8 @@ unresolved-import = "error"
 unused-ignore-comment = "error"
 possibly-missing-submodule = "error"
 invalid-assignment = "error"
+ignore-comment-unknown-rule = "error"
+no-matching-overload = "error"
 
 [[tool.ty.overrides]]
 include = [

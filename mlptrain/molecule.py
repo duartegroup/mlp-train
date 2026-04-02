@@ -14,6 +14,7 @@ class Molecule(ade.Molecule):
         Returns:
             (np.ndarray): shape = (3,)
         """
+        assert self.coordinates is not None
         return np.average(self.coordinates, axis=0)
 
     def is_in_box(self, box: 'mlptrain.box.Box') -> bool:
@@ -27,13 +28,13 @@ class Molecule(ade.Molecule):
         Returns:
             (bool):
         """
-        coords = self.coordinates
+        assert self.coordinates is not None
 
-        if np.min(coords) < 0.0:
+        if np.min(self.coordinates) < 0.0:
             return False
 
         # Maximum x, y, z component of all atoms should be < a, b, c
-        if max(np.max(coords, axis=0) - box.size) > 0:
+        if max(np.max(self.coordinates, axis=0) - box.size) > 0:
             return False
 
         return True
