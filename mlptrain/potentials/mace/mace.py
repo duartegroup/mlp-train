@@ -5,6 +5,7 @@ import argparse
 from mlptrain.config import Config
 from mlptrain.potentials import MLPotential
 import os
+import gc
 import glob
 import time
 import numpy as np
@@ -13,14 +14,6 @@ from mlptrain.log import logger
 import autode as ade
 from typing import TYPE_CHECKING, Optional
 
-try:
-    from mace.calculators import MACECalculator
-    from mace.cli.run_train import run as train_mace
-    from mace import tools
-    import torch
-    import gc
-except ModuleNotFoundError:
-    pass
 
 if TYPE_CHECKING:
     from ase.calculators.calculator import Calculator as ASECalculator
@@ -52,6 +45,8 @@ class MACE(MLPotential):
                          Some Replay datasets could be accessed here: https://github.com/ACEsuit/mace-foundations/releases
                          More details on https://github.com/ACEsuit/mace/tree/main?tab=readme-ov-file#pretrained-foundation-models
         """
+        import mace.tools
+
         super().__init__(name=name, system=system)
 
         try:
@@ -65,8 +60,8 @@ class MACE(MLPotential):
         self.foundation = foundation
         logging.info(f'MACE version: {mace.__version__}')
 
-        tools.set_seeds(345)
-        tools.set_default_dtype(str(Config.mace_params['dtype']))
+        mace.tools.set_seeds(345)
+        mace.tools.set_default_dtype(str(Config.mace_params['dtype']))
 
     @property
     def filename(self) -> str:
@@ -133,6 +128,7 @@ class MACE(MLPotential):
     @property
     def args(self) -> 'argparse.Namespace':
         """Namespace containing mostly default MACE parameters"""
+        import mace.tools
 
         args_list = [
             '--name',
@@ -235,12 +231,13 @@ class MACE(MLPotential):
         if Config.mace_params['cueq']:
             args_list.append('--enable_cueq=True')
 
-        args = tools.build_default_arg_parser().parse_args(args_list)
+        args = mace.tools.build_default_arg_parser().parse_args(args_list)
         return args
 
     @property
     def ase_calculator(self) -> ASECalculator:
         """ASE calculator for MACE potential"""
+        from mace.calculators import MACECalculator
 
         calculator = MACECalculator(
             model_paths=self.filename,
@@ -259,6 +256,8 @@ class MACE(MLPotential):
 
             n_cores: (int) Number of cores to use in training
         """
+        import torch
+        from mace.cli.run_train import run as train_mace
 
         n_cores = n_cores if n_cores is not None else Config.n_cores
         os.environ['OMP_NUM_THREADS'] = str(n_cores)
