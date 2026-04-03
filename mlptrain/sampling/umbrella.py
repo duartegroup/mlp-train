@@ -611,7 +611,7 @@ class UmbrellaSampling:
         return -(1.0 / self.beta) * np.log(prob_dist)
 
     @property
-    def zeta_refs(self) -> Optional[np.ndarray]:
+    def zeta_refs(self) -> np.ndarray:
         """
         Array of ζ_ref for each window
 
@@ -619,8 +619,7 @@ class UmbrellaSampling:
         Returns:
             (np.ndarray(float) | None):
         """
-        if len(self.windows) == 0:
-            return None
+        assert len(self.windows) != 0
 
         return np.array([w_k.zeta_ref for w_k in self.windows])
 

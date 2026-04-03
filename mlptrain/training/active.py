@@ -1053,6 +1053,7 @@ def _attach_inherited_bias_energies(
                     break
 
         n_bins = []
+        assert bias.metad_cvs is not None
         for cv in bias.metad_cvs:
             for line in header:
                 if line.startswith(f'#! SET nbins_{cv.name}'):
@@ -1101,6 +1102,9 @@ def _generate_grid_from_hills(
     """
     Generate bias_grid_{iteration-1}.dat from HILLS_{iteration-1}.dat
     """
+    assert configurations.plumed_coordinates is not None
+    assert bias.metad_cvs is not None
+    assert bias.width is not None
 
     min_params, max_params = [], []
     metad_cv_idxs = [bias.cvs.index(cv) for cv in bias.metad_cvs]

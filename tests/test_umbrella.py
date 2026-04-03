@@ -42,7 +42,6 @@ def test_run_umbrella():
     n_windows = 3
 
     assert umbrella.kappa is not None and np.isclose(umbrella.kappa, 100.0)
-    assert umbrella.zeta_refs is None
 
     # Zeta refs are now reset
     umbrella.run_umbrella_sampling(
