@@ -147,7 +147,7 @@ class PlumedBias(ASEConstraint):
         """
 
         cv_names = (cv.name for cv in self.cvs)
-        return ','.join(cv_names)  # type: ignore[no-matching-overload]
+        return ','.join(cv_names)  # ty: ignore[no-matching-overload]
 
     @property
     def metad_cv_sequence(self) -> str:
