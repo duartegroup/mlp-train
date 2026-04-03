@@ -37,6 +37,14 @@ line-length = 79
 [tool.ruff.format]
 quote-style = "single"
 
+[tool.ruff.lint]
+extend-select = ["TID253"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+# Ban certain modules from being imported at module level, instead requiring
+# that they're imported lazily (e.g., within a function definition). (rule TID253)
+banned-module-level-imports = ["mace", "openmm", "openmmml", "sklearn", "torch"]
+
 [tool.pytest.ini_options]
 addopts = "--cov-report term --cov-report xml"
 
