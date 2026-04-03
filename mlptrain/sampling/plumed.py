@@ -99,7 +99,7 @@ class PlumedBias(ASEConstraint):
         self.cv_files: list[tuple[str, str]] | None = None
 
         self.pace: Optional[int] = None
-        self.width: Optional[Union[Sequence[float], float]] = None
+        self.width: Optional[Sequence[float]] = None
         self.height: Optional[float] = None
         self.biasfactor: Optional[float] = None
 
@@ -155,6 +155,7 @@ class PlumedBias(ASEConstraint):
         String containing names of collective variables used in metadynamics
         separated by commas
         """
+        assert self.metad_cvs is not None
         metad_cv_names = (cv.name for cv in self.metad_cvs)
         return ','.join(metad_cv_names)  # ty: ignore[no-matching-overload]
 
@@ -1013,7 +1014,7 @@ class PlumedDifferenceCV(_PlumedCV):
 
         self._set_units()
 
-        if len(self.dof_names) != 2:
+        if self.dof_names is None or len(self.dof_names) != 2:
             raise ValueError(
                 'DifferenceCV must comprise exactly two ' 'groups of atoms'
             )
@@ -1069,6 +1070,8 @@ class PlumedCNCV(_PlumedCV):
         super().__init__(name=name, atom_groups=atom_groups)
 
         self._set_units()
+
+        assert self.dof_names is not None
 
         self.r_ref = r_ref
 

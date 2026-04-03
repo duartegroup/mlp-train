@@ -241,6 +241,8 @@ class Metadynamics:
 
         widths = []
 
+        assert self.bias.metad_cvs is not None
+
         for cv in self.bias.metad_cvs:
             colvar_filename = f'colvar_{cv.name}_{kwargs["idx"]}.dat'
 
@@ -493,6 +495,7 @@ class Metadynamics:
         metad_path = os.path.join(os.getcwd(), 'plumed_files/metadynamics')
         traj_path = os.path.join(os.getcwd(), 'trajectories')
 
+        assert self.bias.metad_cvs is not None
         for cv in self.bias.metad_cvs:
             colvar_path = os.path.join(metad_path, f'colvar_{cv.name}_*.dat')
             n_previous_runs = len(glob.glob(colvar_path))
@@ -845,6 +848,7 @@ class Metadynamics:
                 'Plotting using more than two CVs is ' 'not implemented'
             )
 
+        assert cvs_holder.metad_cvs is not None
         if not all(cv in self.bias.metad_cvs for cv in cvs_holder.metad_cvs):
             raise ValueError(
                 'At least one of the supplied CVs are not within '
@@ -1147,12 +1151,14 @@ class Metadynamics:
         """Save ASE trajectory as .xyz file"""
 
         _mlt_configuration_set = ConfigurationSet(allow_duplicates=True)
-        for atoms in ase_traj:
+        for atoms in ase_traj:  # ty: ignore[not-iterable]
             config = Configuration()
             config.atoms = [ade.Atom(label) for label in atoms.symbols]
 
             for i, position in enumerate(atoms.get_positions()):
-                config.atoms[i].coord = position
+                config.atoms[
+                    i
+                ].coord = position  # ty: ignore[not-subscriptable]
 
             _mlt_configuration_set.append(config)
 
@@ -1689,6 +1695,7 @@ class Metadynamics:
                 label='Confidence interval',
             )
 
+        assert self.bias.metad_cvs is not None
         cv = self.bias.metad_cvs[0]
         if cv.units is not None:
             ax.set_xlabel(f'{cv.name} / {cv.units}')
@@ -1775,6 +1782,8 @@ class Metadynamics:
         std_error_cbar.set_label(
             label='Confidence interval / ' f'{convert_exponents(energy_units)}'
         )
+
+        assert self.bias.metad_cvs is not None
 
         cv1 = self.bias.metad_cvs[0]
         cv2 = self.bias.metad_cvs[1]
@@ -1996,6 +2005,8 @@ class Metadynamics:
         """
         import matplotlib.pyplot as plt
 
+        assert self.bias.metad_cvs is not None
+
         plotted_cv = self.bias.metad_cvs[0]
 
         if n_surfaces > len(fes_grids):
@@ -2203,6 +2214,7 @@ class Metadynamics:
 
             min_params, max_params = [], []
 
+            assert self.bias.metad_cvs is not None
             for cv in self.bias.metad_cvs:
                 min_values, max_values = [], []
 

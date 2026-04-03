@@ -17,7 +17,7 @@ dev = [
   'pre-commit>=3.6',
   'pytest~=8.0',
   'pytest-cov~=5.0',
-  'ty==0.0.24',
+  'ty==0.0.28',
 ]
 
 [project.optional-dependencies]
@@ -45,22 +45,11 @@ addopts = "--cov-report term --cov-report xml"
 error-on-warning = true
 
 [tool.ty.rules]
-all = "ignore"
-invalid-type-form = "error"
-invalid-return-type = "error"
-invalid-parameter-default = "error"
-too-many-positional-arguments = "error"
-invalid-method-override = "error"
-unknown-argument = "error"
-call-non-callable = "error"
-unresolved-import = "error"
-unused-ignore-comment = "error"
-possibly-missing-submodule = "error"
-invalid-assignment = "error"
-ignore-comment-unknown-rule = "error"
-no-matching-overload = "error"
-missing-argument = "error"
+unsupported-operator = "ignore"
+unresolved-attribute = "ignore"
+invalid-argument-type = "ignore"
 
+# Enable all rules for these files
 [[tool.ty.overrides]]
 include = [
   "mlptrain/config.py",
@@ -72,7 +61,7 @@ include = [
 [tool.ty.overrides.rules]
 all = "error"
 
-# Ignore python scripts from examples/*_paper/
+# Don't typecheck python scripts from examples/*_paper/
 [[tool.ty.overrides]]
 include = [
   "examples/*_paper/*",

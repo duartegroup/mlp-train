@@ -257,6 +257,7 @@ class Configuration(AtomCollection):
         Returns:
             (ase.atoms.Atoms): ASE atoms
         """
+        assert self.atoms is not None
         _atoms = ase.atoms.Atoms(
             symbols=[atom.label for atom in self.atoms],
             positions=self.coordinates,
@@ -396,6 +397,7 @@ class Configuration(AtomCollection):
         for n, atom in enumerate(solvent_molecule.atoms):
             atom.coordinate = atom.coordinate - solvent_com
 
+        assert solvent_molecule.atoms is not None
         # Calculate the number of solvent molecules to be inserted
         solvent_mass = sum([atom.mass for atom in solvent_molecule.atoms])
         # Calculate the volume of a single solvent molecule by first calculating the mass of a single molecule: m = M/N_a
@@ -457,6 +459,8 @@ class Configuration(AtomCollection):
         ___________________________________________________________________________
         """
 
+        assert self.atoms is not None
+        assert solvent_molecule.atoms is not None
         # Get the coordinates of the solute in the center of the box
         system_coords = np.array([atom.coordinate for atom in self.atoms])
         # Get the coordinates of the single isolated solvent molecule
