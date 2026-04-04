@@ -84,6 +84,9 @@ class _ConfigClass:
         'dtype': 'float32',
         'pt_train': None,
         'cueq': False,
+        'wandb': False,
+        'wandb_project': None,
+        'wandb_name': None,
     }
 
     # --------------------- Internal properties ---------------------------

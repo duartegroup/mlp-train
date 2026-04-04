@@ -235,6 +235,15 @@ class MACE(MLPotential):
         if Config.mace_params['cueq']:
             args_list.append('--enable_cueq=True')
 
+        if Config.mace_params['wandb']:
+            args_list.append('--wandb')
+            args_list.append(
+                f"--wandb_project={Config.mace_params['wandb_project']}"
+            )
+            args_list.append(
+                f"--wandb_name={Config.mace_params['wandb_name']}"
+            )
+
         args = tools.build_default_arg_parser().parse_args(args_list)
         return args
 
