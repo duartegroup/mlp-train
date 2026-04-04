@@ -1,4 +1,10 @@
+import os
 from autode.wrappers.keywords import GradientKeywords
+
+_NUM_CPUS = os.cpu_count()
+# According to the docs, os.cpu_count() may return None
+if _NUM_CPUS is None:
+    _NUM_CPUS = 1
 
 
 class _ConfigClass:
@@ -16,7 +22,7 @@ class _ConfigClass:
     ```
     """
 
-    n_cores = 4
+    n_cores = 4 if _NUM_CPUS >= 4 else _NUM_CPUS
     _orca_keywords = None
     _gaussian_keywords = None
 
@@ -79,7 +85,7 @@ class _ConfigClass:
         'amsgrad': True,
         'restart_latest': False,
         'save_cpu': True,
-        'num_workers': 20,
+        'num_workers': 8 if _NUM_CPUS >= 8 else _NUM_CPUS,
         'max_L': 1,
         'dtype': 'float32',
         'pt_train': None,
