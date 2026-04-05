@@ -64,6 +64,7 @@ include = [
   "mlptrain/log.py",
   "mlptrain/sampling/md_openmm.py",
   "mlptrain/configurations/configuration_set.py",
+  "mlptrain/potentials/mace/mace.py",
 ]
 
 [tool.ty.overrides.rules]

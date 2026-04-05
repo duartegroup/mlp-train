@@ -90,7 +90,12 @@ class MACE(MLPotential):
     @property
     def valid_fraction(self) -> float:
         """Fraction of the whole dataset to be used as validation set"""
-        valid_fraction = float(Config.mace_params['valid_fraction'])
+        valid_fraction = Config.mace_params['valid_fraction']
+        if not isinstance(valid_fraction, float):
+            raise ValueError(
+                f"Invalid parameter valid_fraction '{valid_fraction}'"
+            )
+
         _min_dataset = -(1 // -valid_fraction)
 
         if self.n_train == 1:
@@ -107,23 +112,14 @@ class MACE(MLPotential):
     @property
     def batch_size(self) -> int:
         """Batch size of the training set"""
-        if (
-            self.n_train * (1 - Config.mace_params['valid_fraction'])
-            < Config.mace_params['batch_size']
-        ):
-            return int(
-                np.floor(
-                    self.n_train * (1 - Config.mace_params['valid_fraction'])
-                )
-            )
+        batch_size = Config.mace_params['batch_size']
+        if not isinstance(batch_size, int):
+            raise ValueError(f"Invalid parameter batch_size '{batch_size}'")
+
+        if self.n_train * (1 - self.valid_fraction) < batch_size:
+            return int(np.floor(self.n_train * (1 - self.valid_fraction)))
         else:
-            batch_size = Config.mace_params['batch_size']
-            if not isinstance(batch_size, int):
-                raise ValueError(
-                    f"Invalid parameter batch_size '{batch_size}'"
-                )
-            else:
-                return int(batch_size)
+            return batch_size
 
     @property
     def args(self) -> 'argparse.Namespace':
@@ -241,7 +237,7 @@ class MACE(MLPotential):
 
         calculator = MACECalculator(
             model_paths=self.filename,
-            device=Config.mace_params['calc_device'],
+            device=str(Config.mace_params['calc_device']),
             enable_cueq=Config.mace_params['cueq'],
         )
         return calculator
