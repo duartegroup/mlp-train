@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import mlptrain as mlt
 import argparse
+import warnings
 from mlptrain.config import Config
 from mlptrain.potentials import MLPotential
 import os
@@ -45,17 +46,15 @@ class MACE(MLPotential):
                          Some Replay datasets could be accessed here: https://github.com/ACEsuit/mace-foundations/releases
                          More details on https://github.com/ACEsuit/mace/tree/main?tab=readme-ov-file#pretrained-foundation-models
         """
-        import mace.tools
 
         super().__init__(name=name, system=system)
 
-        try:
-            import mace
-        except ModuleNotFoundError:
-            raise ModuleNotFoundError(
-                'MACE install not found, install it '
-                'here: https://github.com/ACEsuit/mace'
-            )
+        import mace
+
+        # Filter out FutureWarning from e3nn: You are using `torch.load` with `weights_only=False`...
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            import mace.tools
 
         self.foundation = foundation
         logging.info(f'MACE version: {mace.__version__}')
