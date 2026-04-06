@@ -388,7 +388,7 @@ def _create_openmm_simulation(
     platform: 'openmm.Platform',
 ) -> 'openmm.app.Simulation':
     """Create an OpenMM simulation object."""
-    from openmm import app, unit, LangevinMiddleIntegrator
+    from openmm import app, unit, LangevinMiddleIntegrator, VerletIntegrator
     import openmmml
 
     logger.info('Creating the OpenMM simulation object')
@@ -410,7 +410,7 @@ def _create_openmm_simulation(
         )
     else:
         logger.info(f'Using Verlet integrator (NVE) as temperture is {temp} K')
-        integrator = openmm.VerletIntegrator(
+        integrator = VerletIntegrator(
             dt * unit.femtoseconds  # ty: ignore[unresolved-attribute]
         )
 
