@@ -2,12 +2,12 @@
 
 import importlib.util
 import logging
-from mlptrain.log import logger as mlp_logger
 
 import pytest
 
 import mlptrain
 from mlptrain.box import Box
+from mlptrain.log import logger as mlp_logger
 from mlptrain.utils import work_in_tmp_dir
 
 # Only run these tests if MACE is installed
@@ -19,16 +19,13 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture
 def mock_mace_run_train(monkeypatch, tmp_path):
-    """Fixture to mock mace.cli.run_train function"""
+    """Fixture to mock mace.cli.run_train.run function"""
 
     def train_mace_mock(args) -> None:
         # We obviously don't run any training,
         # but we do setup MACE logging in a similar way as the real train function
         # by calling mace.tools.setup_logger
-        try:
-            from mace.tools import setup_logger
-        except ImportError:
-            return
+        from mace.tools import setup_logger
 
         logging.info('mock_mace_run_train: Before setup_logger')
         setup_logger(directory=tmp_path)
@@ -41,8 +38,11 @@ def mock_mace_run_train(monkeypatch, tmp_path):
     )
 
 
-# This test uses the pytest caplog fixture, see:
+# This is a regression test for the log doubling issue.
+# It uses the pytest caplog fixture, see:
 # https://docs.pytest.org/en/stable/how-to/logging.html#caplog-fixture
+# To see the log messages during testing run:
+# $ pytest --log-cli-level=INFO tests/test_mace.py::test_train_logging
 @work_in_tmp_dir()
 def test_train_logging(
     caplog, mock_mace_run_train, h2, h2_configuration, h2o_configuration
@@ -57,7 +57,7 @@ def test_train_logging(
 
     caplog.clear()
     mlp = MACE(name='test', system=system)
-    # We should print MACE version in the constructor
+    # Check that we print MACE version in the constructor
     assert caplog.records[0].message.startswith('MACE version:')
 
     mlp.atomic_energies = {'H': -0.5}
