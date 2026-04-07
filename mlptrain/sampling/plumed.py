@@ -279,7 +279,7 @@ class PlumedBias(ASEConstraint):
                     f'All gaussian widths (σ) must be positive, got: {width}'
                 )
 
-        if len(self.width) != self.n_metad_cvs:
+        if len(width) != self.n_metad_cvs:
             raise ValueError(
                 'The number of supplied widths (σ) does not '
                 'match the number of collective variables'
