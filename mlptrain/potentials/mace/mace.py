@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import mlptrain as mlt
 import argparse
+import warnings
 from mlptrain.config import Config
 from mlptrain.potentials import MLPotential
 import os
+import gc
 import glob
 import time
 import numpy as np
@@ -13,14 +15,6 @@ from mlptrain.log import logger
 import autode as ade
 from typing import TYPE_CHECKING, Optional
 
-try:
-    from mace.calculators import MACECalculator
-    from mace.cli.run_train import run as train_mace
-    from mace import tools
-    import torch
-    import gc
-except ModuleNotFoundError:
-    pass
 
 if TYPE_CHECKING:
     from ase.calculators.calculator import Calculator as ASECalculator
@@ -52,21 +46,21 @@ class MACE(MLPotential):
                          Some Replay datasets could be accessed here: https://github.com/ACEsuit/mace-foundations/releases
                          More details on https://github.com/ACEsuit/mace/tree/main?tab=readme-ov-file#pretrained-foundation-models
         """
+
         super().__init__(name=name, system=system)
 
-        try:
-            import mace
-        except ModuleNotFoundError:
-            raise ModuleNotFoundError(
-                'MACE install not found, install it '
-                'here: https://github.com/ACEsuit/mace'
-            )
+        import mace
+
+        # Filter out FutureWarning from e3nn: You are using `torch.load` with `weights_only=False`...
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            import mace.tools
 
         self.foundation = foundation
         logging.info(f'MACE version: {mace.__version__}')
 
-        tools.set_seeds(345)
-        tools.set_default_dtype(str(Config.mace_params['dtype']))
+        mace.tools.set_seeds(345)
+        mace.tools.set_default_dtype(str(Config.mace_params['dtype']))
 
     @property
     def filename(self) -> str:
@@ -95,7 +89,12 @@ class MACE(MLPotential):
     @property
     def valid_fraction(self) -> float:
         """Fraction of the whole dataset to be used as validation set"""
-        valid_fraction = float(Config.mace_params['valid_fraction'])
+        valid_fraction = Config.mace_params['valid_fraction']
+        if not isinstance(valid_fraction, float):
+            raise ValueError(
+                f"Invalid parameter valid_fraction '{valid_fraction}'"
+            )
+
         _min_dataset = -(1 // -valid_fraction)
 
         if self.n_train == 1:
@@ -112,27 +111,19 @@ class MACE(MLPotential):
     @property
     def batch_size(self) -> int:
         """Batch size of the training set"""
-        if (
-            self.n_train * (1 - Config.mace_params['valid_fraction'])
-            < Config.mace_params['batch_size']
-        ):
-            return int(
-                np.floor(
-                    self.n_train * (1 - Config.mace_params['valid_fraction'])
-                )
-            )
+        batch_size = Config.mace_params['batch_size']
+        if not isinstance(batch_size, int):
+            raise ValueError(f"Invalid parameter batch_size '{batch_size}'")
+
+        if self.n_train * (1 - self.valid_fraction) < batch_size:
+            return int(np.floor(self.n_train * (1 - self.valid_fraction)))
         else:
-            batch_size = Config.mace_params['batch_size']
-            if not isinstance(batch_size, int):
-                raise ValueError(
-                    f"Invalid parameter batch_size '{batch_size}'"
-                )
-            else:
-                return int(batch_size)
+            return batch_size
 
     @property
     def args(self) -> 'argparse.Namespace':
         """Namespace containing mostly default MACE parameters"""
+        import mace.tools
 
         args_list = [
             '--name',
@@ -235,16 +226,17 @@ class MACE(MLPotential):
         if Config.mace_params['cueq']:
             args_list.append('--enable_cueq=True')
 
-        args = tools.build_default_arg_parser().parse_args(args_list)
+        args = mace.tools.build_default_arg_parser().parse_args(args_list)
         return args
 
     @property
     def ase_calculator(self) -> ASECalculator:
         """ASE calculator for MACE potential"""
+        from mace.calculators import MACECalculator
 
         calculator = MACECalculator(
             model_paths=self.filename,
-            device=Config.mace_params['calc_device'],
+            device=str(Config.mace_params['calc_device']),
             enable_cueq=Config.mace_params['cueq'],
         )
         return calculator
@@ -259,6 +251,8 @@ class MACE(MLPotential):
 
             n_cores: (int) Number of cores to use in training
         """
+        import torch
+        from mace.cli.run_train import run as train_mace
 
         n_cores = n_cores if n_cores is not None else Config.n_cores
         os.environ['OMP_NUM_THREADS'] = str(n_cores)
