@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import mlptrain
 import numpy as np
-from typing import Sequence, List, Tuple, Dict, Optional, Union
+from typing import Sequence, List, Dict, Optional, Union
 from copy import deepcopy
 from ase import units as ase_units
 from ase.calculators.plumed import Plumed
@@ -24,7 +24,9 @@ class PlumedCalculator(Plumed):
 
     implemented_properties = ['energy', 'forces', 'energy_bias', 'forces_bias']
 
-    def compute_energy_and_forces(self, pos, istep) -> Tuple:
+    def compute_energy_and_forces(
+        self, pos, istep
+    ) -> tuple[float, np.ndarray, float, np.ndarray]:
         """
         Compute unbiased energies and forces, and PLUMED energy and force
         biases separately
@@ -54,6 +56,8 @@ class PlumedCalculator(Plumed):
 
         Calculator.calculate(self, atoms, properties, system_changes)
 
+        # Why are we using self.atoms here and not atoms?
+        assert self.atoms is not None
         comp = self.compute_energy_and_forces(
             self.atoms.get_positions(), self.istep
         )
@@ -131,12 +135,14 @@ class PlumedBias(ASEConstraint):
     @property
     def n_cvs(self) -> int:
         """Number of collective variables attached to the bias"""
+        assert self.cvs is not None
         return len(self.cvs)
 
     @property
     def n_metad_cvs(self) -> int:
         """Number of collective variables attached to the bias that will be
         used in metadynamics"""
+        assert self.metad_cvs is not None
         return len(self.metad_cvs)
 
     @property
@@ -147,7 +153,7 @@ class PlumedBias(ASEConstraint):
         """
 
         cv_names = (cv.name for cv in self.cvs)
-        return ','.join(cv_names)  # ty: ignore[no-matching-overload]
+        return ','.join(cv_names)
 
     @property
     def metad_cv_sequence(self) -> str:
@@ -157,7 +163,7 @@ class PlumedBias(ASEConstraint):
         """
         assert self.metad_cvs is not None
         metad_cv_names = (cv.name for cv in self.metad_cvs)
-        return ','.join(metad_cv_names)  # ty: ignore[no-matching-overload]
+        return ','.join(metad_cv_names)
 
     @property
     def metadynamics(self) -> bool:
@@ -668,7 +674,6 @@ class _PlumedCV:
         self.setup: List = []
         self.files: list[tuple[str, str]] | None = None
 
-        self.name = name
         self.units: Optional[str] = None
         self.dof_names: Optional[List[str]] = None
         self.dof_units: Optional[List[str]] = None
@@ -677,7 +682,7 @@ class _PlumedCV:
         self.upper_wall: Optional[Dict] = None
 
         if filename is not None:
-            self._from_file(filename, component)
+            name = self._from_file(filename, component)
 
         elif atom_groups is not None:
             self._from_atom_groups(atom_groups)
@@ -689,7 +694,7 @@ class _PlumedCV:
                 'or a file containing PLUMED-type input'
             )
 
-        self._check_name()
+        self.name = self._check_cv_name(name)
 
     @property
     def dof_sequence(self) -> str:
@@ -768,7 +773,7 @@ class _PlumedCV:
 
         return None
 
-    def _from_file(self, filename: str, component: str) -> None:
+    def _from_file(self, filename: str, component: str | None) -> str:
         """Generate DOFs and a CV from a file"""
 
         with open(filename, 'r') as f:
@@ -786,19 +791,16 @@ class _PlumedCV:
                 f'the last line of {filename} file.'
             )
 
-        _name = _last_line.split(':')[0]
+        name = _last_line.split(':')[0]
 
         if component is not None:
-            self.name = f'{_name}.{component}'
-
-        else:
-            self.name = _name
+            name = f'{name}.{component}'
 
         filenames = _find_files(self.setup)
         if len(filenames) > 0:
             self._attach_files(filenames)
 
-        return None
+        return name
 
     def _attach_files(self, filenames: List[str]) -> None:
         """Attache files found in the CV initialisation to the CV object"""
@@ -865,23 +867,24 @@ class _PlumedCV:
 
         return None
 
-    def _check_name(self) -> None:
+    @staticmethod
+    def _check_cv_name(name) -> str:
         """Check if the supplied name is valid"""
 
-        if self.name is None:
+        if name is None:
             raise ValueError('CV name must be provided')
 
-        if ' ' in self.name:
+        if ' ' in name:
             raise ValueError('Spaces in CV names are not allowed')
 
         _illegal_substrings = ('fes', 'colvar', 'HILLS')
-        if any(substr in self.name for substr in _illegal_substrings):
+        if any(substr in name for substr in _illegal_substrings):
             raise ValueError(
                 'Please do not use "fes", "colvar", "HILLS" in '
                 'your CV names'
             )
 
-        return None
+        return name
 
     def _atom_group_to_dof(self, idx: int, atom_group: Sequence) -> None:
         """Check the atom group and generate a DOF"""
