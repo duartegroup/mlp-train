@@ -900,6 +900,8 @@ class Configuration(AtomCollection):
                 start = mol_info.get('start', 0)
                 end = mol_info.get('end', 0)
 
+                assert isinstance(start, int)
+                assert isinstance(end, int)
                 # Check bounds
                 if start < 0 or end > total_atoms or start >= end:
                     logger.warning(

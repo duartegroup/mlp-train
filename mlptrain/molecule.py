@@ -64,6 +64,8 @@ class Molecule(ade.Molecule):
         Arguments:
             sigma: Standard deviation of the standard deviation
         """
+        assert self.coordinates is not None
+
         dx = np.random.normal(
             scale=sigma,  # Å
             loc=0.0,

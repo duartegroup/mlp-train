@@ -53,7 +53,6 @@ addopts = "--cov-report term --cov-report xml"
 error-on-warning = true
 
 [tool.ty.rules]
-unsupported-operator = "ignore"
 unresolved-attribute = "ignore"
 invalid-argument-type = "ignore"
 
@@ -63,6 +62,7 @@ include = [
   "mlptrain/config.py",
   "mlptrain/log.py",
   "mlptrain/sampling/md_openmm.py",
+  "mlptrain/sampling/umbrella.py",
   "mlptrain/configurations/configuration_set.py",
   "mlptrain/potentials/mace/mace.py",
   "mlptrain/configurations/plotting.py",

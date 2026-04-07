@@ -52,6 +52,7 @@ class Metadynamics:
         self,
         cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'],
         bias: Optional['mlptrain.PlumedBias'] = None,
+        # TODO: Temp should always be provided!
         temp: Optional[float] = None,
     ):
         """
@@ -85,6 +86,8 @@ class Metadynamics:
             self.bias = PlumedBias(cvs)
 
         self.bias._set_metad_cvs(cvs)
+
+        assert temp is not None
 
         self.temp = temp
         self._previous_run_parameters = {}
@@ -849,6 +852,7 @@ class Metadynamics:
             )
 
         assert cvs_holder.metad_cvs is not None
+        assert self.bias.metad_cvs is not None
         if not all(cv in self.bias.metad_cvs for cv in cvs_holder.metad_cvs):
             raise ValueError(
                 'At least one of the supplied CVs are not within '

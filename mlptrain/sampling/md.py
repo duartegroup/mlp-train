@@ -378,7 +378,7 @@ def _run_dynamics(
 ) -> None:
     """Initialise dynamics object and run dynamics"""
 
-    if all([value is not None for value in [pressure, compress]]) and temp > 0:
+    if pressure is not None and compress is not None and temp > 0:
         # Run NPT dynamics if pressure and compressibility are specified
         pressure_au = pressure * ase_units.bar
         compress_au = compress / ase_units.bar

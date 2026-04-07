@@ -10,7 +10,7 @@ import multiprocessing as mp
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.integrate import simpson
-from typing import Optional, List, Callable, Tuple
+from typing import Optional, List, Tuple
 from copy import deepcopy
 from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.io import write as ase_write
@@ -70,11 +70,13 @@ class _Window:
         return None
 
     @property
-    def bin_centres(self) -> Optional[np.ndarray]:
+    def bin_centres(self) -> np.ndarray:
         """Array of zeta values at bin centres"""
 
         if self.bin_edges is None:
-            return None
+            raise RuntimeError(
+                'Cannot find bin centres with undefined bin edges'
+            )
 
         _edges = self.bin_edges
 
@@ -334,9 +336,9 @@ class UmbrellaSampling:
             kappa: Value of the spring constant, κ, used in umbrella sampling
         """
 
-        self.kappa: float = kappa  # eV Å^-2
-        self.zeta_func: Callable = zeta_func  # ζ(r)
-        self.temp: Optional[float] = temp  # K
+        self.kappa = kappa  # eV Å^-2
+        self.zeta_func = zeta_func  # ζ(r)
+        self.temp = temp  # K
 
         self.windows: List[_Window] = []
 
@@ -682,6 +684,7 @@ class UmbrellaSampling:
             (np.ndarray, np.ndarray): Tuple containing the reaction coordinate
                                       and values of the free energy
         """
+        assert self.windows
         beta = self.beta  # 1 / (k_B T)
         self._bin_windows(n_bins=n_bins)
 
@@ -696,12 +699,21 @@ class UmbrellaSampling:
 
         for iteration in range(max_iterations):
             # Equation 8.8.18 from Tuckerman, p. 343
-            p = sum(w_k.hist for w_k in self.windows) / sum(
-                w_k.n * np.exp(beta * (w_k.free_energy - w_k.bias_energies))
+            hist_sum = sum(w_k.hist for w_k in self.windows)
+            p = hist_sum / sum(
+                w_k.n
+                * np.exp(
+                    beta
+                    * (
+                        w_k.free_energy  # ty: ignore[unsupported-operator]
+                        - w_k.bias_energies
+                    )
+                )
                 for w_k in self.windows
             )
 
             for w_k in self.windows:
+                assert w_k.bias_energies is not None
                 # Equation 8.8.19 from Tuckerman, p. 343
                 w_k.free_energy = -(1.0 / beta) * np.log(
                     np.sum(p * np.exp(-w_k.bias_energies * beta))

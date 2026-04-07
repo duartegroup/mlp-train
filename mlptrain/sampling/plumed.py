@@ -268,25 +268,16 @@ class PlumedBias(ASEConstraint):
         if not isinstance(pace, int) or pace <= 0:
             raise ValueError('Pace (τ_G/dt) must be a positive integer')
 
-        else:
-            self.pace = pace
-
-        if isinstance(width, list) or isinstance(width, tuple):
-            if len(width) == 0:
-                raise TypeError('The provided width sequence is empty')
-
-            elif any(single_width <= 0 for single_width in width):
-                raise ValueError('All gaussian widths (σ) must be positive')
-
-            else:
-                self.width = width
-
-        else:
+        if isinstance(width, float) or isinstance(width, int):
             if width <= 0:
                 raise ValueError('Gaussian width (σ) must be positive')
 
-            else:
-                self.width = [width]  # ty: ignore[invalid-assignment]
+            width = [width]
+        else:
+            if any(single_width <= 0 for single_width in width):
+                raise ValueError(
+                    f'All gaussian widths (σ) must be positive, got: {width}'
+                )
 
         if len(self.width) != self.n_metad_cvs:
             raise ValueError(
@@ -297,14 +288,13 @@ class PlumedBias(ASEConstraint):
         if height < 0:
             raise ValueError('Gaussian height (ω) must be non-negative float')
 
-        else:
-            self.height = height
-
         if biasfactor is not None and biasfactor < 1:
             raise ValueError('Biasfactor (γ) must be larger than one')
 
-        else:
-            self.biasfactor = biasfactor
+        self.height = height
+        self.pace = pace
+        self.width = width
+        self.biasfactor = biasfactor
 
         self._set_metad_grid_params(
             grid_min=grid_min,
@@ -678,7 +668,7 @@ class _PlumedCV:
         self.setup: List = []
         self.files: list[tuple[str, str]] | None = None
 
-        self.name: Optional[str] = None
+        self.name = name
         self.units: Optional[str] = None
         self.dof_names: Optional[List[str]] = None
         self.dof_units: Optional[List[str]] = None
@@ -690,7 +680,7 @@ class _PlumedCV:
             self._from_file(filename, component)
 
         elif atom_groups is not None:
-            self._from_atom_groups(name, atom_groups)
+            self._from_atom_groups(atom_groups)
 
         else:
             raise TypeError(
@@ -698,6 +688,8 @@ class _PlumedCV:
                 'groups of atom indices (DOFs) '
                 'or a file containing PLUMED-type input'
             )
+
+        self._check_name()
 
     @property
     def dof_sequence(self) -> str:
@@ -802,8 +794,6 @@ class _PlumedCV:
         else:
             self.name = _name
 
-        self._check_name()
-
         filenames = _find_files(self.setup)
         if len(filenames) > 0:
             self._attach_files(filenames)
@@ -841,11 +831,9 @@ class _PlumedCV:
 
         return None
 
-    def _from_atom_groups(self, name: str, atom_groups: Sequence) -> None:
+    def _from_atom_groups(self, atom_groups: Sequence) -> None:
         """Generate DOFs from atom_groups"""
 
-        self.name = name
-        self._check_name()
         self.dof_names, self.dof_units = [], []
 
         if isinstance(atom_groups, list) or isinstance(atom_groups, tuple):
@@ -880,10 +868,13 @@ class _PlumedCV:
     def _check_name(self) -> None:
         """Check if the supplied name is valid"""
 
+        if self.name is None:
+            raise ValueError('CV name must be provided')
+
         if ' ' in self.name:
             raise ValueError('Spaces in CV names are not allowed')
 
-        _illegal_substrings = ['fes', 'colvar', 'HILLS']
+        _illegal_substrings = ('fes', 'colvar', 'HILLS')
         if any(substr in self.name for substr in _illegal_substrings):
             raise ValueError(
                 'Please do not use "fes", "colvar", "HILLS" in '
