@@ -71,7 +71,7 @@ class TauCalculator(LossFunction):
     def __call__(
         self,
         configurations: 'mlptrain.ConfigurationSet',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: 'mlptrain.potentials.MLPotential',
         **kwargs,
     ) -> Tau:
         """

@@ -6,7 +6,7 @@ import shutil
 import numpy as np
 import multiprocessing as mp
 from copy import deepcopy
-from typing import Optional, Union, List
+from typing import TYPE_CHECKING, Optional, Union, List
 from subprocess import Popen
 from ase import units as ase_units
 from ase.io import write as ase_write
@@ -20,9 +20,12 @@ from mlptrain.configurations import ConfigurationSet
 from mlptrain.log import logger
 from mlptrain.box import Box
 
+if TYPE_CHECKING:
+    from mlptrain.potentials import MLPotential
+
 
 def train(
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     method_name: str,
     selection_method: SelectionMethod = AbsDiffE(),
     max_active_time: float = 1000,
@@ -242,7 +245,7 @@ def train(
             keep_al_trajs=keep_al_trajs,
         )
 
-        # Active learning finds no configurations
+        # Summary of number of configurations found, skip training if no new selected
         if mlp.n_train == previous_n_train:
             if iteration >= min_active_iters:
                 logger.info('No AL configurations found')
@@ -251,6 +254,10 @@ def train(
             else:
                 logger.info('No AL configurations found. Skipping training')
                 continue
+        else:
+            logger.info(
+                f'{mlp.n_train-previous_n_train} AL configurations found'
+            )
 
         # If required, remove high-lying energy configurations from the data
         if max_e_threshold is not None:
@@ -269,9 +276,9 @@ def train(
 
 
 def _add_active_configs(
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     init_config: 'mlptrain.Configuration',
-    selection_method: 'mlptrain.training.selection.SelectionMethod',
+    selection_method: SelectionMethod,
     n_configs: int = 10,
     **kwargs,
 ) -> None:
@@ -289,14 +296,13 @@ def _add_active_configs(
     n_processes = min(n_configs, Config.n_cores)
     n_cores_pp = max(Config.n_cores // n_configs, 1)
     logger.info(
-        'Searching for "active" configurations with '
+        f'Iteration {kwargs["iteration"]}: Searching for "active" configurations with '
         f'{n_processes} processes using {n_cores_pp} cores / process'
     )
 
     if 'bias' in kwargs and kwargs['iteration'] < kwargs['bias_start_iter']:
         logger.info(
-            f'Iteration {kwargs["iteration"]}: the bias potential '
-            'is not applied'
+            f'Bias potential is not applied until iteration {kwargs["bias_start_iter"]}'
         )
         kwargs['bias'] = _remove_bias_potential(kwargs['bias'])
 
@@ -366,8 +372,8 @@ def _add_active_configs(
 
 def _gen_active_config(
     config: 'mlptrain.Configuration',
-    mlp: 'mlptrain.potentials._base.MLPotential',
-    selector: 'mlptrain.training.selection.SelectionMethod',
+    mlp: 'MLPotential',
+    selector: SelectionMethod,
     n_cores: int,
     max_time: float,
     method_name: str,
@@ -563,7 +569,7 @@ def _gen_active_config(
 
 
 def _set_init_training_configs(
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: 'MLPotential',
     init_configs: 'mlptrain.ConfigurationSet',
     method_name: str,
 ) -> None:
@@ -588,7 +594,7 @@ def _set_init_training_configs(
 
 
 def _gen_and_set_init_training_configs(
-    mlp: 'mlptrain.potentials._base.MLPotential', method_name: str, num: int
+    mlp: MLPotential, method_name: str, num: int
 ) -> None:
     """
     Generate a set of initial configurations for a system, if init_configs
@@ -658,7 +664,7 @@ def _save_ase_traj_as_xyz(
 
 
 def _initialise_restart(
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     restart_iter: int,
     inherit_metad_bias: bool,
 ) -> None:
@@ -745,7 +751,7 @@ def _attach_plumed_coords_to_init_configs(
 
 def _update_init_config(
     init_config: 'mlptrain.Configuration',
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     fix_init_config: bool,
     bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
     inherit_metad_bias: bool,
@@ -1047,6 +1053,7 @@ def _attach_inherited_bias_energies(
                     break
 
         n_bins = []
+        assert bias.metad_cvs is not None
         for cv in bias.metad_cvs:
             for line in header:
                 if line.startswith(f'#! SET nbins_{cv.name}'):
@@ -1095,6 +1102,9 @@ def _generate_grid_from_hills(
     """
     Generate bias_grid_{iteration-1}.dat from HILLS_{iteration-1}.dat
     """
+    assert configurations.plumed_coordinates is not None
+    assert bias.metad_cvs is not None
+    assert bias.width is not None
 
     min_params, max_params = [], []
     metad_cv_idxs = [bias.cvs.index(cv) for cv in bias.metad_cvs]

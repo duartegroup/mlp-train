@@ -1,13 +1,15 @@
-import mlptrain
+from __future__ import annotations
+
 import ase
 import numpy as np
 import os
 import json
 import itertools
-from typing import Optional, Union, List, Dict
+from typing import TYPE_CHECKING, Optional, Union, List, Dict
 from copy import deepcopy
 from autode.atoms import AtomCollection, Atom
 import autode.atoms
+from autode.values import PotentialEnergy, Gradient
 import ase.atoms
 from mlptrain.log import logger
 from mlptrain.energy import Energy
@@ -20,6 +22,9 @@ import random
 import autode as ade
 from math import dist
 from autode.solvent.solvents import get_solvent
+
+if TYPE_CHECKING:
+    from mlptrain.potentials import MLPotential
 
 
 class Configuration(AtomCollection):
@@ -93,6 +98,155 @@ class Configuration(AtomCollection):
 
         return config
 
+    @classmethod
+    def from_orca_file(
+        cls,
+        file_path: str,
+        *,
+        load_energy: bool = True,
+        load_forces: bool = True,
+    ) -> 'Configuration':
+        """
+        Return Configuration from existing ORCA calculation output files.
+
+        -----------------------------------------------------------
+        Arguments:
+
+        file_path: (str) Path to orca output file.
+
+        load_energy: (bool) If True, load energies from the files.
+
+        load_forces: (bool) If True, load forces from the files.
+        """
+
+        with open(file_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+
+        # TODO: Make sure we're actually looking at the ORCA output file!!!
+        # If not, it should be a hard error (but different from the one bellow).
+        # Look at how cclib does it.
+        if not any('ORCA TERMINATED NORMALLY' in line for line in lines):
+            raise RuntimeError(
+                f'ORCA did not terminate normally in file {file_path}.'
+            )
+
+        charge = None
+        mult = None
+        for cline in lines:
+            if 'Total Charge' in cline:
+                charge = int(cline.split()[4])
+
+        assert (
+            charge is not None
+        ), f'Could not determine charge from output file {file_path}'
+
+        for line in lines:
+            if 'Multiplicity' in line:
+                mult = int(line.split()[-1])
+
+        assert (
+            mult is not None
+        ), f'Could not determine multiplicity from output file {file_path}'
+        assert mult > 0, 'Multiplicity must be > 0'
+
+        read_coord = False
+        for line in lines:
+            if 'CARTESIAN COORDINATES (ANGSTROEM)' in line:
+                atoms = []
+                read_coord = True
+            elif line in ['\n', '\r\n']:
+                read_coord = False
+
+            if (
+                read_coord
+                and '----' not in line
+                and 'CARTESIAN COORDINATES (ANGSTROEM)' not in line
+            ):
+                element, x, y, z = line.split()
+                atom = ade.atoms.Atom(
+                    atomic_symbol=element,
+                    x=float(x),
+                    y=float(y),
+                    z=float(z),
+                )
+                atoms.append(atom)
+
+        num_atoms = len(atoms)
+
+        if load_energy:
+            if not any('FINAL SINGLE POINT ENERGY' in line for line in lines):
+                raise ValueError(
+                    f'Single point energy not found in output file {file_path}'
+                )
+
+            for en_line in reversed(lines):
+                if 'FINAL SINGLE POINT ENERGY' in en_line:
+                    energy = PotentialEnergy(en_line.split()[4], units='Ha')
+
+        if load_forces:
+            if not any(
+                ('CARTESIAN GRADIENT' in line)
+                or ('The final MP2 gradient' in line)
+                for line in lines
+            ):
+                raise ValueError(
+                    f'Gradients not found in output file {file_path}'
+                )
+
+            gradient_start = [
+                'CARTESIAN GRADIENT',
+                'The final MP2 gradient',
+            ]
+
+            gradient_ends = [
+                'Difference to translation invariance',
+                'Norm of the Cartesian gradient',
+                'NORM OF THE MP2 GRADIENT:',
+            ]
+
+            gradients = []
+            read_forces = False
+
+            for line in lines:
+                if any(substring in line for substring in gradient_start):
+                    read_forces = True
+                elif any(substring in line for substring in gradient_ends):
+                    read_forces = False
+
+                if read_forces:
+                    if len(line.split()) <= 3:
+                        continue
+                    else:
+                        dadx, dady, dadz = line.split()[-3:]
+
+                        gradients.append(
+                            [float(dadx), float(dady), float(dadz)]
+                        )
+
+            assert (
+                len(gradients) == num_atoms
+            ), f'Number of gradient lines ({len(gradients)}) != number of atoms ({num_atoms})'
+
+            forces = -Gradient(gradients, units='Ha a0^-1').to('Ha Å^-1')
+
+        # TODO: Add load_dipole parameter
+        # if load_dipoles:
+        #    for d_line in reversed(lines):
+        #        if 'Total Dipole Moment' in d_line:
+        #            dipx, dipy, dipz = line.split()[-3:]
+        #            dipole = [float(dipx), float(dipy), float(dipz)]
+
+        config = cls(atoms=atoms, charge=charge, mult=mult)
+
+        if load_energy:
+            config.energy.true = energy.to('eV')
+        if load_forces:
+            config.forces.true = forces.to('eV Å^-1')
+        # if load_dipole:
+        #   config.dipole.true = dipole.to()
+
+        return config
+
     @property
     def ase_atoms(self) -> 'ase.atoms.Atoms':
         """
@@ -103,6 +257,7 @@ class Configuration(AtomCollection):
         Returns:
             (ase.atoms.Atoms): ASE atoms
         """
+        assert self.atoms is not None
         _atoms = ase.atoms.Atoms(
             symbols=[atom.label for atom in self.atoms],
             positions=self.coordinates,
@@ -183,11 +338,11 @@ class Configuration(AtomCollection):
         if None not in (solvent_density, solvent_molecule, solvent_name):
             raise ValueError(
                 'Either the solvent name or the combination of solvent molecule and density must be provided.'
-                'You shoult not provide all three.'
+                'You should not provide all three.'
             )
 
         # If both solvent molecule and density are provided, stop checking
-        elif None not in (solvent_density, solvent_molecule):
+        elif solvent_molecule is not None and solvent_density is not None:
             if solvent_molecule.atoms is None:
                 raise ValueError('The solvent molecule must contain atoms')
             if solvent_density <= 0:
@@ -203,6 +358,11 @@ class Configuration(AtomCollection):
                 f'Searching solvent with the name {solvent_name} in autodE solvent database'
             )
             solvent = get_solvent(solvent_name, kind='implicit')
+            if solvent is None:
+                raise ValueError(
+                    f'Could not find solvent {solvent_name} in the database!'
+                )
+
             solvent_smiles = solvent.smiles
             solvent_molecule = ade.Molecule(
                 smiles=solvent_smiles, name=solvent_name
@@ -232,10 +392,12 @@ class Configuration(AtomCollection):
             atom.coordinate = atom.coordinate - solute_com + (box_size / 2)
 
         # Move the solvent to the box origin, so that the random vectors added later are all within the box
+        assert solvent_molecule is not None
         solvent_com = solvent_molecule.com
         for n, atom in enumerate(solvent_molecule.atoms):
             atom.coordinate = atom.coordinate - solvent_com
 
+        assert solvent_molecule.atoms is not None
         # Calculate the number of solvent molecules to be inserted
         solvent_mass = sum([atom.mass for atom in solvent_molecule.atoms])
         # Calculate the volume of a single solvent molecule by first calculating the mass of a single molecule: m = M/N_a
@@ -297,6 +459,8 @@ class Configuration(AtomCollection):
         ___________________________________________________________________________
         """
 
+        assert self.atoms is not None
+        assert solvent_molecule.atoms is not None
         # Get the coordinates of the solute in the center of the box
         system_coords = np.array([atom.coordinate for atom in self.atoms])
         # Get the coordinates of the single isolated solvent molecule
@@ -536,7 +700,7 @@ class Configuration(AtomCollection):
 
     def single_point(
         self,
-        method: Union[str, 'mlptrain.potentials._base.MLPotential'],
+        method: Union[str, MLPotential],
         n_cores: int = 1,
     ) -> None:
         """
@@ -640,7 +804,7 @@ class Configuration(AtomCollection):
         return None
 
     @staticmethod
-    def _load_from_xyz(filename: str) -> tuple:
+    def _load_from_xyz(filename: str) -> tuple[list, Box | None, dict | None]:
         """
         Load atoms, box, and mol_dict from an xyz file.
 
@@ -665,7 +829,7 @@ class Configuration(AtomCollection):
             logger.error(f'Failed to read {filename}: {e}')
             raise
 
-        atoms = []
+        atoms: list[Atom] = []
         box = None
         mol_dict = None
 
