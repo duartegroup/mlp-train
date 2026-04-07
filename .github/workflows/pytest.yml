@@ -11,14 +11,8 @@ env:
 
 jobs:
   test:
-    name: GAP (${{ matrix.python-version }}, ${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: true
-      matrix:
-        os: ["ubuntu-22.04"]
-        python-version: ["3.10"]
+    name: GAP
+    runs-on: ubuntu-22.04
 
     defaults:
       run:
@@ -29,13 +23,9 @@ jobs:
 
     - uses: mamba-org/setup-micromamba@v3
       with:
-        # the create command looks like this:
-        # `micromamba create -n test-env python=3.9 -f environment.yml`
         environment-file: environment.yml
         environment-name: gha-test-env
         cache-environment: true
-        create-args: >-
-          python=${{ matrix.python-version }}
 
     - name: Basic install
       run: ./install_gap.sh
@@ -46,19 +36,13 @@ jobs:
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v6
       with:
-          flags: python-${{ matrix.python-version }}
+          flags: gap
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: duartegroup/mlp-train
 
   test-ace:
-    name: ACE (${{ matrix.python-version }}, ${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: true
-      matrix:
-        os: ["ubuntu-22.04"]
-        python-version: ["3.10"]
+    name: ACE
+    runs-on: ubuntu-22.04
 
     defaults:
       run:
@@ -76,8 +60,6 @@ jobs:
         environment-file: environment_ace.yml
         environment-name: gha-test-env
         cache-environment: true
-        create-args: >-
-          python=${{ matrix.python-version }}
 
     - name: ACE install
       run: ./install_ace.sh
@@ -88,19 +70,13 @@ jobs:
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v6
       with:
-          flags: python-${{ matrix.python-version }}-ace
+          flags: ace
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: duartegroup/mlp-train
 
   test-mace:
-    name: MACE (${{ matrix.python-version }}, ${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: true
-      matrix:
-        os: ["ubuntu-22.04"]
-        python-version: ["3.10"]
+    name: MACE
+    runs-on: ubuntu-22.04
 
     defaults:
       run:
@@ -114,8 +90,6 @@ jobs:
         environment-file: environment_mace.yml
         environment-name: gha-test-env
         cache-environment: true
-        create-args: >-
-          python=${{ matrix.python-version }}
 
     - name: MACE install
       run: ./install_mace.sh
@@ -126,6 +100,6 @@ jobs:
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v6
       with:
-          flags: python-${{ matrix.python-version }}-mace
+          flags: mace
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: duartegroup/mlp-train
