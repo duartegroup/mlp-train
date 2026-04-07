@@ -13,14 +13,14 @@ class ReactionCoordinate(Function, ABC):
     @overload
     def __call__(
         self,
-        arg: mlptrain.ConfigurationSet,
-    ) -> np.ndarray: ...
+        arg: ase.atoms.Atoms | mlptrain.Configuration,
+    ) -> float: ...
 
     @overload
     def __call__(
         self,
-        arg: ase.atoms.Atoms | mlptrain.ConfigurationSet,
-    ) -> float: ...
+        arg: mlptrain.ConfigurationSet,
+    ) -> np.ndarray: ...
 
     def __call__(
         self,
