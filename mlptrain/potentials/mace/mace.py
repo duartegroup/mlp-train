@@ -197,7 +197,6 @@ class MACE(MLPotential):
             if Config.mace_params['start_swa'] is not None:
                 args_list.append('--start_swa')
                 args_list.append(str(Config.mace_params['start_swa']))
-            args_list.append(str(Config.mace_params['start_swa']))
 
         if self.foundation is not None:
             args_list.append('--foundation_model')

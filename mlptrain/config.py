@@ -68,7 +68,7 @@ class _ConfigClass:
         'device': mace_device,
         'calc_device': 'cpu',
         'error_table': 'TotalMAE',
-        'swa': False
+        'swa': False,
         'start_swa': None,
         'ema': True,
         'ema_decay': 0.99,
