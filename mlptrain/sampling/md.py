@@ -24,9 +24,7 @@ from mlptrain.utils import work_in_tmp_dir
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.md.nptberendsen import NPTBerendsen
-from ase.md.langevin import Langevin
-from ase.md.verlet import VelocityVerlet
-from ase.io import read
+from ase.md import Langevin, VelocityVerlet
 from ase import units as ase_units
 
 if TYPE_CHECKING:
@@ -542,8 +540,8 @@ def _attach_plumed_coordinates(
 def _set_momenta_and_geometry(
     ase_atoms: 'ase.atoms.Atoms',
     temp: float,
-    bbond_energy: dict,
-    fbond_energy: dict,
+    bbond_energy: dict | None,
+    fbond_energy: dict | None,
     restart: bool,
     traj_name: str,
 ) -> None:
@@ -604,7 +602,12 @@ def _set_momenta_and_geometry(
             'last configuration'
         )
 
-        last_configuration = read(traj_name)
+        last_configuration = ase.io.read(traj_name)
+
+        # Make sure we've only read a single structure, not multiple of them!
+        assert isinstance(
+            last_configuration, ase.Atoms
+        ), 'more than one configuration in file {traj_name}!'
 
         ase_atoms.set_positions(last_configuration.get_positions())
         ase_atoms.set_momenta(last_configuration.get_momenta())

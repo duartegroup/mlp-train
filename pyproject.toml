@@ -61,12 +61,12 @@ invalid-argument-type = "ignore"
 include = [
   "mlptrain/config.py",
   "mlptrain/log.py",
-  "mlptrain/sampling/md_openmm.py",
-  "mlptrain/sampling/umbrella.py",
+  "mlptrain/sampling/*.py",
   "mlptrain/configurations/configuration_set.py",
   "mlptrain/potentials/mace/mace.py",
   "mlptrain/configurations/plotting.py",
 ]
+exclude = ["mlptrain/sampling/metadynamics.py"]
 
 [tool.ty.overrides.rules]
 all = "error"
@@ -74,7 +74,7 @@ all = "error"
 # Don't typecheck python scripts from examples/*_paper/
 [[tool.ty.overrides]]
 include = [
-  "examples/*_paper/*",
+  "examples/*paper*/*",
 ]
 [tool.ty.overrides.rules]
 all = "ignore"
