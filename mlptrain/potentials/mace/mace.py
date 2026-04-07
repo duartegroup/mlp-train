@@ -286,6 +286,7 @@ class MACE(MLPotential):
 
         train_mace(self.args)
 
+        # Remove MACE root logging handlers
         remove_root_logging_handlers()
 
         # Restore our root logging handlers
