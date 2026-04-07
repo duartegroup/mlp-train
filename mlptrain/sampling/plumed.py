@@ -675,16 +675,18 @@ class _PlumedCV:
         self.files: list[tuple[str, str]] | None = None
 
         self.units: Optional[str] = None
-        self.dof_names: Optional[List[str]] = None
-        self.dof_units: Optional[List[str]] = None
+        self.dof_names: list[str] = []
+        self.dof_units: list[str] = []
 
         self.lower_wall: Optional[Dict] = None
         self.upper_wall: Optional[Dict] = None
 
         if filename is not None:
             name = self._from_file(filename, component)
+            self.name = self._check_cv_name(name)
 
         elif atom_groups is not None:
+            self.name = self._check_cv_name(name)
             self._from_atom_groups(atom_groups)
 
         else:
@@ -694,13 +696,10 @@ class _PlumedCV:
                 'or a file containing PLUMED-type input'
             )
 
-        self.name = self._check_cv_name(name)
-
     @property
     def dof_sequence(self) -> str:
         """String containing names of DOFs separated by commas"""
 
-        assert self.dof_names
         return ','.join(self.dof_names)
 
     def attach_lower_wall(
@@ -836,8 +835,6 @@ class _PlumedCV:
     def _from_atom_groups(self, atom_groups: Sequence) -> None:
         """Generate DOFs from atom_groups"""
 
-        self.dof_names, self.dof_units = [], []
-
         if isinstance(atom_groups, list) or isinstance(atom_groups, tuple):
             if len(atom_groups) == 0:
                 raise TypeError(
@@ -895,9 +892,6 @@ class _PlumedCV:
 
         if len(atom_list) < 2:
             raise ValueError('Atom group must contain at least two atoms')
-
-        assert self.dof_names is not None
-        assert self.dof_units is not None
 
         if len(atom_list) == 2:
             dof_name = f'{self.name}_dist{idx + 1}'
@@ -969,7 +963,6 @@ class PlumedAverageCV(_PlumedCV):
 
         self._set_units()
 
-        assert self.dof_names
         dof_sum = '+'.join(self.dof_names)
         func = f'{1 / len(self.dof_names)}*({dof_sum})'
 
@@ -1008,7 +1001,7 @@ class PlumedDifferenceCV(_PlumedCV):
 
         self._set_units()
 
-        if self.dof_names is None or len(self.dof_names) != 2:
+        if len(self.dof_names) != 2:
             raise ValueError(
                 'DifferenceCV must comprise exactly two ' 'groups of atoms'
             )
@@ -1064,8 +1057,6 @@ class PlumedCNCV(_PlumedCV):
         super().__init__(name=name, atom_groups=atom_groups)
 
         self._set_units()
-
-        assert self.dof_names is not None
 
         self.r_ref = r_ref
 
@@ -1415,7 +1406,7 @@ def plumed_setup(
     for cv in bias.cvs:
         colvar_filename = get_colvar_filename(cv, **kwargs)
 
-        if cv.dof_names is not None:
+        if cv.dof_names:
             args = f'{cv.name},{cv.dof_sequence}'
 
         else:
