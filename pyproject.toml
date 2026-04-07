@@ -47,6 +47,10 @@ banned-module-level-imports = ["mace", "openmm", "openmmml", "sklearn", "torch"]
 
 [tool.pytest.ini_options]
 addopts = "--cov-report term --cov-report xml"
+filterwarnings = [
+  'ignore:You are using `torch.load`:FutureWarning:e3nn|mace|openmmml:',
+  'ignore:The TorchScript type system:UserWarning:torch:',
+]
 
 [tool.ty.terminal]
 # Error if ty emits any warning-level diagnostics.
