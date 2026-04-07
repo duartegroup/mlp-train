@@ -60,7 +60,6 @@ include = [
 ]
 
 [tool.ty.overrides.rules]
-unresolved-attribute = "ignore"
 invalid-argument-type = "ignore"
 
 # Don't typecheck python scripts from examples/*_paper/

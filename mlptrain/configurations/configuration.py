@@ -819,24 +819,23 @@ class Configuration(AtomCollection):
         from mlptrain.box import Box
 
         # Load atoms from xyz file
-        logger.info(f'Loading atoms from {filename}')
-        try:
-            ase_atoms = ase.io.read(filename)
-            logger.info(
-                f'Successfully loaded {len(ase_atoms)} atoms from {filename}'
+        ase_atoms = ase.io.read(filename)
+        # Check that we've read a single structure and not more!
+        if isinstance(ase_atoms, list):
+            raise ValueError(
+                f'Read more than one structure from file {filename}'
             )
-        except Exception as e:
-            logger.error(f'Failed to read {filename}: {e}')
-            raise
+
+        logger.info(
+            f'Successfully loaded {len(ase_atoms)} atoms from {filename}'
+        )
 
         atoms: list[Atom] = []
         box = None
         mol_dict = None
 
-        # Debug: print ASE atoms info
         if len(ase_atoms) == 0:
-            logger.warning(f'No atoms found in {filename}')
-            return atoms, box, mol_dict
+            raise RuntimeError(f'No atoms found in {filename}')
 
         # Convert to autode atoms
         symbols = ase_atoms.get_chemical_symbols()

@@ -147,7 +147,8 @@ class Metadynamics:
 
         logger.info('Estimating optimal width (σ)')
 
-        width_processes, all_widths = [], []
+        width_processes = []
+        all_widths = []
 
         n_processes = min(Config.n_cores, len(configuration_set))
 
@@ -175,7 +176,11 @@ class Metadynamics:
 
             pool.close()
             for width_process in width_processes:
-                all_widths.append(width_process.get())
+                # TODO: This looks like a bug?
+                # all_widths is converted to ndarray which doesn't have an .append method
+                all_widths.append(  # ty: ignore[unresolved-attribute]
+                    width_process.get()
+                )
                 all_widths = np.array(all_widths)
             pool.join()
 
