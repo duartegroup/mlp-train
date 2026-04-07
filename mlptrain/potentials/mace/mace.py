@@ -281,6 +281,7 @@ class MACE(MLPotential):
 
         start_time = time.perf_counter()
 
+        # Remove mlp-train root logging handlers, but save for later
         our_logging_handlers = remove_root_logging_handlers()
 
         train_mace(self.args)
