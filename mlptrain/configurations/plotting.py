@@ -5,7 +5,6 @@ import seaborn as sns
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
-from typing import List, Union
 
 
 mpl.rcParams['figure.dpi'] = 400
@@ -50,7 +49,7 @@ def parity_plot(
 
 
 def error_histogram(
-    config_set: 'mlptrain.ConfigurationSet', name: str = 'error_histogram'
+    config_set: 'mlptrain.ConfigurationSet', file_name: str = 'error_histogram'
 ) -> None:
     """
     Plot distribution of errors in energies and forces for given configuration set
@@ -79,7 +78,7 @@ def error_histogram(
 
 def error_histogram_index(
     config_set: 'mlptrain.ConfigurationSet',
-    index: Union[List[int], None] = None,
+    index: list[int] | None = None,
     name: str = 'error_histogram_index',
 ) -> None:
     """
@@ -305,7 +304,7 @@ def _add_energy_error_histogram(
 
         axis.set_xlabel('Error on energy (meV atom$^{-1}$)')
     else:
-        mad = _add_max_and_mad(axis, x=x, y=y, units='meV')
+        mad = _add_max_and_mad(axis, x=x, y=y, unit='meV')
         axis.set_xlabel('Error on energy (meV)')
 
     axis.set_ylabel('Occurence')
