@@ -33,7 +33,7 @@ class GAP(MLPotential):
         """
         super().__init__(
             name=name if not name.endswith('.xml') else name[:-4],
-            system=system,
+            system=system,  # ty:ignore[invalid-argument-type]
         )
 
         self.params = None
@@ -88,7 +88,7 @@ class GAP(MLPotential):
     def _train_command(self):
         """Generate the teach_sparse function call for this system of atoms"""
 
-        general = self.params.general
+        general = self.params.general  # ty:ignore[unresolved-attribute]
         params = (
             'default_sigma={'
             f'{general["sigma_E"]:.6f} {general["sigma_F"]:.6f} 0.0 0.0'
@@ -98,7 +98,10 @@ class GAP(MLPotential):
         params += 'e0_method=average gap={'
 
         # Likewise with all the SOAPs to be added
-        for symbol, soap in self.params.soap.items():
+        for (
+            symbol,
+            soap,
+        ) in self.params.soap.items():  # ty:ignore[unresolved-attribute]
             logger.info(f'Adding SOAP:              {symbol}')
             other_atomic_ns = [Atom(s).atomic_number for s in soap['other']]
             logger.info(f'with neighbours           {soap["other"]}')
@@ -230,12 +233,14 @@ class _GAPParameters:
             # If there are no other atoms of this type then remove the self
             # pair
             if atom_symbols.count(symbol) == 1:
-                params['other'].remove(symbol)
+                params['other'].remove(  # ty:ignore[unresolved-attribute]
+                    symbol
+                )
 
             for other_symbol in params['other']:  # ty: ignore[not-iterable]
                 added_pairs.append(symbol + other_symbol)
 
-            if len(params['other']) == 0:
+            if len(params['other']) == 0:  # ty:ignore[invalid-argument-type]
                 logger.info(f'Not adding SOAP to {symbol} - should be covered')
                 continue
 

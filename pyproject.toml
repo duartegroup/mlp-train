@@ -61,12 +61,17 @@ invalid-argument-type = "ignore"
 include = [
   "mlptrain/config.py",
   "mlptrain/log.py",
+  "mlptrain/molecule.py",
   "mlptrain/sampling/*.py",
   "mlptrain/configurations/configuration_set.py",
-  "mlptrain/potentials/mace/mace.py",
+  "mlptrain/potentials/*",
   "mlptrain/configurations/plotting.py",
+  "mlptrain/configurations/calculate.py",
 ]
-exclude = ["mlptrain/sampling/metadynamics.py"]
+exclude = [
+  "mlptrain/sampling/metadynamics.py",
+  "mlptrain/training/active.py",
+]
 
 [tool.ty.overrides.rules]
 all = "error"

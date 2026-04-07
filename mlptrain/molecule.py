@@ -54,7 +54,12 @@ class Molecule(ade.Molecule):
         if len(coords) == 0:
             return np.inf
 
-        return np.min(cdist(coords, self.coordinates))
+        return np.min(
+            cdist(
+                coords,
+                self.coordinates,  # ty: ignore[invalid-argument-type]
+            )
+        )
 
     def random_normal_jiggle(self, sigma: float = 0.01) -> None:
         """
