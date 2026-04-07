@@ -30,7 +30,9 @@ def test_bias(h2):
 
     assert bias.ref is not None
     assert bias.kappa is not None
-    assert bias.f.atom_pair_list == [(0, 1)]
+    assert bias.f.atom_pair_list == [  # ty: ignore[unresolved-attribute]
+        (0, 1)
+    ]
 
     new_pos = [[0, 0, 0], [0, 0, 1]]
 

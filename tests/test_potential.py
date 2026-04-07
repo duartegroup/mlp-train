@@ -37,7 +37,10 @@ class TestPotential(MLPotential):
     __test__ = False
 
     def __init__(self, name: str, calculator='harmonic', system=None):
-        super().__init__(name=name, system=system)
+        super().__init__(
+            name=name,
+            system=system,  # ty: ignore[invalid-argument-type]
+        )
         self.calculator = calculator.lower()
 
     @property

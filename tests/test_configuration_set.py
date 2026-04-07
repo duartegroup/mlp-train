@@ -291,6 +291,7 @@ def test_configurations_load_xyz_and_save_npz(
         np.allclose(config_coords, exp_vals['coords'][i])
         for i, config_coords in enumerate(loaded_configs._coordinates)
     )
+    assert loaded_configs.true_forces is not None
     assert all(
         np.allclose(config_forces, exp_vals['forces'][i])
         for i, config_forces in enumerate(loaded_configs.true_forces)

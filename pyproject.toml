@@ -52,29 +52,17 @@ addopts = "--cov-report term --cov-report xml"
 # Error if ty emits any warning-level diagnostics.
 error-on-warning = true
 
-[tool.ty.rules]
-unresolved-attribute = "ignore"
-invalid-argument-type = "ignore"
-
 # Enable all rules for these files
 [[tool.ty.overrides]]
 include = [
-  "mlptrain/config.py",
-  "mlptrain/log.py",
-  "mlptrain/molecule.py",
-  "mlptrain/sampling/*.py",
-  "mlptrain/configurations/configuration_set.py",
-  "mlptrain/potentials/*",
-  "mlptrain/configurations/plotting.py",
-  "mlptrain/configurations/calculate.py",
-]
-exclude = [
+  "mlptrain/configurations/configuration.py",
   "mlptrain/sampling/metadynamics.py",
   "mlptrain/training/active.py",
 ]
 
 [tool.ty.overrides.rules]
-all = "error"
+unresolved-attribute = "ignore"
+invalid-argument-type = "ignore"
 
 # Don't typecheck python scripts from examples/*_paper/
 [[tool.ty.overrides]]
