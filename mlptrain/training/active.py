@@ -6,7 +6,7 @@ import shutil
 import numpy as np
 import multiprocessing as mp
 from copy import deepcopy
-from typing import Optional, Union, List
+from typing import TYPE_CHECKING, Optional, Union, List
 from subprocess import Popen
 from ase import units as ase_units
 from ase.io import write as ase_write
@@ -20,7 +20,8 @@ from mlptrain.configurations import ConfigurationSet
 from mlptrain.log import logger
 from mlptrain.box import Box
 
-from mlptrain.potentials import MACE, MLPotential
+if TYPE_CHECKING:
+    from mlptrain.potentials import MLPotential
 
 
 def train(
@@ -457,7 +458,7 @@ def _gen_active_config(
 
     if kwargs['md_program'].lower() == 'openmm':
         assert isinstance(
-            mlp, MACE
+            mlp, mlptrain.potentials.MACE
         ), 'OpenMM is only available with MACE potential at the moment'
         traj = run_mlp_md_openmm(
             config,
