@@ -255,6 +255,16 @@ class MACE(MLPotential):
         import torch
         from mace.cli.run_train import run as train_mace
 
+        def remove_root_logging_handlers() -> list[logging.Handler]:
+            """Remove and return root logging handlers before calling MACE"""
+
+            # Remove existing logging as MACE creates it's own loggers
+            root_logger = logging.getLogger()
+            root_logging_handlers = list(root_logger.handlers)
+            for handler in root_logging_handlers:
+                root_logger.removeHandler(handler)
+            return root_logging_handlers
+
         n_cores = n_cores if n_cores is not None else Config.n_cores
         os.environ['OMP_NUM_THREADS'] = str(n_cores)
         logger.info(
@@ -271,7 +281,18 @@ class MACE(MLPotential):
 
         start_time = time.perf_counter()
 
+        # Remove mlp-train root logging handlers, but save for later
+        our_logging_handlers = remove_root_logging_handlers()
+
         train_mace(self.args)
+
+        # Remove MACE root logging handlers
+        remove_root_logging_handlers()
+
+        # Restore our root logging handlers
+        root_logger = logging.getLogger()
+        for handler in our_logging_handlers:
+            root_logger.addHandler(handler)
 
         delta_time = time.perf_counter() - start_time
 
