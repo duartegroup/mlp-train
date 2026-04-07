@@ -52,8 +52,6 @@ class Metadynamics:
         self,
         cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'],
         bias: Optional['mlptrain.PlumedBias'] = None,
-        # TODO: Temp should always be provided!
-        temp: Optional[float] = None,
     ):
         """
         Molecular dynamics using metadynamics bias. Used for calculating free
@@ -87,20 +85,12 @@ class Metadynamics:
 
         self.bias._set_metad_cvs(cvs)
 
-        assert temp is not None
-
-        self.temp = temp
         self._previous_run_parameters = {}
 
     @property
     def n_cvs(self) -> int:
         """Number of collective variables used in metadynamics"""
         return self.bias.n_metad_cvs
-
-    @property
-    def kbt(self) -> float:
-        """Value of k_B*T in ASE units"""
-        return ase_units.kB * self.temp
 
     def estimate_width(
         self,
@@ -345,14 +335,12 @@ class Metadynamics:
                                 e.g. [ase.constraints.Hookean(a1, a2, k, rt)]
         """
 
-        self.temp = temp
-
         if height is None:
             if temp > 0:
                 logger.info(
-                    'Height was not supplied, ' 'setting height to 0.5*k_B*T'
+                    'Height was not supplied, setting height to 0.5*k_B*T'
                 )
-                height = 0.5 * self.kbt
+                height = 0.5 * ase_units.kB * temp
             else:
                 raise ValueError('Height was not supplied')
 
@@ -824,10 +812,9 @@ class Metadynamics:
                 'well-tempered metadynamics'
             )
 
-        self.temp = temp
         if height is None:
             logger.info('Height was not supplied, setting height to 0.5*k_B*T')
-            height = 0.5 * self.kbt
+            height = 0.5 * ase_units.kB * temp
 
         if width is None:
             logger.info(
