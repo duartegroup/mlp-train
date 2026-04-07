@@ -21,7 +21,7 @@ mpl.rcParams['axes.linewidth'] = 1.2
 
 
 def parity_plot(
-    config_set: 'mlptrain.ConfigurationSet', name: str = 'parity'
+    config_set: 'mlptrain.ConfigurationSet', file_name: str = 'parity'
 ) -> None:
     """
     Plot parity plots of energies, forces and temporal differences (if present)
@@ -31,7 +31,7 @@ def parity_plot(
     Arguments:
         config_set: Set of configurations
 
-        name:
+        file_name: Name of the file to save the plot
     """
     fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(8, 7.5))
 
@@ -44,7 +44,7 @@ def parity_plot(
         _add_force_magnitude_plot(config_set, axis=ax[1, 1])
 
     plt.tight_layout()
-    plt.savefig(f'{name}.pdf')
+    plt.savefig(f'{file_name}.pdf')
     return None
 
 
@@ -58,7 +58,7 @@ def error_histogram(
     Arguments:
         config_set: Set of configurations
 
-        name: name of the file
+        file_name: Name of the file to save the plot
 
     """
 
@@ -71,7 +71,7 @@ def error_histogram(
         _add_force_error_histogram(config_set, axis=ax[1])
 
     plt.tight_layout()
-    plt.savefig(f'{name}.pdf')
+    plt.savefig(f'{file_name}.pdf')
 
     return None
 
@@ -79,7 +79,7 @@ def error_histogram(
 def error_histogram_index(
     config_set: 'mlptrain.ConfigurationSet',
     index: list[int] | None = None,
-    name: str = 'error_histogram_index',
+    file_name: str = 'error_histogram_index',
 ) -> None:
     """
     Plot distribution of errors in energies and forces for given configuration set
@@ -90,7 +90,7 @@ def error_histogram_index(
 
         Index: List of atom indices to plot
 
-        name: name of the file
+        file_name: Name of the file
 
     """
 
@@ -100,7 +100,7 @@ def error_histogram_index(
         _add_force_error_histogram(config_set=config_set, index=index, axis=ax)
 
     plt.tight_layout()
-    plt.savefig(f'{name}.pdf')
+    plt.savefig(f'{file_name}.pdf')
 
     return None
 
@@ -383,7 +383,7 @@ def _add_force_error_histogram(
 
 def error_force_histogram_per_elements(
     config_set: 'mlptrain.ConfigurationSet',
-    name: str = 'force_error_hist_elements',
+    file_name: str = 'force_error_hist_elements',
 ) -> None:
     """
     Print histogram of force errors for each element separately. Assumes that every configration contains the same structures.
@@ -476,7 +476,7 @@ def error_force_histogram_per_elements(
         ax.axis('off')
 
     plt.tight_layout()
-    plt.savefig(f'{name}.pdf')
+    plt.savefig(f'{file_name}.pdf')
 
     return None
 
@@ -499,8 +499,8 @@ def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
         slope, intercept, r, p, se = linregress(xs, ys)
         axis.annotate(
             f'$R^2$ = {r**2:.3f}\n'
-            f' MAD$_{{relative}}$ = {np.mean(np.abs(xs - ys))*factor:.3f} {unit}\n'
-            f'MAD = {np.mean(np.abs(x - y))*factor:.3f} {unit}',
+            f' MAD$_{{relative}}$ = {np.mean(np.abs(xs - ys))*factor:.1f} {unit}\n'
+            f'MAD = {np.mean(np.abs(x - y))*factor:.1f} {unit}',
             xy=(1, 0),
             xycoords='axes fraction',
             fontsize=12,
@@ -513,7 +513,7 @@ def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
         slope, intercept, r, p, se = linregress(x, y)
         axis.annotate(
             f'$R^2$ = {r**2:.3f}\n'
-            f'MAD = {np.mean(np.abs(x - y))*factor:.3f} {unit}',
+            f'MAD = {np.mean(np.abs(x - y))*factor:.1f} {unit}',
             xy=(1, 0),
             xycoords='axes fraction',
             fontsize=12,
@@ -538,7 +538,7 @@ def _add_max_and_mad(axis, x, y, unit):
 
     axis.annotate(
         f'MAD = {mad:.3f} {unit}\n'
-        f'MAX = {np.max(np.abs(x - y))*1000:.3f} {unit}',
+        f'MAX = {np.max(np.abs(x - y))*1000:.1f} {unit}',
         xy=(1, 1),
         xycoords='axes fraction',
         fontsize=12,
