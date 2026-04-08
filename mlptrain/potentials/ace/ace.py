@@ -1,14 +1,20 @@
-import ase
+from __future__ import annotations
+
 import os
 import shutil
-import numpy as np
-from time import time
 from subprocess import Popen, PIPE
+from time import time
+import typing as t
+
+import numpy as np
 from scipy.spatial import distance_matrix
 from mlptrain.box import Box
 from mlptrain.log import logger
 from mlptrain.config import Config
-from mlptrain.potentials._base import MLPotential
+from mlptrain.potentials import MLPotential
+
+if t.TYPE_CHECKING:
+    from ase.calculators.calculator import Calculator as ASECalculator
 
 
 class ACE(MLPotential):
@@ -37,7 +43,7 @@ class ACE(MLPotential):
         # Run the training using a specified number of total cores
         os.environ['JULIA_NUM_THREADS'] = str(Config.n_cores)
 
-        p = Popen(
+        p = Popen(  # ty: ignore[no-matching-overload]
             [shutil.which('julia'), f'{self.name}.jl'],
             shell=False,
             encoding='utf-8',
@@ -84,7 +90,7 @@ class ACE(MLPotential):
         return True
 
     @property
-    def ase_calculator(self) -> 'ase.calculators.calculator.Calculator':
+    def ase_calculator(self) -> ASECalculator:
         """ASE calculator for this potential"""
 
         try:

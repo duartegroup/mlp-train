@@ -96,14 +96,14 @@ class PlumedBias(ASEConstraint):
         """
 
         self.setup: Optional[List[str]] = None
-        self.cv_files: Optional[Tuple[str, str]] = None
+        self.cv_files: list[tuple[str, str]] | None = None
 
         self.pace: Optional[int] = None
-        self.width: Optional[Union[Sequence[float], float]] = None
+        self.width: Optional[Sequence[float]] = None
         self.height: Optional[float] = None
         self.biasfactor: Optional[float] = None
 
-        self.metad_cvs: Optional[List['_PlumedCV']] = None
+        self.metad_cvs: Optional[Sequence['_PlumedCV']] = None
 
         for param_name in ['min', 'max', 'bin', 'wstride', 'wfile', 'rfile']:
             setattr(self, f'metad_grid_{param_name}', None)
@@ -147,7 +147,7 @@ class PlumedBias(ASEConstraint):
         """
 
         cv_names = (cv.name for cv in self.cvs)
-        return ','.join(cv_names)
+        return ','.join(cv_names)  # ty: ignore[no-matching-overload]
 
     @property
     def metad_cv_sequence(self) -> str:
@@ -155,8 +155,9 @@ class PlumedBias(ASEConstraint):
         String containing names of collective variables used in metadynamics
         separated by commas
         """
+        assert self.metad_cvs is not None
         metad_cv_names = (cv.name for cv in self.metad_cvs)
-        return ','.join(metad_cv_names)
+        return ','.join(metad_cv_names)  # ty: ignore[no-matching-overload]
 
     @property
     def metadynamics(self) -> bool:
@@ -285,7 +286,7 @@ class PlumedBias(ASEConstraint):
                 raise ValueError('Gaussian width (σ) must be positive')
 
             else:
-                self.width = [width]
+                self.width = [width]  # ty: ignore[invalid-assignment]
 
         if len(self.width) != self.n_metad_cvs:
             raise ValueError(
@@ -675,7 +676,7 @@ class _PlumedCV:
         """
 
         self.setup: List = []
-        self.files: Optional[Tuple[str, str]] = None
+        self.files: list[tuple[str, str]] | None = None
 
         self.name: Optional[str] = None
         self.units: Optional[str] = None
@@ -702,6 +703,7 @@ class _PlumedCV:
     def dof_sequence(self) -> str:
         """String containing names of DOFs separated by commas"""
 
+        assert self.dof_names
         return ','.join(self.dof_names)
 
     def attach_lower_wall(
@@ -900,6 +902,9 @@ class _PlumedCV:
         if len(atom_list) < 2:
             raise ValueError('Atom group must contain at least two atoms')
 
+        assert self.dof_names is not None
+        assert self.dof_units is not None
+
         if len(atom_list) == 2:
             dof_name = f'{self.name}_dist{idx + 1}'
             self.dof_names.append(dof_name)
@@ -970,6 +975,7 @@ class PlumedAverageCV(_PlumedCV):
 
         self._set_units()
 
+        assert self.dof_names
         dof_sum = '+'.join(self.dof_names)
         func = f'{1 / len(self.dof_names)}*({dof_sum})'
 
@@ -1008,7 +1014,7 @@ class PlumedDifferenceCV(_PlumedCV):
 
         self._set_units()
 
-        if len(self.dof_names) != 2:
+        if self.dof_names is None or len(self.dof_names) != 2:
             raise ValueError(
                 'DifferenceCV must comprise exactly two ' 'groups of atoms'
             )
@@ -1064,6 +1070,8 @@ class PlumedCNCV(_PlumedCV):
         super().__init__(name=name, atom_groups=atom_groups)
 
         self._set_units()
+
+        assert self.dof_names is not None
 
         self.r_ref = r_ref
 
@@ -1361,6 +1369,7 @@ def plumed_setup(
     ]
 
     if bias.from_file:
+        assert bias.setup is not None
         setup = bias.setup
 
         if 'UNITS' in setup[0]:

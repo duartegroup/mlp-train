@@ -278,13 +278,11 @@ def convert_ase_time(
 
 
 @overload
-def convert_ase_energy(energy_array: np.ndarray, units: str) -> np.ndarray:
-    ...
+def convert_ase_energy(energy_array: np.ndarray, units: str) -> np.ndarray: ...
 
 
 @overload
-def convert_ase_energy(energy_array: float, units: str) -> float:
-    ...
+def convert_ase_energy(energy_array: float, units: str) -> float: ...
 
 
 def convert_ase_energy(

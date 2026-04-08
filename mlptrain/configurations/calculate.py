@@ -1,8 +1,12 @@
 import mlptrain
 import autode
-from typing import Tuple
+from typing import TYPE_CHECKING
 from mlptrain.log import logger
 from mlptrain.config import Config
+
+if TYPE_CHECKING:
+    import autode.wrappers.keywords
+    import autode.wrappers.methods
 
 
 def run_autode(
@@ -64,7 +68,9 @@ def run_autode(
 
 def _method_and_keywords(
     method_name: str,
-) -> Tuple['autode.wrappers.Method', 'autode.wrappers.keywords.Keywords']:
+) -> tuple[
+    'autode.wrappers.methods.Method', 'autode.wrappers.keywords.Keywords'
+]:
     """Get the method and associated keywords to use in a QM calculation"""
     from autode.methods import ORCA, XTB, G16, G09
 

@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import mlptrain
 import shutil
+
 import ase
 import numpy as np
 import os
 import json
 import itertools
-from typing import Optional, Union, List, Dict
+from typing import TYPE_CHECKING, Optional, Union, List, Dict
 from copy import deepcopy
 from autode.atoms import AtomCollection, Atom
 import autode.atoms
@@ -22,6 +25,9 @@ import random
 import autode as ade
 from math import dist
 from autode.solvent.solvents import get_solvent
+
+if TYPE_CHECKING:
+    from mlptrain.potentials import MLPotential
 
 
 class Configuration(AtomCollection):
@@ -254,6 +260,7 @@ class Configuration(AtomCollection):
         Returns:
             (ase.atoms.Atoms): ASE atoms
         """
+        assert self.atoms is not None
         _atoms = ase.atoms.Atoms(
             symbols=[atom.label for atom in self.atoms],
             positions=self.coordinates,
@@ -334,11 +341,11 @@ class Configuration(AtomCollection):
         if None not in (solvent_density, solvent_molecule, solvent_name):
             raise ValueError(
                 'Either the solvent name or the combination of solvent molecule and density must be provided.'
-                'You shoult not provide all three.'
+                'You should not provide all three.'
             )
 
         # If both solvent molecule and density are provided, stop checking
-        elif None not in (solvent_density, solvent_molecule):
+        elif solvent_molecule is not None and solvent_density is not None:
             if solvent_molecule.atoms is None:
                 raise ValueError('The solvent molecule must contain atoms')
             if solvent_density <= 0:
@@ -354,6 +361,11 @@ class Configuration(AtomCollection):
                 f'Searching solvent with the name {solvent_name} in autodE solvent database'
             )
             solvent = get_solvent(solvent_name, kind='implicit')
+            if solvent is None:
+                raise ValueError(
+                    f'Could not find solvent {solvent_name} in the database!'
+                )
+
             solvent_smiles = solvent.smiles
             solvent_molecule = ade.Molecule(
                 smiles=solvent_smiles, name=solvent_name
@@ -383,10 +395,12 @@ class Configuration(AtomCollection):
             atom.coordinate = atom.coordinate - solute_com + (box_size / 2)
 
         # Move the solvent to the box origin, so that the random vectors added later are all within the box
+        assert solvent_molecule is not None
         solvent_com = solvent_molecule.com
         for n, atom in enumerate(solvent_molecule.atoms):
             atom.coordinate = atom.coordinate - solvent_com
 
+        assert solvent_molecule.atoms is not None
         # Calculate the number of solvent molecules to be inserted
         solvent_mass = sum([atom.mass for atom in solvent_molecule.atoms])
         # Calculate the volume of a single solvent molecule by first calculating the mass of a single molecule: m = M/N_a
@@ -448,6 +462,8 @@ class Configuration(AtomCollection):
         ___________________________________________________________________________
         """
 
+        assert self.atoms is not None
+        assert solvent_molecule.atoms is not None
         # Get the coordinates of the solute in the center of the box
         system_coords = np.array([atom.coordinate for atom in self.atoms])
         # Get the coordinates of the single isolated solvent molecule
@@ -687,7 +703,7 @@ class Configuration(AtomCollection):
 
     def single_point(
         self,
-        method: Union[str, 'mlptrain.potentials._base.MLPotential'],
+        method: Union[str, MLPotential],
         n_cores: int = 1,
         keep_output_files: bool = True,
         output_name: Optional[str] = None,
@@ -832,7 +848,7 @@ class Configuration(AtomCollection):
         return None
 
     @staticmethod
-    def _load_from_xyz(filename: str) -> tuple:
+    def _load_from_xyz(filename: str) -> tuple[list, Box | None, dict | None]:
         """
         Load atoms, box, and mol_dict from an xyz file.
 
@@ -857,7 +873,7 @@ class Configuration(AtomCollection):
             logger.error(f'Failed to read {filename}: {e}')
             raise
 
-        atoms = []
+        atoms: list[Atom] = []
         box = None
         mol_dict = None
 

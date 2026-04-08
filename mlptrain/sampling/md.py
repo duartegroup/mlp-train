@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import os
 import ase
+import ase.io
 import mlptrain
 import shutil
 import numpy as np
 import autode as ade
 from copy import deepcopy
-from typing import Optional, Sequence, List, Union
+from typing import TYPE_CHECKING, Optional, Sequence, List, Union
 from numpy.random import RandomState
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
@@ -28,10 +29,13 @@ from ase.md.verlet import VelocityVerlet
 from ase.io import read
 from ase import units as ase_units
 
+if TYPE_CHECKING:
+    from mlptrain.potentials import MLPotential
+
 
 def run_mlp_md(
     configuration: 'mlptrain.Configuration',
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     temp: float,
     dt: float,
     interval: int,
@@ -188,7 +192,7 @@ def run_mlp_md(
 
 def _run_mlp_md(
     configuration: 'mlptrain.Configuration',
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     temp: float,
     dt: float,
     interval: int,
@@ -307,7 +311,7 @@ def _run_mlp_md(
 
 def _attach_calculator_and_constraints(
     ase_atoms: 'ase.atoms.Atoms',
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
     temp: float,
     interval: int,
@@ -359,7 +363,7 @@ def _attach_calculator_and_constraints(
 
 def _run_dynamics(
     ase_atoms: 'ase.atoms.Atoms',
-    ase_traj: 'ase.io.trajectory.Trajectory',
+    ase_traj: ase.io.trajectory.TrajectoryWriter,
     traj_name: str,
     interval: int,
     temp: float,
@@ -422,7 +426,7 @@ def _run_dynamics(
 
 
 def _save_trajectory(
-    ase_traj: 'ase.io.trajectory.Trajectory', traj_name: str, **kwargs
+    ase_traj: ase.io.trajectory.TrajectoryWriter, traj_name: str, **kwargs
 ) -> None:
     """
     Save the trajectory with a unique name based on the current simulation
@@ -438,6 +442,11 @@ def _save_trajectory(
         if key in kwargs:
             specified_key = key
             break
+
+    if specified_key is None:
+        raise ValueError(
+            'Could not determine time units for saving the trajectory'
+        )
 
     traj_basename = traj_name[:-5]
     time_units = specified_key.split('_')[-1]
@@ -496,7 +505,7 @@ def _convert_ase_traj(
 
         # Set the atom_pair_list of every atom in the configuration
         for i, position in enumerate(atoms.get_positions()):
-            config.atoms[i].coord = position
+            config.atoms[i].coord = position  # ty: ignore[not-subscriptable]
 
         mlt_traj.append(config)
 
@@ -608,7 +617,7 @@ def _initialise_traj(
     restart: bool,
     traj_name: str,
     remove_last: bool = True,
-) -> 'ase.io.trajectory.Trajectory':
+) -> ase.io.trajectory.TrajectoryWriter:
     """Initialise ASE trajectory object"""
 
     if not restart:

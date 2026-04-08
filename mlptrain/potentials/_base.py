@@ -1,4 +1,6 @@
-import ase
+from __future__ import annotations
+
+import os
 import numpy as np
 import mlptrain as mlt
 from copy import deepcopy
@@ -7,7 +9,11 @@ from mlptrain.log import logger
 from mlptrain.configurations.configuration import Configuration
 from mlptrain.training.active import train as al_train
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from ase.calculators.calculator import Calculator as ASECalculator
+    from mlptrain.sampling.reaction_coord import ReactionCoordinate
 
 
 class MLPotential(ABC):
@@ -63,6 +69,7 @@ class MLPotential(ABC):
                 f'are not set. Set e.g. mlp.atomic_energies '
                 '= {"H": -13.}'
             )
+        logger.info(f'Training on nodename: {os.uname().nodename}')
         self._train()
         return None
 
@@ -72,7 +79,7 @@ class MLPotential(ABC):
 
     @property
     @abstractmethod
-    def ase_calculator(self) -> 'ase.calculators.calculator.Calculator':
+    def ase_calculator(self) -> ASECalculator:
         """Generate an ASE calculator for this potential"""
 
     @property
@@ -201,7 +208,7 @@ class MLPotential(ABC):
     def al_train_then_bias(
         self,
         method_name: str,
-        coordinate: 'mlt.sampling.ReactionCoordinate',
+        coordinate: ReactionCoordinate,
         min_coordinate: Optional[float] = None,
         max_coordinate: Optional[float] = None,
         **kwargs,

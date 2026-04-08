@@ -1,5 +1,7 @@
 import os
 import mlptrain as mlt
+import mlptrain.descriptor
+import mlptrain.training.selection
 from autode.atoms import Atom
 from mlptrain.descriptor import SoapDescriptor
 from mlptrain.training.selection import AtomicEnvSimilarity

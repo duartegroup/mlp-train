@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 import os
 from copy import deepcopy
-from typing import List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, List, Optional, Sequence, Union
 
 import ase
+import ase.io
+import ase.units
 
 import mlptrain as mlt
 from mlptrain.log import logger
@@ -16,21 +20,10 @@ from mlptrain.sampling.md import (
     _traj_saving_interval,
 )
 
-try:
-    import openmm as mm
-    import openmm.app as app
-    import openmm.unit as unit
-
-    _HAS_OPENMM = True
-except ImportError:
-    _HAS_OPENMM = False
-
-try:
-    from openmmml import MLPotential
-
-    _HAS_OPENMM_ML = True
-except ImportError:
-    _HAS_OPENMM_ML = False
+if TYPE_CHECKING:
+    from mlptrain.potentials import MACE
+    import openmm.app
+    import openmm.unit
 
 # Conversion factor from kJ/mol to eV
 _KJ_PER_MOL_TO_EV = (ase.units.kJ / ase.units.mol) / ase.units.eV
@@ -38,7 +31,7 @@ _KJ_PER_MOL_TO_EV = (ase.units.kJ / ase.units.mol) / ase.units.eV
 
 def run_mlp_md_openmm(
     configuration: 'mlt.Configuration',
-    mlp: 'mlt.potentials._base.MLPotential',
+    mlp: MACE,
     temp: float,
     dt: float,
     interval: int,
@@ -116,18 +109,6 @@ def run_mlp_md_openmm(
 
         (mlt.Trajectory):
     """
-    if not _HAS_OPENMM:
-        raise ImportError(
-            'OpenMM is not installed. Install it with '
-            "'conda install -c conda-forge openmm'"
-        )
-
-    if not _HAS_OPENMM_ML:
-        raise ImportError(
-            'openmm-ml is not installed. Install it with '
-            "'conda install -c conda-forge openmm-ml'"
-        )
-
     if not isinstance(mlp, mlt.potentials.MACE):
         raise ValueError(
             'The OpenMM backend only supports the use of the MACE potential.'
@@ -217,7 +198,7 @@ def run_mlp_md_openmm(
 
 def _run_mlp_md_openmm(
     configuration: 'mlt.Configuration',
-    mlp: 'mlt.potentials._base.MLPotential',
+    mlp: MACE,
     temp: float,
     dt: float,
     interval: int,
@@ -233,6 +214,8 @@ def _run_mlp_md_openmm(
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and OpenMM to drive dynamics
     """
+    from openmm import unit
+
     restart = restart_files is not None
 
     # Calculate the number of steps to perform.
@@ -255,16 +238,13 @@ def _run_mlp_md_openmm(
     # Create the OpenMM topology
     topology = _create_openmm_topology(ase_atoms)
 
-    # Get the OpenMM platform
-    platform = _get_openmm_platform(platform)
-
     # Create the OpenMM simulation object
     simulation = _create_openmm_simulation(
         mlp=mlp,
         topology=topology,
         temp=temp,
         dt=dt,
-        platform=platform,
+        platform=_get_openmm_platform(platform),
     )
 
     # Set the initial positions and velocities
@@ -339,8 +319,10 @@ def _run_mlp_md_openmm(
 # ============================================================================= #
 #             Auxiliary functions to create the OpenMM Simulation               #
 # ============================================================================= #
-def _create_openmm_topology(ase_atoms: 'ase.Atoms') -> 'app.Topology':
+def _create_openmm_topology(ase_atoms: 'ase.Atoms') -> 'openmm.app.Topology':
     """Create an OpenMM topology from an ASE atoms object."""
+    from openmm import app, unit
+
     logger.info('Creating the OpenMM topology')
     topology = app.Topology()
     chain = topology.addChain()
@@ -353,19 +335,22 @@ def _create_openmm_topology(ase_atoms: 'ase.Atoms') -> 'app.Topology':
         topology.addAtom(element.name, element, residue)
 
     topology.setPeriodicBoxVectors(
-        ase_atoms.get_cell().array * 0.1 * unit.nanometer
+        ase_atoms.get_cell().array
+        * 0.1
+        * unit.nanometer  # ty: ignore[unresolved-attribute]
     )
 
     return topology
 
 
-def _get_openmm_platform(platform: Optional[str] = None) -> 'mm.Platform':
+def _get_openmm_platform(platform: Optional[str] = None) -> 'openmm.Platform':
     """Get the OpenMM platform to use."""
+    import openmm
     import torch
 
     available_platforms = [
-        mm.Platform.getPlatform(i).getName()
-        for i in range(mm.Platform.getNumPlatforms())
+        openmm.Platform.getPlatform(i).getName()
+        for i in range(openmm.Platform.getNumPlatforms())
     ]
 
     # OpenMM might have been built with CUDA support
@@ -374,7 +359,7 @@ def _get_openmm_platform(platform: Optional[str] = None) -> 'mm.Platform':
         available_platforms.remove('CUDA')
 
     if platform is not None and platform in available_platforms:
-        platform = mm.Platform.getPlatformByName(platform)
+        platform = openmm.Platform.getPlatformByName(platform)
     else:
         platform = next(
             (
@@ -388,7 +373,7 @@ def _get_openmm_platform(platform: Optional[str] = None) -> 'mm.Platform':
             raise ValueError(
                 f'No suitable platform found. Available platforms are: {available_platforms}'
             )
-        platform = mm.Platform.getPlatformByName(platform)
+        platform = openmm.Platform.getPlatformByName(platform)
 
     logger.info(f'Using the OpenMM platform: {platform.getName()}')
 
@@ -396,17 +381,20 @@ def _get_openmm_platform(platform: Optional[str] = None) -> 'mm.Platform':
 
 
 def _create_openmm_simulation(
-    mlp: 'mlt.potentials._base.MLPotential',
-    topology: 'app.Topology',
+    mlp: MACE,
+    topology: 'openmm.app.Topology',
     temp: float,
     dt: float,
-    platform: 'mm.Platform',
-) -> 'app.Simulation':
+    platform: 'openmm.Platform',
+) -> 'openmm.app.Simulation':
     """Create an OpenMM simulation object."""
+    from openmm import app, unit, LangevinMiddleIntegrator, VerletIntegrator
+    import openmmml
+
     logger.info('Creating the OpenMM simulation object')
 
     # Use the mace model with openmm-ml and make sure the total energy is used.
-    potential = MLPotential('mace', modelPath=mlp.filename)
+    potential = openmmml.MLPotential('mace', modelPath=mlp.filename)
     system = potential.createSystem(topology, returnEnergyType='energy')
 
     # Use a Langevin integrator if temp>0 (NVT ensemble).
@@ -415,12 +403,16 @@ def _create_openmm_simulation(
         logger.info(
             f'Using Langevin integrator (NVT) with temperture={temp} K'
         )
-        integrator = mm.LangevinMiddleIntegrator(
-            temp * unit.kelvin, 1.0 / unit.picoseconds, dt * unit.femtoseconds
+        integrator = LangevinMiddleIntegrator(
+            temp * unit.kelvin,  # ty: ignore[unsupported-operator]
+            1.0 / unit.picoseconds,  # ty: ignore[unresolved-attribute]
+            dt * unit.femtoseconds,  # ty: ignore[unresolved-attribute]
         )
     else:
         logger.info(f'Using Verlet integrator (NVE) as temperture is {temp} K')
-        integrator = mm.VerletIntegrator(dt * unit.femtoseconds)
+        integrator = VerletIntegrator(
+            dt * unit.femtoseconds  # ty: ignore[unresolved-attribute]
+        )
 
     simulation = app.Simulation(topology, system, integrator, platform)
 
@@ -428,12 +420,13 @@ def _create_openmm_simulation(
 
 
 def _set_momenta_and_geometry(
-    simulation: 'app.Simulation',
-    positions: 'unit.Quantity',
+    simulation: 'openmm.app.Simulation',
+    positions: 'openmm.unit.Quantity',
     temp: float,
     restart_file: Optional[str] = None,
-) -> 'app.Simulation':
+) -> 'openmm.app.Simulation':
     """Set the momenta and geometry for the OpenMM simulation."""
+    from openmm import unit
 
     if restart_file is not None:
         if os.path.isfile(restart_file):
@@ -448,7 +441,9 @@ def _set_momenta_and_geometry(
             'Setting the initial momenta and geometry for the OpenMM simulation'
         )
         simulation.context.setPositions(positions)
-        simulation.context.setVelocitiesToTemperature(temp * unit.kelvin)
+        simulation.context.setVelocitiesToTemperature(
+            temp * unit.kelvin  # ty: ignore[unsupported-operator]
+        )
 
     return simulation
 
@@ -478,10 +473,10 @@ def _get_simulation_name(
 #               Auxiliary functions to run the OpenMM Simulation                #
 # ============================================================================= #
 def _run_dynamics(
-    simulation: 'app.Simulation',
+    simulation: 'openmm.app.Simulation',
     simulation_name: str,
     ase_atoms: 'ase.Atoms',
-    ase_traj: 'ase.io.trajectory.Trajectory',
+    ase_traj: 'ase.io.trajectory.TrajectoryWriter',
     traj_name: str,
     dt: float,
     interval: int,
@@ -492,6 +487,7 @@ def _run_dynamics(
     **kwargs,
 ) -> None:
     """Run the MD and save frames to the mlt.Trajectory."""
+    from openmm import unit
 
     def append_unbiased_energy():
         """Append the unbiased potential energy to the energies list."""

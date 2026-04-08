@@ -8,7 +8,7 @@ from time import time
 from autode.atoms import Atom
 from mlptrain.config import Config
 from mlptrain.log import logger
-from mlptrain.potentials._base import MLPotential
+from mlptrain.potentials import MLPotential
 
 
 class GAP(MLPotential):
@@ -220,7 +220,7 @@ class _GAPParameters:
 
             # Add all the atomic symbols that aren't this one, the neighbour
             # density for which also hasn't been added already
-            params['other'] = [
+            params['other'] = [  # ty: ignore[invalid-assignment]
                 s
                 for s in set(atom_symbols)
                 if s + symbol not in added_pairs
@@ -232,7 +232,7 @@ class _GAPParameters:
             if atom_symbols.count(symbol) == 1:
                 params['other'].remove(symbol)
 
-            for other_symbol in params['other']:
+            for other_symbol in params['other']:  # ty: ignore[not-iterable]
                 added_pairs.append(symbol + other_symbol)
 
             if len(params['other']) == 0:
