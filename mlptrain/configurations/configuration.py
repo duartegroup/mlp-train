@@ -729,6 +729,7 @@ class Configuration(AtomCollection):
 
         if isinstance(method, str) and method.lower() in implemented_methods:
             if keep_output_files:
+                kept_substrings_list = []
                 if method in ('g09', 'g16'):
                     kept_substrings_list.append('.log')
                 else:
