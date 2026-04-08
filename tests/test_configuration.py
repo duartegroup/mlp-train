@@ -2,6 +2,7 @@ import mlptrain as mlt
 import autode as ade
 from autode.atoms import Atom
 from autode.exceptions import SolventNotFound
+from autode.values import Allocation
 from mlptrain.configurations.configuration import (
     Configuration,
     _random_vector_in_box,
@@ -13,7 +14,7 @@ import pytest
 import os
 from mlptrain.potentials._base import MLPotential
 
-ade.config._ConfigClass.max_core = ade.values.Allocation(1, units='GB')
+ade.config._ConfigClass.max_core = Allocation(1, units='GB')
 
 
 def test_equality():
