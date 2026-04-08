@@ -341,7 +341,7 @@ def test_keep_output_files_false(h2o_configuration, chdir_tmp_path):
 
     h2o_configuration.single_point(method='xtb', keep_output_files=False)
 
-    assert os.path.exists('QM_outputs/xtb.out') is False
+    assert not os.path.exists('QM_outputs/xtb.out')
 
 
 def test_single_point_configuration(h2o_configuration, chdir_tmp_path):

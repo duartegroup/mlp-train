@@ -729,12 +729,10 @@ class Configuration(AtomCollection):
 
         if isinstance(method, str) and method.lower() in implemented_methods:
             if keep_output_files:
-                if method in ['g09', 'g16']:
-                    kept_substrings_list = ['.log']
+                if method in ('g09', 'g16'):
+                    kept_substrings_list.append('.log')
                 else:
-                    kept_substrings_list = ['.out']
-            else:
-                kept_substrings_list = []
+                    kept_substrings_list.append('.out')
             decorator = work_in_tmp_dir(
                 kept_substrings=kept_substrings_list,
                 output_name=output_name,

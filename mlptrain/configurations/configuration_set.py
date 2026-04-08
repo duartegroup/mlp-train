@@ -888,7 +888,6 @@ def _single_point_eval(config, method_name, output_name, **kwargs):
     """Top-level hashable function useful for multiprocessing"""
     if 'index' in kwargs:
         output_name = f'{output_name}_{kwargs.pop("index")}'
-        print(f'Computing structure with {output_name}')
     config.single_point(method=method_name, output_name=output_name, **kwargs)
     return config
 

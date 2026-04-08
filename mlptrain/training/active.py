@@ -152,7 +152,7 @@ def train(
 
         keep_al_trajs: (bool) If True, MLP-MD trajectories generated during AL phase are saved into new folder.
 
-        keep_output_files: (bool) If True, outputs of QM computations are saved to new folder.
+        keep_output_files: (bool) If True, output files of QM computations are saved to new folder.
     """
     if md_program.lower() == 'openmm':
         if not isinstance(mlp, mlptrain.potentials.MACE):
@@ -414,7 +414,7 @@ def _gen_active_config(
 
         method_name: (str) Name of the method which we try to fit our MLP to
 
-        keep_output_files: (bool) Saving the output files from QM computations
+        keep_output_files: (bool) Save the output files from QM computations
 
     Keyword Arguments:
 
