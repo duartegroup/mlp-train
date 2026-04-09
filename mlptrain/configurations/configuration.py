@@ -727,8 +727,8 @@ class Configuration(AtomCollection):
             os.makedirs('QM_outputs', exist_ok=True)
 
         if isinstance(method, str) and method.lower() in implemented_methods:
+            kept_substrings_list = []
             if keep_output_files:
-                kept_substrings_list = []
                 if method in ('g09', 'g16'):
                     kept_substrings_list.append('.log')
                 else:
