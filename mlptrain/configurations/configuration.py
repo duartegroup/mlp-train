@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import mlptrain
 import shutil
 
 import ase
