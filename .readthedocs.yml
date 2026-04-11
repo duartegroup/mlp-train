@@ -6,7 +6,7 @@ build:
     python: "mambaforge-22.9"
 
 conda:
-  environment: environment.yml
+  environment: environment_mace.yml
 
 python:
   install:
