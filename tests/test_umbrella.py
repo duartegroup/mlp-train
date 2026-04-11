@@ -5,7 +5,6 @@ import numpy as np
 import pytest
 
 import mlptrain as mlt
-from .test_potential import TestPotential
 from .data.utils import work_in_zipped_dir
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -36,7 +35,7 @@ def _h2_sparse_traj():
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_run_umbrella():
+def test_run_umbrella(test_potential):
     umbrella = _h2_umbrella()
     traj = _h2_pulled_traj()
     n_windows = 3
@@ -46,7 +45,7 @@ def test_run_umbrella():
     # Zeta refs are now reset
     umbrella.run_umbrella_sampling(
         traj,
-        mlp=TestPotential('1D'),
+        mlp=test_potential('1D'),
         temp=300,
         interval=5,
         dt=0.5,
@@ -86,7 +85,7 @@ def test_run_umbrella():
 # need to investigate more, for now skipping.
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 @pytest.mark.skip(reason='Test fails on GHA with MACE')
-def test_umbrella_parallel():
+def test_umbrella_parallel(test_potential):
     execution_time = {}
 
     for n_cores in (1, 2):
@@ -98,7 +97,7 @@ def test_umbrella_parallel():
         start = time.perf_counter()
         umbrella.run_umbrella_sampling(
             traj,
-            mlp=TestPotential('1D'),
+            mlp=test_potential('1D'),
             temp=300,
             interval=5,
             dt=0.5,
@@ -114,7 +113,7 @@ def test_umbrella_parallel():
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_umbrella_sparse_traj():
+def test_umbrella_sparse_traj(test_potential):
     umbrella = _h2_umbrella()
     traj = _h2_sparse_traj()
     n_windows = 9
@@ -137,7 +136,7 @@ def test_umbrella_sparse_traj():
 
     umbrella.run_umbrella_sampling(
         traj,
-        mlp=TestPotential('1D'),
+        mlp=test_potential('1D'),
         temp=300,
         interval=5,
         dt=0.5,
@@ -170,13 +169,13 @@ def test_umbrella_sparse_traj():
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_umbrella_save_load():
+def test_umbrella_save_load(test_potential):
     umbrella = _h2_umbrella()
     traj = _h2_pulled_traj()
 
     umbrella.run_umbrella_sampling(
         traj,
-        mlp=TestPotential('1D'),
+        mlp=test_potential('1D'),
         temp=300,
         interval=5,
         dt=0.5,
