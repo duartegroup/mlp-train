@@ -9,7 +9,6 @@
 General machine learning potentials (MLP) training for molecular systems in the gas phase and solution
 
 Available models:
-- GAP
 - ACE
 - MACE
 
@@ -24,9 +23,6 @@ Simple tutorials illustrating the use of mlp-train are available at: [https://gi
 Each model is installed into an individual conda environment:
 
 ```
-# Install GAP
-./install_gap.sh
-
 # Install ACE
 ./install_ace.sh
 
