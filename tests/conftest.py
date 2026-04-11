@@ -300,7 +300,9 @@ class TestPotential(mlt.potentials.MLPotential):
 def test_potential():
     """Dummy MLPotential"""
 
-    def _create_potential(name='test', calculator='harmonic', system=None):
-        return TestPotential(name, calculator, system)
+    def _create_potential(
+        name: str = 'test', calculator: str = 'harmonic', system=None
+    ):
+        return TestPotential(name, system, calculator=calculator)
 
     return _create_potential
