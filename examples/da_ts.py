@@ -7,10 +7,10 @@ mlt.Config.orca_keywords = ['PBE0', 'def2-SVP', 'EnGrad']
 
 if __name__ == '__main__':
     system = mlt.System(mlt.Molecule('da_ts.xyz'), box=None)
-    gap = mlt.potentials.GAP('da', system=system)
+    mlp = mlt.potentials.MACE('da', system=system)
 
     descriptor = SoapDescriptor()
-    gap.al_train(
+    mlp.al_train(
         method_name='orca',
         temp=300,  # K
         selection_method=mlt.selection.AtomicEnvSimilarity(descriptor),
@@ -21,7 +21,7 @@ if __name__ == '__main__':
     # Run some dynamics with the potential
     trajectory = mlt.md.run_mlp_md(
         configuration=system.configuration,
-        mlp=gap,
+        mlp=mlp,
         fs=300,
         temp=100,
         dt=0.5,
@@ -29,4 +29,4 @@ if __name__ == '__main__':
     )
 
     # and compare, plotting a parity plots and E_true, ∆E and ∆F
-    trajectory.compare(gap, 'orca')
+    trajectory.compare(mlp, 'orca')
