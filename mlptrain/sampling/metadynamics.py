@@ -1635,10 +1635,12 @@ class Metadynamics:
             )
 
         fes_files = [
-            fname for fname in os.listdir() if fname.startswith('fes')
+            fname
+            for fname in os.listdir()
+            if fname.startswith('fes_') and fname.endswith('.dat')
         ]
         for fname in fes_files:
-            os.remove(fname)
+            os.rename(fname, f'bck.{fname}')
 
         self._generate_fes_files(n_bins=n_bins, cvs_bounds=cvs_bounds)
 
@@ -2061,8 +2063,10 @@ class Metadynamics:
             idx: (int) Integer which specifies which metadynamics run to use
                        for plotting the FES convergence
         """
-
-        if not any(filename.startswith('HILLS') for filename in os.listdir()):
+        if not any(
+            (filename.startswith('HILLS_') and filename.endswith('.dat'))
+            for filename in os.listdir()
+        ):
             raise FileNotFoundError(
                 'No HILLS.dat files were found in '
                 'plumed_files, make sure to run '
@@ -2071,7 +2075,16 @@ class Metadynamics:
 
         logger.info('Generating fes.dat files from HILLS.dat files')
 
-        bin_param_seq = ','.join(str(n_bins - 1) for _ in range(self.n_cvs))
+        if cvs_bounds is not None:
+            bin_param_seq = ','.join(
+                str(n_bins - 1) if cvs_bounds[_][0] > 0 else str(n_bins)
+                for _ in range(self.n_cvs)
+            )
+        else:
+            bin_param_seq = ','.join(
+                str(n_bins - 1)
+                for _ in range(self.n_cvs)
+            )
         min_param_seq, max_param_seq = self._get_min_max_params(cvs_bounds)
 
         label = '*' if idx is None else idx
@@ -2137,7 +2150,11 @@ class Metadynamics:
         grid_shape = tuple([n_bins for _ in range(self.n_cvs)])
 
         # Sort names to retain ordering in the final grid
-        unordered_fes_files = [name for name in os.listdir() if 'fes' in name]
+        unordered_fes_files = [
+            name
+            for name in os.listdir()
+            if name.startswith('fes_') and name.endswith('.dat')
+        ]
 
         # 'fes_1_12.dat' -> int(112)
         def _get_combined_index(name):
