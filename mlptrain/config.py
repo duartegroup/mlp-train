@@ -41,19 +41,6 @@ class _ConfigClass:
     _orca_keywords = None
     _gaussian_keywords = None
 
-    # Default parameters for a GAP potential
-    gap_default_params = {
-        'sigma_E': 10 ** (-4.0),  # eV
-        'sigma_F': 10 ** (-2.0),
-    }  # eV Å-1
-
-    # Default SOAP parameters
-    gap_default_soap_params = {
-        'cutoff': 4.0,  # Å
-        'n_sparse': 1000,
-        'l_max': 6,  # n_max = 2 l_max
-        'sigma_at': 0.5,  # Å
-    }
     # ACE params
     ace_params = {
         'N': 4,  # maximum correlation order
