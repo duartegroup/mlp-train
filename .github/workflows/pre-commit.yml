@@ -22,13 +22,16 @@ jobs:
 
       # We need to install the dependencies for the `ty` type checker
       # For now, we install the mace environment, as that's the most important one
-      - uses: mamba-org/setup-micromamba@v2
+      - uses: mamba-org/setup-micromamba@v3
         with:
           # the create command looks like this:
           # `micromamba create -n test-env python=3.10 -f environment.yml`
           environment-file: environment_mace.yml
           environment-name: gha-test-env
           cache-environment: true
+
+      - name: Install pre-commit
+        run: pip install --group dev
 
       - name: Run pre-commit
         run: pre-commit run --all-files || ( git status --short ; git diff ; exit 1 )

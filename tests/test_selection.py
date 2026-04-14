@@ -1,5 +1,7 @@
 import os
 import mlptrain as mlt
+import mlptrain.descriptor
+import mlptrain.training.selection
 from autode.atoms import Atom
 from mlptrain.descriptor import SoapDescriptor
 from mlptrain.training.selection import AtomicEnvSimilarity
@@ -32,7 +34,7 @@ def _distorted_methane():
     return mlt.Configuration(atoms=atoms)
 
 
-def test_selection_on_structures():
+def test_selection_on_structures(test_potential):
     configs = mlt.ConfigurationSet()
 
     file_path = os.path.join(here, 'data', 'methane.xyz')
@@ -48,7 +50,7 @@ def test_selection_on_structures():
     selector1 = AtomicEnvSimilarity(descriptor=SoapDescriptor1, threshold=0.9)
     selector2 = AtomicEnvSimilarity(descriptor=SoapDescriptor2, threshold=0.9)
 
-    mlp = mlt.potentials.GAP('blank')
+    mlp = test_potential()
     mlp.training_data = configs
 
     selector1(configuration=_similar_methane(), mlp=mlp)
@@ -72,23 +74,22 @@ def test_outlier_identifier():
 
     descriptor = SoapDescriptor(average='outer', r_cut=6.0, n_max=8, l_max=8)
 
-    mlp = mlt.potentials.GAP('blank')
-    mlp.training_data = configs
-
     # Similar configuration should not be an outlier
     result1 = mlt.training.selection._outlier_identifier(
         configuration=_similar_methane(),
-        configurations=mlp.training_data,
+        configurations=configs,
         descriptor=descriptor,
         dim_reduction=False,
+        n_neighbors=len(configs),
     )
     assert result1 == 1
 
     # Distorted configuration should be an outlier
     result2 = mlt.training.selection._outlier_identifier(
         configuration=_distorted_methane(),
-        configurations=mlp.training_data,
+        configurations=configs,
         descriptor=descriptor,
         dim_reduction=False,
+        n_neighbors=len(configs),
     )
     assert result2 == -1

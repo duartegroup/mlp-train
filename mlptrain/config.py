@@ -1,4 +1,25 @@
+import os
 from autode.wrappers.keywords import GradientKeywords
+
+_NUM_CPUS = os.cpu_count()
+# According to the docs, os.cpu_count() may return None
+if _NUM_CPUS is None:
+    _NUM_CPUS = 1
+
+
+class _DefaultMACEDevice:
+    """Class to define default torch device.
+
+    We're just trying to hide the torch import.
+    """
+
+    def __str__(self) -> str:
+        try:
+            import torch
+
+            return 'cuda' if torch.cuda.is_available() else 'cpu'
+        except ImportError:
+            return 'cpu'
 
 
 class _ConfigClass:
@@ -16,23 +37,10 @@ class _ConfigClass:
     ```
     """
 
-    n_cores = 4
+    n_cores = 4 if _NUM_CPUS >= 4 else _NUM_CPUS
     _orca_keywords = None
     _gaussian_keywords = None
 
-    # Default parameters for a GAP potential
-    gap_default_params = {
-        'sigma_E': 10 ** (-4.0),  # eV
-        'sigma_F': 10 ** (-2.0),
-    }  # eV Å-1
-
-    # Default SOAP parameters
-    gap_default_soap_params = {
-        'cutoff': 4.0,  # Å
-        'n_sparse': 1000,
-        'l_max': 6,  # n_max = 2 l_max
-        'sigma_at': 0.5,  # Å
-    }
     # ACE params
     ace_params = {
         'N': 4,  # maximum correlation order
@@ -45,13 +53,6 @@ class _ConfigClass:
     nequip_params = {'cutoff': 4.0, 'train_fraction': 0.9}
 
     # MACE params
-
-    try:
-        import torch
-
-        mace_device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    except ImportError:
-        mace_device = 'cpu'
 
     mace_params = {
         'valid_fraction': 0.1,
@@ -66,11 +67,11 @@ class _ConfigClass:
         'r_max': 5.0,
         'ell_max': 3,
         'correlation': 3,
-        'device': mace_device,
+        'device': _DefaultMACEDevice(),
         'calc_device': 'cpu',
         'error_table': 'TotalMAE',
-        'swa': True,
-        'start_swa': 800,
+        'swa': False,
+        'start_swa': None,
         'ema': True,
         'ema_decay': 0.99,
         'lr': 0.001,
@@ -80,7 +81,7 @@ class _ConfigClass:
         'amsgrad': True,
         'restart_latest': False,
         'save_cpu': True,
-        'num_workers': 20,
+        'num_workers': 8 if _NUM_CPUS >= 8 else _NUM_CPUS,
         'max_L': 1,
         'dtype': 'float32',
         'pt_train': None,

@@ -9,15 +9,15 @@ if __name__ == '__main__':
     system = mlt.System(mlt.Molecule('methane.xyz'), box=None)
 
     # Initialise a Gaussian Approximation Potential for this system
-    gap = mlt.potentials.GAP('methane', system=system)
+    mlp = mlt.potentials.MACE('methane', system=system)
 
     # and train using active learning at 1000 K
-    gap.al_train(method_name='orca', temp=1000)
+    mlp.al_train(method_name='orca', temp=1000)
 
     # Run some dynamics with the potential
     trajectory = mlt.md.run_mlp_md(
         configuration=system.random_configuration(),
-        mlp=gap,
+        mlp=mlp,
         fs=200,
         temp=300,
         dt=0.5,
@@ -25,4 +25,4 @@ if __name__ == '__main__':
     )
 
     # and compare, plotting a parity diagram and E_true, ∆E and ∆F
-    trajectory.compare(gap, 'orca')
+    trajectory.compare(mlp, 'orca')
