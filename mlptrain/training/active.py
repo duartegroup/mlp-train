@@ -89,8 +89,8 @@ def train(
                           iterations to perform. Will break if we hit the
                           early stopping criteria
 
-        n_init_configs: (int) Number of initial configurations to generate,
-                        will be ignored if init_configs is not None
+        n_init_configs: (int) Number of initial configurations to automatically
+                          generate if only 1 initial config provided
 
         init_configs: (gt.ConfigurationSet) A set of configurations from
                       which to start the active learning from
@@ -181,6 +181,15 @@ def train(
 
     elif init_configs is None:
         init_config = mlp.system.configuration
+        _gen_and_set_init_training_configs(
+            mlp=mlp, method_name=method_name, num=n_init_configs
+        )
+
+    elif len(init_configs) == 1:
+        logger.warning(
+            'Only one initial configuration supplied in dataset; generating more'
+        )
+        init_config = init_configs[0]
         _gen_and_set_init_training_configs(
             mlp=mlp, method_name=method_name, num=n_init_configs
         )
