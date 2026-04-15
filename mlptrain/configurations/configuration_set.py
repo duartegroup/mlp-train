@@ -292,7 +292,7 @@ class ConfigurationSet(list):
 
             self.save(filename=f'{name}.npz')
 
-        parity_plot(self, name=name)
+        parity_plot(self, file_name=name)
         return None
 
     def save_xyz(
