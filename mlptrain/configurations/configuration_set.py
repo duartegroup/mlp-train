@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import mlptrain
 import os
 import re
 import numpy as np
 from time import time
 from multiprocessing import Pool
-from typing import Optional, List, Union
+from typing import TYPE_CHECKING, Optional, List, Literal, Union
 from autode.atoms import elements, Atom
 from mlptrain.config import Config
 from mlptrain.log import logger
@@ -12,6 +14,9 @@ from mlptrain.forces import Forces
 from mlptrain.energy import Energy
 from mlptrain.configurations.configuration import Configuration
 from mlptrain.box import Box
+
+if TYPE_CHECKING:
+    from mlptrain.potentials import MLPotential
 
 
 class ConfigurationSet(list):
@@ -235,9 +240,7 @@ class ConfigurationSet(list):
 
         return super().append(value)
 
-    def compare(
-        self, *args: Union['mlptrain.potentials.MLPotential', str]
-    ) -> None:
+    def compare(self, *args: MLPotential | str) -> None:
         """
         Compare methods e.g. a MLP to a ground truth reference method over
         these set of configurations. Will generate plots of total energies
@@ -264,7 +267,7 @@ class ConfigurationSet(list):
             for arg in args:
                 # if is an mlp model with a 'predict' function
                 if hasattr(arg, 'predict'):
-                    arg.predict(self)
+                    arg.predict(self)  # ty:ignore[call-non-callable]
 
                 # if is a string reference to a QM calculation method
                 elif isinstance(arg, str):
@@ -289,7 +292,7 @@ class ConfigurationSet(list):
 
             self.save(filename=f'{name}.npz')
 
-        parity_plot(self, name=name)
+        parity_plot(self, file_name=name)
         return None
 
     def save_xyz(
@@ -317,13 +320,73 @@ class ConfigurationSet(list):
             )
             true = True
 
-        open(filename, 'w').close()  # Empty the file
+        open(filename, 'w').close()  # close the file
 
         for configuration in self:
             configuration.save_xyz(
                 filename, true=true, predicted=predicted, append=True
             )
         return None
+
+    # TODO: Add parameter whether to skip unfinished output files
+    @classmethod
+    def from_orca_files(
+        cls,
+        file_paths: list[str],
+        *,
+        load_energies: bool = True,
+        load_forces: bool = True,
+    ) -> 'ConfigurationSet':
+        """
+        Create ConfigurationSet from existing ORCA calculation output files.
+
+        -----------------------------------------------------------
+        Arguments:
+
+        file_paths: (list[str]) List of orca output file paths.
+
+        load_energies: (bool) If True, load energies from the files.
+
+        load_forces: (bool) If True, load forces from the files.
+        """
+
+        dataset = cls()
+
+        err_count = 0
+        for fpath in file_paths:
+            try:
+                config = Configuration.from_orca_file(
+                    fpath,
+                    load_energy=load_energies,
+                    load_forces=load_forces,
+                )
+            except RuntimeError as e:
+                logger.info(e)
+                err_count += 1
+            else:
+                dataset.append(config)
+
+        logger.info(
+            f'Successfully processed {len(dataset)} configs. {err_count} ORCA files had errors'
+        )
+        return dataset
+
+    @classmethod
+    def from_xyz(
+        cls,
+        filename: str,
+        *,
+        charge: int,
+        mult: int,
+        box: Optional[Box] = None,
+        load_energies: bool = False,
+        load_forces: bool = False,
+    ) -> 'ConfigurationSet':
+        config_set = cls()
+        config_set.load_xyz(
+            filename, charge, mult, box, load_energies, load_forces
+        )
+        return config_set
 
     def load_xyz(
         self,
@@ -408,7 +471,8 @@ class ConfigurationSet(list):
                         line
                     ), f'There was an error in parsing your xyz file on line: {line_id}'
                     line_split = line.split()
-                    atoms.append(Atom(*line_split[:4]))
+                    atom, x, y, z = line_split[:4]
+                    atoms.append(Atom(atom, x, y, z))
 
                     if load_forces:
                         # add forces to forces dict in configuration
@@ -596,13 +660,15 @@ class ConfigurationSet(list):
         """Total spin multiplicities of all configurations in this set"""
         return np.array([c.mult for c in self])
 
-    def _forces(self, kind: str) -> Optional[np.ndarray]:
+    def _forces(
+        self, kind: Literal['true', 'predicted']
+    ) -> Optional[np.ndarray]:
         """True or predicted forces. Returns a 3D np.ndarray."""
 
         all_forces = []
         for config in self:
             if getattr(config.forces, kind) is None:
-                logger.error(f'{kind} forces not defined - returning None')
+                logger.warning(f'{kind} forces not defined - returning None')
                 return None
 
             all_forces.append(getattr(config.forces, kind))
@@ -615,13 +681,13 @@ class ConfigurationSet(list):
         np.savez(
             filename,
             R=self._coordinates,
-            R_plumed=self.plumed_coordinates,
-            E_true=self.true_energies,
-            E_predicted=self.predicted_energies,
-            E_bias=self.bias_energies,
-            E_inherited_bias=self.inherited_bias_energies,
-            F_true=self.true_forces,
-            F_predicted=self.predicted_forces,
+            R_plumed=self.plumed_coordinates,  # ty: ignore[invalid-argument-type]
+            E_true=self.true_energies,  # ty: ignore[invalid-argument-type]
+            E_predicted=self.predicted_energies,  # ty: ignore[invalid-argument-type]
+            E_bias=self.bias_energies,  # ty: ignore[invalid-argument-type]
+            E_inherited_bias=self.inherited_bias_energies,  # ty: ignore[invalid-argument-type]
+            F_true=self.true_forces,  # ty: ignore[invalid-argument-type]
+            F_predicted=self.predicted_forces,  # ty: ignore[invalid-argument-type]
             Z=self._atomic_numbers,
             L=self._box_sizes,
             C=self._charges,
@@ -694,8 +760,8 @@ class ConfigurationSet(list):
 
     def __add__(
         self,
-        other: Union['mlptrain.Configuration', 'mlptrain.ConfigurationSet'],
-    ):
+        other: 'Configuration | ConfigurationSet',
+    ) -> 'ConfigurationSet':  # ty:ignore[invalid-method-override]
         """Add another configuration or set of configurations onto this one"""
 
         if isinstance(other, Configuration):
@@ -766,8 +832,8 @@ class ConfigurationSet(list):
             f'  Has Predicted Energies:     {any(x is not None for x in self.predicted_energies)}\n'
             f'  Has Bias Energies:          {any(x is not None for x in self.bias_energies)}\n'
             f'  Has Inherit. Bias Energies: {any(x is not None for x in self.inherited_bias_energies)}\n'
-            f'  True Forces Dim:            {self.true_forces.shape}\n'
-            f'  Predicted Forces Dim:       {self.predicted_forces.shape}\n'
+            f'  True Forces Dim:            {self.true_forces.shape if self.true_forces is not None else None}\n'
+            f'  Predicted Forces Dim:       {self.predicted_forces.shape if self.predicted_forces is not None else None}\n'
             f'  Atomic Numbers Dim:         {self._atomic_numbers.shape}\n'
             f'  Unique Box Sizes:           {np.unique(self._box_sizes)}\n'
             f'  Unique Charges:             {np.unique(self._charges)}\n'

@@ -3,7 +3,7 @@ import mlptrain as mlt
 from mlptrain.box import Box
 from mlptrain.log import logger
 from mlptrain.config import Config
-from mlptrain.md import _convert_ase_traj
+from mlptrain.sampling.md import _convert_ase_traj
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from numpy.random import RandomState
 import numpy as np
@@ -137,7 +137,7 @@ def solvation(solute_config, solvent_config, apm, radius, enforce=True):
     return solvation
 
 
-@mlt.utils.work_in_tmp_dir(copied_exts=['.xml', '.json'])
+@mlt.utils.work_in_tmp_dir(copied_substrings=['.xml', '.json'])
 def mlpmd_fix_solute(
     solute, configuration, mlp, temp, dt, interval, n_steps, **kwargs
 ):
@@ -186,7 +186,7 @@ def mlpmd_fix_solute(
     return traj
 
 
-@mlt.utils.work_in_tmp_dir(copied_exts=['.xml', '.json'])
+@mlt.utils.work_in_tmp_dir(copied_substrings=['.xml', '.json'])
 def optimize_sys(configuration, mlp, **kwargs):
     # applied MLP to optimised geometry with BFGS method
     from ase.io.trajectory import Trajectory as ASETrajectory
@@ -268,9 +268,9 @@ def get_reactant_states(TS, solution, mlp):
     return opt_reactant
 
 
-@mlt.utils.work_in_tmp_dir(copied_exts=['.xml', '.json', '.pth'])
+@mlt.utils.work_in_tmp_dir(copied_substrings=['.xml', '.json', '.pth'])
 def baised_md(configuration, mlp, temp, dt, interval, bias, **kwargs):
-    from mltrain.md import _convert_ase_traj, _n_simulation_steps
+    from mlptrain.sampling.md import _convert_ase_traj, _n_simulation_steps
     from ase.io.trajectory import Trajectory as ASETrajectory
     from ase.md.langevin import Langevin
     from ase.md.verlet import VelocityVerlet

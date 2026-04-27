@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import mlptrain
 import os
 import re
 import time
+import typing as t
 import glob
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor
@@ -19,6 +22,10 @@ from mlptrain.sampling.md import run_mlp_md
 from mlptrain.utils import move_files, convert_ase_energy, convert_exponents
 from mlptrain.config import Config
 from mlptrain.log import logger
+
+if t.TYPE_CHECKING:
+    from mlptrain.potentials import MLPotential
+    from mlptrain.sampling.reaction_coord import ReactionCoordinate
 
 
 class _Window:
@@ -81,6 +88,7 @@ class _Window:
         if self._gaussian_pdf is None:
             self._fit_gaussian(normalised=True)
 
+        assert self._gaussian_pdf is not None
         return self._gaussian_pdf
 
     @property
@@ -191,6 +199,8 @@ class _Window:
         """Fit a gaussian to a histogram of data"""
 
         gaussian = _FittedGaussian()
+
+        assert self.hist
 
         a_0, mu_0, sigma_0 = (
             np.max(self.hist),
@@ -303,7 +313,7 @@ class UmbrellaSampling:
 
     def __init__(
         self,
-        zeta_func: 'mlptrain.sampling.reaction_coord.ReactionCoordinate',
+        zeta_func: ReactionCoordinate,
         kappa: float,
         temp: Optional[float] = None,
     ):
@@ -377,7 +387,7 @@ class UmbrellaSampling:
     def run_umbrella_sampling(
         self,
         traj: 'mlptrain.ConfigurationSet',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: 'MLPotential',
         temp: float,
         interval: int,
         dt: float,
@@ -525,7 +535,7 @@ class UmbrellaSampling:
     def _run_individual_window(
         self,
         frame: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: 'MLPotential',
         temp: float,
         interval: int,
         dt: float,
@@ -612,7 +622,7 @@ class UmbrellaSampling:
         return -(1.0 / self.beta) * np.log(prob_dist)
 
     @property
-    def zeta_refs(self) -> Optional[np.ndarray]:
+    def zeta_refs(self) -> np.ndarray:
         """
         Array of ζ_ref for each window
 
@@ -620,8 +630,7 @@ class UmbrellaSampling:
         Returns:
             (np.ndarray(float) | None):
         """
-        if len(self.windows) == 0:
-            return None
+        assert len(self.windows) != 0
 
         return np.array([w_k.zeta_ref for w_k in self.windows])
 

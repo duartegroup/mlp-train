@@ -13,10 +13,10 @@ if __name__ == '__main__':
 
     system = mlt.System(mlt.Molecule('sn2.xyz', charge=-1, mult=1), box=None)
 
-    # Run umbrella sampling across the IRC using GAP MD
+    # Run umbrella sampling across the IRC using MACE
     umbrella.run_umbrella_sampling(
         irc,
-        mlp=mlt.potentials.GAP('sn2', system=system),
+        mlp=mlt.potentials.MACE('sn2', system=system),
         temp=300,
         interval=5,
         dt=0.5,

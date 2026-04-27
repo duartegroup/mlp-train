@@ -10,45 +10,6 @@ env:
   FORCE_COLOR: 1
 
 jobs:
-  test:
-    name: GAP (${{ matrix.python-version }}, ${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: true
-      matrix:
-        os: ["ubuntu-22.04"]
-        python-version: ["3.10"]
-
-    defaults:
-      run:
-        shell: bash -l {0}
-
-    steps:
-    - uses: actions/checkout@v6
-
-    - uses: mamba-org/setup-micromamba@v2
-      with:
-        # the create command looks like this:
-        # `micromamba create -n test-env python=3.9 -f environment.yml`
-        environment-file: environment.yml
-        environment-name: gha-test-env
-        cache-environment: true
-        create-args: >-
-          python=${{ matrix.python-version }}
-
-    - name: Basic install
-      run: ./install_gap.sh
-
-    - name: Test basic install
-      run: pytest --cov=mlptrain -k "not test_openmm"
-
-    - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-          flags: python-${{ matrix.python-version }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-          slug: duartegroup/mlp-train
 
   test-ace:
     name: ACE (${{ matrix.python-version }}, ${{ matrix.os }})
@@ -71,7 +32,7 @@ jobs:
       with:
         version: '1.6'
 
-    - uses: mamba-org/setup-micromamba@v2
+    - uses: mamba-org/setup-micromamba@v3
       with:
         environment-file: environment_ace.yml
         environment-name: gha-test-env
@@ -86,7 +47,7 @@ jobs:
       run: pytest --cov=mlptrain -k "not test_openmm"
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
           flags: python-${{ matrix.python-version }}-ace
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -109,7 +70,7 @@ jobs:
     steps:
     - uses: actions/checkout@v6
 
-    - uses: mamba-org/setup-micromamba@v2
+    - uses: mamba-org/setup-micromamba@v3
       with:
         environment-file: environment_mace.yml
         environment-name: gha-test-env
@@ -124,7 +85,7 @@ jobs:
       run: pytest --cov=mlptrain
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
           flags: python-${{ matrix.python-version }}-mace
           token: ${{ secrets.CODECOV_TOKEN }}

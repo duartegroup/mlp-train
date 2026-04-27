@@ -12,7 +12,7 @@ if __name__ == '__main__':
     dft_al_data.load_xyz('da_data.xyz', charge=0, mult=1)
     dft_al_data.save('da_data.npz')
 
-    dft_al_data.single_point(method_name='orca')
+    dft_al_data.single_point(method='orca')
     dft_al_data.save('da_data.npz')
 
     ace.train(dft_al_data)

@@ -3,19 +3,18 @@ import numpy as np
 import mlptrain as mlt
 from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.constraints import Hookean
-from .test_potential import TestPotential
 from .data.utils import work_in_zipped_dir
 
 here = os.path.abspath(os.path.dirname(__file__))
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_md_full_plumed_input(h2o_configuration):
+def test_md_full_plumed_input(h2o_configuration, test_potential):
     bias = mlt.PlumedBias(filename='plumed_bias_nopath.dat')
 
     mlt.md.run_mlp_md(
         configuration=h2o_configuration,
-        mlp=TestPotential('1D'),
+        mlp=test_potential('1D'),
         temp=300,
         dt=1,
         interval=10,
@@ -29,13 +28,13 @@ def test_md_full_plumed_input(h2o_configuration):
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_md_restart(h2_configuration):
+def test_md_restart(h2_configuration, test_potential):
     atoms = h2_configuration.ase_atoms
     initial_trajectory = ASETrajectory('md_restart.traj', 'r', atoms)
 
     mlt.md.run_mlp_md(
         configuration=h2_configuration,
-        mlp=TestPotential('1D'),
+        mlp=test_potential('1D'),
         temp=300,
         dt=1,
         interval=10,
@@ -56,10 +55,10 @@ def test_md_restart(h2_configuration):
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_md_save(h2_configuration):
+def test_md_save(h2_configuration, test_potential):
     mlt.md.run_mlp_md(
         configuration=h2_configuration,
-        mlp=TestPotential('1D'),
+        mlp=test_potential('1D'),
         temp=300,
         dt=1,
         interval=10,
@@ -82,7 +81,7 @@ def test_md_save(h2_configuration):
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_md_traj_attachments(h2o_configuration):
+def test_md_traj_attachments(h2o_configuration, test_potential):
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     bias = mlt.PlumedBias(cvs=cv1)
 
@@ -90,7 +89,7 @@ def test_md_traj_attachments(h2o_configuration):
 
     traj = mlt.md.run_mlp_md(
         configuration=h2o_configuration,
-        mlp=TestPotential('1D'),
+        mlp=test_potential('1D'),
         temp=300,
         dt=1,
         interval=10,

@@ -3,7 +3,6 @@ import numpy as np
 import mlptrain as mlt
 import pytest
 from ase.io.trajectory import Trajectory as ASETrajectory
-from .test_potential import TestPotential
 from .data.utils import work_in_zipped_dir
 
 mlt.Config.n_cores = 2
@@ -11,7 +10,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 
 @pytest.fixture
-def run_metadynamics():
+def run_metadynamics(test_potential):
     def _run_metadynamics(
         metad,
         n_runs,
@@ -24,7 +23,7 @@ def run_metadynamics():
     ):
         metad.run_metadynamics(
             configuration=configuration,
-            mlp=TestPotential('1D'),
+            mlp=test_potential('1D'),
             temp=300,
             dt=1,
             interval=10,
@@ -218,13 +217,13 @@ def test_run_metadynamics_with_additional_cvs(
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_estimate_width(h2_configuration):
+def test_estimate_width(h2_configuration, test_potential):
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
 
     width = metad.estimate_width(
         configurations=h2_configuration,
-        mlp=TestPotential('1D'),
+        mlp=test_potential('1D'),
         plot=True,
         fs=100,
     )
@@ -242,14 +241,14 @@ def test_estimate_width(h2_configuration):
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_try_multiple_biasfactors(h2_configuration):
+def test_try_multiple_biasfactors(h2_configuration, test_potential):
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
     biasfactors = range(5, 11, 5)
 
     metad.try_multiple_biasfactors(
         configuration=h2_configuration,
-        mlp=TestPotential('1D'),
+        mlp=test_potential('1D'),
         temp=300,
         interval=10,
         dt=1,
@@ -273,7 +272,7 @@ def test_try_multiple_biasfactors(h2_configuration):
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
-def test_block_analysis(h2_configuration):
+def test_block_analysis(h2_configuration, test_potential):
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
     dt = 1
@@ -284,7 +283,7 @@ def test_block_analysis(h2_configuration):
 
     metad.run_metadynamics(
         configuration=h2_configuration,
-        mlp=TestPotential('1D'),
+        mlp=test_potential('1D'),
         temp=300,
         dt=dt,
         interval=interval,
