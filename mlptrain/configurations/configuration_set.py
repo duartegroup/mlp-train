@@ -119,7 +119,7 @@ class ConfigurationSet(list):
         """
         if len(self) == 0:
             raise ValueError(
-                'No lowest biased energy configuration in an ' 'empty set'
+                'No lowest biased energy configuration in an empty set'
             )
 
         true_energy = np.array(
@@ -145,7 +145,7 @@ class ConfigurationSet(list):
         """
         if len(self) == 0:
             raise ValueError(
-                'No lowest biased energy configuration in an ' 'empty set'
+                'No lowest biased energy configuration in an empty set'
             )
 
         true_energy = np.array(
@@ -234,7 +234,7 @@ class ConfigurationSet(list):
 
         if not self.allow_duplicates and value in self:
             logger.warning(
-                'Not appending configuration to set - already ' 'present'
+                'Not appending configuration to set - already present'
             )
             return
 
@@ -542,8 +542,7 @@ class ConfigurationSet(list):
 
         else:
             raise ValueError(
-                f'Cannot load {filename}. Must be either a '
-                f'.xyz or .npz file'
+                f'Cannot load {filename}. Must be either a .xyz or .npz file'
             )
 
         return None
@@ -608,8 +607,7 @@ class ConfigurationSet(list):
 
         elif len(n_cvs_set) != 1:
             logger.info(
-                'Number of CVs differ between configurations - '
-                'returning None'
+                'Number of CVs differ between configurations - returning None'
             )
             return None
 
@@ -665,13 +663,15 @@ class ConfigurationSet(list):
     ) -> Optional[np.ndarray]:
         """True or predicted forces. Returns a 3D np.ndarray."""
 
-        all_forces = []
-        for config in self:
-            if getattr(config.forces, kind) is None:
+        all_forces = [getattr(config.forces, kind) for config in self]
+        if all(force is None for force in all_forces):
+            if kind == 'true':
                 logger.warning(f'{kind} forces not defined - returning None')
-                return None
+            return None
 
-            all_forces.append(getattr(config.forces, kind))
+        if any(force is None for force in all_forces):
+            logger.warning(f'{kind} forces partially defined - returning None')
+            return None
 
         return np.array(all_forces, dtype=object)
 
