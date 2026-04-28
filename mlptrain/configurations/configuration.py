@@ -386,18 +386,20 @@ class Configuration(AtomCollection):
                 'Either the solvent name or the combination of solvent molecule and density must be provided'
             )
 
+        assert self.atoms is not None
+        assert solvent_molecule is not None
+        assert solvent_molecule.atoms is not None
+
         # Move solute to the box center
         solute_com = self.com
         for n, atom in enumerate(self.atoms):
             atom.coordinate = atom.coordinate - solute_com + (box_size / 2)
 
         # Move the solvent to the box origin, so that the random vectors added later are all within the box
-        assert solvent_molecule is not None
         solvent_com = solvent_molecule.com
         for n, atom in enumerate(solvent_molecule.atoms):
             atom.coordinate = atom.coordinate - solvent_com
 
-        assert solvent_molecule.atoms is not None
         # Calculate the number of solvent molecules to be inserted
         solvent_mass = sum([atom.mass for atom in solvent_molecule.atoms])
         # Calculate the volume of a single solvent molecule by first calculating the mass of a single molecule: m = M/N_a
@@ -544,6 +546,7 @@ class Configuration(AtomCollection):
                     # Record the starting position of this molecule
                     start_index = len(self.atoms)
 
+                    assert solvent_translated.atoms is not None
                     for n, atom in enumerate(solvent_translated.atoms):
                         atom.coordinate = trial_coords[n]
 
@@ -645,6 +648,7 @@ class Configuration(AtomCollection):
                 file=exyz_file,
             )
 
+            assert self.atoms is not None
             for i, atom in enumerate(self.atoms):
                 x, y, z = atom.coord
                 line = f'{atom.label} {x:.5f} {y:.5f} {z:.5f} '

@@ -832,37 +832,28 @@ class _PlumedCV:
 
         return None
 
-    def _from_atom_groups(self, atom_groups: Sequence) -> None:
+    def _from_atom_groups(
+        self, atom_groups: Sequence[int] | Sequence[Sequence[int]]
+    ) -> None:
         """Generate DOFs from atom_groups"""
 
-        if isinstance(atom_groups, list) or isinstance(atom_groups, tuple):
-            if len(atom_groups) == 0:
-                raise TypeError(
-                    'Atom groups cannot be an empty list or an ' 'empty tuple'
-                )
+        if len(atom_groups) == 0:
+            raise TypeError(
+                'Atom groups cannot be an empty list or an empty tuple'
+            )
 
-            # e.g. atom_groups == [(1, 2), (3, 4)]; ([0, 1])
-            elif all(
-                isinstance(atom_group, list) or isinstance(atom_group, tuple)
-                for atom_group in atom_groups
-            ):
-                for idx, atom_group in enumerate(atom_groups):
-                    self._atom_group_to_dof(idx=idx, atom_group=atom_group)
+        # e.g. atom_groups = [0, 1]
+        if all(isinstance(idx, int) for idx in atom_groups):
+            self._atom_group_to_dof(idx=0, atom_group=atom_groups)
 
-            # e.g. atom_groups = [0, 1]
-            elif all(isinstance(idx, int) for idx in atom_groups):
-                self._atom_group_to_dof(idx=0, atom_group=atom_groups)
-
-            else:
-                raise TypeError(
-                    'Elements of atom_groups must all be '
-                    'sequences or all be integers'
-                )
-
+        # Assume we only have sequences
+        # e.g. atom_groups == [(1, 2), (3, 4)] or ([0, 1])
         else:
-            raise TypeError('Atom groups are in incorrect format')
-
-        return None
+            for idx, atom_group in enumerate(atom_groups):
+                self._atom_group_to_dof(
+                    idx=idx,
+                    atom_group=atom_group,  # ty: ignore[invalid-argument-type]
+                )
 
     @staticmethod
     def _check_cv_name(name) -> str:

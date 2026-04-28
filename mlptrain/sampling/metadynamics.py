@@ -199,6 +199,8 @@ class Metadynamics:
 
         opt_widths = list(np.min(all_widths, axis=0))
         opt_widths_strs = []
+
+        assert self.bias.metad_cvs is not None
         for cv, width in zip(self.bias.metad_cvs, opt_widths):
             if cv.units is not None:
                 opt_widths_strs.append(f'{cv.name} {width:.2f} {cv.units}')

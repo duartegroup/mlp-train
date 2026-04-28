@@ -227,7 +227,10 @@ class _Window:
             gaussian.params = a_0, mu_0, sigma_0
 
         if normalised:
-            gaussian.params = 1, *gaussian.params[1:]
+            gaussian.params = (  # ty: ignore[invalid-assignment]
+                1,
+                *gaussian.params[1:],
+            )
 
         self._gaussian_pdf = gaussian
         return None
