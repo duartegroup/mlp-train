@@ -65,7 +65,7 @@ class ACE(MLPotential):
         if any(
             (
                 delta_time < 0.01,
-                'SYSTEM ABORT' in err,
+                'SYSTEM ABORT' in err,  # ty: ignore[unsupported-operator]
                 p.returncode != 0,
                 not os.path.exists(f'{self.name}.json'),
             )

@@ -17,7 +17,7 @@ dev = [
   'pre-commit>=3.6',
   'pytest~=8.0',
   'pytest-cov~=5.0',
-  'ty==0.0.28',
+  'ty==0.0.33',
 ]
 
 [project.optional-dependencies]
@@ -56,29 +56,20 @@ filterwarnings = [
 # Error if ty emits any warning-level diagnostics.
 error-on-warning = true
 
-[tool.ty.rules]
-unsupported-operator = "ignore"
-unresolved-attribute = "ignore"
-invalid-argument-type = "ignore"
-
 # Enable all rules for these files
 [[tool.ty.overrides]]
 include = [
-  "mlptrain/config.py",
-  "mlptrain/log.py",
-  "mlptrain/sampling/md_openmm.py",
-  "mlptrain/configurations/configuration_set.py",
-  "mlptrain/potentials/mace/mace.py",
-  "mlptrain/configurations/plotting.py",
+  "mlptrain/configurations/configuration.py",
+  "mlptrain/sampling/metadynamics.py",
 ]
 
 [tool.ty.overrides.rules]
-all = "error"
+invalid-argument-type = "ignore"
 
 # Don't typecheck python scripts from examples/*_paper/
 [[tool.ty.overrides]]
 include = [
-  "examples/*_paper/*",
+  "examples/*paper*/*",
 ]
 [tool.ty.overrides.rules]
 all = "ignore"

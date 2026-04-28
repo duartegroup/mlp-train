@@ -10,7 +10,10 @@ kj_to_ev = 0.0103642
 
 
 def _initialised_us() -> UmbrellaSampling:
-    us = UmbrellaSampling(zeta_func=lambda x: None, kappa=0.0)
+    us = UmbrellaSampling(
+        zeta_func=lambda x: None,  # ty: ignore[invalid-argument-type]
+        kappa=0.0,
+    )
 
     us.temp = 300
     zeta_refs = np.linspace(1.8245, 3.1100, num=20)  # 20 windows
@@ -26,14 +29,12 @@ def _initialised_us() -> UmbrellaSampling:
 
         zeta_obs = [float(line.split()[1]) for line in data_lines[1:-1]]
 
-        window = _Window(
-            obs_zetas=np.array(zeta_obs),
-            bias=Bias(
-                zeta_func=None,
-                kappa=float(data_lines[0].split()[2]),
-                reference=zeta_refs[window_idx],
-            ),
+        bias = Bias(
+            zeta_func=None,  # ty: ignore[invalid-argument-type]
+            kappa=float(data_lines[0].split()[2]),
+            reference=zeta_refs[window_idx],
         )
+        window = _Window(obs_zetas=np.array(zeta_obs), bias=bias)
 
         us.windows.append(window)
 

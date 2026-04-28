@@ -256,7 +256,7 @@ def test_try_multiple_biasfactors(h2_configuration, test_potential):
         width=0.05,
         height=0.1,
         biasfactors=biasfactors,
-        plotted_cvs=cv1,
+        plotted_cvs=(cv1,),
         fs=100,
     )
 

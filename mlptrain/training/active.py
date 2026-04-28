@@ -432,21 +432,15 @@ def _gen_active_config(
                                   dataset for the next iteration of active
                                   learning
     """
-    curr_time = 0.0 if 'curr_time' not in kwargs else kwargs.pop('curr_time')
-    extra_time = (
-        0.0 if 'extra_time' not in kwargs else kwargs.pop('extra_time')
-    )
-    n_calls = 0 if 'n_calls' not in kwargs else kwargs.pop('n_calls')
+    curr_time = kwargs.pop('curr_time', 0.0)
+    extra_time = kwargs.pop('extra_time', 0.0)
+    n_calls = kwargs.pop('n_calls', 0)
 
-    temp = 300.0 if 'temp' not in kwargs else kwargs.pop('temp')
-    i_temp = (
-        temp
-        if 'init_active_temp' not in kwargs
-        else kwargs.pop('init_active_temp')
-    )
+    temp = kwargs.pop('temp', 300)
+    i_temp = kwargs.pop('init_active_temp', temp)
 
-    pbc = False if 'pbc' not in kwargs else kwargs.pop('pbc')
-    box_size = None if 'box_size' not in kwargs else kwargs.pop('box_size')
+    pbc = kwargs.pop('pbc', False)
+    box_size = kwargs.pop('box_size', None)
 
     if extra_time > 0:
         logger.info(f'Running an extra {extra_time:.1f} fs of MD')
@@ -454,7 +448,7 @@ def _gen_active_config(
     md_time = 2 + n_calls**3 + float(extra_time)
 
     if (
-        kwargs['inherit_metad_bias'] is True
+        kwargs['inherit_metad_bias']
         and kwargs['iteration'] >= kwargs['bias_start_iter']
     ):
         kwargs = _modify_kwargs_for_metad_bias_inheritance(kwargs)
@@ -463,6 +457,9 @@ def _gen_active_config(
         config.box = Box(box_size)
 
     if kwargs['md_program'].lower() == 'openmm':
+        assert isinstance(
+            mlp, mlptrain.potentials.MACE
+        ), 'OpenMM is only available with MACE potential at the moment'
         traj = run_mlp_md_openmm(
             config,
             mlp=mlp,
@@ -753,7 +750,7 @@ def _update_init_config(
     init_config: 'mlptrain.Configuration',
     mlp: MLPotential,
     fix_init_config: bool,
-    bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
+    bias: mlptrain.PlumedBias | mlptrain.Bias | None,
     inherit_metad_bias: bool,
     bias_start_iter: int,
     iteration: int,
@@ -763,23 +760,21 @@ def _update_init_config(
     if fix_init_config:
         return init_config
 
+    if bias is None:
+        return mlp.training_data.lowest_energy
+
+    if inherit_metad_bias and iteration >= bias_start_iter:
+        _attach_inherited_bias_energies(
+            configurations=mlp.training_data,
+            iteration=iteration,
+            bias_start_iter=bias_start_iter,
+            bias=bias,  # ty: ignore[invalid-argument-type]
+        )
+
+        return mlp.training_data.lowest_inherited_biased_energy
+
     else:
-        if bias is not None:
-            if inherit_metad_bias and iteration >= bias_start_iter:
-                _attach_inherited_bias_energies(
-                    configurations=mlp.training_data,
-                    iteration=iteration,
-                    bias_start_iter=bias_start_iter,
-                    bias=bias,
-                )
-
-                return mlp.training_data.lowest_inherited_biased_energy
-
-            else:
-                return mlp.training_data.lowest_biased_energy
-
-        else:
-            return mlp.training_data.lowest_energy
+        return mlp.training_data.lowest_biased_energy
 
 
 def _check_bias(
@@ -795,7 +790,16 @@ def _check_bias(
     _check_bias_parameters(bias, temp)
 
     if inherit_metad_bias:
-        _check_bias_for_metad_bias_inheritance(bias)
+        if not isinstance(bias, PlumedBias):
+            raise TypeError(
+                'Metadynamics bias can only be inherited when using PlumedBias'
+            )
+
+        if bias.from_file:
+            raise ValueError(
+                'Metadynamics bias cannot be inherited using '
+                'PlumedBias from a file'
+            )
 
     return None
 
@@ -816,26 +820,6 @@ def _check_bias_parameters(
                     'learning to 5*k_B*T'
                 )
                 bias.height = 5 * ase_units.kB * temp
-
-    return None
-
-
-def _check_bias_for_metad_bias_inheritance(bias: PlumedBias) -> None:
-    """
-    Check if the bias is suitable to inherit metadynamics bias during
-    active learning
-    """
-
-    if not isinstance(bias, PlumedBias):
-        raise TypeError(
-            'Metadynamics bias can only be inherited when using PlumedBias'
-        )
-
-    if bias.from_file:
-        raise ValueError(
-            'Metadynamics bias cannot be inherited using '
-            'PlumedBias from a file'
-        )
 
     return None
 
