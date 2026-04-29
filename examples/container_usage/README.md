@@ -33,16 +33,24 @@ scope of this guide.
 
 ### Singularity/Apptainer
 
-If you would like to use the image with singularity you'll need to run a similar
-command:
+We also publish a pre-built Singularity/Apptainer SIF image to GHCR. Pull it with:
+
+``` bash
+apptainer pull mlp-train.sif oras://ghcr.io/duartegroup/mlp-train-sif:latest
+```
+
+Older versions can be pulled by replacing `latest` with the relevant commit hash.
+
+If, for whatever reason, that doesn't work, you could convert the docker image 
+manually instead. To do this, run:
 
 ``` bash
 singularity build mlp-train.sif docker://ghcr.io/duartegroup/mlp-train:latest
 ```
 
-which will pull the docker image and convert it into a singularity-friendly OCI
-format for you to store locally. Note the preprended `docker://` on the image
-address to tell singularity that it's a docker image, not a singularity one.
+which will pull the docker image and convert it into a singularity-friendly SIF
+file at `mlp-train.sif`. Note the prepended `docker://` on the image address to 
+tell singularity that it's a docker image, not a singularity one.
 
 If you'd then like to run this built image you can use something like:
 
@@ -101,6 +109,8 @@ Note that the build script need only be re-run if mlp-train is updated.
 ## Continuous Integration
 
 The docker image is built and pushed to the github container registry upon any
-push, or PR, to `main` which changes any of the relevant code for the
-dockerfile. Older versions of the docker image, i.e. not latest, can be accessed
-with the commit hash of the desired commit. 
+push to a publishing branch which changes any of the relevant code for the
+dockerfile. CI also builds a Singularity/Apptainer SIF image from the
+commit-specific docker image and pushes it to GHCR. Older versions of either
+image, i.e. not latest, can be accessed with the commit hash of the desired
+commit.
