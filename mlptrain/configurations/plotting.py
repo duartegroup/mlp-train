@@ -49,7 +49,7 @@ def parity_plot(
 
 
 def error_histogram(
-    config_set: 'mlptrain.ConfigurationSet', file_name: str = 'error_histogram'
+    config_set: 'mlptrain.ConfigurationSet', file_name: str = 'error_histogram', print_structures: bool = True
 ) -> None:
     """
     Plot distribution of errors in energies and forces for given configuration set
@@ -65,10 +65,10 @@ def error_histogram(
     fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(8, 3.75))
 
     if _all_energies_are_defined(config_set):
-        _add_energy_error_histogram(config_set, axis=ax[0])
+        _add_energy_error_histogram(config_set, axis=ax[0], print_structures=print_structures)
 
     if _all_forces_are_defined(config_set):
-        _add_force_error_histogram(config_set, axis=ax[1])
+        _add_force_error_histogram(config_set, axis=ax[1], print_structures=print_structures)
 
     plt.tight_layout()
     plt.savefig(f'{file_name}.pdf')
@@ -80,6 +80,7 @@ def error_histogram_index(
     config_set: 'mlptrain.ConfigurationSet',
     index: list[int] | None = None,
     file_name: str = 'error_histogram_index',
+    print_structures: bool = True,
 ) -> None:
     """
     Plot distribution of errors in energies and forces for given configuration set
@@ -97,7 +98,7 @@ def error_histogram_index(
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 3.75))
 
     if _all_forces_are_defined(config_set):
-        _add_force_error_histogram(config_set=config_set, index=index, axis=ax)
+        _add_force_error_histogram(config_set=config_set, index=index, axis=ax, print_structures=print_structures)
 
     plt.tight_layout()
     plt.savefig(f'{file_name}.pdf')
@@ -377,6 +378,8 @@ def _add_force_error_histogram(
         for i, structure in enumerate(config_set):
             if any(force_errors[i] >= N * mad):
                 data.append(structure)
+                print(f"High force error found in structure with index {i}")
+                print(f"Atom index responsible: {np.argmax(force_errors[i])}")
 
         data.save_xyz(f'structure_{N}_mad_f_error.xyz')
 
