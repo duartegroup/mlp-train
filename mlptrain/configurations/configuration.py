@@ -1,21 +1,30 @@
-import mlptrain
+from __future__ import annotations
+
 import ase
 import numpy as np
-from typing import Optional, Union, List
+import os
+import json
+import itertools
+from typing import TYPE_CHECKING, Optional, Union, List, Dict
 from copy import deepcopy
 from autode.atoms import AtomCollection, Atom
 import autode.atoms
+from autode.values import PotentialEnergy, Gradient
 import ase.atoms
 from mlptrain.log import logger
 from mlptrain.energy import Energy
 from mlptrain.forces import Forces
 from mlptrain.box import Box
 from mlptrain.configurations.calculate import run_autode
+from mlptrain.utils import work_in_tmp_dir
 from scipy.spatial import cKDTree
 import random
 import autode as ade
 from math import dist
 from autode.solvent.solvents import get_solvent
+
+if TYPE_CHECKING:
+    from mlptrain.potentials import MLPotential
 
 
 class Configuration(AtomCollection):
@@ -43,7 +52,7 @@ class Configuration(AtomCollection):
             charge:
             mult:
             box: Optional box, if None
-            mol_list: List[int] = None
+            mol_dict: Dict[int] = None
 
         """
         super().__init__(atoms=atoms)
@@ -55,11 +64,188 @@ class Configuration(AtomCollection):
         self.energy = Energy()
         self.forces = Forces()
 
+        # Dictionary to track molecule types and their atom ranges
+        self.mol_dict: Dict[str, List[Dict[str, Union[int, str]]]] = {}
+
         # Collective variable values (obtained using PLUMED)
         self.plumed_coordinates: Optional[np.ndarray] = None
 
         self.time: Optional[float] = None  # Time in a trajectory
         self.n_ref_evals = 0  # Number of reference evaluations
+
+    @classmethod
+    def from_xyz(
+        cls, filename: str, charge: int = 0, mult: int = 1
+    ) -> 'Configuration':
+        """
+        Create a Configuration from an xyz file and automatically load mol_dict if available.
+
+        Arguments:
+            filename: Path to xyz file
+            charge: Overall charge
+            mult: Spin multiplicity
+
+        Returns:
+            Configuration: New configuration with mol_dict loaded if available
+        """
+        # Use static method to load data
+        atoms, box, mol_dict = cls._load_from_xyz(filename)
+
+        # Create new configuration with loaded data
+        config = cls(atoms=atoms, charge=charge, mult=mult, box=box)
+        if mol_dict:
+            config.mol_dict = mol_dict
+
+        return config
+
+    @classmethod
+    def from_orca_file(
+        cls,
+        file_path: str,
+        *,
+        load_energy: bool = True,
+        load_forces: bool = True,
+    ) -> 'Configuration':
+        """
+        Return Configuration from existing ORCA calculation output files.
+
+        -----------------------------------------------------------
+        Arguments:
+
+        file_path: (str) Path to orca output file.
+
+        load_energy: (bool) If True, load energies from the files.
+
+        load_forces: (bool) If True, load forces from the files.
+        """
+
+        with open(file_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+
+        # TODO: Make sure we're actually looking at the ORCA output file!!!
+        # If not, it should be a hard error (but different from the one bellow).
+        # Look at how cclib does it.
+        if not any('ORCA TERMINATED NORMALLY' in line for line in lines):
+            raise RuntimeError(
+                f'ORCA did not terminate normally in file {file_path}.'
+            )
+
+        charge = None
+        mult = None
+        for cline in lines:
+            if 'Total Charge' in cline:
+                charge = int(cline.split()[4])
+
+        assert (
+            charge is not None
+        ), f'Could not determine charge from output file {file_path}'
+
+        for line in lines:
+            if 'Multiplicity' in line:
+                mult = int(line.split()[-1])
+
+        assert (
+            mult is not None
+        ), f'Could not determine multiplicity from output file {file_path}'
+        assert mult > 0, 'Multiplicity must be > 0'
+
+        read_coord = False
+        for line in lines:
+            if 'CARTESIAN COORDINATES (ANGSTROEM)' in line:
+                atoms = []
+                read_coord = True
+            elif line in ['\n', '\r\n']:
+                read_coord = False
+
+            if (
+                read_coord
+                and '----' not in line
+                and 'CARTESIAN COORDINATES (ANGSTROEM)' not in line
+            ):
+                element, x, y, z = line.split()
+                atom = ade.atoms.Atom(
+                    atomic_symbol=element,
+                    x=float(x),
+                    y=float(y),
+                    z=float(z),
+                )
+                atoms.append(atom)
+
+        num_atoms = len(atoms)
+
+        if load_energy:
+            if not any('FINAL SINGLE POINT ENERGY' in line for line in lines):
+                raise ValueError(
+                    f'Single point energy not found in output file {file_path}'
+                )
+
+            for en_line in reversed(lines):
+                if 'FINAL SINGLE POINT ENERGY' in en_line:
+                    energy = PotentialEnergy(en_line.split()[4], units='Ha')
+
+        if load_forces:
+            if not any(
+                ('CARTESIAN GRADIENT' in line)
+                or ('The final MP2 gradient' in line)
+                for line in lines
+            ):
+                raise ValueError(
+                    f'Gradients not found in output file {file_path}'
+                )
+
+            gradient_start = [
+                'CARTESIAN GRADIENT',
+                'The final MP2 gradient',
+            ]
+
+            gradient_ends = [
+                'Difference to translation invariance',
+                'Norm of the Cartesian gradient',
+                'NORM OF THE MP2 GRADIENT:',
+            ]
+
+            gradients = []
+            read_forces = False
+
+            for line in lines:
+                if any(substring in line for substring in gradient_start):
+                    read_forces = True
+                elif any(substring in line for substring in gradient_ends):
+                    read_forces = False
+
+                if read_forces:
+                    if len(line.split()) <= 3:
+                        continue
+                    else:
+                        dadx, dady, dadz = line.split()[-3:]
+
+                        gradients.append(
+                            [float(dadx), float(dady), float(dadz)]
+                        )
+
+            assert (
+                len(gradients) == num_atoms
+            ), f'Number of gradient lines ({len(gradients)}) != number of atoms ({num_atoms})'
+
+            forces = -Gradient(gradients, units='Ha a0^-1').to('Ha Å^-1')
+
+        # TODO: Add load_dipole parameter
+        # if load_dipoles:
+        #    for d_line in reversed(lines):
+        #        if 'Total Dipole Moment' in d_line:
+        #            dipx, dipy, dipz = line.split()[-3:]
+        #            dipole = [float(dipx), float(dipy), float(dipz)]
+
+        config = cls(atoms=atoms, charge=charge, mult=mult)
+
+        if load_energy:
+            config.energy.true = energy.to('eV')
+        if load_forces:
+            config.forces.true = forces.to('eV Å^-1')
+        # if load_dipole:
+        #   config.dipole.true = dipole.to()
+
+        return config
 
     @property
     def ase_atoms(self) -> 'ase.atoms.Atoms':
@@ -71,6 +257,7 @@ class Configuration(AtomCollection):
         Returns:
             (ase.atoms.Atoms): ASE atoms
         """
+        assert self.atoms is not None
         _atoms = ase.atoms.Atoms(
             symbols=[atom.label for atom in self.atoms],
             positions=self.coordinates,
@@ -84,11 +271,11 @@ class Configuration(AtomCollection):
 
     def solvate(
         self,
-        box_size: float = None,
-        buffer_distance: float = 10,
-        solvent_name: str = None,
-        solvent_density: float = None,
-        solvent_molecule: ade.Molecule = None,
+        box_size: float | None = None,
+        buffer_distance: float = 10.0,
+        solvent_name: str | None = None,
+        solvent_density: float | None = None,
+        solvent_molecule: ade.Molecule | None = None,
         contact_threshold: float = 1.8,
         random_seed: int = 42,
     ) -> None:
@@ -151,11 +338,11 @@ class Configuration(AtomCollection):
         if None not in (solvent_density, solvent_molecule, solvent_name):
             raise ValueError(
                 'Either the solvent name or the combination of solvent molecule and density must be provided.'
-                'You shoult not provide all three.'
+                'You should not provide all three.'
             )
 
         # If both solvent molecule and density are provided, stop checking
-        elif None not in (solvent_density, solvent_molecule):
+        elif solvent_molecule is not None and solvent_density is not None:
             if solvent_molecule.atoms is None:
                 raise ValueError('The solvent molecule must contain atoms')
             if solvent_density <= 0:
@@ -171,9 +358,16 @@ class Configuration(AtomCollection):
                 f'Searching solvent with the name {solvent_name} in autodE solvent database'
             )
             solvent = get_solvent(solvent_name, kind='implicit')
+            if solvent is None:
+                raise ValueError(
+                    f'Could not find solvent {solvent_name} in the database!'
+                )
+
             solvent_smiles = solvent.smiles
-            solvent_molecule = ade.Molecule(smiles=solvent_smiles)
-            solvent_molecule.optimise(method=ade.methods.XTB())
+            solvent_molecule = ade.Molecule(
+                smiles=solvent_smiles, name=solvent_name
+            )
+            solvent_molecule = optimise_solvent(solvent_molecule)
 
             if solvent.name not in solvent_densities.keys():
                 raise ValueError(
@@ -198,10 +392,12 @@ class Configuration(AtomCollection):
             atom.coordinate = atom.coordinate - solute_com + (box_size / 2)
 
         # Move the solvent to the box origin, so that the random vectors added later are all within the box
+        assert solvent_molecule is not None
         solvent_com = solvent_molecule.com
         for n, atom in enumerate(solvent_molecule.atoms):
             atom.coordinate = atom.coordinate - solvent_com
 
+        assert solvent_molecule.atoms is not None
         # Calculate the number of solvent molecules to be inserted
         solvent_mass = sum([atom.mass for atom in solvent_molecule.atoms])
         # Calculate the volume of a single solvent molecule by first calculating the mass of a single molecule: m = M/N_a
@@ -240,6 +436,9 @@ class Configuration(AtomCollection):
 
         "https://chemrxiv.org/engage/chemrxiv/article-details/678621ccfa469535b9ea8786"
 
+        This implementation includes periodic boundary condition handling by creating
+        periodic images of atoms near box boundaries.
+
         ___________________________________________________________________________
 
         Arguments:
@@ -260,15 +459,32 @@ class Configuration(AtomCollection):
         ___________________________________________________________________________
         """
 
+        assert self.atoms is not None
+        assert solvent_molecule.atoms is not None
         # Get the coordinates of the solute in the center of the box
         system_coords = np.array([atom.coordinate for atom in self.atoms])
         # Get the coordinates of the single isolated solvent molecule
         solvent_coords = np.array(
             [atom.coordinate for atom in solvent_molecule.atoms]
         )
-        # Initialise a list to keep track of the inserted solvent molecules, with each element
-        # being the index of the first atom of a molecule
-        mol_list = [0, len(system_coords)]
+
+        # Initialize mol_dict with the original solute molecule
+        if not self.mol_dict:
+            self.mol_dict['solute'] = [
+                {
+                    'start': 0,
+                    'end': len(system_coords),
+                    'formula': self._get_formula_from_atoms(self.atoms),
+                }
+            ]
+
+        # Get solvent name for mol_dict (use formula as fallback)
+        solvent_name = getattr(
+            solvent_molecule, 'name', solvent_molecule.formula
+        )
+        if solvent_name not in self.mol_dict:
+            self.mol_dict[solvent_name] = []
+
         # Initialise a count of the solvents inserted into the box. The ideal solvent number is
         # the number of solvent molecules that fit into the box, but this number might not be reached
         # because the solute might be in the way of some of the solvent molecules
@@ -276,8 +492,13 @@ class Configuration(AtomCollection):
         seeded_random = random.Random(random_seed)
 
         for i in range(n_solvent):
-            # Build a k-d tree from the system coordinates in order to query the nearest neighbours later
-            existing_tree = _build_cKDTree(system_coords)
+            # Create periodic images for boundary condition handling
+            periodic_coords = _create_periodic_images(
+                system_coords, box_size, contact_threshold
+            )
+
+            # Build a k-d tree from the system coordinates including periodic images
+            existing_tree = _build_cKDTree(periodic_coords)
             inserted = False
             attempt = 0
 
@@ -315,10 +536,13 @@ class Configuration(AtomCollection):
                     continue
 
                 # Query the nearest neighbours of the trial coordinates and check if they are within the contact_threshold
-                # If they are, add them to the system coordinates and update the mol_list
+                # This now includes periodic boundary conditions through the periodic images
                 distances, indeces = existing_tree.query(trial_coords)
                 if all(distances > contact_threshold):
                     solvent_translated = deepcopy(solvent_molecule)
+
+                    # Record the starting position of this molecule
+                    start_index = len(self.atoms)
 
                     for n, atom in enumerate(solvent_translated.atoms):
                         atom.coordinate = trial_coords[n]
@@ -327,16 +551,24 @@ class Configuration(AtomCollection):
                     system_coords = np.concatenate(
                         (system_coords, trial_coords)
                     )
+
+                    # Add molecule info to mol_dict
+                    end_index = len(self.atoms)
+                    self.mol_dict[solvent_name].append(
+                        {
+                            'start': start_index,
+                            'end': end_index,
+                            'formula': solvent_molecule.formula,
+                        }
+                    )
+
                     inserted = True
-                    mol_list.append(len(self.atoms))
                     solvents_inserted += 1
 
         logger.info(
             f'Inserted {solvents_inserted} solvent molecules into the box'
         )
 
-        # remove the last element of the mol_list, as this is the index of the last atom in the system
-        self.mol_list = mol_list[:-1]
         return system_coords
 
     def update_attr_from(self, configuration: 'Configuration') -> None:
@@ -423,11 +655,52 @@ class Configuration(AtomCollection):
 
                 print(line, file=exyz_file)
 
+        # Automatically save mol_dict if it exists
+        if self.mol_dict:
+            self.save_mol_dict(filename)
+
         return None
+
+    def save_mol_dict(self, filename: str) -> None:
+        """
+        Save the mol_dict to a hidden .mol_dict.txt file alongside the xyz file.
+
+        Arguments:
+            filename: The xyz filename (mol_dict will be saved as .filename.mol_dict.txt)
+        """
+        if not self.mol_dict:
+            return
+
+        # Create the hidden mol_dict filename
+        directory = os.path.dirname(filename) or '.'
+        base_name = os.path.splitext(os.path.basename(filename))[0]
+        mol_dict_file = os.path.join(directory, f'.{base_name}.mol_dict.txt')
+
+        # Save mol_dict as JSON for easy reading/writing
+        with open(mol_dict_file, 'w') as f:
+            json.dump(self.mol_dict, f, indent=2)
+
+        logger.info(f'Saved mol_dict to {mol_dict_file}')
+
+    def load_mol_dict(self, filename: str) -> bool:
+        """
+        Load mol_dict from a hidden .mol_dict.txt file if it exists and assign to self.
+
+        Arguments:
+            filename: The xyz filename to check for an associated mol_dict file
+
+        Returns:
+            bool: True if mol_dict was loaded, False if file doesn't exist
+        """
+        mol_dict = self._load_mol_dict_from_file(filename)
+        if mol_dict is not None:
+            self.mol_dict = mol_dict
+            return True
+        return False
 
     def single_point(
         self,
-        method: Union[str, 'mlptrain.potentials._base.MLPotential'],
+        method: Union[str, MLPotential],
         n_cores: int = 1,
     ) -> None:
         """
@@ -449,7 +722,7 @@ class Configuration(AtomCollection):
             return None
 
         elif hasattr(method, 'predict'):
-            method.predict(self)
+            method.predict(self)  # ty:ignore[call-non-callable]
 
         else:
             raise ValueError(
@@ -470,11 +743,171 @@ class Configuration(AtomCollection):
 
         if eq and self.n_atoms > 0:
             rmsd = np.linalg.norm(self.coordinates - other.coordinates)
-            return eq and rmsd < 1e-10
+            return bool(rmsd < 1e-10)
         return eq
 
     def copy(self) -> 'Configuration':
         return deepcopy(self)
+
+    def _get_formula_from_atoms(self, atoms) -> str:
+        """
+        Generate a molecular formula from a list of atoms.
+
+        Arguments:
+            atoms: List of atoms
+
+        Returns:
+            str: Molecular formula (e.g., "H2O", "C2H6O")
+        """
+        from collections import Counter
+
+        # Count atoms by element
+        element_counts = Counter(atom.label for atom in atoms)
+
+        # Build formula string
+        formula_parts = []
+        for element in sorted(element_counts.keys()):
+            count = element_counts[element]
+            if count == 1:
+                formula_parts.append(element)
+            else:
+                formula_parts.append(f'{element}{count}')
+
+        return ''.join(formula_parts)
+
+    @staticmethod
+    def _load_mol_dict_from_file(filename: str) -> Optional[Dict]:
+        """
+        Load mol_dict from a hidden .mol_dict.txt file if it exists.
+
+        Arguments:
+            filename: The xyz filename to check for an associated mol_dict file
+
+        Returns:
+            Optional[Dict]: The mol_dict if loaded successfully, None otherwise
+        """
+        # Create the hidden mol_dict filename
+        directory = os.path.dirname(filename) or '.'
+        base_name = os.path.splitext(os.path.basename(filename))[0]
+        mol_dict_file = os.path.join(directory, f'.{base_name}.mol_dict.txt')
+
+        if os.path.exists(mol_dict_file):
+            try:
+                with open(mol_dict_file, 'r') as f:
+                    mol_dict = json.load(f)
+                logger.info(f'Loaded mol_dict from {mol_dict_file}')
+                return mol_dict
+            except (json.JSONDecodeError, IOError) as e:
+                logger.warning(
+                    f'Failed to load mol_dict from {mol_dict_file}: {e}'
+                )
+        return None
+
+    @staticmethod
+    def _load_from_xyz(filename: str) -> tuple[list, Box | None, dict | None]:
+        """
+        Load atoms, box, and mol_dict from an xyz file.
+
+        Arguments:
+            filename: Path to xyz file
+
+        Returns:
+            tuple: (atoms, box, mol_dict) where box and mol_dict can be None
+        """
+        import ase.io
+        from autode.atoms import Atom
+        from mlptrain.box import Box
+
+        # Load atoms from xyz file
+        logger.info(f'Loading atoms from {filename}')
+        try:
+            ase_atoms = ase.io.read(filename)
+            logger.info(
+                f'Successfully loaded {len(ase_atoms)} atoms from {filename}'
+            )
+        except Exception as e:
+            logger.error(f'Failed to read {filename}: {e}')
+            raise
+
+        atoms: list[Atom] = []
+        box = None
+        mol_dict = None
+
+        # Debug: print ASE atoms info
+        if len(ase_atoms) == 0:
+            logger.warning(f'No atoms found in {filename}')
+            return atoms, box, mol_dict
+
+        # Convert to autode atoms
+        symbols = ase_atoms.get_chemical_symbols()
+        positions = ase_atoms.get_positions()
+
+        logger.info(f'Converting {len(symbols)} atoms to autode format')
+
+        for i, (symbol, coord) in enumerate(zip(symbols, positions)):
+            try:
+                atom = Atom(symbol, x=coord[0], y=coord[1], z=coord[2])
+                atoms.append(atom)
+            except Exception as e:
+                logger.error(f'Failed to create atom {i} ({symbol}): {e}')
+                raise
+
+        logger.info(f'Successfully loaded {len(atoms)} atoms')
+
+        # Update box if cell information is available
+        cell_array = np.array(ase_atoms.get_cell())
+        if np.any(cell_array != 0):
+            box = Box(np.diag(cell_array))
+            logger.info(f'Updated box with dimensions: {np.diag(cell_array)}')
+
+        # Load mol_dict if available
+        mol_dict = Configuration._load_mol_dict_from_file(filename)
+
+        return atoms, box, mol_dict
+
+    def load_from_xyz(self, filename: str) -> None:
+        """
+        Load atoms from an xyz file into this configuration, replacing existing atoms.
+
+        Arguments:
+            filename: Path to xyz file
+        """
+        atoms, box, mol_dict = self._load_from_xyz(filename)
+
+        # Update this configuration
+        self.atoms = atoms
+        if box is not None:
+            self.box = box
+        if mol_dict is not None:
+            self.mol_dict = mol_dict
+        else:
+            self.mol_dict = {}
+
+    def validate_mol_dict(self) -> bool:
+        """
+        Validate that the mol_dict indices are consistent with the current atoms.
+
+        Returns:
+            bool: True if mol_dict is valid, False otherwise
+        """
+        if not self.mol_dict:
+            return True
+
+        total_atoms = len(self.atoms)
+
+        for mol_type, molecules in self.mol_dict.items():
+            for i, mol_info in enumerate(molecules):
+                start = mol_info.get('start', 0)
+                end = mol_info.get('end', 0)
+
+                # Check bounds
+                if start < 0 or end > total_atoms or start >= end:
+                    logger.warning(
+                        f'Invalid mol_dict entry: {mol_type}[{i}] has start={start}, end={end}, but total atoms={total_atoms}'
+                    )
+                    return False
+
+        return True
 
 
 def _random_rotation(r1: float, r2: float, r3: float) -> np.ndarray:
@@ -542,6 +975,63 @@ def _get_max_mol_distance(conf_atoms: List[Atom]) -> float:
             for atom2 in conf_atoms
         ]
     )
+
+
+@work_in_tmp_dir()
+def optimise_solvent(solvent: ade.Molecule) -> ade.Molecule:
+    """Optimise a solvent molecule with XTB"""
+    solvent_copy = deepcopy(solvent)
+    solvent_copy.optimise(method=ade.methods.XTB())
+    return solvent_copy
+
+
+def _create_periodic_images(
+    coords: np.ndarray, box_size: float, contact_threshold: float
+) -> np.ndarray:
+    """
+    Create periodic images of atoms that are within contact_threshold distance
+    of the box boundaries to handle periodic boundary conditions.
+
+    Arguments:
+        coords: Original coordinates of atoms in the box
+        box_size: Size of the cubic box
+        contact_threshold: Distance threshold for considering periodic images
+
+    Returns:
+        Combined array of original coordinates and their periodic images
+    """
+    original_coords = coords.copy()
+    periodic_images = []
+
+    # For each atom, check if it's close to any boundary
+    for coord in coords:
+        x, y, z = coord
+
+        # Determine which directions need periodic images
+        # For each dimension, we can have shifts in negative, none, or positive direction
+        shifts = []
+        for i, pos in enumerate([x, y, z]):
+            dim_shifts = [0]  # Always include no shift
+            if pos < contact_threshold:  # Close to lower boundary
+                dim_shifts.append(box_size)
+            if pos > (box_size - contact_threshold):  # Close to upper boundary
+                dim_shifts.append(-box_size)
+            shifts.append(dim_shifts)
+
+        # Generate all combinations of shifts (faces, edges, and corners)
+        # This automatically handles 1D (faces), 2D (edges), and 3D (corners) cases
+        for dx, dy, dz in itertools.product(*shifts):
+            # Skip the original position (no shift)
+            if dx == 0 and dy == 0 and dz == 0:
+                continue
+            periodic_images.append([x + dx, y + dy, z + dz])
+
+    # Combine original coordinates with periodic images
+    if periodic_images:
+        periodic_images = np.array(periodic_images)
+        return np.vstack([original_coords, periodic_images])
+    else:
+        return original_coords
 
 
 # Solvent densities were taken from the CRC handbook

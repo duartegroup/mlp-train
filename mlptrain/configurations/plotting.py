@@ -1,5 +1,7 @@
 import mlptrain
+import math
 import numpy as np
+import seaborn as sns
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
@@ -19,7 +21,7 @@ mpl.rcParams['axes.linewidth'] = 1.2
 
 
 def parity_plot(
-    config_set: 'mlptrain.ConfigurationSet', name: str = 'parity'
+    config_set: 'mlptrain.ConfigurationSet', file_name: str = 'parity'
 ) -> None:
     """
     Plot parity plots of energies, forces and temporal differences (if present)
@@ -29,7 +31,7 @@ def parity_plot(
     Arguments:
         config_set: Set of configurations
 
-        name:
+        file_name: Name of the file to save the plot
     """
     fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(8, 7.5))
 
@@ -42,7 +44,64 @@ def parity_plot(
         _add_force_magnitude_plot(config_set, axis=ax[1, 1])
 
     plt.tight_layout()
-    plt.savefig(f'{name}.pdf')
+    plt.savefig(f'{file_name}.pdf')
+    return None
+
+
+def error_histogram(
+    config_set: 'mlptrain.ConfigurationSet', file_name: str = 'error_histogram'
+) -> None:
+    """
+    Plot distribution of errors in energies and forces for given configuration set
+
+    ------------------------------------------------------------------------------
+    Arguments:
+        config_set: Set of configurations
+
+        file_name: Name of the file to save the plot
+
+    """
+
+    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(8, 3.75))
+
+    if _all_energies_are_defined(config_set):
+        _add_energy_error_histogram(config_set, axis=ax[0])
+
+    if _all_forces_are_defined(config_set):
+        _add_force_error_histogram(config_set, axis=ax[1])
+
+    plt.tight_layout()
+    plt.savefig(f'{file_name}.pdf')
+
+    return None
+
+
+def error_histogram_index(
+    config_set: 'mlptrain.ConfigurationSet',
+    index: list[int] | None = None,
+    file_name: str = 'error_histogram_index',
+) -> None:
+    """
+    Plot distribution of errors in energies and forces for given configuration set
+
+    ------------------------------------------------------------------------------
+    Arguments:
+        config_set: Set of configurations
+
+        Index: List of atom indices to plot
+
+        file_name: Name of the file
+
+    """
+
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 3.75))
+
+    if _all_forces_are_defined(config_set):
+        _add_force_error_histogram(config_set=config_set, index=index, axis=ax)
+
+    plt.tight_layout()
+    plt.savefig(f'{file_name}.pdf')
+
     return None
 
 
@@ -92,18 +151,18 @@ def _add_energy_time_plot(config_set, axis) -> None:
 
     axis.legend()
     axis.set_xlabel(xlabel)
-    axis.set_ylabel('$E$ / eV')
+    axis.set_ylabel('$E - E_{min, true}$ (eV)')
 
     return None
 
 
 def _add_energy_parity_plot(config_set, axis) -> None:
     """Plot true vs predicted energies"""
-    xs = np.array(config_set.true_energies)
-    xs -= np.min(xs)  # Only relative energies matter
+    x = np.array(config_set.true_energies)
+    xs = x - np.min(x)  # Only relative energies matter
 
-    ys = np.array(config_set.predicted_energies)
-    ys -= np.min(ys)
+    y = np.array(config_set.predicted_energies)
+    ys = y - np.min(y)
 
     min_e = min([np.min(xs), np.min(ys)])
     max_e = min([np.max(xs), np.max(ys)])
@@ -112,13 +171,13 @@ def _add_energy_parity_plot(config_set, axis) -> None:
 
     axis.plot([min_e, max_e], [min_e, max_e], c='k', lw=1.0)
 
-    _add_r_sq_and_mad(axis, xs=xs, ys=ys)
+    _add_r_sq_and_mad(axis, x=x, y=y, xs=xs, ys=ys, unit='meV')
 
     axis.set_xlim(min_e, max_e)
     axis.set_ylim(min_e, max_e)
 
-    axis.set_xlabel('$E_{true}$ / eV')
-    axis.set_ylabel('$E_{predicted}$ / eV')
+    axis.set_xlabel('$E_{rel, true}$ (eV)')
+    axis.set_ylabel('$E_{rel, predicted}$ (eV)')
 
     return None
 
@@ -166,7 +225,7 @@ def _add_force_component_plot(config_set, axis) -> None:
         axis.hist2d(
             xs,
             ys,
-            bins=40,
+            bins=100,
             label='$F_{x}$',
             cmap=cmaps[idx],
             norm=mpl.colors.LogNorm(),
@@ -175,8 +234,8 @@ def _add_force_component_plot(config_set, axis) -> None:
     axis.set_ylim(min_f, max_f)
     axis.set_xlim(min_f, max_f)
 
-    axis.set_xlabel('$F_{true}$ / eV Å$^{-1}$')
-    axis.set_ylabel('$F_{predicted}$ / eV Å$^{-1}$')
+    axis.set_xlabel('$F_{true}$ (eV Å$^{-1})$')
+    axis.set_ylabel('$F_{predicted}$ (eV Å$^{-1})$')
 
     return None
 
@@ -184,47 +243,336 @@ def _add_force_component_plot(config_set, axis) -> None:
 def _add_force_magnitude_plot(config_set, axis) -> None:
     """Add a parity plot of the force magnitudes"""
 
-    xs, ys = [], []
+    x, y = [], []
     for config in config_set:
-        xs += np.linalg.norm(config.forces.true, axis=1).tolist()
-        ys += np.linalg.norm(config.forces.predicted, axis=1).tolist()
+        x += np.linalg.norm(config.forces.true, axis=1).tolist()
+        y += np.linalg.norm(config.forces.predicted, axis=1).tolist()
 
-    min_f = min([np.min(xs), np.min(ys)])
-    max_f = min([np.max(xs), np.max(ys)])
+    min_f = min([np.min(x), np.min(y)])
+    max_f = min([np.max(x), np.max(y)])
 
     axis.hist2d(
-        xs,
-        ys,
+        x,
+        y,
         range=[[min_f, max_f], [min_f, max_f]],
-        bins=50,
+        bins=100,
         cmap=plt.get_cmap('Blues'),
         norm=mpl.colors.LogNorm(),
     )
 
-    _add_r_sq_and_mad(axis, xs=np.array(xs), ys=np.array(ys))
+    _add_r_sq_and_mad(axis, x=np.array(x), y=np.array(y), unit='meV Å$^{-1}$')
 
     axis.set_ylim(min_f, max_f)
     axis.set_xlim(min_f, max_f)
 
-    axis.set_xlabel('$|{\\bf{F}}|_{true}$ / eV Å$^{-1}$')
-    axis.set_ylabel('$|{\\bf{F}}|_{predicted}$ / eV Å$^{-1}$')
+    axis.set_xlabel('$|{\\bf{F}}|_{true}$ (eV Å$^{-1}$)')
+    axis.set_ylabel('$|{\\bf{F}}|_{predicted}$ (eV Å$^{-1}$)')
 
     return None
 
 
-def _add_r_sq_and_mad(axis, xs, ys):
-    """Add an annotation of the correlation and MAD between the data"""
+def _add_energy_error_histogram(
+    config_set, axis, per_atom=True, print_structures=True, N=3
+) -> None:
+    """Add histogram of energy errors"""
 
-    slope, intercept, r, p, se = linregress(xs, ys)
-    axis.annotate(
-        f'$R^2$ = {r**2:.3f},\n' f' MAD = {np.mean(np.abs(xs - ys)):.3f} eV',
-        xy=(1, 0),
-        xycoords='axes fraction',
-        fontsize=12,
-        xytext=(-5, 5),
-        textcoords='offset points',
-        ha='right',
-        va='bottom',
+    x = np.array(config_set.true_energies)
+
+    y = np.array(config_set.predicted_energies)
+
+    n_atoms = len(config_set[0].atoms)
+
+    if per_atom:
+        error_abs = np.abs(x - y) * 1000 / n_atoms
+    else:
+        error_abs = np.abs(x - y) * 1000
+
+    min_e = min(error_abs)
+    max_e = max(error_abs)
+
+    sns.histplot(
+        error_abs, bins=30, color='blue', alpha=0.7, kde=False, ax=axis
     )
 
+    axis.set_xlim(min_e, max_e)
+    # axis.set_ylim(min_e, max_e)
+
+    if per_atom:
+        mad = _add_max_and_mad(
+            axis, x=x / n_atoms, y=y / n_atoms, unit='meV atom$^{-1}$'
+        )
+
+        axis.set_xlabel('Error on energy (meV atom$^{-1}$)')
+    else:
+        mad = _add_max_and_mad(axis, x=x, y=y, unit='meV')
+        axis.set_xlabel('Error on energy (meV)')
+
+    axis.set_ylabel('Occurence')
+
+    if print_structures:
+        data = mlptrain.ConfigurationSet()
+        for i, structure in enumerate(config_set):
+            if error_abs[i] >= N * mad:
+                data.append(structure)
+
+        data.save_xyz(f'structure_{N}_mad_en_error.xyz')
+
+
+def _add_force_error_histogram(
+    config_set, axis, index=None, print_structures=True, N=5
+) -> None:
+    """
+    Add histogram of force errors
+    -----------------------------
+    config_set: Configuration set containing structures, predicted and true energies and forces
+    axis: Position of the plot
+    index: List of atom indices. If None, print whole system
+    Print_structures: If True, print structures with force error large than N * MAD
+    N: Multiplication of MAD for force errors
+    """
+
+    x, y = [], []
+    for config in config_set:
+        if index is None:
+            x.append(np.linalg.norm(config.forces.true, axis=1))
+            y.append(np.linalg.norm(config.forces.predicted, axis=1))
+        else:
+            index = np.unique(index)  # Removing accidental duplicities
+
+            x.append(np.linalg.norm(config.forces.true[index], axis=1))
+            y.append(np.linalg.norm(config.forces.predicted[index], axis=1))
+
+    force_errors = np.abs(np.array(y) - np.array(x)) * 1000
+
+    force_errors_all = np.concatenate(np.abs(np.array(y) - np.array(x)) * 1000)
+
+    min_f = min(force_errors_all)
+    max_f = max(force_errors_all)
+
+    sns.histplot(
+        force_errors_all,
+        bins=30,
+        color='orange',
+        alpha=0.7,
+        kde=False,
+        ax=axis,
+    )
+
+    mad = _add_max_and_mad(
+        axis, x=np.array(x), y=np.array(y), unit='meV Å$^{-1}$'
+    )
+
+    if index is not None:
+        axis.set_title(f'Indices {index}')
+
+    axis.set_xlim(min_f, max_f)
+
+    axis.set_xlabel('Error on $|{\\bf{F}}|$ (meV Å$^{-1}$)')
+
+    axis.set_yscale('log')
+    axis.set_ylabel('Occurence')
+
+    if print_structures:
+        data = mlptrain.ConfigurationSet()
+        for i, structure in enumerate(config_set):
+            if any(force_errors[i] >= N * mad):
+                data.append(structure)
+
+        data.save_xyz(f'structure_{N}_mad_f_error.xyz')
+
+
+def error_force_histogram_per_elements(
+    config_set: 'mlptrain.ConfigurationSet',
+    file_name: str = 'force_error_hist_elements',
+) -> None:
+    """
+    Print histogram of force errors for each element separately. Assumes that every configration contains the same structures.
+    """
+
+    if not _all_forces_are_defined(config_set):
+        raise ValueError(
+            'Some configurations are mising forces. Check the dataset.'
+        )
+
+    elements = []
+    for atom in config_set[0].atoms:
+        elements.append(atom.label)
+
+    element_list = np.unique(elements)
+
+    N_elements = len(element_list)
+
+    nrows, ncols = _choose_grid(N_elements, max_cols=3)
+
+    fig, axes = plt.subplots(
+        nrows, ncols, squeeze=False, figsize=(4 * ncols, 3 * nrows)
+    )
+
+    axes_flat = axes.ravel()
+
+    cmap = plt.get_cmap('tab10')
+    colors = [cmap(i) for i in range(N_elements)]
+
+    for i, (ax, elem) in enumerate(zip(axes_flat, element_list)):
+        force_errors_elem = []
+        x, y = [], []
+
+        for structure in config_set:
+            x.append(
+                structure.forces.true[
+                    [atom.label == elem for atom in structure.atoms]
+                ]
+            )
+
+            y.append(
+                structure.forces.predicted[
+                    [atom.label == elem for atom in structure.atoms]
+                ]
+            )
+
+            force_errors = (
+                np.abs(
+                    np.array(
+                        structure.forces.true[
+                            [atom.label == elem for atom in structure.atoms]
+                        ]
+                    )
+                    - np.array(
+                        structure.forces.predicted[
+                            [atom.label == elem for atom in structure.atoms]
+                        ]
+                    )
+                )
+                * 1000
+            )
+            force_errors = np.concatenate(force_errors)
+            force_errors_elem.append(force_errors)
+        force_errors_elem = np.concatenate(force_errors_elem)
+
+        min_f = min(force_errors_elem)
+        max_f = max(force_errors_elem)
+
+        sns.histplot(
+            force_errors_elem,
+            bins=30,
+            color=colors[i],
+            alpha=0.7,
+            kde=False,
+            ax=ax,
+        )
+
+        ax.set_title(f'Element {elem}')
+        _add_max_and_mad(ax, x=np.array(x), y=np.array(y), unit='meV Å$^{-1}$')
+
+        ax.set_xlim(min_f, max_f)
+
+        ax.set_xlabel('Error on $F_{x,y,z}$ (meV Å$^{-1}$)')
+
+        ax.set_yscale('log')
+        ax.set_ylabel('Occurence')
+
+    # Turn off any unused axes (when grid has extra cells)
+    for ax in axes_flat[N_elements:]:
+        ax.axis('off')
+
+    plt.tight_layout()
+    plt.savefig(f'{file_name}.pdf')
+
     return None
+
+
+def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
+    """
+    Add an annotation of the correlation and MAD between the data
+    -------------------------------------------------------------
+    Arguments:
+    xs, ys: Values shifted by minimum value, optional.
+    x,y : Non-modified values
+
+    """
+
+    if 'meV' in unit:
+        factor = 1000
+    else:
+        factor = 1
+    if xs is not None and ys is not None:
+        slope, intercept, r, p, se = linregress(xs, ys)
+        axis.annotate(
+            f'$R^2$ = {r**2:.3f}\n'
+            f' MAD$_{{relative}}$ = {np.mean(np.abs(xs - ys))*factor:.1f} {unit}\n'
+            f'MAD = {np.mean(np.abs(x - y))*factor:.1f} {unit}',
+            xy=(1, 0),
+            xycoords='axes fraction',
+            fontsize=12,
+            xytext=(-5, 5),
+            textcoords='offset points',
+            ha='right',
+            va='bottom',
+        )
+    else:
+        slope, intercept, r, p, se = linregress(x, y)
+        axis.annotate(
+            f'$R^2$ = {r**2:.3f}\n'
+            f'MAD = {np.mean(np.abs(x - y))*factor:.1f} {unit}',
+            xy=(1, 0),
+            xycoords='axes fraction',
+            fontsize=12,
+            xytext=(-5, 5),
+            textcoords='offset points',
+            ha='right',
+            va='bottom',
+        )
+
+    return None
+
+
+def _add_max_and_mad(axis, x, y, unit):
+    """
+    Add an annotation of the MAD and maximum value between the data
+    ---------------------------------------------------------------
+    Arguments:
+       x,y : Non-modified values
+       unit: (str)
+    """
+    mad = np.mean(np.abs(x - y)) * 1000
+
+    axis.annotate(
+        f'MAD = {mad:.3f} {unit}\n'
+        f'MAX = {np.max(np.abs(x - y))*1000:.1f} {unit}',
+        xy=(1, 1),
+        xycoords='axes fraction',
+        fontsize=12,
+        xytext=(-5, -5),
+        textcoords='offset points',
+        ha='right',
+        va='top',
+    )
+
+    return mad
+
+
+def _choose_grid(n: int, max_cols: int = 3) -> tuple[int, int]:
+    """
+    Return (nrows, ncols) for n subplots, with:
+      - if n <= 3: 1 row
+      - otherwise: up to max_cols columns
+      - choose the most 'square' layout (minimize |rows - cols|, then unused cells)
+    """
+    if n <= 0:
+        raise ValueError('n must be >= 1')
+
+    if n <= max_cols:
+        return 1, n
+
+    candidates = []
+    for ncols in range(2, max_cols + 1):
+        nrows = math.ceil(n / ncols)
+        unused = nrows * ncols - n
+        squareness = abs(nrows - ncols)
+        candidates.append((squareness, unused, nrows, ncols))
+
+    _, _, nrows, ncols = sorted(candidates, key=lambda t: (t[0], t[1], t[2]))[
+        0
+    ]
+
+    return nrows, ncols

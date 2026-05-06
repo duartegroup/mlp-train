@@ -174,7 +174,7 @@ class System:
     def mult(self) -> int:
         """Get the total spin multiplicity on the system"""
         n_unpaired = sum((mol.mult - 1) / 2 for mol in self.molecules)
-        return 2 * n_unpaired + 1
+        return int(2 * n_unpaired + 1)
 
     @property
     def atoms(self) -> List['autode.atoms.Atom']:
@@ -184,7 +184,12 @@ class System:
         Returns:
             (list(autode.atoms.Atom)):
         """
-        return sum((mol.atoms for mol in self.molecules), None)
+        # NOTE: If you have no idea how the heck can a 'sum' function
+        # return a list of Atom, it's because autode's definition of Atoms class
+        # overrides the __add__ method.
+        return sum(
+            (mol.atoms for mol in self.molecules), None
+        )  # ty: ignore[no-matching-overload]
 
     @property
     def unique_atomic_symbols(self) -> List[str]:

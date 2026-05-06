@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import mlptrain
 import ase
 import os
@@ -8,8 +10,9 @@ import shutil
 import warnings
 import numpy as np
 import multiprocessing as mp
+from concurrent.futures import ProcessPoolExecutor
 import autode as ade
-from typing import Optional, Sequence, Union, Tuple, List
+from typing import TYPE_CHECKING, Optional, Sequence, Union, Tuple, List
 from multiprocessing import Pool
 from subprocess import Popen
 from copy import deepcopy
@@ -36,6 +39,11 @@ from mlptrain.utils import (
     convert_exponents,
 )
 
+if TYPE_CHECKING:
+    import ase.io
+    from mlptrain.sampling.plumed import _PlumedCV
+    from mlptrain.potentials import MLPotential
+
 
 class Metadynamics:
     """Metadynamics class for running biased molecular dynamics using
@@ -43,7 +51,7 @@ class Metadynamics:
 
     def __init__(
         self,
-        cvs: Union[Sequence['mlptrain._PlumedCV'], 'mlptrain._PlumedCV'],
+        cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'],
         bias: Optional['mlptrain.PlumedBias'] = None,
         temp: Optional[float] = None,
     ):
@@ -97,7 +105,7 @@ class Metadynamics:
         configurations: Union[
             'mlptrain.Configuration', 'mlptrain.ConfigurationSet'
         ],
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: MLPotential,
         temp: float = 300,
         interval: int = 10,
         dt: float = 1,
@@ -175,8 +183,10 @@ class Metadynamics:
 
             pool.close()
             for width_process in width_processes:
-                all_widths.append(width_process.get())
-                all_widths = np.array(all_widths)
+                widths = width_process.get()
+                if widths:
+                    all_widths.append(widths)
+            all_widths = np.array(all_widths)
             pool.join()
 
         finish = time.perf_counter()
@@ -191,6 +201,11 @@ class Metadynamics:
         move_files(
             [r'\w+_config\d+\.pdf'], dst_folder='width_estimation', regex=True
         )
+
+        if all_widths.size == 0:
+            raise RuntimeError(
+                'Width estimation failed: all runs were skipped due to timeout.'
+            )
 
         opt_widths = list(np.min(all_widths, axis=0))
         opt_widths_strs = []
@@ -207,7 +222,7 @@ class Metadynamics:
     def _get_width_for_single(
         self,
         configuration: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: MLPotential,
         temp: float,
         dt: float,
         interval: int,
@@ -221,7 +236,7 @@ class Metadynamics:
 
         kwargs['n_cores'] = 1
 
-        run_mlp_md(
+        traj = run_mlp_md(
             configuration=configuration,
             mlp=mlp,
             temp=temp,
@@ -231,8 +246,15 @@ class Metadynamics:
             kept_substrings=['.dat'],
             **kwargs,
         )
+        if traj is None:
+            logger.warning(
+                'Width estimation MD cancelled due to timeout; skipping.'
+            )
+            return []
 
         widths = []
+
+        assert self.bias.metad_cvs is not None
 
         for cv in self.bias.metad_cvs:
             colvar_filename = f'colvar_{cv.name}_{kwargs["idx"]}.dat'
@@ -254,13 +276,13 @@ class Metadynamics:
     def run_metadynamics(
         self,
         configuration: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
         pace: int = 100,
         height: Optional[float] = None,
-        width: Optional = None,
+        width: Optional[Union[list[float], float]] = None,
         biasfactor: Optional[float] = None,
         al_iter: Optional[int] = None,
         n_runs: int = 1,
@@ -391,38 +413,47 @@ class Metadynamics:
 
         start_metad = time.perf_counter()
 
-        with Pool(processes=n_processes) as pool:
+        with ProcessPoolExecutor(
+            max_workers=n_processes, mp_context=mp.get_context('spawn')
+        ) as executor:
             for idx in range(n_runs):
                 # Without copy kwargs is overwritten at every iteration
                 kwargs_single = deepcopy(kwargs)
                 kwargs_single['idx'] = idx + 1
 
-                metad_process = pool.apply_async(
-                    func=self._run_single_metad,
-                    args=(
-                        configuration,
-                        mlp,
-                        temp,
-                        interval,
-                        dt,
-                        self.bias,
-                        al_iter,
-                        restart,
-                    ),
-                    kwds=kwargs_single,
+                metad_process = executor.submit(
+                    self._run_single_metad,
+                    configuration,
+                    mlp,
+                    temp,
+                    interval,
+                    dt,
+                    self.bias,
+                    al_iter,
+                    restart,
+                    **kwargs_single,
                 )
                 metad_processes.append(metad_process)
 
-            pool.close()
             for metad_process in metad_processes:
-                metad_trajs.append(metad_process.get())
-            pool.join()
+                metad_trajs.append(metad_process.result())
 
         finish_metad = time.perf_counter()
         logger.info(
             'Metadynamics done in '
             f'{(finish_metad - start_metad) / 60:.1f} m'
         )
+
+        metad_trajs = [traj for traj in metad_trajs if traj is not None]
+        if len(metad_trajs) == 0:
+            logger.warning(
+                'All metadynamics trajectories were skipped due to MD timeout.'
+            )
+            return None
+        if len(metad_trajs) != n_runs:
+            logger.warning(
+                'Some metadynamics trajectories were skipped due to MD timeout.'
+            )
 
         # Move .traj files into 'trajectories' folder and compute .xyz files
         self._move_and_save_files(
@@ -486,6 +517,7 @@ class Metadynamics:
         metad_path = os.path.join(os.getcwd(), 'plumed_files/metadynamics')
         traj_path = os.path.join(os.getcwd(), 'trajectories')
 
+        assert self.bias.metad_cvs is not None
         for cv in self.bias.metad_cvs:
             colvar_path = os.path.join(metad_path, f'colvar_{cv.name}_*.dat')
             n_previous_runs = len(glob.glob(colvar_path))
@@ -518,7 +550,7 @@ class Metadynamics:
     def _run_single_metad(
         self,
         configuration: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
@@ -526,7 +558,7 @@ class Metadynamics:
         al_iter: Optional[int] = None,
         restart: Optional[bool] = False,
         **kwargs,
-    ) -> 'mlptrain.Trajectory':
+    ) -> Optional['mlptrain.Trajectory']:
         """Initiate a single metadynamics run"""
 
         logger.info(
@@ -620,7 +652,7 @@ class Metadynamics:
     def _set_previous_parameters(
         self,
         configuration: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: MLPotential,
         temp: float,
         dt: float,
         interval: int,
@@ -740,15 +772,15 @@ class Metadynamics:
     def try_multiple_biasfactors(
         self,
         configuration: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
         biasfactors: Sequence[float],
         pace: int = 500,
         height: Optional[float] = None,
-        width: Optional = None,
-        plotted_cvs: Optional = None,
+        width: Optional[Union[list[float], float]] = None,
+        plotted_cvs: Optional[Sequence[_PlumedCV]] = None,
         **kwargs,
     ) -> None:
         """
@@ -838,6 +870,7 @@ class Metadynamics:
                 'Plotting using more than two CVs is ' 'not implemented'
             )
 
+        assert cvs_holder.metad_cvs is not None
         if not all(cv in self.bias.metad_cvs for cv in cvs_holder.metad_cvs):
             raise ValueError(
                 'At least one of the supplied CVs are not within '
@@ -907,12 +940,12 @@ class Metadynamics:
     def _try_single_biasfactor(
         self,
         configuration: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
         bias: 'mlptrain.PlumedBias',
-        plotted_cvs: Optional,
+        plotted_cvs: Sequence[_PlumedCV],
         **kwargs,
     ):
         """
@@ -920,7 +953,7 @@ class Metadynamics:
         resulting trajectory
         """
 
-        self._run_single_metad(
+        traj = self._run_single_metad(
             configuration=configuration,
             mlp=mlp,
             temp=temp,
@@ -930,6 +963,11 @@ class Metadynamics:
             kept_substrings=['.dat'],
             **kwargs,
         )
+        if traj is None:
+            logger.warning(
+                'Biasfactor trial MD cancelled due to timeout; skipping.'
+            )
+            return None
 
         filenames = [
             f'colvar_{cv.name}_{kwargs["idx"]}.dat' for cv in plotted_cvs
@@ -1121,9 +1159,9 @@ class Metadynamics:
         _parameters = [temp, dt, interval]
 
         if len(self._previous_run_parameters) != 0:
-            temp = self._previous_run_parameters['temp']
-            dt = self._previous_run_parameters['dt']
-            interval = self._previous_run_parameters['interval']
+            temp = float(self._previous_run_parameters['temp'])
+            dt = float(self._previous_run_parameters['dt'])
+            interval = int(self._previous_run_parameters['interval'])
 
         elif any(param is None for param in _parameters):
             raise TypeError(
@@ -1136,16 +1174,18 @@ class Metadynamics:
         return bias, temp, dt, interval
 
     @staticmethod
-    def _save_ase_traj_as_xyz(ase_traj: 'ase.io.trajectory.Trajectory'):
+    def _save_ase_traj_as_xyz(ase_traj: 'ase.io.trajectory.TrajectoryWriter'):
         """Save ASE trajectory as .xyz file"""
 
         _mlt_configuration_set = ConfigurationSet(allow_duplicates=True)
-        for atoms in ase_traj:
+        for atoms in ase_traj:  # ty: ignore[not-iterable]
             config = Configuration()
             config.atoms = [ade.Atom(label) for label in atoms.symbols]
 
             for i, position in enumerate(atoms.get_positions()):
-                config.atoms[i].coord = position
+                config.atoms[
+                    i
+                ].coord = position  # ty: ignore[not-subscriptable]
 
             _mlt_configuration_set.append(config)
 
@@ -1517,7 +1557,7 @@ class Metadynamics:
         n_processes = min(Config.n_cores, n_runs)
         fes_processes, fes_grids = [], []
 
-        with Pool(processes=n_processes) as pool:
+        with mp.get_context('spawn').Pool(processes=n_processes) as pool:
             for idx in range(1, n_runs + 1):
                 traj_path = os.path.join(
                     os.getcwd(), f'trajectories/trajectory_{idx}.traj'
@@ -1682,6 +1722,7 @@ class Metadynamics:
                 label='Confidence interval',
             )
 
+        assert self.bias.metad_cvs is not None
         cv = self.bias.metad_cvs[0]
         if cv.units is not None:
             ax.set_xlabel(f'{cv.name} / {cv.units}')
@@ -1769,6 +1810,8 @@ class Metadynamics:
             label='Confidence interval / ' f'{convert_exponents(energy_units)}'
         )
 
+        assert self.bias.metad_cvs is not None
+
         cv1 = self.bias.metad_cvs[0]
         cv2 = self.bias.metad_cvs[1]
         for ax in (ax_mean, ax_std_error):
@@ -1784,10 +1827,8 @@ class Metadynamics:
             else:
                 ax.set_ylabel(f'{cv2.name}')
 
-        for c in mean_contourf.collections:
-            c.set_edgecolor('face')
-        for c in std_error_contourf.collections:
-            c.set_edgecolor('face')
+        mean_contourf.set_edgecolor('face')
+        std_error_contourf.set_edgecolor('face')
 
         fig.tight_layout()
 
@@ -1990,6 +2031,8 @@ class Metadynamics:
         Plot multiple 1D free energy surfaces as a function of simulation time
         """
         import matplotlib.pyplot as plt
+
+        assert self.bias.metad_cvs is not None
 
         plotted_cv = self.bias.metad_cvs[0]
 
@@ -2198,6 +2241,7 @@ class Metadynamics:
 
             min_params, max_params = [], []
 
+            assert self.bias.metad_cvs is not None
             for cv in self.bias.metad_cvs:
                 min_values, max_values = [], []
 

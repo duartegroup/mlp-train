@@ -1,4 +1,6 @@
-import ase
+from __future__ import annotations
+
+import os
 import numpy as np
 import mlptrain as mlt
 from copy import deepcopy
@@ -7,7 +9,11 @@ from mlptrain.log import logger
 from mlptrain.configurations.configuration import Configuration
 from mlptrain.training.active import train as al_train
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from ase.calculators.calculator import Calculator as ASECalculator
+    from mlptrain.sampling.reaction_coord import ReactionCoordinate
 
 
 class MLPotential(ABC):
@@ -63,6 +69,7 @@ class MLPotential(ABC):
                 f'are not set. Set e.g. mlp.atomic_energies '
                 '= {"H": -13.}'
             )
+        logger.info(f'Training on nodename: {os.uname().nodename}')
         self._train()
         return None
 
@@ -72,7 +79,7 @@ class MLPotential(ABC):
 
     @property
     @abstractmethod
-    def ase_calculator(self) -> 'ase.calculators.calculator.Calculator':
+    def ase_calculator(self) -> ASECalculator:
         """Generate an ASE calculator for this potential"""
 
     @property
@@ -201,7 +208,7 @@ class MLPotential(ABC):
     def al_train_then_bias(
         self,
         method_name: str,
-        coordinate: 'mlt.sampling.ReactionCoordinate',
+        coordinate: ReactionCoordinate,
         min_coordinate: Optional[float] = None,
         max_coordinate: Optional[float] = None,
         **kwargs,
@@ -332,6 +339,7 @@ _spin_multiplicites = {
     'He': 1,
     'Li': 2,
     'Be': 1,
+    'B': 2,
     'C': 3,
     'N': 4,
     'O': 3,
@@ -339,6 +347,7 @@ _spin_multiplicites = {
     'Ne': 1,
     'Na': 2,
     'Mg': 1,
+    'P': 4,
     'S': 3,
     'Cl': 2,
     'Ar': 1,
@@ -355,8 +364,12 @@ _spin_multiplicites = {
     'Cu': 2,
     'Zn': 1,
     'Ga': 2,
+    'Se': 3,
     'Br': 2,
     'Kr': 1,
-    'I': 2,
+    'Ag': 2,
+    'Te': 3,
     'Pd': 1,
+    'I': 2,
+    'Pt': 1,
 }

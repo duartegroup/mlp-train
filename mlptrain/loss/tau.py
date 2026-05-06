@@ -71,7 +71,7 @@ class TauCalculator(LossFunction):
     def __call__(
         self,
         configurations: 'mlptrain.ConfigurationSet',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: 'mlptrain.potentials.MLPotential',
         **kwargs,
     ) -> Tau:
         """
@@ -106,7 +106,9 @@ class TauCalculator(LossFunction):
 
         # Calculate τ_acc as the average ± the standard error in the mean
         return Tau(
-            np.average(taus), error=np.std(taus) / np.sqrt(len(taus) - 1)
+            np.average(taus),
+            error=np.std(taus)
+            / np.sqrt(len(taus) - 1),  # ty:ignore[unknown-argument]
         )
 
     def _calculate_single(self, config, mlp, method_name):
@@ -125,6 +127,9 @@ class TauCalculator(LossFunction):
                 fs=block_time,
                 n_cores=min(Config.n_cores, 4),
             )
+            if traj is None:
+                logger.warning('Skipping τ_acc block due to MD timeout.')
+                return curr_time
 
             try:
                 traj.single_point(method_name)

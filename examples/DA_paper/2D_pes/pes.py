@@ -3,13 +3,15 @@ import mlptrain as mlt
 from mlptrain.box import Box
 import autode as ade
 from autode.utils import work_in_tmp_dir
-from autode.wrappers.base import ElectronicStructureMethod
+from autode.wrappers.base import (  # ty:ignore[unresolved-import]
+    ElectronicStructureMethod,
+)
 from autode.wrappers.keywords import KeywordsSet
 from ase.constraints import Hookean
 from ase.geometry import find_mic
 from mlptrain.log import logger
 from mlptrain.config import Config
-from mlptrain.md import _convert_ase_traj
+from mlptrain.sampling.md import _convert_ase_traj
 import numpy as np
 from copy import deepcopy
 
@@ -266,7 +268,7 @@ def get_final_species(TS, mlp):
     return product
 
 
-@mlt.utils.work_in_tmp_dir(copied_exts=['.xml', '.json'])
+@mlt.utils.work_in_tmp_dir(copied_substrings=['.xml', '.json'])
 def optimise_with_fix_solute(
     solute, configuration, fmax, mlp, constraint=True, **kwargs
 ):
@@ -305,8 +307,10 @@ def optimise_with_fix_solute(
     return final_traj
 
 
-Hookean.adjust_forces = adjust_forces
-Hookean.adjust_potential_energy = adjust_potential_energy
+Hookean.adjust_forces = adjust_forces  # ty: ignore[invalid-assignment]
+Hookean.adjust_potential_energy = (  # ty: ignore[invalid-assignment]
+    adjust_potential_energy
+)
 
 if __name__ == '__main__':
     TS_mol = mlt.Molecule(name='cis_endo_TS_water.xyz')

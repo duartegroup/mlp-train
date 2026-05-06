@@ -21,8 +21,6 @@ from mlptrain.sampling.plumed import (
     PlumedCustomCV,
 )
 
-__version__ = '1.0.0b0'
-
 __all__ = [
     'Configuration',
     'ConfigurationSet',

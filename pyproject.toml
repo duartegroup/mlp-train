@@ -4,13 +4,21 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "mlptrain"
+version = "1.0.0b0"
 description = "Machine Learning Potential Training"
 authors = [{name = "Duarte Group"}]
 readme = "README.md"
 license = {file = "LICENSE.md"}
 classifiers = ["License :: OSI Approved :: MIT License"]
-dynamic = ["version"]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
+
+[dependency-groups]
+dev = [
+  'pre-commit>=3.6',
+  'pytest~=8.0',
+  'pytest-cov~=5.0',
+  'ty==0.0.28',
+]
 
 [project.optional-dependencies]
 docs = [
@@ -29,5 +37,48 @@ line-length = 79
 [tool.ruff.format]
 quote-style = "single"
 
+[tool.ruff.lint]
+extend-select = ["TID253"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+# Ban certain modules from being imported at module level, instead requiring
+# that they're imported lazily (e.g., within a function definition). (rule TID253)
+banned-module-level-imports = ["mace", "openmm", "openmmml", "sklearn", "torch"]
+
 [tool.pytest.ini_options]
 addopts = "--cov-report term --cov-report xml"
+filterwarnings = [
+  'ignore:You are using `torch.load`:FutureWarning:e3nn|mace|openmmml:',
+  'ignore:The TorchScript type system:UserWarning:torch:',
+]
+
+[tool.ty.terminal]
+# Error if ty emits any warning-level diagnostics.
+error-on-warning = true
+
+[tool.ty.rules]
+unsupported-operator = "ignore"
+unresolved-attribute = "ignore"
+invalid-argument-type = "ignore"
+
+# Enable all rules for these files
+[[tool.ty.overrides]]
+include = [
+  "mlptrain/config.py",
+  "mlptrain/log.py",
+  "mlptrain/sampling/md_openmm.py",
+  "mlptrain/configurations/configuration_set.py",
+  "mlptrain/potentials/mace/mace.py",
+  "mlptrain/configurations/plotting.py",
+]
+
+[tool.ty.overrides.rules]
+all = "error"
+
+# Don't typecheck python scripts from examples/*_paper/
+[[tool.ty.overrides]]
+include = [
+  "examples/*_paper/*",
+]
+[tool.ty.overrides.rules]
+all = "ignore"
