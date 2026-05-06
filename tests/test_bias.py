@@ -53,6 +53,8 @@ def test_bias(h2, test_potential):
         bias=bias,
     )
 
+    assert trajectory is not None
+
     data = [
         _get_avg_dists(config.ase_atoms, [[0, 1]]) for config in trajectory
     ]

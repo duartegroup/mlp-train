@@ -1,12 +1,26 @@
+import logging
 import os
+from contextlib import contextmanager
+
 import numpy as np
 import pytest
 from autode.atoms import Atom
 from mlptrain.configurations import ConfigurationSet, Configuration
+from mlptrain.log import logger as mlp_logger
 from mlptrain.utils import work_in_tmp_dir
 from mlptrain.box import Box
 
 here = os.path.abspath(os.path.dirname(__file__))
+
+
+@contextmanager
+def capture_mlp_logs(caplog):
+    """Capture records from the non-propagating mlptrain logger."""
+    mlp_logger.addHandler(caplog.handler)
+    try:
+        yield
+    finally:
+        mlp_logger.removeHandler(caplog.handler)
 
 
 @pytest.fixture
@@ -95,6 +109,53 @@ def test_configurations_save():
     configs.save('tmp.npz')
 
     assert os.path.exists('tmp.npz')
+
+
+@work_in_tmp_dir()
+def test_configurations_save_true_forces_without_predicted_is_quiet(caplog):
+    caplog.set_level(logging.WARNING, logger='mlptrain')
+    config = Configuration(atoms=[Atom('H')])
+    config.energy.true = -1.0
+    config.forces.true = np.ones(shape=(1, 3))
+
+    with capture_mlp_logs(caplog):
+        ConfigurationSet(config).save('tmp.npz')
+
+    assert not any(
+        'predicted forces' in record.message for record in caplog.records
+    )
+
+    loaded_config = ConfigurationSet('tmp.npz')[0]
+    assert loaded_config.forces.true is not None
+    assert loaded_config.forces.predicted is None
+
+
+@work_in_tmp_dir()
+def test_configurations_save_partially_predicted_forces_warns(caplog):
+    caplog.set_level(logging.WARNING, logger='mlptrain')
+    config1 = Configuration(atoms=[Atom('H')])
+    config1.energy.true = -1.0
+    config1.forces.true = np.ones(shape=(1, 3))
+    config1.forces.predicted = 1.1 * np.ones(shape=(1, 3))
+
+    config2 = Configuration(atoms=[Atom('He', 1.0, 0.0, 0.0)])
+    config2.energy.true = -2.0
+    config2.forces.true = 2.0 * np.ones(shape=(1, 3))
+
+    with capture_mlp_logs(caplog):
+        ConfigurationSet(config1, config2).save('tmp.npz')
+
+    assert (
+        sum(
+            'predicted forces partially defined - returning None'
+            in record.message
+            for record in caplog.records
+        )
+        == 1
+    )
+
+    loaded_configs = ConfigurationSet('tmp.npz')
+    assert all(config.forces.predicted is None for config in loaded_configs)
 
 
 @work_in_tmp_dir()

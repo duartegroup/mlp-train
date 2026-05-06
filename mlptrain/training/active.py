@@ -5,6 +5,8 @@ import os
 import shutil
 import numpy as np
 import multiprocessing as mp
+import time
+from queue import Empty
 from copy import deepcopy
 from typing import TYPE_CHECKING, Optional, Union, List
 from subprocess import Popen
@@ -22,6 +24,56 @@ from mlptrain.box import Box
 
 if TYPE_CHECKING:
     from mlptrain.potentials import MLPotential
+
+
+def _gen_active_config_worker(
+    result_queue: 'mp.queues.Queue',
+    idx: int,
+    config: 'mlptrain.Configuration',
+    mlp: 'mlptrain.potentials._base.MLPotential',
+    selector: SelectionMethod,
+    n_cores: int,
+    kwargs: dict,
+) -> None:
+    """Run one active-learning task and send result to the parent process."""
+    # Deduplicate log handlers inherited from the parent process.
+    # Each fork inherits all handlers; without this guard, every
+    # successive iteration adds an extra copy → duplicate log lines.
+    import logging
+
+    root = logging.getLogger()
+    seen = set()
+    for h in list(root.handlers):
+        key = (
+            type(h),
+            getattr(h, 'baseFilename', None),
+            getattr(h, 'stream', None),
+        )
+        if key in seen:
+            root.removeHandler(h)
+        else:
+            seen.add(key)
+
+    pid = os.getpid()
+    logger.info(f'Worker idx={idx} pid={pid} starting _gen_active_config')
+    try:
+        result = _gen_active_config(
+            config,
+            mlp,
+            selector,
+            n_cores,
+            **kwargs,
+        )
+        logger.info(
+            f'Worker idx={idx} pid={pid} _gen_active_config returned '
+            f'(result is {"None" if result is None else "a Configuration"})'
+        )
+        result_queue.put((idx, 'ok', result, None))
+        logger.info(f'Worker idx={idx} pid={pid} put result on queue')
+    except BaseException as err:  # noqa: BLE001
+        logger.error(f'Worker idx={idx} pid={pid} caught exception: {err!r}')
+        result_queue.put((idx, 'error', None, repr(err)))
+        logger.info(f'Worker idx={idx} pid={pid} put error on queue')
 
 
 def train(
@@ -307,37 +359,201 @@ def _add_active_configs(
         kwargs['bias'] = _remove_bias_potential(kwargs['bias'])
 
     configs = ConfigurationSet()
-    results = []
+    worker_results = {}
+    timeout_s = Config.process_timeout
+    ctx = mp.get_context('spawn')
+    result_queue = ctx.Queue()
+    workers = []
+    start_times = {}
 
-    with mp.get_context('spawn').Pool(processes=n_processes) as pool:
-        for idx in range(n_configs):
-            kwargs['idx'] = idx
+    for idx in range(n_configs):
+        kwargs['idx'] = idx
+        kwargs_single = deepcopy(kwargs)
+        worker = ctx.Process(
+            target=_gen_active_config_worker,
+            args=(
+                result_queue,
+                idx,
+                init_config.copy(),
+                mlp.copy(),
+                selection_method.copy(),
+                n_cores_pp,
+                kwargs_single,
+            ),
+        )
+        worker.start()
+        logger.info(
+            f'Started active-learning worker idx={idx} pid={worker.pid}'
+        )
+        workers.append((idx, worker))
+        start_times[idx] = time.monotonic()
 
-            result = pool.apply_async(
-                _gen_active_config,
-                args=(
-                    init_config.copy(),
-                    mlp.copy(),
-                    selection_method.copy(),
-                    n_cores_pp,
-                ),
-                kwds=deepcopy(kwargs),
+    pending = {idx for idx, _ in workers}
+    loop_start = time.monotonic()
+    last_status_log = loop_start
+    max_loop_s = (timeout_s or 7200) + 120  # safety: timeout + 2 min buffer
+    logger.info(
+        f'Entering worker poll loop. pending={sorted(pending)}, '
+        f'process_timeout={timeout_s}s, max_loop={max_loop_s}s'
+    )
+
+    while pending:
+        now = time.monotonic()
+
+        # Periodic status logging (every 60s)
+        if now - last_status_log > 60:
+            elapsed_loop = now - loop_start
+            alive_info = {i: w.is_alive() for i, w in workers if i in pending}
+            logger.info(
+                f'Worker poll loop: {elapsed_loop:.0f}s elapsed. '
+                f'pending={sorted(pending)}, alive={alive_info}'
             )
-            results.append(result)
+            last_status_log = now
 
-        pool.close()
-        for result in results:
-            try:
-                configs.append(result.get(timeout=None))
+        # Safety: break out if the loop itself exceeds a hard limit
+        if (now - loop_start) > max_loop_s:
+            logger.error(
+                f'Worker poll loop exceeded max duration '
+                f'({max_loop_s}s). Force-killing remaining '
+                f'workers: {sorted(pending)}'
+            )
+            for i, w in workers:
+                if i in pending and w.is_alive():
+                    logger.error(f'Force-killing worker idx={i} pid={w.pid}')
+                    try:
+                        w.kill()
+                        w.join(timeout=5)
+                    except Exception as e:
+                        logger.error(f'Failed to kill idx={i}: {e}')
+            pending.clear()
+            break
 
-            # Lots of different exceptions can be raised when trying to
-            # generate an active config, continue regardless..
-            except Exception as err:
-                logger.error(f'Raised an exception in selection: \n{err}')
+        for idx, worker in workers:
+            if idx not in pending:
                 continue
-        pool.join()
 
-    if 'method_name' in kwargs and configs.has_a_none_energy:
+            if not worker.is_alive():
+                exit_code = worker.exitcode
+                logger.info(
+                    f'Worker idx={idx} pid={worker.pid} is no longer '
+                    f'alive (exitcode={exit_code}). Joining...'
+                )
+                worker.join(timeout=5)
+                logger.info(
+                    f'Worker idx={idx} pid={worker.pid} joined '
+                    f'(is_alive={worker.is_alive()})'
+                )
+                pending.remove(idx)
+                continue
+
+            if timeout_s is not None and (now - start_times[idx]) > timeout_s:
+                logger.error(
+                    'Timeout error when trying to generate an active '
+                    f'configuration idx={idx}. Terminating pid={worker.pid}'
+                )
+                worker.terminate()
+                logger.info(
+                    f'Sent SIGTERM to idx={idx} pid={worker.pid}. '
+                    'Calling join(timeout=5)...'
+                )
+                worker.join(timeout=5)
+                logger.info(
+                    f'join(timeout=5) returned for idx={idx} '
+                    f'pid={worker.pid}. is_alive={worker.is_alive()}'
+                )
+                if worker.is_alive():
+                    logger.error(
+                        f'Worker idx={idx} pid={worker.pid} did not '
+                        'terminate gracefully; sending SIGKILL'
+                    )
+                    if hasattr(worker, 'kill'):
+                        worker.kill()
+                        logger.info(
+                            f'Sent SIGKILL to idx={idx} pid={worker.pid}. '
+                            'Calling join(timeout=10)...'
+                        )
+                        worker.join(timeout=10)
+                        logger.info(
+                            f'join after kill returned for idx={idx} '
+                            f'pid={worker.pid}. '
+                            f'is_alive={worker.is_alive()}'
+                        )
+                    else:
+                        logger.error(
+                            f'Worker idx={idx} pid={worker.pid} could not '
+                            'be force-killed on this Python version'
+                        )
+                pending.remove(idx)
+                worker_results[idx] = None
+
+        # Drain queue during the loop to prevent join/queue deadlocks
+        while True:
+            try:
+                q_idx, q_status, q_config, q_err = result_queue.get_nowait()
+                if q_status == 'ok':
+                    worker_results[q_idx] = q_config
+                    logger.info(
+                        f'Drained result from queue: idx={q_idx} '
+                        f'status={q_status}'
+                    )
+                else:
+                    logger.error(
+                        f'Drained error from queue: idx={q_idx}: ' f'{q_err}'
+                    )
+                    worker_results[q_idx] = None
+            except Empty:
+                break
+
+        time.sleep(0.2)
+
+    logger.info('Worker poll loop exited. Performing final queue drain...')
+
+    # Final queue drain (pick up any remaining results)
+    drain_count = 0
+    while True:
+        try:
+            idx, status, config, err = result_queue.get_nowait()
+        except Empty:
+            break
+
+        drain_count += 1
+        if status == 'ok':
+            worker_results[idx] = config
+            logger.info(f'Final drain: idx={idx} status={status}')
+        else:
+            logger.error(f'Final drain: exception for idx={idx}: \n{err}')
+            worker_results[idx] = None
+
+    logger.info(
+        f'Queue drain complete. Got {drain_count} item(s). '
+        f'worker_results keys={sorted(worker_results.keys())}'
+    )
+
+    for idx in range(n_configs):
+        configs.append(worker_results.get(idx, None))
+
+    n_succeeded = len(configs)
+    n_failed = n_configs - n_succeeded
+    if n_failed > 0:
+        logger.warning(
+            f'{n_failed}/{n_configs} active learning workers failed '
+            'or timed out'
+        )
+    if n_succeeded == 0:
+        logger.error(
+            'All active learning workers failed or timed out; '
+            'no new configurations generated this iteration'
+        )
+    else:
+        logger.info(
+            f'Collected {n_succeeded}/{n_configs} active configurations'
+        )
+
+    if (
+        'method_name' in kwargs
+        and len(configs) > 0
+        and configs.has_a_none_energy
+    ):
         for config in configs:
             if config.energy.true is None:
                 config.single_point(
@@ -363,8 +579,13 @@ def _add_active_configs(
             xyz_name = (
                 f'al_trajectories/traj_iter{kwargs["iteration"]}_{traj_id}.xyz'
             )
-            _save_ase_traj_as_xyz(traj_name, xyz_name)
+            if not os.path.exists(traj_name):
+                logger.warning(
+                    f'Trajectory file not found for idx={traj_id}; skipping save'
+                )
+                continue
 
+            _save_ase_traj_as_xyz(traj_name, xyz_name)
             os.remove(traj_name)
 
     return None
@@ -484,6 +705,10 @@ def _gen_active_config(
             n_cores=1,
             **kwargs,
         )
+
+    if traj is None:
+        logger.warning('Skipping active learning step due to MD timeout.')
+        return None
 
     traj.t0 = curr_time  # Increment the initial time (t0)
 
@@ -879,6 +1104,26 @@ def _modify_kwargs_for_metad_bias_inheritance(kwargs: dict) -> dict:
     return kwargs
 
 
+def _is_valid_hills_line(fields: List[str], expected_ncols=None) -> bool:
+    """Check that a HILLS data line contains only valid numeric values.
+
+    Returns False if any field is NaN, Inf, or non-numeric, or if the
+    line has an unexpected number of columns.
+    """
+    if expected_ncols is not None and len(fields) != expected_ncols:
+        return False
+
+    for val in fields:
+        try:
+            f = float(val)
+            if not np.isfinite(f):
+                return False
+        except ValueError:
+            return False
+
+    return True
+
+
 def _generate_inheritable_metad_bias(n_configs: int, kwargs: dict) -> None:
     """
     Generate files containing metadynamics bias to be inherited in the next
@@ -889,21 +1134,53 @@ def _generate_inheritable_metad_bias(n_configs: int, kwargs: dict) -> None:
     bias_start_iter = kwargs['bias_start_iter']
 
     hills_files = [f'HILLS_{iteration}_{idx}.dat' for idx in range(n_configs)]
-    using_hills = all(os.path.exists(fname) for fname in hills_files)
+    existing_hills_files = [
+        fname for fname in hills_files if os.path.exists(fname)
+    ]
 
-    if using_hills:
-        _generate_inheritable_metad_bias_hills(
-            n_configs=n_configs,
-            hills_files=hills_files,
-            iteration=iteration,
-            bias_start_iter=bias_start_iter,
+    def _hills_has_data(path: str) -> bool:
+        with open(path, 'r') as hills_file:
+            for line in hills_file:
+                if line.strip() and not line.startswith('#'):
+                    return True
+        return False
+
+    valid_hills_files = [
+        fname for fname in existing_hills_files if _hills_has_data(fname)
+    ]
+    missing_hills_files = sorted(set(hills_files) - set(existing_hills_files))
+    empty_hills_files = [
+        fname
+        for fname in existing_hills_files
+        if fname not in valid_hills_files
+    ]
+
+    if missing_hills_files:
+        logger.warning(
+            'Missing HILLS files detected for metadynamics bias '
+            f'inheritance: {missing_hills_files}'
         )
 
-    else:
+    if empty_hills_files:
+        logger.warning(
+            'Empty HILLS files detected for metadynamics bias '
+            f'inheritance (skipping): {empty_hills_files}'
+        )
+
+    if len(valid_hills_files) == 0:
         logger.error(
-            'All files required for generating inheritable '
-            'metadynamics bias could not be found'
+            'No non-empty HILLS files were found for generating '
+            'inheritable metadynamics bias'
         )
+        # Throw exception here?
+        return None
+
+    _generate_inheritable_metad_bias_hills(
+        n_configs=len(valid_hills_files),
+        hills_files=valid_hills_files,
+        iteration=iteration,
+        bias_start_iter=bias_start_iter,
+    )
 
     return None
 
@@ -968,6 +1245,9 @@ def _generate_inheritable_metad_bias_hills(
         # In some cases PLUMED fails to fully print the last line
         # Therefore, the number of columns is compared to the previous line
         if len(f_lines[-1].split()) != len(f_lines[-2].split()):
+            logger.warning(
+                f'Truncated last line detected in {fname}; ' 'removing it'
+            )
             f_lines.pop()
 
         height_column_index = f_lines[0].split().index('height') - 2
@@ -981,8 +1261,16 @@ def _generate_inheritable_metad_bias_hills(
             for _ in range(n_lines_in_header):
                 f_lines.pop(0)
 
+            n_skipped = 0
             for line in f_lines:
                 line_list = line.split()
+
+                # Validate: skip lines with wrong column count,
+                # non-numeric values, or NaN/Inf
+                if not _is_valid_hills_line(line_list, expected_ncols=None):
+                    n_skipped += 1
+                    continue
+
                 height = float(line_list[height_column_index])
                 line_list[height_column_index] = f'{height / n_configs:.9f}'
 
@@ -990,6 +1278,11 @@ def _generate_inheritable_metad_bias_hills(
                 line = separator.join(line_list)
 
                 final_hills_file.write(f'{line}\n')
+
+            if n_skipped > 0:
+                logger.warning(
+                    f'Skipped {n_skipped} invalid/NaN line(s) ' f'in {fname}'
+                )
 
         os.remove(fname)
 
@@ -1029,9 +1322,19 @@ def _attach_inherited_bias_energies(
             return None
 
         else:
-            _generate_grid_from_hills(
+            grid_ok = _generate_grid_from_hills(
                 configurations=configurations, iteration=iteration, bias=bias
             )
+            if not grid_ok:
+                logger.warning(
+                    'Failed to generate bias grid from HILLS file. '
+                    'Falling back to zero inherited bias for all '
+                    'configurations this iteration.'
+                )
+                for config in configurations:
+                    config.energy.inherited_bias = 0
+
+                return None
 
         cvs_cols = range(0, bias.n_metad_cvs)
         cvs_grid = np.loadtxt(
@@ -1098,9 +1401,12 @@ def _generate_grid_from_hills(
     configurations: 'mlptrain.ConfigurationSet',
     iteration: int,
     bias: 'mlptrain.PlumedBias',
-) -> None:
+) -> bool:
     """
     Generate bias_grid_{iteration-1}.dat from HILLS_{iteration-1}.dat
+
+    Returns:
+        True if the grid file was generated successfully, False otherwise.
     """
     assert configurations.plumed_coordinates is not None
     assert bias.metad_cvs is not None
@@ -1129,15 +1435,18 @@ def _generate_grid_from_hills(
     min_sequence = ','.join(str(param) for param in min_params)
     max_sequence = ','.join(str(param) for param in max_params)
 
+    hills_path = f'HILLS_{iteration-1}.dat'
+    grid_path = f'bias_grid_{iteration-1}.dat'
+
     sum_hills_process = Popen(
         [
             'plumed',
             'sum_hills',
             '--negbias',
             '--hills',
-            f'HILLS_{iteration-1}.dat',
+            hills_path,
             '--outfile',
-            f'bias_grid_{iteration-1}.dat',
+            grid_path,
             '--bin',
             bin_sequence,
             '--min',
@@ -1146,9 +1455,25 @@ def _generate_grid_from_hills(
             max_sequence,
         ]
     )
-    sum_hills_process.wait()
+    rc = sum_hills_process.wait()
 
-    return None
+    if rc != 0:
+        logger.error(
+            f'plumed sum_hills failed with exit code {rc}. '
+            f'The HILLS file ({hills_path}) may contain corrupt '
+            'data (e.g. NaN from a timed-out trajectory).'
+        )
+        return False
+
+    if not os.path.exists(grid_path) or os.path.getsize(grid_path) == 0:
+        logger.error(
+            f'plumed sum_hills did not produce a valid output '
+            f'file ({grid_path}). The HILLS file ({hills_path}) '
+            'may be corrupt.'
+        )
+        return False
+
+    return True
 
 
 def _remove_last_inherited_metad_bias_file(max_active_iters: int) -> None:
