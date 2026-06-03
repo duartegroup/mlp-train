@@ -3,10 +3,9 @@
 A dockerfile, and [pre-built
 image](docker://ghcr.io/duartegroup/mlp-train:latest), are provided with
 mlp-train to provide a funcitoning installation out of the box. Currently the
-dockerfile utilises the `environment_mace.yml` to install dependencies into a
-micromamba (i.e. conda) environment called `mlptrain-mace`, as per the
-`install_mace.sh` installation script, but this is liable to change as the
-installation process evolves. 
+dockerfile uses [pixi](https://pixi.sh) and `pixi.toml`/`pixi.lock` to install
+the dependencies into a pixi environment called `mace`, but this is liable to
+change as the installation process evolves. 
 
 ### Docker
 
@@ -55,10 +54,10 @@ tell singularity that it's a docker image, not a singularity one.
 If you'd then like to run this built image you can use something like:
 
 ```bash
-singularity exec --nv mlp-train.sif /usr/bin/micromamba run -n mlptrain-mace python /app/examples/water.py
+singularity exec --nv mlp-train.sif /root/.pixi/bin/pixi run --manifest-path /app/pixi.toml -e mace python /app/examples/water.py
 ```
 where the `water.py` script in this examples directory is run using the
-mlptrain-mace conda environment on the container.  
+`mace` pixi environment on the container.  
 
 Alternatively you can run the singularity image interactively with:
 
@@ -96,9 +95,9 @@ consisting of:
       mounted directory.
     - `$DATA/singularity/mlp-train.sif`: selects the image built using the above
       build script as the image to be run as a container
-    - `/usr/bin/micromamba run -n mlptrain-mace python /data/water_mace.py`:
-      runs the intended script (`water_mace.py`) with the micromamba environment
-      `mlptrain-mace` on the container 
+    - `/root/.pixi/bin/pixi run --manifest-path /app/pixi.toml -e mace python /data/water_mace.py`:
+      runs the intended script (`water_mace.py`) with the `mace` pixi
+      environment on the container 
 
 These are limted examples but should hopefully allow you to start creating your
 own scripts for your own purposes. 

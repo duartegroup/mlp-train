@@ -20,4 +20,4 @@ nvidia-smi
 which singularity 
 singularity --version
 
-mpirun singularity exec --nv -B $DATA/mlp-train:/data --pwd /data $DATA/singularity/mlp-train.sif /usr/bin/micromamba run -n mlptrain-mace python /data/water_mace.py
+mpirun singularity exec --nv -B $DATA/mlp-train:/data --pwd /data $DATA/singularity/mlp-train.sif /root/.pixi/bin/pixi run --manifest-path /app/pixi.toml -e mace python /data/water_mace.py

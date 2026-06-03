@@ -1,29 +1,27 @@
-FROM mambaorg/micromamba:2.2.0-cuda12.2.2-ubuntu22.04
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
 
-USER root
 WORKDIR /app
-
-ENV CONDA_ENV_NAME=mlptrain-mace
-ENV CONDA_ENV_FILE=environment_mace.yml
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies
+# Install system dependencies (nvidia driver + curl to bootstrap pixi)
 RUN apt-get update && \
-    apt-get install -y nvidia-driver-535-server \
+    apt-get install -y curl nvidia-driver-535-server \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies and MACE
-COPY ./${CONDA_ENV_FILE} /app/${CONDA_ENV_FILE}
-RUN micromamba env create -n "${CONDA_ENV_NAME}" --file /app/${CONDA_ENV_FILE} && \
-    micromamba clean -a
+# Install pixi
+RUN curl -fsSL https://pixi.sh/install.sh | bash
+ENV PATH="/root/.pixi/bin:${PATH}"
 
-# Install mlptrain
+# Resolve the MACE environment. Copy the manifest + lockfile first so this layer
+# is cached unless the dependencies change, then copy the source for the editable
+# install of mlptrain.
+COPY pixi.toml pixi.lock /app/
 COPY . /app
+# CONDA_OVERRIDE_CUDA lets the CUDA builds (locked via system-requirements
+# cuda = "12") install on this GPU-less build host; they run on GPU at runtime.
+RUN CONDA_OVERRIDE_CUDA=12.0 pixi install --locked -e mace && \
+    rm -rf ~/.cache/rattler
 
-RUN micromamba run -n ${CONDA_ENV_NAME} python -m pip install -e . && \
-    micromamba clean -a
-
-# Had to hardcode the environment name due to docker limitations
-ENTRYPOINT ["/usr/bin/micromamba", "run", "-n", "mlptrain-mace"]
-CMD ["python", "-m", "pytest"]
+ENTRYPOINT ["pixi", "run", "-e", "mace"]
+CMD ["pytest"]

@@ -12,6 +12,7 @@ mlp-train documentation
    :caption: Documentation
 
    dev/installation
+   dev/pixi
    dev/contributing
    references/index
 

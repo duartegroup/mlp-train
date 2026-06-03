@@ -20,27 +20,40 @@ Simple tutorials illustrating the use of mlp-train are available at: [https://gi
 
 ## Install
 
-Each model is installed into an individual conda environment:
+### MACE (pixi)
+
+The MACE environment is managed with [pixi](https://pixi.sh). First install pixi:
 
 ```
-# Install ACE
-./install_ace.sh
+curl -fsSL https://pixi.sh/install.sh | bash
+```
 
-# Install MACE
-./install_mace.sh 
+Then, from the repository root, create the environment (this also installs
+`mlptrain` in editable mode) and run the tests:
+
+```
+pixi install -e mace
+pixi run -e mace test
+```
+
+The pixi environment targets `linux-64` and ships CUDA-enabled builds (matching
+`[system-requirements] cuda = "12"` in `pixi.toml`). On a machine without a GPU
+(e.g. a head node, or to install CUDA builds for later GPU use), set the CUDA
+override so the locked CUDA packages can be installed:
+
+```
+CONDA_OVERRIDE_CUDA=12.0 pixi install -e mace
+```
+
+### ACE (conda)
+
+ACE is still installed into its own conda environment:
+
+```
+./install_ace.sh
 ```
 
 The environment for ACE requires the installation of Julia (version >= 1.6), which needs to be present in $PATH.
-
-The MACE installation benefits from CUDA acceleration. Depending on your machine, you might need to prefix the mace_install.sh with instructions for conda:
-
-```
-CONDA_OVERRIDE_CUDA="11.2" ./install_mace.sh 
-```
-This is needed in two scenarios:
-
-- To ensure an environment that is compatible with your CUDA driver.
-- To force CUDA builds to be installed, even if the installation is being done from a CPU-only machine. This is typical in a situation where you are installing from a head node without GPUs but intend to run on GPUs and want to install the CUDA builds.
 
 ### Notes
 
