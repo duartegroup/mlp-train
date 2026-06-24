@@ -12,6 +12,12 @@ env:
 jobs:
   pre-commit:
     runs-on: ubuntu-latest
+
+    # The pixi lock pins CUDA builds (system-requirements cuda = "12"); this lets
+    # them install on the GPU-less runner so the `ty` type checker has its deps.
+    env:
+      CONDA_OVERRIDE_CUDA: "12.0"
+
     defaults:
       run:
         shell: bash -l {0}
@@ -20,20 +26,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      # We need to install the dependencies for the `ty` type checker
-      # For now, we install the mace environment, as that's the most important one
-      - uses: mamba-org/setup-micromamba@v3
+      # We need the project dependencies installed for the `ty` type checker.
+      # For now, we install the mace environment, as that's the most important one.
+      - uses: prefix-dev/setup-pixi@v0.8.10
         with:
-          # the create command looks like this:
-          # `micromamba create -n test-env python=3.10 -f environment.yml`
-          environment-file: environment_mace.yml
-          environment-name: gha-test-env
-          cache-environment: true
-
-      - name: Install pre-commit
-        run: pip install --group dev
+          environments: mace
+          cache: true
 
       - name: Run pre-commit
-        run: pre-commit run --all-files || ( git status --short ; git diff ; exit 1 )
+        run: pixi run -e mace pre-commit run --all-files || ( git status --short ; git diff ; exit 1 )
         env:
           SKIP: 'no-commit-to-branch'
