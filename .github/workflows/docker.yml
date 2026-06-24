@@ -1,0 +1,81 @@
+# build docker image and push to github registry
+name: Build and Push Container Images
+on:
+  push:
+    branches:
+      - main
+      - jl/docker
+    paths:
+      - 'Dockerfile'
+      - '.github/workflows/docker.yml'
+      - 'mlptrain/**'
+      - 'environment*.yml'
+      - 'README.md'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'Dockerfile'
+      - '.github/workflows/docker.yml'
+      - 'mlptrain/**'
+      - 'environment*.yml'
+      - 'README.md'
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  DOCKER_IMAGE_SHA: ghcr.io/${{ github.repository_owner }}/mlp-train:${{ github.sha }}
+  DOCKER_IMAGE_LATEST: ghcr.io/${{ github.repository_owner }}/mlp-train:latest
+  SIF_IMAGE_SHA: oras://ghcr.io/${{ github.repository_owner }}/mlp-train-sif:${{ github.sha }}
+  SIF_IMAGE_LATEST: oras://ghcr.io/${{ github.repository_owner }}/mlp-train-sif:latest
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ${{ env.DOCKER_IMAGE_SHA }}
+            ${{ env.DOCKER_IMAGE_LATEST }}
+
+      - name: Set up Apptainer
+        if: github.event_name == 'push'
+        uses: eWaterCycle/setup-apptainer@v2
+        with:
+          apptainer-version: 1.4.5
+
+      - name: Build and push Singularity image
+        if: github.event_name == 'push'
+        env:
+          APPTAINER_DOCKER_USERNAME: ${{ github.actor }}
+          APPTAINER_DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          APPTAINER_TMPDIR: ${{ runner.temp }}/apptainer-tmp
+          APPTAINER_CACHEDIR: ${{ runner.temp }}/apptainer-cache
+          DOCKER_SOURCE_IMAGE: docker://${{ env.DOCKER_IMAGE_SHA }}
+        run: |
+          mkdir -p "${APPTAINER_TMPDIR}" "${APPTAINER_CACHEDIR}"
+
+          apptainer build mlp-train.sif "${DOCKER_SOURCE_IMAGE}"
+          apptainer push --allow-unsigned mlp-train.sif "${SIF_IMAGE_SHA}"
+          apptainer push --allow-unsigned mlp-train.sif "${SIF_IMAGE_LATEST}"
