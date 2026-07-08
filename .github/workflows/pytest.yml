@@ -26,9 +26,9 @@ jobs:
         shell: bash -l {0}
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
 
-    - uses: julia-actions/setup-julia@v2
+    - uses: julia-actions/setup-julia@v3
       with:
         version: '1.6'
 
@@ -47,7 +47,7 @@ jobs:
       run: pytest --cov=mlptrain -k "not test_openmm"
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v7
       with:
           flags: python-${{ matrix.python-version }}-ace
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -68,7 +68,7 @@ jobs:
         shell: bash -l {0}
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
 
     - uses: mamba-org/setup-micromamba@v3
       with:
@@ -85,7 +85,7 @@ jobs:
       run: pytest --cov=mlptrain
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v7
       with:
           flags: python-${{ matrix.python-version }}-mace
           token: ${{ secrets.CODECOV_TOKEN }}
