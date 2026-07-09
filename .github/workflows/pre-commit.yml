@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # We need the project dependencies installed for the `ty` type checker.
       # For now, we install the mace environment, as that's the most important one.
