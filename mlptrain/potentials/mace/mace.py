@@ -255,13 +255,6 @@ class MACE(MLPotential):
         import torch
         from mace.cli.run_train import run as train_mace
 
-        def root_handler_key(handler: logging.Handler) -> tuple:
-            return (
-                type(handler),
-                getattr(handler, 'baseFilename', None),
-                getattr(handler, 'stream', None),
-            )
-
         def remove_root_logging_handlers() -> list[logging.Handler]:
             """Remove and return root logging handlers before calling MACE"""
 
@@ -271,19 +264,6 @@ class MACE(MLPotential):
             for handler in root_logging_handlers:
                 root_logger.removeHandler(handler)
             return root_logging_handlers
-
-        def restore_root_logging_handlers(
-            handlers: list[logging.Handler],
-        ) -> None:
-            """Restore root handlers without adding duplicate destinations."""
-            root_logger = logging.getLogger()
-            seen = {root_handler_key(h) for h in root_logger.handlers}
-            for handler in handlers:
-                key = root_handler_key(handler)
-                if key in seen:
-                    continue
-                root_logger.addHandler(handler)
-                seen.add(key)
 
         n_cores = n_cores if n_cores is not None else Config.n_cores
         os.environ['OMP_NUM_THREADS'] = str(n_cores)
@@ -309,7 +289,9 @@ class MACE(MLPotential):
         finally:
             # Remove MACE root logging handlers and restore pre-existing ones.
             remove_root_logging_handlers()
-            restore_root_logging_handlers(our_logging_handlers)
+            root_logger = logging.getLogger()
+            for handler in our_logging_handlers:
+                root_logger.addHandler(handler)
 
         delta_time = time.perf_counter() - start_time
 

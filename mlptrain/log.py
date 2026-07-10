@@ -1,10 +1,8 @@
 import logging
 import os
-from typing import Optional
 
 _LOGGING_FORMAT = '%(asctime)s %(name)s[%(process)d] %(levelname)s %(message)s'
 _LOGGER_NAME = 'mlptrain'
-_HANDLER_MARKER = '_mlptrain_handler'
 
 # Print year with only two digits
 _DATE_FORMAT = '%y-%m-%d %H:%M:%S'
@@ -27,17 +25,7 @@ def _log_level() -> int:
         return logging.INFO
 
 
-def _find_owned_handler(logger: logging.Logger) -> Optional[logging.Handler]:
-    for handler in logger.handlers:
-        if getattr(handler, _HANDLER_MARKER, False):
-            return handler
-
-    return None
-
-
-def _new_handler(logger: logging.Logger) -> logging.Handler:
-    before_handlers = list(logger.handlers)
-
+def _add_handler(logger: logging.Logger) -> None:
     # Try and use colourful logs
     try:
         import coloredlogs
@@ -49,9 +37,7 @@ def _new_handler(logger: logging.Logger) -> logging.Handler:
             datefmt=_DATE_FORMAT,
             reconfigure=False,
         )
-        for handler in logger.handlers:
-            if handler not in before_handlers:
-                return handler
+        return
     except ImportError:
         pass
 
@@ -59,21 +45,15 @@ def _new_handler(logger: logging.Logger) -> logging.Handler:
     handler.setFormatter(
         logging.Formatter(_LOGGING_FORMAT, datefmt=_DATE_FORMAT)
     )
+    handler.setLevel(logger.level)
     logger.addHandler(handler)
-    return handler
 
 
 def _configure_logger() -> logging.Logger:
     logger = logging.getLogger(_LOGGER_NAME)
     logger.setLevel(_log_level())
     logger.propagate = False
-
-    handler = _find_owned_handler(logger)
-    if handler is None:
-        handler = _new_handler(logger)
-        setattr(handler, _HANDLER_MARKER, True)
-
-    handler.setLevel(logger.level)
+    _add_handler(logger)
 
     return logger
 
