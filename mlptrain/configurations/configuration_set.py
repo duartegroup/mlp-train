@@ -666,7 +666,7 @@ class ConfigurationSet(list):
         all_forces = [getattr(config.forces, kind) for config in self]
         if all(force is None for force in all_forces):
             if kind == 'true':
-                logger.warning(f'{kind} forces not defined - returning None')
+                logger.debug(f'{kind} forces not defined - returning None')
             return None
 
         if any(force is None for force in all_forces):
