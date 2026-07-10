@@ -30,10 +30,10 @@ jobs:
       # For now, we install the mace environment, as that's the most important one.
       - uses: prefix-dev/setup-pixi@v0.8.10
         with:
-          environments: mace
+          environments: mace-cueq
           cache: true
 
       - name: Run pre-commit
-        run: pixi run -e mace pre-commit run --all-files || ( git status --short ; git diff ; exit 1 )
+        run: pixi run -e mace-cueq pre-commit run --all-files || ( git status --short ; git diff ; exit 1 )
         env:
           SKIP: 'no-commit-to-branch'
