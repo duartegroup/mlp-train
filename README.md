@@ -20,30 +20,48 @@ Simple tutorials illustrating the use of mlp-train are available at: [https://gi
 
 ## Install
 
+MACE environment can be installed through conda or pixi.
+
+### MACE (conda)
+
+To install MACE via conda, run:
+
+```
+./install_mace.sh
+```
+
+The MACE installation benefits from CUDA acceleration. If you would like to install a GPU version of MACE on machine without GPU,
+ you might need to prefix the mace_install.sh with instructions for conda:
+```
+CONDA_OVERRIDE_CUDA=12.0 ./install_mace.sh
+```
+
 ### MACE (pixi)
 
-The MACE environment is managed with [pixi](https://pixi.sh). First install pixi:
+The MACE environment can be also managed with [pixi](https://pixi.sh). First install pixi:
 
 ```
 curl -fsSL https://pixi.sh/install.sh | bash
 ```
 
-Then, from the repository root, create the environment (this also installs
-`mlptrain` in editable mode) and run the tests:
+Then, from the repository root, create the environment (mace or mace-cpu), which also installs
+`mlptrain` in editable mode, and run the tests:
 
 ```
 pixi install -e mace
 pixi run -e mace test
 ```
 
-The pixi environment targets `linux-64` and ships CUDA-enabled builds (matching
-`[system-requirements] cuda = "12"` in `pixi.toml`). On a machine without a GPU
+The `pixi.toml` currently supports `linux-64` and `arm64` platforms. For a `linux-64` machines, you can choose to install CPU or GPU version of MACE.
+If you would like to install a GPU version on a machine without a GPU
 (e.g. a head node, or to install CUDA builds for later GPU use), set the CUDA
-override so the locked CUDA packages can be installed:
+override instruction for conda so the locked CUDA packages can be installed:
 
 ```
 CONDA_OVERRIDE_CUDA=12.0 pixi install -e mace
 ```
+
+To see how to use mlp-train with pixi environemnt, see the corresponding part in Documentation.
 
 ### ACE (conda)
 

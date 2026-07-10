@@ -68,7 +68,7 @@ sphinx-rtd-theme = "~=3.0.2"
 
 [environments]
 mace-cpu = ["mace", "dev"]
-mace-cueq = ["mace", "dev", "cueq-cu11"]
+mace = ["mace", "dev", "cueq-cu11"]
 docs = ["mace", "docs"]
 
 [tasks]

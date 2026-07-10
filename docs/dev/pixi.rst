@@ -2,7 +2,7 @@
 Using pixi
 ****************
 
-The MACE environment for *mlp-train* is managed with `pixi <https://pixi.sh>`_.
+The MACE environment for *mlp-train*  can be managed with `pixi <https://pixi.sh>`_.
 This page is a short primer; see :doc:`installation` for the install steps.
 
 What pixi is
@@ -37,7 +37,7 @@ Core concepts in this repo
   committed to git and is what makes installs reproducible.
 
 We do not define a ``default`` environment, so **always pass** ``-e mace`` (or
-``-e docs``) to pixi commands in this repo.
+``-e mace-cpu`` or ``-e docs``) to pixi commands in this repo.
 
 Day-to-day commands
 ===================
