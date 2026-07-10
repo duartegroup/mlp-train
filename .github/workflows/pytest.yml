@@ -77,11 +77,11 @@ jobs:
 
     - uses: prefix-dev/setup-pixi@v0.8.10
       with:
-        environments: mace-cueq
+        environments: mace
         cache: true
 
     - name: Test MACE install
-      run: pixi run -e mace-cueq pytest --cov=mlptrain
+      run: pixi run -e mace pytest --cov=mlptrain
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v7
