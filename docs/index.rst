@@ -13,7 +13,6 @@ mlp-train documentation
 
    dev/installation
    dev/contributing
-   dev/parallelism
    references/index
 
 .. toctree::
@@ -32,6 +31,13 @@ mlp-train documentation
    :caption: Tutorials
 
    tutorials/downhill_sampling
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Advanced
+
+   dev/parallelism
 
 .. toctree::
    :maxdepth: 2
