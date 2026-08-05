@@ -13,6 +13,7 @@ mlp-train documentation
 
    dev/installation
    dev/contributing
+   dev/parallelism
    references/index
 
 .. toctree::
