@@ -1,9 +1,30 @@
+import logging
+
 import mlptrain as mlt
 import pytest
 import numpy as np
 from autode.atoms import Atom
 
 from ase.calculators.lj import Calculator, LennardJones
+
+from mlptrain.log import logger as mlp_logger
+
+
+@pytest.fixture
+def mlp_caplog(caplog):
+    """``caplog`` wired up to the mlptrain logger.
+
+    The project logger sets ``propagate = False`` to avoid duplicating
+    records into root handlers. As a side effect pytest's ``caplog`` handler
+    never sees mlptrain records unless it is attached to that logger
+    directly, so a bare ``caplog`` silently reports zero records.
+    """
+    caplog.set_level(logging.INFO, logger='mlptrain')
+    mlp_logger.addHandler(caplog.handler)
+    try:
+        yield caplog
+    finally:
+        mlp_logger.removeHandler(caplog.handler)
 
 
 @pytest.fixture
