@@ -17,15 +17,24 @@ _DATE_FORMAT = '%y-%m-%d %H:%M:%S'
 # https://docs.python.org/3/library/logging.html#logging-levels
 def _log_level() -> int:
     level_name = os.environ.get('MLT_LOG_LEVEL', default='INFO').upper()
-    try:
-        return getattr(logging, level_name)
-    except AttributeError:
+
+    # Not every upper case attribute of the logging module is a level, e.g.
+    # logging.BASIC_FORMAT is a string, so check the type rather than relying
+    # on getattr raising for unknown names
+    level = getattr(logging, level_name, None)
+    if not isinstance(level, int):
         print(f'Invalid value of MLT_LOG_LEVEL: "{level_name}"')
         print('Falling back to INFO level')
         return logging.INFO
 
+    return level
+
 
 def _add_handler(logger: logging.Logger) -> None:
+    # Configuring an already configured logger would duplicate every message
+    if logger.handlers:
+        return
+
     # Try and use colourful logs
     try:
         import coloredlogs

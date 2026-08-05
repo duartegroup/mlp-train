@@ -5,6 +5,16 @@ from autode.atoms import Atom
 
 from ase.calculators.lj import Calculator, LennardJones
 
+from mlptrain.log import logger as mlp_logger
+
+
+@pytest.fixture
+def mlp_caplog(caplog):
+    """caplog for the mlptrain logger, which sets propagate = False."""
+    mlp_logger.addHandler(caplog.handler)
+    yield caplog
+    mlp_logger.removeHandler(caplog.handler)
+
 
 @pytest.fixture
 def h2():

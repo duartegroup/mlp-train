@@ -2,7 +2,6 @@
 
 import importlib.util
 import logging
-from contextlib import contextmanager
 
 import pytest
 
@@ -16,16 +15,6 @@ pytestmark = pytest.mark.skipif(
     not importlib.util.find_spec('mace'),
     reason='requires MACE',
 )
-
-
-@contextmanager
-def capture_mlp_logs(caplog):
-    """Capture records from the non-propagating mlptrain logger."""
-    mlp_logger.addHandler(caplog.handler)
-    try:
-        yield
-    finally:
-        mlp_logger.removeHandler(caplog.handler)
 
 
 @pytest.fixture
@@ -56,45 +45,44 @@ def mock_mace_run_train(monkeypatch, tmp_path):
 # $ pytest --log-cli-level=INFO tests/test_mace.py::test_train_logging
 @work_in_tmp_dir()
 def test_train_logging(
-    caplog, mock_mace_run_train, h2, h2_configuration, h2o_configuration
+    mlp_caplog, mock_mace_run_train, h2, h2_configuration, h2o_configuration
 ):
     from mlptrain.potentials import MACE
 
-    with capture_mlp_logs(caplog):
-        system = mlptrain.System(h2, box=Box([10, 10, 10]))
-        h2_configuration.energy.true = -0.5
-        h2o_configuration.energy.true = -1.0
+    system = mlptrain.System(h2, box=Box([10, 10, 10]))
+    h2_configuration.energy.true = -0.5
+    h2o_configuration.energy.true = -1.0
 
-        confs = mlptrain.ConfigurationSet(h2_configuration, h2o_configuration)
+    confs = mlptrain.ConfigurationSet(h2_configuration, h2o_configuration)
 
-        caplog.clear()
-        mlp = MACE(name='test', system=system)
-        # Check that we print MACE version in the constructor
-        assert caplog.records[0].message.startswith('MACE version:')
+    mlp_caplog.clear()
+    mlp = MACE(name='test', system=system)
+    # Check that we print MACE version in the constructor
+    assert mlp_caplog.records[0].message.startswith('MACE version:')
 
-        mlp.atomic_energies = {'H': -0.5}
+    mlp.atomic_energies = {'H': -0.5}
 
-        caplog.clear()
-        root_handler_count = len(logging.getLogger().handlers)
+    mlp_caplog.clear()
+    root_handler_count = len(logging.getLogger().handlers)
 
-        mlp.train(confs)
+    mlp.train(confs)
 
-        num_messages = len(caplog.records)
-        assert num_messages != 0
-        assert len(logging.getLogger().handlers) == root_handler_count
+    num_messages = len(mlp_caplog.records)
+    assert num_messages != 0
+    assert len(logging.getLogger().handlers) == root_handler_count
 
-        # Make sure we print the nodename at the start of training
-        assert caplog.records[0].message.startswith('Training on nodename')
+    # Make sure we print the nodename at the start of training
+    assert mlp_caplog.records[0].message.startswith('Training on nodename')
 
-        # Make sure that the number of log messages is the same on second call
-        caplog.clear()
-        mlp.train(confs)
-        assert len(caplog.records) == num_messages
-        assert len(logging.getLogger().handlers) == root_handler_count
+    # Make sure that the number of log messages is the same on second call
+    mlp_caplog.clear()
+    mlp.train(confs)
+    assert len(mlp_caplog.records) == num_messages
+    assert len(logging.getLogger().handlers) == root_handler_count
 
-        # Make sure logging is not doubled
-        caplog.clear()
-        mlp_logger.info('test info from mlp logger')
-        logging.info('test info from root logger')
+    # Make sure logging is not doubled
+    mlp_caplog.clear()
+    mlp_logger.info('test info from mlp logger')
+    logging.info('test info from root logger')
 
-        assert len(caplog.records) == 2
+    assert len(mlp_caplog.records) == 2
