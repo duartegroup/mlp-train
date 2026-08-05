@@ -36,13 +36,14 @@ if TYPE_CHECKING:
     from mlptrain.potentials import MLPotential
 
 
-def run_with_timeout(fn, *args, fn_timeout=Config.dynamics_timeout, **kwargs):
+def run_with_timeout(fn, *args, fn_timeout=None, **kwargs):
     """
     Run a callable with a best-effort signal-based timeout.
 
-    Uses Unix SIGALRM to interrupt *fn* after *fn_timeout* seconds.
-    This is lightweight (no child processes) and works in any context
-    (daemon workers, Pool workers, standalone processes).
+    Uses Unix SIGALRM to interrupt *fn* after *fn_timeout* seconds,
+    defaulting to ``Config.dynamics_timeout``. This is lightweight (no
+    child processes) and works in any context (daemon workers, Pool
+    workers, standalone processes).
 
     Note: SIGALRM can be masked or consumed by C-extension code
     (e.g. PLUMED, PyTorch).  If that happens the signal will not
@@ -55,31 +56,21 @@ def run_with_timeout(fn, *args, fn_timeout=Config.dynamics_timeout, **kwargs):
     """
     import signal
 
+    if fn_timeout is None:
+        fn_timeout = Config.dynamics_timeout
+
     class _TimeoutException(Exception):
         pass
 
     def _handle_timeout(signum, frame):
         raise _TimeoutException()
 
-    old_handler = signal.getsignal(signal.SIGALRM)
+    # Only the arming is guarded; wrapping the call itself would swallow
+    # genuine errors from fn and then silently run it a second time
+    old_handler = None
     try:
-        signal.signal(signal.SIGALRM, _handle_timeout)
+        old_handler = signal.signal(signal.SIGALRM, _handle_timeout)
         signal.setitimer(signal.ITIMER_REAL, fn_timeout)
-        try:
-            result = fn(*args, **kwargs)
-            return result, True
-        except _TimeoutException:
-            logger.warning(
-                f'Trajectory cancelled due to running over '
-                f'maximum timeout, {fn_timeout} s'
-            )
-            return None, False
-        finally:
-            # Always disarm the timer and restore the previous handler
-            try:
-                signal.setitimer(signal.ITIMER_REAL, 0)
-            finally:
-                signal.signal(signal.SIGALRM, old_handler)
     except Exception as e:
         # signal module unavailable or handler setup failed;
         # run without an inner timeout — the parent process
@@ -89,7 +80,25 @@ def run_with_timeout(fn, *args, fn_timeout=Config.dynamics_timeout, **kwargs):
             'running without inner timeout. The parent process '
             'timeout (Config.process_timeout) remains as safety net.'
         )
+        if old_handler is not None:
+            signal.signal(signal.SIGALRM, old_handler)
+
         return fn(*args, **kwargs), True
+
+    try:
+        return fn(*args, **kwargs), True
+    except _TimeoutException:
+        logger.warning(
+            f'Trajectory cancelled due to running over '
+            f'maximum timeout, {fn_timeout} s'
+        )
+        return None, False
+    finally:
+        # Always disarm the timer and restore the previous handler
+        try:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+        finally:
+            signal.signal(signal.SIGALRM, old_handler)
 
 
 def run_mlp_md(
