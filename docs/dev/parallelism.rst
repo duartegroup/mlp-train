@@ -35,9 +35,7 @@ The process tree
            └─ _run_single_metad()  ×  n_runs
                 └─ run_mlp_md()  →  PLUMED
 
-All process creation uses the ``spawn`` start method. ``fork`` is unsafe
-here: the parent holds initialised CUDA/PyTorch state, and ``fork`` combined
-with matplotlib is known to fail on macOS.
+All process creation uses the ``spawn`` start method.
 
 =====================================
 Why not ``multiprocessing.Pool``
@@ -60,6 +58,39 @@ untenable:
 ``_add_active_configs`` therefore manages raw ``mp.Process`` objects and a
 ``mp.Queue`` directly, which gives the parent the ability to poll, time out,
 and kill.
+
+====================================
+Why not the ``fork`` start method
+====================================
+
+Switching from ``spawn`` to ``fork`` is a recurring suggestion, usually on the
+grounds that ``spawn``'s pickling requirement is inconvenient and that
+mlp-train targets Linux HPC anyway. It does not help, and it breaks things.
+
+**It does not lift the daemonic restriction.** Daemonic-ness is a property of
+``Pool``, not of the start method: ``multiprocessing/pool.py`` sets
+``w.daemon = True`` unconditionally, for every context.
+``concurrent.futures.process`` never sets it at all. A forked ``Pool`` worker
+is just as unable to have children as a spawned one — the move to
+``mp.Process`` and ``ProcessPoolExecutor`` was the actual fix, and it is
+required regardless of start method.
+
+**It breaks CUDA.** ``al_train`` calls ``mlp.train()`` in the parent before
+entering the iteration loop, so by the time workers are created the parent
+holds a live CUDA context (the MACE backend calls
+``torch.cuda.empty_cache()``). A forked child inherits that context in an
+unusable state and raises ``Cannot re-initialize CUDA in forked subprocess``.
+This is a Linux problem, not a macOS one.
+
+**It breaks threaded libraries.** ``fork`` copies only the calling thread but
+all of the process's locks, in whatever state they happened to be in. A parent
+running MACE under OpenMP/MKL threadpools therefore produces children that
+deadlock intermittently and unreproducibly. CPython 3.12 emits a
+``DeprecationWarning`` for forking a multi-threaded process, and 3.14 changes
+the Linux default start method to ``forkserver``.
+
+(``fork`` combined with matplotlib also fails on macOS, but that is the least
+of the reasons.)
 
 =====================
 The three timeouts
@@ -96,6 +127,45 @@ C-extension code — PLUMED and PyTorch both do this in places. When that
 happens the alarm never fires and the trajectory runs to completion. The
 per-worker hard kill exists precisely because the inner timeout cannot be
 relied on alone; do not remove one on the grounds that the other covers it.
+
+Why both layers are needed
+--------------------------
+
+The inner timeout is not a faster version of the outer one, and the two are
+not interchangeable. Two reasons.
+
+**Only active learning has a parent watching.** ``run_mlp_md`` is called from
+five places, and the poll loop covers exactly one of them:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 46 54
+
+   * - Call site
+     - Bounded by
+   * - ``_gen_active_config`` (``training/active.py``)
+     - Inner timeout **and** the parent poll loop
+   * - ``Metadynamics._run_single_metad``
+     - Inner timeout only — ``future.result()`` takes no timeout
+   * - ``Metadynamics._get_width_for_single``
+     - Inner timeout only — ``AsyncResult.get()`` takes no timeout
+   * - ``UmbrellaSampling._run_individual_window``
+     - Inner timeout only — ``AsyncResult.get()`` takes no timeout
+   * - ``TauCalculator._calculate_single``
+     - Inner timeout only — no worker process at all
+
+Deleting the inner timeout would re-open the original hang for metadynamics,
+umbrella sampling, width estimation and τ_acc. Those four sites have no
+parent-side kill; closing that gap is unfinished work.
+
+**A timeout returns, a kill does not.** When the inner timeout fires,
+``run_mlp_md`` unwinds normally: ``work_in_tmp_dir``'s ``finally`` block still
+copies ``kept_substrings`` (``.traj``, ``.dat``) back out of the temporary
+directory, and ``PlumedCalculator.finalize()`` still runs. A ``SIGKILL`` from
+the parent loses both — the temp directory is orphaned, ``keep_al_trajs``
+produces nothing for that worker, and the ``HILLS`` file it was writing never
+arrives for bias inheritance. The per-worker kill is the backstop for when the
+graceful path fails, not the preferred path.
 
 .. warning::
 
