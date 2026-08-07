@@ -92,7 +92,7 @@ def error_histogram_index(
     print_structures: bool = True,
 ) -> None:
     """
-    Plot distribution of errors in energies and forces for given configuration set
+    Plot distribution of errors in energies and forces for selected atoms in configurations
 
     ------------------------------------------------------------------------------
     Arguments:
@@ -331,20 +331,28 @@ def _add_energy_error_histogram(
         for i, structure in enumerate(config_set):
             if error_abs[i] >= N * mad:
                 data.append(structure)
+                logger.info(
+                    f'Energy error higher than {N} * MAD found in structure {i}'
+                )
 
         data.save_xyz(f'structure_{N}_mad_en_error.xyz')
 
 
 def _add_force_error_histogram(
-    config_set, axis, index=None, print_structures=True, N=5
+    config_set, axis, print_structures, index=None, N=5
 ) -> None:
     """
     Add histogram of force errors
     -----------------------------
+
     config_set: Configuration set containing structures, predicted and true energies and forces
+
     axis: Position of the plot
+
+    print_structures: Print xyz with coordinates of errors above threshold
+
     index: List of atom indices. If None, print whole system
-    Print_structures: If True, print structures with force error large than N * MAD
+
     N: Multiplication of MAD for force errors
     """
 
