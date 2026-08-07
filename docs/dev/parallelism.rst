@@ -227,10 +227,8 @@ path return ``Optional`` for that reason — ``run_mlp_md``,
 
 **Corrupt PLUMED output is expected, not exceptional.** A trajectory that
 diverges before being killed can leave a ``HILLS`` file that is empty,
-truncated mid-line, or contains ``NaN`` gaussians. Bias inheritance skips
-missing and empty files, drops invalid lines, and falls back to zero
-inherited bias if ``plumed sum_hills`` fails, rather than aborting the
-iteration.
+truncated mid-line, or contains ``NaN`` gaussians. The
+missing and empty files are skipped and not included, and the average is computed without them. Files with invalid lines are still used, but the invalid lines are discarded. If ``plumed sum_hills`` fails, the inherited bias drops to zero, rather than aborting the iteration.
 
 ==================
 Tuning guidance
