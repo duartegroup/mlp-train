@@ -246,10 +246,9 @@ it, otherwise ``_add_active_configs`` raises. Choosing
 ``Config.n_cores == n_configs_iter`` gives one core per worker and the
 simplest behaviour.
 
-The default ``dynamics_timeout`` of 2 hours is a very loose bound for active
-learning, where each step runs ``2 + n_calls**3 + extra_time`` fs — typically
+The default ``dynamics_timeout`` of 2 hours is very generous for active
+learning, as each step takes ``2 + n_calls**3 + extra_time`` fs, which is typically
 tens to hundreds of femtoseconds. If your trajectories normally finish in
-seconds, lowering ``dynamics_timeout`` to a few minutes turns a wasted
-overnight run into a wasted coffee break. Keep ``process_timeout``
-comfortably above ``dynamics_timeout``: the worker also has to run selection
-and, for the last frame, a single-point QM calculation.
+seconds, it is safe to set '' dynamics_timeout `` to a few minutes instead. The ``process_timeout``
+should be kept above ``dynamics_timeout``: the worker also has to run selection
+and, for the last frame, a single-point QM calculation. For large or difficult-to-converge systems, you might even consider increasing this above the default to avoid killing your jobs mid-convergence.  
