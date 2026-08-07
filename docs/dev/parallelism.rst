@@ -225,7 +225,7 @@ path return ``Optional`` for that reason — ``run_mlp_md``,
 ``_run_mlp_md``, ``Metadynamics._run_single_metad`` and
 ``_gen_active_config`` all may return ``None``, and callers must check.
 
-**Corrupt PLUMED output is expected, not exceptional.** A trajectory that
+**Corrupt PLUMED output may appear.** A trajectory that
 diverges before being killed can leave a ``HILLS`` file that is empty,
 truncated mid-line, or contains ``NaN`` gaussians. The
 missing and empty files are skipped and not included, and the average is computed without them. Files with invalid lines are still used, but the invalid lines are discarded. If ``plumed sum_hills`` fails, the inherited bias drops to zero, rather than aborting the iteration.
