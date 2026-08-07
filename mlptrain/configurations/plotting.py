@@ -4,6 +4,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from mlptrain.log import logger
 from scipy.stats import linregress
 
 
@@ -49,7 +50,9 @@ def parity_plot(
 
 
 def error_histogram(
-    config_set: 'mlptrain.ConfigurationSet', file_name: str = 'error_histogram', print_structures: bool = True
+    config_set: 'mlptrain.ConfigurationSet',
+    file_name: str = 'error_histogram',
+    print_structures: bool = True,
 ) -> None:
     """
     Plot distribution of errors in energies and forces for given configuration set
@@ -60,15 +63,21 @@ def error_histogram(
 
         file_name: Name of the file to save the plot
 
+        print_structures: Print xyz with coordinates of errors above threshold
+
     """
 
     fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(8, 3.75))
 
     if _all_energies_are_defined(config_set):
-        _add_energy_error_histogram(config_set, axis=ax[0], print_structures=print_structures)
+        _add_energy_error_histogram(
+            config_set, axis=ax[0], print_structures=print_structures
+        )
 
     if _all_forces_are_defined(config_set):
-        _add_force_error_histogram(config_set, axis=ax[1], print_structures=print_structures)
+        _add_force_error_histogram(
+            config_set, axis=ax[1], print_structures=print_structures
+        )
 
     plt.tight_layout()
     plt.savefig(f'{file_name}.pdf')
@@ -89,16 +98,23 @@ def error_histogram_index(
     Arguments:
         config_set: Set of configurations
 
-        Index: List of atom indices to plot
+        index: List of atom indices to plot
 
         file_name: Name of the file
+
+        print_structures: Print xyz with coordinates of errors above threshold
 
     """
 
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 3.75))
 
     if _all_forces_are_defined(config_set):
-        _add_force_error_histogram(config_set=config_set, index=index, axis=ax, print_structures=print_structures)
+        _add_force_error_histogram(
+            config_set=config_set,
+            index=index,
+            axis=ax,
+            print_structures=print_structures,
+        )
 
     plt.tight_layout()
     plt.savefig(f'{file_name}.pdf')
@@ -273,7 +289,7 @@ def _add_force_magnitude_plot(config_set, axis) -> None:
 
 
 def _add_energy_error_histogram(
-    config_set, axis, per_atom=True, print_structures=True, N=3
+    config_set, axis, print_structures, per_atom=True, N=3
 ) -> None:
     """Add histogram of energy errors"""
 
@@ -378,8 +394,9 @@ def _add_force_error_histogram(
         for i, structure in enumerate(config_set):
             if any(force_errors[i] >= N * mad):
                 data.append(structure)
-                print(f"High force error found in structure with index {i}")
-                print(f"Atom index responsible: {np.argmax(force_errors[i])}")
+                logger.info(
+                    f'Force error higher than {N} * MAD found in structure {i}, atom {np.argmax(force_errors[i])}'
+                )
 
         data.save_xyz(f'structure_{N}_mad_f_error.xyz')
 
