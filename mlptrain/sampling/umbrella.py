@@ -702,7 +702,9 @@ class UmbrellaSampling:
 
         for iteration in range(max_iterations):
             # Equation 8.8.18 from Tuckerman, p. 343
-            hist_sum = sum(w_k.hist for w_k in self.windows)
+            hist_sum = sum(
+                w_k.hist for w_k in self.windows
+            )  # ty: ignore[no-matching-overload]
             p = hist_sum / sum(
                 w_k.n
                 * np.exp(

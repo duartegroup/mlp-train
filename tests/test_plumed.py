@@ -131,15 +131,15 @@ def test_plumed_bias_from_cvs():
     assert bias.width == (0.2, 0.3)
     assert bias.height == 0.5
     assert bias.biasfactor == 2
-    assert bias.metad_grid_min == (  # ty: ignore[unresolved-attribute]
+    assert bias.metad_grid_min == (
         0.5,
         1.5,
     )
-    assert bias.metad_grid_max == (  # ty: ignore[unresolved-attribute]
+    assert bias.metad_grid_max == (
         0.6,
         1.6,
     )
-    assert bias.metad_grid_bin is None  # ty: ignore[unresolved-attribute]
+    assert bias.metad_grid_bin is None
 
     assert bias.metad_grid_setup == 'GRID_MIN=0.5,1.5 GRID_MAX=0.6,1.6 '
 
