@@ -24,6 +24,7 @@ dependencies:
   - nnpops
   - openmm-ml=1.2
   - git
+  - seaborn
   - pip:
     - ase@git+https://gitlab.com/ase/ase.git@f2615a6e9a # For PLUMED
     - mace-torch==0.3.10

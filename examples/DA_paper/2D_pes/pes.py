@@ -307,8 +307,10 @@ def optimise_with_fix_solute(
     return final_traj
 
 
-Hookean.adjust_forces = adjust_forces
-Hookean.adjust_potential_energy = adjust_potential_energy
+Hookean.adjust_forces = adjust_forces  # ty: ignore[invalid-assignment]
+Hookean.adjust_potential_energy = (  # ty: ignore[invalid-assignment]
+    adjust_potential_energy
+)
 
 if __name__ == '__main__':
     TS_mol = mlt.Molecule(name='cis_endo_TS_water.xyz')

@@ -15,9 +15,6 @@ Each machine learning potential (MLP) has its own conda environment and can be i
 
 .. code-block:: python
 
-   #Install GAP
-   ./install_gap.sh
-
    #Install ACE
    ./install_ace.sh
 

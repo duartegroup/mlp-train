@@ -1,13 +1,27 @@
+from __future__ import annotations
+
 import mlptrain
 import numpy as np
 import ase
 import mlptrain as mlt
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Union, overload
 from mlptrain.sampling._base import Function
 
 
 class ReactionCoordinate(Function, ABC):
+    @overload
+    def __call__(
+        self,
+        arg: ase.atoms.Atoms | mlptrain.Configuration,
+    ) -> float: ...
+
+    @overload
+    def __call__(
+        self,
+        arg: mlptrain.ConfigurationSet,
+    ) -> np.ndarray: ...
+
     def __call__(
         self,
         arg: Union[

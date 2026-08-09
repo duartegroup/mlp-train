@@ -257,6 +257,7 @@ class Configuration(AtomCollection):
         Returns:
             (ase.atoms.Atoms): ASE atoms
         """
+        assert self.atoms is not None
         _atoms = ase.atoms.Atoms(
             symbols=[atom.label for atom in self.atoms],
             positions=self.coordinates,
@@ -385,13 +386,16 @@ class Configuration(AtomCollection):
                 'Either the solvent name or the combination of solvent molecule and density must be provided'
             )
 
+        assert self.atoms is not None
+        assert solvent_molecule is not None
+        assert solvent_molecule.atoms is not None
+
         # Move solute to the box center
         solute_com = self.com
         for n, atom in enumerate(self.atoms):
             atom.coordinate = atom.coordinate - solute_com + (box_size / 2)
 
         # Move the solvent to the box origin, so that the random vectors added later are all within the box
-        assert solvent_molecule is not None
         solvent_com = solvent_molecule.com
         for n, atom in enumerate(solvent_molecule.atoms):
             atom.coordinate = atom.coordinate - solvent_com
@@ -457,6 +461,8 @@ class Configuration(AtomCollection):
         ___________________________________________________________________________
         """
 
+        assert self.atoms is not None
+        assert solvent_molecule.atoms is not None
         # Get the coordinates of the solute in the center of the box
         system_coords = np.array([atom.coordinate for atom in self.atoms])
         # Get the coordinates of the single isolated solvent molecule
@@ -540,6 +546,7 @@ class Configuration(AtomCollection):
                     # Record the starting position of this molecule
                     start_index = len(self.atoms)
 
+                    assert solvent_translated.atoms is not None
                     for n, atom in enumerate(solvent_translated.atoms):
                         atom.coordinate = trial_coords[n]
 
@@ -641,6 +648,7 @@ class Configuration(AtomCollection):
                 file=exyz_file,
             )
 
+            assert self.atoms is not None
             for i, atom in enumerate(self.atoms):
                 x, y, z = atom.coord
                 line = f'{atom.label} {x:.5f} {y:.5f} {z:.5f} '
@@ -815,24 +823,23 @@ class Configuration(AtomCollection):
         from mlptrain.box import Box
 
         # Load atoms from xyz file
-        logger.info(f'Loading atoms from {filename}')
-        try:
-            ase_atoms = ase.io.read(filename)
-            logger.info(
-                f'Successfully loaded {len(ase_atoms)} atoms from {filename}'
+        ase_atoms = ase.io.read(filename)
+        # Check that we've read a single structure and not more!
+        if isinstance(ase_atoms, list):
+            raise ValueError(
+                f'Read more than one structure from file {filename}'
             )
-        except Exception as e:
-            logger.error(f'Failed to read {filename}: {e}')
-            raise
+
+        logger.info(
+            f'Successfully loaded {len(ase_atoms)} atoms from {filename}'
+        )
 
         atoms: list[Atom] = []
         box = None
         mol_dict = None
 
-        # Debug: print ASE atoms info
         if len(ase_atoms) == 0:
-            logger.warning(f'No atoms found in {filename}')
-            return atoms, box, mol_dict
+            raise RuntimeError(f'No atoms found in {filename}')
 
         # Convert to autode atoms
         symbols = ase_atoms.get_chemical_symbols()
@@ -896,6 +903,8 @@ class Configuration(AtomCollection):
                 start = mol_info.get('start', 0)
                 end = mol_info.get('end', 0)
 
+                assert isinstance(start, int)
+                assert isinstance(end, int)
                 # Check bounds
                 if start < 0 or end > total_atoms or start >= end:
                     logger.warning(
