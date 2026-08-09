@@ -1,4 +1,5 @@
 import mlptrain as mlt
+from mlptrain.training.selection import AbsDiffE
 import autode as ade
 
 mlt.Config.n_cores = 10
@@ -14,7 +15,7 @@ if __name__ == '__main__':
         method_name='orca',
         coordinate=mlt.AverageDistance((0, 1), (2, 3)),
         max_coordinate=3.5,
-        selection_method=mlt.training.selection.AbsDiffE(0.043),
+        selection_method=AbsDiffE(0.043),
         temp=500,
         max_active_time=500,
         fix_init_config=True,
