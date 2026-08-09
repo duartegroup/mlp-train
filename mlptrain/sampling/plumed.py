@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import os
 import mlptrain
 import numpy as np
-from typing import Sequence, List, Tuple, Dict, Optional, Union
+from typing import Sequence, List, Dict, Optional, Union
 from copy import deepcopy
 from ase import units as ase_units
 from ase.calculators.plumed import Plumed
@@ -22,7 +24,9 @@ class PlumedCalculator(Plumed):
 
     implemented_properties = ['energy', 'forces', 'energy_bias', 'forces_bias']
 
-    def compute_energy_and_forces(self, pos, istep) -> Tuple:
+    def compute_energy_and_forces(
+        self, pos, istep
+    ) -> tuple[float, np.ndarray, float, np.ndarray]:
         """
         Compute unbiased energies and forces, and PLUMED energy and force
         biases separately
@@ -52,6 +56,8 @@ class PlumedCalculator(Plumed):
 
         Calculator.calculate(self, atoms, properties, system_changes)
 
+        # Why are we using self.atoms here and not atoms?
+        assert self.atoms is not None
         comp = self.compute_energy_and_forces(
             self.atoms.get_positions(), self.istep
         )
@@ -75,8 +81,8 @@ class PlumedBias(ASEConstraint):
 
     def __init__(
         self,
-        cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'] = None,
-        filename: str = None,
+        cvs: Sequence[_PlumedCV] | _PlumedCV | None = None,
+        filename: str | None = None,
     ):
         """
         Class for storing collective variables and parameters used in biased
@@ -94,25 +100,25 @@ class PlumedBias(ASEConstraint):
         """
 
         self.setup: Optional[List[str]] = None
-        self.cv_files: Optional[Tuple[str, str]] = None
+        self.cv_files: list[tuple[str, str]] | None = None
 
         self.pace: Optional[int] = None
-        self.width: Optional[Union[Sequence[float], float]] = None
+        self.width: Optional[Sequence[float]] = None
         self.height: Optional[float] = None
         self.biasfactor: Optional[float] = None
 
-        self.metad_cvs: Optional[List['_PlumedCV']] = None
+        self.metad_cvs: Optional[Sequence['_PlumedCV']] = None
 
         for param_name in ['min', 'max', 'bin', 'wstride', 'wfile', 'rfile']:
             setattr(self, f'metad_grid_{param_name}', None)
 
+        self.cvs: tuple['_PlumedCV', ...] = ()
+
         if filename is not None:
-            self.cvs = None
             self._from_file(filename)
 
         elif cvs is not None:
-            cvs = self._check_cvs_format(cvs)
-            self.cvs = cvs
+            self.cvs = self._check_cvs_format(cvs)
 
         else:
             raise TypeError(
@@ -129,12 +135,14 @@ class PlumedBias(ASEConstraint):
     @property
     def n_cvs(self) -> int:
         """Number of collective variables attached to the bias"""
+        assert self.cvs is not None
         return len(self.cvs)
 
     @property
     def n_metad_cvs(self) -> int:
         """Number of collective variables attached to the bias that will be
         used in metadynamics"""
+        assert self.metad_cvs is not None
         return len(self.metad_cvs)
 
     @property
@@ -153,6 +161,7 @@ class PlumedBias(ASEConstraint):
         String containing names of collective variables used in metadynamics
         separated by commas
         """
+        assert self.metad_cvs is not None
         metad_cv_names = (cv.name for cv in self.metad_cvs)
         return ','.join(metad_cv_names)
 
@@ -212,10 +221,10 @@ class PlumedBias(ASEConstraint):
         width: Union[Sequence[float], float],
         height: float,
         biasfactor: Optional[float] = None,
-        cvs: Optional = None,
-        grid_min: Union[Sequence[float], float] = None,
-        grid_max: Union[Sequence[float], float] = None,
-        grid_bin: Union[Sequence[float], float] = None,
+        cvs: Sequence[_PlumedCV] | _PlumedCV | None = None,
+        grid_min: Union[Sequence[float], float, None] = None,
+        grid_max: Union[Sequence[float], float, None] = None,
+        grid_bin: Union[Sequence[float], float, None] = None,
         grid_wstride: Optional[int] = None,
         grid_wfile: Optional[str] = None,
         grid_rfile: Optional[str] = None,
@@ -265,27 +274,18 @@ class PlumedBias(ASEConstraint):
         if not isinstance(pace, int) or pace <= 0:
             raise ValueError('Pace (τ_G/dt) must be a positive integer')
 
-        else:
-            self.pace = pace
-
-        if isinstance(width, list) or isinstance(width, tuple):
-            if len(width) == 0:
-                raise TypeError('The provided width sequence is empty')
-
-            elif any(single_width <= 0 for single_width in width):
-                raise ValueError('All gaussian widths (σ) must be positive')
-
-            else:
-                self.width = width
-
-        else:
+        if isinstance(width, float) or isinstance(width, int):
             if width <= 0:
                 raise ValueError('Gaussian width (σ) must be positive')
 
-            else:
-                self.width = [width]
+            width = [width]
+        else:
+            if any(single_width <= 0 for single_width in width):
+                raise ValueError(
+                    f'All gaussian widths (σ) must be positive, got: {width}'
+                )
 
-        if len(self.width) != self.n_metad_cvs:
+        if len(width) != self.n_metad_cvs:
             raise ValueError(
                 'The number of supplied widths (σ) does not '
                 'match the number of collective variables'
@@ -294,14 +294,13 @@ class PlumedBias(ASEConstraint):
         if height < 0:
             raise ValueError('Gaussian height (ω) must be non-negative float')
 
-        else:
-            self.height = height
-
         if biasfactor is not None and biasfactor < 1:
             raise ValueError('Biasfactor (γ) must be larger than one')
 
-        else:
-            self.biasfactor = biasfactor
+        self.height = height
+        self.pace = pace
+        self.width = width
+        self.biasfactor = biasfactor
 
         self._set_metad_grid_params(
             grid_min=grid_min,
@@ -314,7 +313,7 @@ class PlumedBias(ASEConstraint):
         return None
 
     def _set_metad_cvs(
-        self, cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'] = None
+        self, cvs: Union[Sequence['_PlumedCV'], '_PlumedCV', None] = None
     ) -> None:
         """
         Attach PLUMED collective variables to PlumedBias which will be used in
@@ -352,9 +351,9 @@ class PlumedBias(ASEConstraint):
 
     def _set_metad_grid_params(
         self,
-        grid_min: Union[Sequence[float], float] = None,
-        grid_max: Union[Sequence[float], float] = None,
-        grid_bin: Union[Sequence[float], float] = None,
+        grid_min: Union[Sequence[float], float, None] = None,
+        grid_max: Union[Sequence[float], float, None] = None,
+        grid_bin: Union[Sequence[float], float, None] = None,
         grid_wstride: Optional[int] = None,
         grid_wfile: Optional[str] = None,
         grid_rfile: Optional[str] = None,
@@ -487,10 +486,10 @@ class PlumedBias(ASEConstraint):
         pace: int = 20,
         height: Optional[float] = None,
         biasfactor: Optional[float] = None,
-        cvs: Optional = None,
-        grid_min: Union[Sequence[float], float] = None,
-        grid_max: Union[Sequence[float], float] = None,
-        grid_bin: Union[Sequence[float], float] = None,
+        cvs: Sequence[_PlumedCV] | _PlumedCV | None = None,
+        grid_min: Union[Sequence[float], float, None] = None,
+        grid_max: Union[Sequence[float], float, None] = None,
+        grid_bin: Union[Sequence[float], float, None] = None,
     ) -> None:
         """
         Initialise PlumedBias for metadynamics active learning by setting the
@@ -589,34 +588,25 @@ class PlumedBias(ASEConstraint):
 
     @staticmethod
     def _check_cvs_format(
-        cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'],
-    ) -> List['_PlumedCV']:
+        cvs: Sequence['_PlumedCV'] | '_PlumedCV',
+    ) -> tuple['_PlumedCV', ...]:
         """
         Check if the supplied collective variables are in the correct
         format
         """
 
-        # e.g. cvs == [cv1, cv2]; (cv1, cv2)
-        if isinstance(cvs, list) or isinstance(cvs, tuple):
-            if len(cvs) == 0:
-                raise TypeError(
-                    'The provided collective variable ' 'sequence is empty'
-                )
+        if isinstance(cvs, _PlumedCV):
+            return (cvs,)
 
-            elif all(issubclass(cv.__class__, _PlumedCV) for cv in cvs):
-                pass
+        elif len(cvs) == 0:
+            raise TypeError(
+                'The provided collective variable sequence is empty'
+            )
 
-            else:
-                raise TypeError('Supplied CVs are in incorrect format')
+        elif not all(isinstance(cv, _PlumedCV) for cv in cvs):
+            raise TypeError(f'Supplied CVs are in incorrect format "{cvs}"')
 
-        # e.g. cvs == cv1
-        elif issubclass(cvs.__class__, _PlumedCV):
-            cvs = [cvs]
-
-        else:
-            raise TypeError('Supplied CVs are in incorrect format')
-
-        return cvs
+        return tuple(cvs)
 
     def adjust_potential_energy(self, atoms) -> float:
         """Adjust the energy of the system by adding PLUMED bias"""
@@ -642,9 +632,9 @@ class _PlumedCV:
 
     def __init__(
         self,
-        name: str = None,
-        atom_groups: Sequence = None,
-        filename: str = None,
+        name: str | None = None,
+        atom_groups: Sequence | None = None,
+        filename: str | None = None,
         component: Optional[str] = None,
     ):
         """
@@ -682,21 +672,22 @@ class _PlumedCV:
         """
 
         self.setup: List = []
-        self.files: Optional[Tuple[str, str]] = None
+        self.files: list[tuple[str, str]] | None = None
 
-        self.name: Optional[str] = None
         self.units: Optional[str] = None
-        self.dof_names: Optional[List[str]] = None
-        self.dof_units: Optional[List[str]] = None
+        self.dof_names: list[str] = []
+        self.dof_units: list[str] = []
 
         self.lower_wall: Optional[Dict] = None
         self.upper_wall: Optional[Dict] = None
 
         if filename is not None:
-            self._from_file(filename, component)
+            name = self._from_file(filename, component)
+            self.name = self._check_cv_name(name)
 
         elif atom_groups is not None:
-            self._from_atom_groups(name, atom_groups)
+            self.name = self._check_cv_name(name)
+            self._from_atom_groups(atom_groups)
 
         else:
             raise TypeError(
@@ -781,7 +772,7 @@ class _PlumedCV:
 
         return None
 
-    def _from_file(self, filename: str, component: str) -> None:
+    def _from_file(self, filename: str, component: str | None) -> str:
         """Generate DOFs and a CV from a file"""
 
         with open(filename, 'r') as f:
@@ -799,21 +790,16 @@ class _PlumedCV:
                 f'the last line of {filename} file.'
             )
 
-        _name = _last_line.split(':')[0]
+        name = _last_line.split(':')[0]
 
         if component is not None:
-            self.name = f'{_name}.{component}'
-
-        else:
-            self.name = _name
-
-        self._check_name()
+            name = f'{name}.{component}'
 
         filenames = _find_files(self.setup)
         if len(filenames) > 0:
             self._attach_files(filenames)
 
-        return None
+        return name
 
     def _attach_files(self, filenames: List[str]) -> None:
         """Attache files found in the CV initialisation to the CV object"""
@@ -846,56 +832,47 @@ class _PlumedCV:
 
         return None
 
-    def _from_atom_groups(self, name: str, atom_groups: Sequence) -> None:
+    def _from_atom_groups(
+        self, atom_groups: Sequence[int] | Sequence[Sequence[int]]
+    ) -> None:
         """Generate DOFs from atom_groups"""
 
-        self.name = name
-        self._check_name()
-        self.dof_names, self.dof_units = [], []
+        if len(atom_groups) == 0:
+            raise TypeError(
+                'Atom groups cannot be an empty list or an empty tuple'
+            )
 
-        if isinstance(atom_groups, list) or isinstance(atom_groups, tuple):
-            if len(atom_groups) == 0:
-                raise TypeError(
-                    'Atom groups cannot be an empty list or an ' 'empty tuple'
-                )
+        # e.g. atom_groups = [0, 1]
+        if all(isinstance(idx, int) for idx in atom_groups):
+            self._atom_group_to_dof(idx=0, atom_group=atom_groups)
 
-            # e.g. atom_groups == [(1, 2), (3, 4)]; ([0, 1])
-            elif all(
-                isinstance(atom_group, list) or isinstance(atom_group, tuple)
-                for atom_group in atom_groups
-            ):
-                for idx, atom_group in enumerate(atom_groups):
-                    self._atom_group_to_dof(idx=idx, atom_group=atom_group)
-
-            # e.g. atom_groups = [0, 1]
-            elif all(isinstance(idx, int) for idx in atom_groups):
-                self._atom_group_to_dof(idx=0, atom_group=atom_groups)
-
-            else:
-                raise TypeError(
-                    'Elements of atom_groups must all be '
-                    'sequences or all be integers'
-                )
-
+        # Assume we only have sequences
+        # e.g. atom_groups == [(1, 2), (3, 4)] or ([0, 1])
         else:
-            raise TypeError('Atom groups are in incorrect format')
+            for idx, atom_group in enumerate(atom_groups):
+                self._atom_group_to_dof(
+                    idx=idx,
+                    atom_group=atom_group,  # ty: ignore[invalid-argument-type]
+                )
 
-        return None
-
-    def _check_name(self) -> None:
+    @staticmethod
+    def _check_cv_name(name) -> str:
         """Check if the supplied name is valid"""
 
-        if ' ' in self.name:
+        if name is None:
+            raise ValueError('CV name must be provided')
+
+        if ' ' in name:
             raise ValueError('Spaces in CV names are not allowed')
 
-        _illegal_substrings = ['fes', 'colvar', 'HILLS']
-        if any(substr in self.name for substr in _illegal_substrings):
+        _illegal_substrings = ('fes', 'colvar', 'HILLS')
+        if any(substr in name for substr in _illegal_substrings):
             raise ValueError(
                 'Please do not use "fes", "colvar", "HILLS" in '
                 'your CV names'
             )
 
-        return None
+        return name
 
     def _atom_group_to_dof(self, idx: int, atom_group: Sequence) -> None:
         """Check the atom group and generate a DOF"""
@@ -957,7 +934,7 @@ class PlumedAverageCV(_PlumedCV):
     """Class used to initialise a PLUMED collective variable as an average
     between multiple degrees of freedom"""
 
-    def __init__(self, name: str, atom_groups: Sequence = None):
+    def __init__(self, name: str, atom_groups: Sequence | None = None):
         """
         PLUMED collective variable as an average between multiple degrees of
         freedom (distances, angles, torsions),
@@ -995,7 +972,7 @@ class PlumedDifferenceCV(_PlumedCV):
     """Class used to initialise a PLUMED collective variable as a difference
     between two degrees of freedom"""
 
-    def __init__(self, name: str, atom_groups: Sequence = None):
+    def __init__(self, name: str, atom_groups: Sequence | None = None):
         """
         PLUMED collective variable as a difference between two degrees of
         freedom (distances, angles, torsions),
@@ -1041,7 +1018,7 @@ class PlumedCNCV(_PlumedCV):
         d_ref: float = 0,
         n: int = 6,
         m: int = 12,
-        atom_groups: Sequence = None,
+        atom_groups: Sequence | None = None,
     ):
         """
         PLUMED collective variable as a coordination number (CN) between two atoms or groups of atoms
@@ -1355,7 +1332,7 @@ def plumed_setup(
         interval: (int) Interval between saving the geometry
     """
 
-    setup = []
+    setup: list[str] = []
 
     # Converting PLUMED units to ASE units
     time_conversion = 1 / (ase_units.fs * 1000)
@@ -1368,6 +1345,7 @@ def plumed_setup(
     ]
 
     if bias.from_file:
+        assert bias.setup is not None
         setup = bias.setup
 
         if 'UNITS' in setup[0]:
@@ -1419,7 +1397,7 @@ def plumed_setup(
     for cv in bias.cvs:
         colvar_filename = get_colvar_filename(cv, **kwargs)
 
-        if cv.dof_names is not None:
+        if cv.dof_names:
             args = f'{cv.name},{cv.dof_sequence}'
 
         else:
