@@ -269,7 +269,7 @@ class HarmonicPotential(Calculator):
 class TestPotential(mlt.potentials.MLPotential):
     __test__ = False
 
-    def __init__(self, name: str, calculator='harmonic', system=None):
+    def __init__(self, name: str, system, calculator='harmonic'):
         super().__init__(name=name, system=system)
         self.calculator = calculator.lower()
 
@@ -300,7 +300,9 @@ class TestPotential(mlt.potentials.MLPotential):
 def test_potential():
     """Dummy MLPotential"""
 
-    def _create_potential(name='test', calculator='harmonic', system=None):
-        return TestPotential(name, calculator, system)
+    def _create_potential(
+        name: str = 'test', calculator: str = 'harmonic', system=None
+    ):
+        return TestPotential(name, system, calculator=calculator)
 
     return _create_potential
