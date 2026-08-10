@@ -327,6 +327,7 @@ class Configuration(AtomCollection):
         ___________________________________________________________________________
 
         """
+        assert self.atoms is not None
         # Calculate the box size if not provided, based on the maximum distance between any two atoms in the solute
         # and the buffer distance
         if box_size is None:
@@ -622,6 +623,8 @@ class Configuration(AtomCollection):
                 f'quantities to {filename}'
             )
 
+        assert self.atoms is not None
+
         if not (true or predicted):
             prop_str = ''
 
@@ -860,7 +863,7 @@ class Configuration(AtomCollection):
         # Update box if cell information is available
         cell_array = np.array(ase_atoms.get_cell())
         if np.any(cell_array != 0):
-            box = Box(np.diag(cell_array))
+            box = Box(np.diag(cell_array))  # ty: ignore[invalid-argument-type]
             logger.info(f'Updated box with dimensions: {np.diag(cell_array)}')
 
         # Load mol_dict if available
@@ -895,6 +898,9 @@ class Configuration(AtomCollection):
         """
         if not self.mol_dict:
             return True
+
+        if self.atoms is None:
+            return False
 
         total_atoms = len(self.atoms)
 

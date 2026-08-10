@@ -59,8 +59,7 @@ error-on-warning = true
 # Enable all rules for these files
 [[tool.ty.overrides]]
 include = [
-  "mlptrain/configurations/configuration.py",
-  "mlptrain/sampling/metadynamics.py",
+    "mlptrain/sampling/metadynamics.py",
 ]
 
 [tool.ty.overrides.rules]
