@@ -11,7 +11,16 @@ import warnings
 import numpy as np
 import multiprocessing as mp
 import autode as ade
-from typing import TYPE_CHECKING, Optional, Sequence, Union, Tuple, List
+from typing import (
+    TYPE_CHECKING,
+    Literal,
+    Optional,
+    Sequence,
+    Union,
+    Tuple,
+    List,
+    overload,
+)
 from multiprocessing import Pool
 from subprocess import Popen
 from copy import deepcopy
@@ -362,7 +371,12 @@ class Metadynamics:
             kwargs['load_metad_bias'] = True
 
         if restart:
-            self._initialise_restart(width=width, n_runs=n_runs)
+            if width is None:
+                raise ValueError(
+                    'Make sure to use exactly the same width as '
+                    'in the previous simulation'
+                )
+            self._initialise_restart(n_runs=n_runs)
 
         else:
             if width is None:
@@ -471,17 +485,11 @@ class Metadynamics:
 
         return None
 
-    def _initialise_restart(self, width: Sequence, n_runs: int) -> None:
+    def _initialise_restart(self, n_runs: int) -> None:
         """
         Initialise restart for metadynamics simulation by checking
         conditions and moving files
         """
-
-        if width is None:
-            raise ValueError(
-                'Make sure to use exactly the same width as '
-                'in the previous simulation'
-            )
 
         if not os.path.exists('plumed_files/metadynamics'):
             raise FileNotFoundError(
@@ -954,7 +962,9 @@ class Metadynamics:
         if len(plotted_cvs) == 2:
             plot_cv1_and_cv2(
                 filenames=filenames,
-                cvs_units=[cv.units for cv in plotted_cvs],
+                cvs_units=[
+                    cv.units for cv in plotted_cvs
+                ],  # ty: ignore[invalid-argument-type]
                 label=f'biasf{bias.biasfactor}',
             )
 
@@ -1031,6 +1041,8 @@ class Metadynamics:
             f'trajectories/trajectory_{idx}.traj',
             index=f'{start_frame_index}:',
         )
+        if isinstance(sliced_traj, ase.Atoms):
+            sliced_traj = [sliced_traj]
         self._save_ase_traj_as_xyz(sliced_traj)
 
         shutil.copyfile(
@@ -1113,8 +1125,8 @@ class Metadynamics:
         return None
 
     def _reweighting_params(
-        self, temp: float, dt: float, interval: int
-    ) -> Tuple:
+        self, temp: float | None, dt: float | None, interval: int | None
+    ) -> tuple[PlumedBias, float, float, int]:
         """
         Read parameters required for reweighting from the previous
         metadynamics simulation. If previous parameters are not set, read
@@ -1127,14 +1139,24 @@ class Metadynamics:
             pace=int(1e9), width=[1 for _ in range(self.n_cvs)], height=0
         )
 
-        _parameters = [temp, dt, interval]
-
         if len(self._previous_run_parameters) != 0:
-            temp = float(self._previous_run_parameters['temp'])
-            dt = float(self._previous_run_parameters['dt'])
-            interval = int(self._previous_run_parameters['interval'])
+            temp = float(
+                self._previous_run_parameters[
+                    'temp'
+                ]  # ty: ignore[invalid-argument-type]
+            )
+            dt = float(
+                self._previous_run_parameters[
+                    'dt'
+                ]  # ty: ignore[invalid-argument-type]
+            )
+            interval = int(
+                self._previous_run_parameters[
+                    'interval'
+                ]  # ty: ignore[invalid-argument-type]
+            )
 
-        elif any(param is None for param in _parameters):
+        elif any(param is None for param in (temp, dt, interval)):
             raise TypeError(
                 'Metadynamics object does not have all the '
                 'required parameters to run block analysis. '
@@ -1142,10 +1164,12 @@ class Metadynamics:
                 'metadynamics run'
             )
 
-        return bias, temp, dt, interval
+        return bias, temp, dt, interval  # ty: ignore[invalid-return-type]
 
     @staticmethod
-    def _save_ase_traj_as_xyz(ase_traj: 'ase.io.trajectory.TrajectoryWriter'):
+    def _save_ase_traj_as_xyz(
+        ase_traj: ase.io.trajectory.TrajectoryWriter | list[ase.Atoms],
+    ):
         """Save ASE trajectory as .xyz file"""
 
         _mlt_configuration_set = ConfigurationSet(allow_duplicates=True)
@@ -1427,6 +1451,34 @@ class Metadynamics:
 
         return None
 
+    @overload
+    def compute_fes(
+        self,
+        energy_units: str = 'kcal mol-1',
+        n_bins: int = 300,
+        cvs_bounds: Sequence | None = None,
+        via_reweighting: Literal[True] = True,
+        start_time: float = 0.00,
+        bandwidth: float = 0.02,
+        temp: float = ...,
+        dt: float = ...,
+        interval: int = ...,
+    ) -> np.ndarray: ...
+
+    @overload
+    def compute_fes(
+        self,
+        energy_units: str = 'kcal mol-1',
+        n_bins: int = 300,
+        cvs_bounds: Sequence | None = None,
+        via_reweighting: Literal[False] = False,
+        start_time: float = 0.00,
+        bandwidth: float = 0.02,
+        temp: None = None,
+        dt: None = None,
+        interval: None = None,
+    ) -> np.ndarray: ...
+
     def compute_fes(
         self,
         energy_units: str = 'kcal mol-1',
@@ -1483,6 +1535,9 @@ class Metadynamics:
         logger.info('Computing and saving the free energy grid as fes_raw.npy')
 
         if via_reweighting:
+            assert interval is not None
+            assert dt is not None
+            assert temp is not None
             fes_raw = self._compute_fes_via_reweighting(
                 energy_units=energy_units,
                 n_bins=n_bins,
@@ -1582,6 +1637,8 @@ class Metadynamics:
         """Compute CVs and FES grids for a single run by reweighting"""
 
         sliced_traj = ase_read(traj_path, index=f'{start_frame_index}:')
+        if isinstance(sliced_traj, ase.Atoms):
+            sliced_traj = [sliced_traj]
         self._save_ase_traj_as_xyz(sliced_traj)
 
         shutil.copyfile(src=hills_path, dst=f'HILLS_{idx}.dat')
@@ -1931,7 +1988,7 @@ class Metadynamics:
 
         self._plot_surface_difference(
             fes_grids=fes_grids,
-            fes_time=fes_time,
+            fes_time=fes_time,  # ty: ignore[invalid-argument-type]
             time_units=time_units,
             energy_units=energy_units,
         )
@@ -1940,7 +1997,7 @@ class Metadynamics:
             self._plot_multiple_1d_fes_surfaces(
                 cv_grids=cv_grids,
                 fes_grids=fes_grids,
-                fes_time=fes_time,
+                fes_time=fes_time,  # ty: ignore[invalid-argument-type]
                 n_surfaces=n_surfaces,
                 time_units=time_units,
                 energy_units=energy_units,
@@ -1959,7 +2016,7 @@ class Metadynamics:
     @staticmethod
     def _plot_surface_difference(
         fes_grids: np.ndarray,
-        fes_time: List,
+        fes_time: Sequence[float],
         time_units: str,
         energy_units: str,
     ) -> None:
@@ -1993,7 +2050,7 @@ class Metadynamics:
         self,
         cv_grids: np.ndarray,
         fes_grids: np.ndarray,
-        fes_time: List,
+        fes_time: Sequence[float],
         n_surfaces: int,
         time_units: str,
         energy_units: str,

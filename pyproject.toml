@@ -56,15 +56,6 @@ filterwarnings = [
 # Error if ty emits any warning-level diagnostics.
 error-on-warning = true
 
-# Enable all rules for these files
-[[tool.ty.overrides]]
-include = [
-    "mlptrain/sampling/metadynamics.py",
-]
-
-[tool.ty.overrides.rules]
-invalid-argument-type = "ignore"
-
 # Don't typecheck python scripts from examples/*_paper/
 [[tool.ty.overrides]]
 include = [
