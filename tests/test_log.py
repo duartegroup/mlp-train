@@ -8,7 +8,6 @@ import pytest
 
 import mlptrain.log as log_module
 
-
 _ENV_VAR = 'MLT_LOG_LEVEL'
 
 
@@ -57,8 +56,10 @@ def test_log_level_defaults_to_info(monkeypatch):
 @pytest.mark.parametrize(
     'value, expected',
     [
-        ('WARNING', logging.WARNING),
         ('debug', logging.DEBUG),
+        ('INfo', logging.INFO),
+        ('WARNING', logging.WARNING),
+        ('erroR', logging.ERROR),
         ('Critical', logging.CRITICAL),
     ],
 )
@@ -78,9 +79,6 @@ def test_log_level_bad_value_falls_back_to_info(monkeypatch, capsys, value):
     stdout = capsys.readouterr().out
     assert value in stdout
     assert 'INFO' in stdout
-
-
-# --- _add_handler ----------------------------------------------------------
 
 
 def test_add_handler_uses_coloredlogs_when_available(
@@ -129,9 +127,6 @@ def test_add_handler_is_idempotent(throwaway_logger, without_coloredlogs):
     log_module._add_handler(throwaway_logger)
 
     assert len(throwaway_logger.handlers) == 1
-
-
-# --- the configured mlptrain logger ----------------------------------------
 
 
 def test_logger_is_configured_once():

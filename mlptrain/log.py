@@ -17,17 +17,20 @@ _DATE_FORMAT = '%y-%m-%d %H:%M:%S'
 # https://docs.python.org/3/library/logging.html#logging-levels
 def _log_level() -> int:
     level_name = os.environ.get('MLT_LOG_LEVEL', default='INFO').upper()
-
-    # Not every upper case attribute of the logging module is a level, e.g.
-    # logging.BASIC_FORMAT is a string, so check the type rather than relying
-    # on getattr raising for unknown names
-    level = getattr(logging, level_name, None)
-    if not isinstance(level, int):
+    allowed_levels = (
+        'NOTSET',
+        'DEBUG',
+        'INFO',
+        'WARNING',
+        'ERROR',
+        'CRITICAL',
+    )
+    if level_name not in allowed_levels:
         print(f'Invalid value of MLT_LOG_LEVEL: "{level_name}"')
         print('Falling back to INFO level')
         return logging.INFO
 
-    return level
+    return getattr(logging, level_name)
 
 
 def _add_handler(logger: logging.Logger) -> None:
