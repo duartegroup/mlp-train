@@ -52,7 +52,6 @@ class Metadynamics:
         self,
         cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'],
         bias: Optional['mlptrain.PlumedBias'] = None,
-        temp: Optional[float] = None,
     ):
         """
         Molecular dynamics using metadynamics bias. Used for calculating free
@@ -86,18 +85,12 @@ class Metadynamics:
 
         self.bias._set_metad_cvs(cvs)
 
-        self.temp = temp
         self._previous_run_parameters = {}
 
     @property
     def n_cvs(self) -> int:
         """Number of collective variables used in metadynamics"""
         return self.bias.n_metad_cvs
-
-    @property
-    def kbt(self) -> float:
-        """Value of k_B*T in ASE units"""
-        return ase_units.kB * self.temp
 
     def estimate_width(
         self,
@@ -154,7 +147,8 @@ class Metadynamics:
 
         logger.info('Estimating optimal width (σ)')
 
-        width_processes, all_widths = [], []
+        width_processes = []
+        all_widths = []
 
         n_processes = min(Config.n_cores, len(configuration_set))
 
@@ -182,7 +176,11 @@ class Metadynamics:
 
             pool.close()
             for width_process in width_processes:
-                all_widths.append(width_process.get())
+                # TODO: This looks like a bug?
+                # all_widths is converted to ndarray which doesn't have an .append method
+                all_widths.append(  # ty: ignore[unresolved-attribute]
+                    width_process.get()
+                )
                 all_widths = np.array(all_widths)
             pool.join()
 
@@ -201,6 +199,8 @@ class Metadynamics:
 
         opt_widths = list(np.min(all_widths, axis=0))
         opt_widths_strs = []
+
+        assert self.bias.metad_cvs is not None
         for cv, width in zip(self.bias.metad_cvs, opt_widths):
             if cv.units is not None:
                 opt_widths_strs.append(f'{cv.name} {width:.2f} {cv.units}')
@@ -342,14 +342,12 @@ class Metadynamics:
                                 e.g. [ase.constraints.Hookean(a1, a2, k, rt)]
         """
 
-        self.temp = temp
-
         if height is None:
             if temp > 0:
                 logger.info(
-                    'Height was not supplied, ' 'setting height to 0.5*k_B*T'
+                    'Height was not supplied, setting height to 0.5*k_B*T'
                 )
-                height = 0.5 * self.kbt
+                height = 0.5 * ase_units.kB * temp
             else:
                 raise ValueError('Height was not supplied')
 
@@ -821,10 +819,9 @@ class Metadynamics:
                 'well-tempered metadynamics'
             )
 
-        self.temp = temp
         if height is None:
             logger.info('Height was not supplied, setting height to 0.5*k_B*T')
-            height = 0.5 * self.kbt
+            height = 0.5 * ase_units.kB * temp
 
         if width is None:
             logger.info(
@@ -849,6 +846,7 @@ class Metadynamics:
             )
 
         assert cvs_holder.metad_cvs is not None
+        assert self.bias.metad_cvs is not None
         if not all(cv in self.bias.metad_cvs for cv in cvs_holder.metad_cvs):
             raise ValueError(
                 'At least one of the supplied CVs are not within '
