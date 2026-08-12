@@ -57,7 +57,7 @@ class MACE(MLPotential):
             import mace.tools
 
         self.foundation = foundation
-        logging.info(f'MACE version: {mace.__version__}')
+        logger.info(f'MACE version: {mace.__version__}')
 
         mace.tools.set_seeds(345)
         mace.tools.set_default_dtype(str(Config.mace_params['dtype']))
@@ -284,15 +284,14 @@ class MACE(MLPotential):
         # Remove mlp-train root logging handlers, but save for later
         our_logging_handlers = remove_root_logging_handlers()
 
-        train_mace(self.args)
-
-        # Remove MACE root logging handlers
-        remove_root_logging_handlers()
-
-        # Restore our root logging handlers
-        root_logger = logging.getLogger()
-        for handler in our_logging_handlers:
-            root_logger.addHandler(handler)
+        try:
+            train_mace(self.args)
+        finally:
+            # Remove MACE root logging handlers and restore pre-existing ones.
+            remove_root_logging_handlers()
+            root_logger = logging.getLogger()
+            for handler in our_logging_handlers:
+                root_logger.addHandler(handler)
 
         delta_time = time.perf_counter() - start_time
 
