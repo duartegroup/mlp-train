@@ -44,11 +44,8 @@ def stub_coloredlogs(monkeypatch):
     def install(**kwargs):
         kwargs['logger'].addHandler(logging.NullHandler())
 
-    module.install = install
+    module.install = install  # ty: ignore[unresolved-attribute]
     monkeypatch.setitem(sys.modules, 'coloredlogs', module)
-
-
-# --- _log_level ------------------------------------------------------------
 
 
 def test_log_level_defaults_to_info(monkeypatch):
