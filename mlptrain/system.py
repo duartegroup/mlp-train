@@ -84,6 +84,7 @@ class System:
                     min_dist=min_dist,
                 )
 
+            assert molecule.atoms is not None
             configuration.atoms += molecule.atoms.copy()
 
         return configuration

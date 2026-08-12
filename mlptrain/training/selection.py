@@ -306,6 +306,7 @@ class AtomicEnvDistance(SelectionMethod):
 
     @property
     def select(self) -> bool:
+        assert self._configuration is not None
         metric = _outlier_identifier(
             self._configuration,
             self.mlp.training_data,

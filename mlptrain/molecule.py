@@ -54,7 +54,12 @@ class Molecule(ade.Molecule):
         if len(coords) == 0:
             return np.inf
 
-        return np.min(cdist(coords, self.coordinates))
+        return np.min(
+            cdist(
+                coords,
+                self.coordinates,  # ty: ignore[invalid-argument-type]
+            )
+        )
 
     def random_normal_jiggle(self, sigma: float = 0.01) -> None:
         """
@@ -64,6 +69,8 @@ class Molecule(ade.Molecule):
         Arguments:
             sigma: Standard deviation of the standard deviation
         """
+        assert self.coordinates is not None
+
         dx = np.random.normal(
             scale=sigma,  # Å
             loc=0.0,

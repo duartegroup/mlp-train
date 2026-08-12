@@ -1,4 +1,6 @@
+import logging
 import os
+
 import numpy as np
 import pytest
 from autode.atoms import Atom
@@ -7,6 +9,9 @@ from mlptrain.utils import work_in_tmp_dir
 from mlptrain.box import Box
 
 here = os.path.abspath(os.path.dirname(__file__))
+
+# Shared by the tests below
+_PARTIAL_FORCES_WARNING = 'predicted forces'
 
 
 @pytest.fixture
@@ -95,6 +100,53 @@ def test_configurations_save():
     configs.save('tmp.npz')
 
     assert os.path.exists('tmp.npz')
+
+
+@work_in_tmp_dir()
+def test_configurations_save_true_forces_without_predicted_is_quiet(
+    mlp_caplog,
+):
+    mlp_caplog.set_level(logging.WARNING, logger='mlptrain')
+    config = Configuration(atoms=[Atom('H')])
+    config.energy.true = -1.0
+    config.forces.true = np.ones(shape=(1, 3))
+
+    ConfigurationSet(config).save('tmp.npz')
+
+    assert not any(
+        _PARTIAL_FORCES_WARNING in record.message
+        for record in mlp_caplog.records
+    )
+
+    loaded_config = ConfigurationSet('tmp.npz')[0]
+    assert loaded_config.forces.true is not None
+    assert loaded_config.forces.predicted is None
+
+
+@work_in_tmp_dir()
+def test_configurations_save_partially_predicted_forces_warns(mlp_caplog):
+    mlp_caplog.set_level(logging.WARNING, logger='mlptrain')
+    config1 = Configuration(atoms=[Atom('H')])
+    config1.energy.true = -1.0
+    config1.forces.true = np.ones(shape=(1, 3))
+    config1.forces.predicted = 1.1 * np.ones(shape=(1, 3))
+
+    config2 = Configuration(atoms=[Atom('He', 1.0, 0.0, 0.0)])
+    config2.energy.true = -2.0
+    config2.forces.true = 2.0 * np.ones(shape=(1, 3))
+
+    ConfigurationSet(config1, config2).save('tmp.npz')
+
+    assert (
+        sum(
+            _PARTIAL_FORCES_WARNING in record.message
+            for record in mlp_caplog.records
+        )
+        == 1
+    )
+
+    loaded_configs = ConfigurationSet('tmp.npz')
+    assert all(config.forces.predicted is None for config in loaded_configs)
 
 
 @work_in_tmp_dir()
@@ -291,6 +343,7 @@ def test_configurations_load_xyz_and_save_npz(
         np.allclose(config_coords, exp_vals['coords'][i])
         for i, config_coords in enumerate(loaded_configs._coordinates)
     )
+    assert loaded_configs.true_forces is not None
     assert all(
         np.allclose(config_forces, exp_vals['forces'][i])
         for i, config_forces in enumerate(loaded_configs.true_forces)
