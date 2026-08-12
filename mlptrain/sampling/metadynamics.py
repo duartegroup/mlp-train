@@ -13,13 +13,11 @@ import multiprocessing as mp
 import autode as ade
 from typing import (
     TYPE_CHECKING,
-    Literal,
     Optional,
     Sequence,
     Union,
     Tuple,
     List,
-    overload,
 )
 from multiprocessing import Pool
 from subprocess import Popen
@@ -1451,34 +1449,6 @@ class Metadynamics:
 
         return None
 
-    @overload
-    def compute_fes(
-        self,
-        energy_units: str = 'kcal mol-1',
-        n_bins: int = 300,
-        cvs_bounds: Sequence | None = None,
-        via_reweighting: Literal[True] = True,
-        start_time: float = 0.00,
-        bandwidth: float = 0.02,
-        temp: float = ...,
-        dt: float = ...,
-        interval: int = ...,
-    ) -> np.ndarray: ...
-
-    @overload
-    def compute_fes(
-        self,
-        energy_units: str = 'kcal mol-1',
-        n_bins: int = 300,
-        cvs_bounds: Sequence | None = None,
-        via_reweighting: Literal[False] = False,
-        start_time: float = 0.00,
-        bandwidth: float = 0.02,
-        temp: None = None,
-        dt: None = None,
-        interval: None = None,
-    ) -> np.ndarray: ...
-
     def compute_fes(
         self,
         energy_units: str = 'kcal mol-1',
@@ -1535,9 +1505,6 @@ class Metadynamics:
         logger.info('Computing and saving the free energy grid as fes_raw.npy')
 
         if via_reweighting:
-            assert interval is not None
-            assert dt is not None
-            assert temp is not None
             fes_raw = self._compute_fes_via_reweighting(
                 energy_units=energy_units,
                 n_bins=n_bins,
@@ -1557,12 +1524,12 @@ class Metadynamics:
 
     def _compute_fes_via_reweighting(
         self,
-        temp: float,
-        dt: float,
-        interval: int,
+        temp: float | None,
+        dt: float | None,
+        interval: int | None,
         start_time: float,
         energy_units: str,
-        cvs_bounds: Optional[Sequence],
+        cvs_bounds: Sequence | None,
         n_bins: int,
         bandwidth: float,
     ) -> np.ndarray:
