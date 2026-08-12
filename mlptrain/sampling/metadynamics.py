@@ -13,10 +13,12 @@ import multiprocessing as mp
 import autode as ade
 from typing import (
     TYPE_CHECKING,
+    Any,
     Optional,
     Sequence,
     Union,
     Tuple,
+    TypedDict,
     List,
 )
 from multiprocessing import Pool
@@ -49,6 +51,15 @@ if TYPE_CHECKING:
     import ase.io
     from mlptrain.sampling.plumed import _PlumedCV
     from mlptrain.potentials import MLPotential
+
+
+class MetaParams(TypedDict):
+    mlp: MLPotential
+    configuration: Configuration
+    dt: float
+    temp: float
+    interval: int
+    sim_time_dict: dict[str, Any]
 
 
 class Metadynamics:
@@ -92,7 +103,7 @@ class Metadynamics:
 
         self.bias._set_metad_cvs(cvs)
 
-        self._previous_run_parameters = {}
+        self._previous_run_parameters: MetaParams | None = None
 
     @property
     def n_cvs(self) -> int:
@@ -642,22 +653,19 @@ class Metadynamics:
     ) -> None:
         """Set parameters in the _previous_run_parameters"""
 
+        sim_time_dict = {}
+        for key in ('ps', 'fs', 'ns'):
+            if key in kwargs:
+                sim_time_dict[key] = kwargs[key]
+
         self._previous_run_parameters = {
             'configuration': configuration,
             'mlp': mlp,
             'temp': temp,
             'dt': dt,
             'interval': interval,
+            'sim_time_dict': sim_time_dict,
         }
-
-        sim_time_dict = {}
-        for key in ['ps', 'fs', 'ns']:
-            if key in kwargs:
-                sim_time_dict[key] = kwargs[key]
-
-        self._previous_run_parameters['sim_time_dict'] = sim_time_dict
-
-        return None
 
     def plot_gaussian_heights(
         self,
@@ -1137,22 +1145,10 @@ class Metadynamics:
             pace=int(1e9), width=[1 for _ in range(self.n_cvs)], height=0
         )
 
-        if len(self._previous_run_parameters) != 0:
-            temp = float(
-                self._previous_run_parameters[
-                    'temp'
-                ]  # ty: ignore[invalid-argument-type]
-            )
-            dt = float(
-                self._previous_run_parameters[
-                    'dt'
-                ]  # ty: ignore[invalid-argument-type]
-            )
-            interval = int(
-                self._previous_run_parameters[
-                    'interval'
-                ]  # ty: ignore[invalid-argument-type]
-            )
+        if self._previous_run_parameters is not None:
+            temp = float(self._previous_run_parameters['temp'])
+            dt = float(self._previous_run_parameters['dt'])
+            interval = int(self._previous_run_parameters['interval'])
 
         elif any(param is None for param in (temp, dt, interval)):
             raise TypeError(
