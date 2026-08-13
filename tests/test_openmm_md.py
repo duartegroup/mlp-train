@@ -92,7 +92,7 @@ def test_openmm_simulation(h2o_system_config):
     openmm_pot_energy = (
         simulation.context.getState(getEnergy=True).getPotentialEnergy()._value
     )
-    atoms.set_calculator(mace.ase_calculator)
+    atoms.calc = mace.ase_calculator
     ase_pot_energy = atoms.get_potential_energy() / (
         (ase.units.kJ / ase.units.mol) / ase.units.eV
     )

@@ -40,4 +40,5 @@ if [[ ${CONDA_EXE} = "mamba" ]];then
     # For some reason `mamba run` does not seem to work, use conda instead.
     CONDA_EXE=conda
 fi
-${CONDA_EXE} run -n ${CONDA_ENV_NAME} python3 -m pip install -e .
+# By default install the package and also its dev dependencies
+${CONDA_EXE} run -n ${CONDA_ENV_NAME} python3 -m pip install -e . --group dev

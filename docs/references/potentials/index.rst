@@ -7,5 +7,4 @@ Potentials
 
    _base
    ace
-   gap
    mace

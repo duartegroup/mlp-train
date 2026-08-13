@@ -1,13 +1,16 @@
+from __future__ import annotations
+
 import mlptrain
 import os
 import re
 import time
+import typing as t
 import glob
 import multiprocessing as mp
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.integrate import simpson
-from typing import Optional, List, Callable, Tuple
+from typing import Optional, List, Tuple
 from copy import deepcopy
 from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.io import write as ase_write
@@ -18,6 +21,10 @@ from mlptrain.sampling.md import run_mlp_md
 from mlptrain.utils import move_files, convert_ase_energy, convert_exponents
 from mlptrain.config import Config
 from mlptrain.log import logger
+
+if t.TYPE_CHECKING:
+    from mlptrain.potentials import MLPotential
+    from mlptrain.sampling.reaction_coord import ReactionCoordinate
 
 
 class _Window:
@@ -63,11 +70,13 @@ class _Window:
         return None
 
     @property
-    def bin_centres(self) -> Optional[np.ndarray]:
+    def bin_centres(self) -> np.ndarray:
         """Array of zeta values at bin centres"""
 
         if self.bin_edges is None:
-            return None
+            raise RuntimeError(
+                'Cannot find bin centres with undefined bin edges'
+            )
 
         _edges = self.bin_edges
 
@@ -192,6 +201,8 @@ class _Window:
 
         gaussian = _FittedGaussian()
 
+        assert self.hist
+
         a_0, mu_0, sigma_0 = (
             np.max(self.hist),
             np.average(self._obs_zetas),
@@ -216,7 +227,10 @@ class _Window:
             gaussian.params = a_0, mu_0, sigma_0
 
         if normalised:
-            gaussian.params = 1, *gaussian.params[1:]
+            gaussian.params = (  # ty: ignore[invalid-assignment]
+                1,
+                *gaussian.params[1:],
+            )
 
         self._gaussian_pdf = gaussian
         return None
@@ -303,7 +317,7 @@ class UmbrellaSampling:
 
     def __init__(
         self,
-        zeta_func: 'mlptrain.sampling.reaction_coord.ReactionCoordinate',
+        zeta_func: ReactionCoordinate,
         kappa: float,
         temp: Optional[float] = None,
     ):
@@ -325,9 +339,9 @@ class UmbrellaSampling:
             kappa: Value of the spring constant, κ, used in umbrella sampling
         """
 
-        self.kappa: float = kappa  # eV Å^-2
-        self.zeta_func: Callable = zeta_func  # ζ(r)
-        self.temp: Optional[float] = temp  # K
+        self.kappa = kappa  # eV Å^-2
+        self.zeta_func = zeta_func  # ζ(r)
+        self.temp = temp  # K
 
         self.windows: List[_Window] = []
 
@@ -377,7 +391,7 @@ class UmbrellaSampling:
     def run_umbrella_sampling(
         self,
         traj: 'mlptrain.ConfigurationSet',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: 'MLPotential',
         temp: float,
         interval: int,
         dt: float,
@@ -515,7 +529,7 @@ class UmbrellaSampling:
     def _run_individual_window(
         self,
         frame: 'mlptrain.Configuration',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: 'MLPotential',
         temp: float,
         interval: int,
         dt: float,
@@ -602,7 +616,7 @@ class UmbrellaSampling:
         return -(1.0 / self.beta) * np.log(prob_dist)
 
     @property
-    def zeta_refs(self) -> Optional[np.ndarray]:
+    def zeta_refs(self) -> np.ndarray:
         """
         Array of ζ_ref for each window
 
@@ -610,8 +624,7 @@ class UmbrellaSampling:
         Returns:
             (np.ndarray(float) | None):
         """
-        if len(self.windows) == 0:
-            return None
+        assert len(self.windows) != 0
 
         return np.array([w_k.zeta_ref for w_k in self.windows])
 
@@ -674,6 +687,7 @@ class UmbrellaSampling:
             (np.ndarray, np.ndarray): Tuple containing the reaction coordinate
                                       and values of the free energy
         """
+        assert self.windows
         beta = self.beta  # 1 / (k_B T)
         self._bin_windows(n_bins=n_bins)
 
@@ -688,12 +702,23 @@ class UmbrellaSampling:
 
         for iteration in range(max_iterations):
             # Equation 8.8.18 from Tuckerman, p. 343
-            p = sum(w_k.hist for w_k in self.windows) / sum(
-                w_k.n * np.exp(beta * (w_k.free_energy - w_k.bias_energies))
+            hist_sum = sum(
+                w_k.hist for w_k in self.windows
+            )  # ty: ignore[no-matching-overload]
+            p = hist_sum / sum(
+                w_k.n
+                * np.exp(
+                    beta
+                    * (
+                        w_k.free_energy  # ty: ignore[unsupported-operator]
+                        - w_k.bias_energies
+                    )
+                )
                 for w_k in self.windows
             )
 
             for w_k in self.windows:
+                assert w_k.bias_energies is not None
                 # Equation 8.8.19 from Tuckerman, p. 343
                 w_k.free_energy = -(1.0 / beta) * np.log(
                     np.sum(p * np.exp(-w_k.bias_energies * beta))
