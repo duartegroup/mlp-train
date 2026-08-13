@@ -389,7 +389,7 @@ class MockMLPotential(MLPotential):
 
 def test_ml_potential_predict(h2o_configuration, chdir_tmp_path):
     """Test single point calculation with machine learning potential."""
-    h2o_configuration.single_point(method=Mock_ml_potential)
+    h2o_configuration.single_point(method=MockMLPotential)
 
     # n_ref_evals should not increment for ML potentials
     assert h2o_configuration.n_ref_evals == 0
@@ -410,7 +410,7 @@ def test_n_ref_evals_increment_logic(h2o_configuration, chdir_tmp_path):
     h2o_configuration.n_ref_evals = initial_count
 
     # ML potential should not increment
-    h2o_configuration.single_point(method=Mock_ml_potential)
+    h2o_configuration.single_point(method=MockMLPotential)
     assert h2o_configuration.n_ref_evals == initial_count
 
     # QM method should increment
