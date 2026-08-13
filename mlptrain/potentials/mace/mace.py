@@ -225,17 +225,14 @@ class MACE(MLPotential):
         if Config.mace_params['cueq']:
             args_list.append('--enable_cueq=True')
 
-
         valid_file = Config.mace_params['valid_file']
-        if valid_file is not None:           
+        if valid_file is not None:
             if not isinstance(valid_file, str) or not valid_file.strip():
-                raise ValueError(
-                    'valid_file must be a non-empty path string.'
-                )
+                raise ValueError('valid_file must be a non-empty path string.')
             if not os.path.exists(valid_file):
                 raise FileNotFoundError(
                     f'valid_file path does not exist: {valid_file}'
-                )            
+                )
             args_list.append(f'--valid_file={valid_file}')
         else:
             args_list.append(f'--valid_fraction={str(self.valid_fraction)}')
