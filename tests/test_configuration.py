@@ -363,7 +363,7 @@ def test_custom_output_name_file_move(h2o_configuration, chdir_tmp_path):
     assert os.path.exists('QM_outputs/custom_calc.out')
 
 
-class Mock_ml_potential(MLPotential):
+class MockMLPotential(MLPotential):
     """Create a mock ML potential with predict method."""
 
     def predict(self, *args):
