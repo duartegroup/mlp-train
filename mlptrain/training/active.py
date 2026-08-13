@@ -654,7 +654,7 @@ def _set_init_training_configs(
     mlp: 'MLPotential',
     init_configs: 'mlptrain.ConfigurationSet',
     method_name: str,
-    keep_output_files: str,
+    keep_output_files: bool,
 ) -> None:
     """Set some initial training configurations"""
 

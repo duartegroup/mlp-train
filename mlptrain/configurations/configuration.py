@@ -712,7 +712,7 @@ class Configuration(AtomCollection):
         method: Union[str, MLPotential],
         n_cores: int = 1,
         keep_output_files: bool = True,
-        output_name: Optional[str] = None,
+        output_name: str | None = None,
         **kwargs,
     ) -> None:
         """
@@ -730,12 +730,10 @@ class Configuration(AtomCollection):
         """
         implemented_methods = ['xtb', 'orca', 'g09', 'g16']
 
-        if keep_output_files:
-            os.makedirs('QM_outputs', exist_ok=True)
-
         if isinstance(method, str) and method.lower() in implemented_methods:
             kept_substrings_list = []
             if keep_output_files:
+                os.makedirs('QM_outputs', exist_ok=True)
                 if method in ('g09', 'g16'):
                     kept_substrings_list.append('.log')
                 else:
@@ -754,10 +752,10 @@ class Configuration(AtomCollection):
 
             if keep_output_files:
                 if output_name is None:
-                    output_name = method
+                    method_name = method.lower()
                     shutil.move(
-                        src=f'tmp_{method}{kept_substrings_list[0]}',
-                        dst=f'QM_outputs/{method}{kept_substrings_list[0]}',
+                        src=f'tmp_{method_name}{kept_substrings_list[0]}',
+                        dst=f'QM_outputs/{method_name}{kept_substrings_list[0]}',
                     )
                 elif 'energy' in output_name:
                     pass
