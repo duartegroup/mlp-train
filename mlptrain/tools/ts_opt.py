@@ -103,6 +103,8 @@ def mlip_dimer_method(
             dim_rlx.run(fmax=fmax)
 
         traj_configs = ase_read(traj_save_fp, index=':')
+        if isinstance(traj_configs, Atoms):
+            traj_configs = [traj_configs]
 
         # save full trajectory
         old_traj_fp = traj_save_fp
