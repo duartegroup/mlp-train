@@ -47,7 +47,7 @@ if __name__ == '__main__':
         dt=1,
         width=width,
         biasfactors=(5, 10, 15),
-        plotted_cvs=cv1,
+        plotted_cvs=(cv1,),
         ps=20,
     )
 
