@@ -62,7 +62,7 @@ class MACE(MLPotential):
 
         self.foundation = foundation
         self.model_fpath = model_fpath
-        
+
         logger.info(f'MACE version: {mace.__version__}')
 
         mace.tools.set_seeds(345)

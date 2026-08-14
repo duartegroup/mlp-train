@@ -1,6 +1,7 @@
 """
 Dimer method to find optimal TS using MLIP.
 """
+
 import os
 import numpy as np
 from ase.io import write as ase_write
@@ -18,7 +19,7 @@ def mlip_dimer_method(
     model: MLPotential,
     react_coords: list[tuple],
     save_name: str,
-    ref_ts_fp: str = None,
+    ref_ts_fp: str | None = None,
     out_dir: str = '.',
     displace_mag: float = 0.05,
     reverse_displace: bool = False,
