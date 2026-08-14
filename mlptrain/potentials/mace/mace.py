@@ -234,6 +234,7 @@ class MACE(MLPotential):
                     f'valid_file path does not exist: {valid_file}'
                 )
             args_list.append(f'--valid_file={valid_file}')
+            logger.info(f'Using structures in {valid_file} as validation set')
         else:
             args_list.append(f'--valid_fraction={str(self.valid_fraction)}')
 
