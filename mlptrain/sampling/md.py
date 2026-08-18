@@ -47,7 +47,6 @@ def run_mlp_md(
     restart_files: Optional[List[str]] = None,
     copied_substrings: Optional[Sequence[str]] = None,
     kept_substrings: Optional[Sequence[str]] = None,
-    measure_time_taken: bool = False,
     **kwargs,
 ) -> 'mlptrain.Trajectory':
     """
@@ -163,8 +162,7 @@ def run_mlp_md(
 
     else:
         logger.info('Running MLP MD')
-        if measure_time_taken:
-            start_time = time.perf_counter()
+        start_time = time.perf_counter()
 
     decorator = work_in_tmp_dir(
         copied_substrings=copied_substrings_list,
@@ -189,9 +187,8 @@ def run_mlp_md(
         **kwargs,
     )
 
-    if measure_time_taken:
-        delta_time = time.perf_counter() - start_time
-        logger.info(f'MLP MD simulation ran in {delta_time / 60:.1f} m.')
+    delta_time = time.perf_counter() - start_time
+    logger.info(f'MLP MD simulation completed in {delta_time / 60:.1f} m.')
 
     return traj
 
