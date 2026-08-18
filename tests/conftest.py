@@ -1,3 +1,5 @@
+import logging
+
 import mlptrain as mlt
 import pytest
 import numpy as np
@@ -11,10 +13,19 @@ from mlptrain.log import logger as mlp_logger
 
 @pytest.fixture
 def mlp_caplog(caplog):
-    """caplog for the mlptrain logger, which sets propagate = False."""
+    """``caplog`` wired up to the mlptrain logger.
+
+    The project logger sets ``propagate = False`` to avoid duplicating
+    records into root handlers. As a side effect pytest's ``caplog`` handler
+    never sees mlptrain records unless it is attached to that logger
+    directly, so a bare ``caplog`` silently reports zero records.
+    """
+    caplog.set_level(logging.INFO, logger='mlptrain')
     mlp_logger.addHandler(caplog.handler)
-    yield caplog
-    mlp_logger.removeHandler(caplog.handler)
+    try:
+        yield caplog
+    finally:
+        mlp_logger.removeHandler(caplog.handler)
 
 
 @pytest.fixture

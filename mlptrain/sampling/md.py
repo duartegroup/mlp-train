@@ -1,15 +1,23 @@
 from __future__ import annotations
 
 import os
+from copy import deepcopy
+import shutil
+from typing import TYPE_CHECKING, Optional, Sequence, List, Union
+
+import numpy as np
+from numpy.random import RandomState
 import ase
 import ase.io
-import mlptrain
-import shutil
-import numpy as np
+from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+from ase.io.trajectory import Trajectory as ASETrajectory
+from ase.md.nptberendsen import NPTBerendsen
+from ase.md.langevin import Langevin
+from ase.md.verlet import VelocityVerlet
+from ase import units as ase_units
+
 import autode as ade
-from copy import deepcopy
-from typing import TYPE_CHECKING, Optional, Sequence, List, Union
-from numpy.random import RandomState
+import mlptrain
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
 from mlptrain.sampling import PlumedBias
@@ -21,14 +29,77 @@ from mlptrain.sampling.plumed import (
 from mlptrain.log import logger
 from mlptrain.box import Box
 from mlptrain.utils import work_in_tmp_dir
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-from ase.io.trajectory import Trajectory as ASETrajectory
-from ase.md.nptberendsen import NPTBerendsen
-from ase.md import Langevin, VelocityVerlet
-from ase import units as ase_units
+
 
 if TYPE_CHECKING:
+    from ase.io.trajectory import TrajectoryWriter
+
     from mlptrain.potentials import MLPotential
+
+
+def run_with_timeout(fn, *args, fn_timeout=None, **kwargs):
+    """
+    Run a callable with a best-effort signal-based timeout.
+
+    Uses Unix SIGALRM to interrupt *fn* after *fn_timeout* seconds,
+    defaulting to ``Config.dynamics_timeout``. This is lightweight (no
+    child processes) and works in any context (daemon workers, Pool
+    workers, standalone processes).
+
+    Note: SIGALRM can be masked or consumed by C-extension code
+    (e.g. PLUMED, PyTorch).  If that happens the signal will not
+    fire and the function will run to completion.  The caller (or
+    parent process) should maintain a hard-kill safety net via
+    ``Config.process_timeout`` for robustness.
+
+    Returns:
+        (result, finished_in_time: bool)
+    """
+    import signal
+
+    if fn_timeout is None:
+        fn_timeout = Config.dynamics_timeout
+
+    class _TimeoutException(Exception):
+        pass
+
+    def _handle_timeout(signum, frame):
+        raise _TimeoutException()
+
+    # Only the arming is guarded; wrapping the call itself would swallow
+    # genuine errors from fn and then silently run it a second time
+    old_handler = None
+    try:
+        old_handler = signal.signal(signal.SIGALRM, _handle_timeout)
+        signal.setitimer(signal.ITIMER_REAL, fn_timeout)
+    except Exception as e:
+        # signal module unavailable or handler setup failed;
+        # run without an inner timeout — the parent process
+        # enforces the hard-kill via Config.process_timeout
+        logger.warning(
+            f'Failed to set signal-based timeout ({e}); '
+            'running without inner timeout. The parent process '
+            'timeout (Config.process_timeout) remains as safety net.'
+        )
+        if old_handler is not None:
+            signal.signal(signal.SIGALRM, old_handler)
+
+        return fn(*args, **kwargs), True
+
+    try:
+        return fn(*args, **kwargs), True
+    except _TimeoutException:
+        logger.warning(
+            f'Trajectory cancelled due to running over '
+            f'maximum timeout, {fn_timeout} s'
+        )
+        return None, False
+    finally:
+        # Always disarm the timer and restore the previous handler
+        try:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+        finally:
+            signal.signal(signal.SIGALRM, old_handler)
 
 
 def run_mlp_md(
@@ -47,7 +118,7 @@ def run_mlp_md(
     copied_substrings: Optional[Sequence[str]] = None,
     kept_substrings: Optional[Sequence[str]] = None,
     **kwargs,
-) -> 'mlptrain.Trajectory':
+) -> Optional['mlptrain.Trajectory']:
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics. The function is executed in a temporary
@@ -119,7 +190,7 @@ def run_mlp_md(
 
     Returns:
 
-        (mlptrain.Trajectory):
+        (mlptrain.Trajectory | None):
     """
 
     restart = restart_files is not None
@@ -202,7 +273,7 @@ def _run_mlp_md(
     bias: Optional[mlptrain.Bias | mlptrain.PlumedBias] = None,
     restart_files: Optional[List[str]] = None,
     **kwargs,
-) -> 'mlptrain.Trajectory':
+) -> Optional['mlptrain.Trajectory']:
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics
@@ -269,7 +340,7 @@ def _run_mlp_md(
         **kwargs,
     )
 
-    _run_dynamics(
+    finished_in_time = _run_dynamics(
         ase_atoms=ase_atoms,
         ase_traj=ase_traj,
         traj_name=traj_name,
@@ -284,6 +355,9 @@ def _run_mlp_md(
         biased_energies=biased_energies,
         **kwargs,
     )
+    if not finished_in_time:
+        logger.warning('Skipping trajectory due to dynamics timeout.')
+        return None
 
     # Duplicate frames removed only if PLUMED bias is initialised not from file
     if restart and isinstance(bias, PlumedBias) and not bias.from_file:
@@ -361,7 +435,7 @@ def _attach_calculator_and_constraints(
 
 def _run_dynamics(
     ase_atoms: 'ase.atoms.Atoms',
-    ase_traj: ase.io.trajectory.TrajectoryWriter,
+    ase_traj: TrajectoryWriter,
     traj_name: str,
     interval: int,
     temp: float,
@@ -373,7 +447,7 @@ def _run_dynamics(
     pressure: Optional[float] = None,
     compress: Optional[float] = None,
     **kwargs,
-) -> None:
+) -> bool:
     """Initialise dynamics object and run dynamics"""
 
     if pressure is not None and compress is not None and temp > 0:
@@ -414,17 +488,25 @@ def _run_dynamics(
         dyn.attach(save_trajectory, interval=_traj_saving_interval(dt, kwargs))
 
     logger.info(f'Running {n_steps:.0f} steps with a timestep of {dt} fs')
-    dyn.run(steps=n_steps)
+    # Run the dynamics but cease after a specified time limit
+    # NOTE: this is not a perfect solution, some kind of periodic divergence
+    # check would be better
+    _, finished_in_time = run_with_timeout(
+        dyn.run, steps=n_steps, fn_timeout=Config.dynamics_timeout
+    )
 
     if isinstance(ase_atoms.calc, PlumedCalculator):
         # The calling process waits until PLUMED process has finished
         ase_atoms.calc.plumed.finalize()
 
-    return None
+    if not finished_in_time:
+        return False
+
+    return True
 
 
 def _save_trajectory(
-    ase_traj: ase.io.trajectory.TrajectoryWriter, traj_name: str, **kwargs
+    ase_traj: TrajectoryWriter, traj_name: str, **kwargs
 ) -> None:
     """
     Save the trajectory with a unique name based on the current simulation
@@ -620,7 +702,7 @@ def _initialise_traj(
     restart: bool,
     traj_name: str,
     remove_last: bool = True,
-) -> ase.io.trajectory.TrajectoryWriter:
+) -> TrajectoryWriter:
     """Initialise ASE trajectory object"""
 
     if not restart:

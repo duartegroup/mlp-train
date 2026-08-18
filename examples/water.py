@@ -23,4 +23,5 @@ if __name__ == '__main__':
         interval=10,
     )
 
-    trajectory.save(filename='water_trajectory.xyz')
+    if trajectory is not None:
+        trajectory.save(filename='water_trajectory.xyz')
