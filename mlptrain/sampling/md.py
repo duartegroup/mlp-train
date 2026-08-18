@@ -188,7 +188,15 @@ def run_mlp_md(
     )
 
     delta_time = time.perf_counter() - start_time
-    logger.info(f'MLP MD simulation completed in {delta_time / 60:.1f} m.')
+    if delta_time < 60:
+        logger.info(f'MLP MD simulation completed in {delta_time:02.2f} s.')
+    else:
+        hours, remainder = divmod(delta_time, 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        logger.info(
+            f'MLP MD simulation completed in {hours:02d} h {minutes:02d} min {seconds:02d} s.'
+        )
 
     return traj
 
