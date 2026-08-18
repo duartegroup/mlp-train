@@ -3,6 +3,7 @@ from __future__ import annotations
 import multiprocessing as mp
 import os
 import shutil
+from collections.abc import Sequence
 from copy import deepcopy
 from subprocess import Popen
 from typing import TYPE_CHECKING
@@ -288,7 +289,7 @@ def train(
 
 def _add_active_configs(
     mlp: MLPotential,
-    init_config: mlptrain.Configuration,
+    init_config: mlptrain.Configuration | Sequence[mlptrain.Configuration],
     selection_method: SelectionMethod,
     n_configs: int = 10,
     **kwargs,
@@ -317,8 +318,17 @@ def _add_active_configs(
         )
         kwargs['bias'] = _remove_bias_potential(kwargs['bias'])
 
-    configs = ConfigurationSet()
+    new_configs = ConfigurationSet()
     results = []
+    if isinstance(init_config, mlptrain.Configuration):
+        initial_configurations = [init_config.copy() for _ in range(n_configs)]
+    else:
+        initial_configurations = init_config
+
+    if len(initial_configurations) != n_configs:
+        raise ValueError(
+            f"Number of initial configurations ({len(initial_configurations)}) doesn't match {n_configs=}"
+        )
 
     with mp.get_context('spawn').Pool(processes=n_processes) as pool:
         for idx in range(n_configs):
@@ -327,7 +337,7 @@ def _add_active_configs(
             result = pool.apply_async(
                 _gen_active_config,
                 args=(
-                    init_config.copy(),
+                    initial_configurations[idx],
                     mlp.copy(),
                     selection_method.copy(),
                     n_cores_pp,
@@ -339,7 +349,7 @@ def _add_active_configs(
         pool.close()
         for result in results:
             try:
-                configs.append(result.get(timeout=None))
+                new_configs.append(result.get(timeout=None))
 
             # Lots of different exceptions can be raised when trying to
             # generate an active config, continue regardless..
@@ -348,8 +358,8 @@ def _add_active_configs(
                 continue
         pool.join()
 
-    if 'method_name' in kwargs and configs.has_a_none_energy:
-        for config in configs:
+    if 'method_name' in kwargs and new_configs.has_a_none_energy:
+        for config in new_configs:
             if config.energy.true is None:
                 config.single_point(
                     kwargs['method_name'],
@@ -363,7 +373,7 @@ def _add_active_configs(
     ):
         _generate_inheritable_metad_bias(n_configs=n_configs, kwargs=kwargs)
 
-    mlp.training_data += configs
+    mlp.training_data += new_configs
 
     os.makedirs('datasets', exist_ok=True)
     mlp.training_data.save(
