@@ -58,6 +58,7 @@ class _ConfigClass:
 
     mace_params = {
         'valid_fraction': 0.1,
+        'valid_file': None,
         'max_num_epochs': 1200,
         'config_type_weights': '{"Default":1.0}',
         'model': 'MACE',

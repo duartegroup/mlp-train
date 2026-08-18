@@ -27,6 +27,6 @@ if __name__ == '__main__':
         dt=0.5,
         interval=10,
     )
-
-    # and compare, plotting a parity plots and E_true, ∆E and ∆F
-    trajectory.compare(mlp, 'orca')
+    if trajectory is not None:
+        # and compare, plotting a parity plots and E_true, ∆E and ∆F
+        trajectory.compare(mlp, 'orca')

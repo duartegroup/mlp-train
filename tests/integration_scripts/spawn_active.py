@@ -79,7 +79,10 @@ def main() -> None:
     # the signature above is kept identical so the substitution stays honest.
     active._gen_active_config_worker = worker  # ty:ignore[invalid-assignment]
 
-    mlp = DummyPotential('spawn_active', system=None)
+    mlp = DummyPotential(
+        'spawn_active',
+        system=None,  # ty: ignore[invalid-argument-type]
+    )
     active._add_active_configs(
         mlp,
         init_config=make_config(99),

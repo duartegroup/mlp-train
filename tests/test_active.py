@@ -173,7 +173,7 @@ def test_worker_puts_result_on_queue(monkeypatch):
         result_queue,
         3,
         _config(0.0),
-        mlp=None,
+        mlp=None,  # ty: ignore[invalid-argument-type]
         selector=AbsDiffE(),
         n_cores=1,
         kwargs={'max_time': 1.0, 'method_name': 'mock'},
@@ -201,7 +201,7 @@ def test_worker_reports_exceptions_instead_of_raising(monkeypatch):
         result_queue,
         0,
         _config(0.0),
-        mlp=None,
+        mlp=None,  # ty: ignore[invalid-argument-type]
         selector=AbsDiffE(),
         n_cores=1,
         kwargs={'max_time': 1.0, 'method_name': 'mock'},

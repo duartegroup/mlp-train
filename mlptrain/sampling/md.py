@@ -8,15 +8,15 @@ from typing import TYPE_CHECKING, Optional, Sequence, List, Union
 import numpy as np
 from numpy.random import RandomState
 import ase
-import autode as ade
+import ase.io
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.md.nptberendsen import NPTBerendsen
 from ase.md.langevin import Langevin
 from ase.md.verlet import VelocityVerlet
-from ase.io import read
 from ase import units as ase_units
 
+import autode as ade
 import mlptrain
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
@@ -29,6 +29,7 @@ from mlptrain.sampling.plumed import (
 from mlptrain.log import logger
 from mlptrain.box import Box
 from mlptrain.utils import work_in_tmp_dir
+
 
 if TYPE_CHECKING:
     from ase.io.trajectory import TrajectoryWriter
@@ -449,7 +450,7 @@ def _run_dynamics(
 ) -> bool:
     """Initialise dynamics object and run dynamics"""
 
-    if all([value is not None for value in [pressure, compress]]) and temp > 0:
+    if pressure is not None and compress is not None and temp > 0:
         # Run NPT dynamics if pressure and compressibility are specified
         pressure_au = pressure * ase_units.bar
         compress_au = compress / ase_units.bar
@@ -621,8 +622,8 @@ def _attach_plumed_coordinates(
 def _set_momenta_and_geometry(
     ase_atoms: 'ase.atoms.Atoms',
     temp: float,
-    bbond_energy: dict,
-    fbond_energy: dict,
+    bbond_energy: dict | None,
+    fbond_energy: dict | None,
     restart: bool,
     traj_name: str,
 ) -> None:
@@ -683,7 +684,12 @@ def _set_momenta_and_geometry(
             'last configuration'
         )
 
-        last_configuration = read(traj_name)
+        last_configuration = ase.io.read(traj_name)
+
+        # Make sure we've only read a single structure, not multiple of them!
+        assert isinstance(
+            last_configuration, ase.Atoms
+        ), 'more than one configuration in file {traj_name}!'
 
         ase_atoms.set_positions(last_configuration.get_positions())
         ase_atoms.set_momenta(last_configuration.get_momenta())

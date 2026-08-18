@@ -4,6 +4,7 @@ import mlptrain as mlt
 import pytest
 import numpy as np
 from autode.atoms import Atom
+import os
 
 from ase.calculators.lj import Calculator, LennardJones
 
@@ -62,6 +63,16 @@ def h2o_configuration(h2o):
     config = system.random_configuration()
 
     return config
+
+
+@pytest.fixture
+def h2o_configuration_set(h2o):
+    system = mlt.System(h2o, box=[50, 50, 50])
+    config_set = mlt.ConfigurationSet()
+    config_set.append(system.random_configuration())
+    config_set.append(system.random_configuration())
+
+    return config_set
 
 
 @pytest.fixture
@@ -258,6 +269,14 @@ def empty_molecule():
     return molecule
 
 
+@pytest.fixture
+def chdir_tmp_path(request, tmp_path):
+    """Change to a temporary directory before running the test and reverting to original working directory."""
+    os.chdir(tmp_path)
+    yield tmp_path
+    os.chdir(request.config.invocation_dir)
+
+
 class HarmonicPotential(Calculator):
     __test__ = False
 
@@ -290,7 +309,7 @@ class HarmonicPotential(Calculator):
 class TestPotential(mlt.potentials.MLPotential):
     __test__ = False
 
-    def __init__(self, name: str, calculator='harmonic', system=None):
+    def __init__(self, name: str, system, calculator='harmonic'):
         super().__init__(name=name, system=system)
         self.calculator = calculator.lower()
 
@@ -321,7 +340,9 @@ class TestPotential(mlt.potentials.MLPotential):
 def test_potential():
     """Dummy MLPotential"""
 
-    def _create_potential(name='test', calculator='harmonic', system=None):
-        return TestPotential(name, calculator, system)
+    def _create_potential(
+        name: str = 'test', calculator: str = 'harmonic', system=None
+    ):
+        return TestPotential(name, system, calculator=calculator)
 
     return _create_potential
