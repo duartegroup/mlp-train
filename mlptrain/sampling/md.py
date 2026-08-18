@@ -162,7 +162,8 @@ def run_mlp_md(
 
     else:
         logger.info('Running MLP MD')
-        start_time = time.perf_counter()
+
+    start_time = time.perf_counter()
 
     decorator = work_in_tmp_dir(
         copied_substrings=copied_substrings_list,
