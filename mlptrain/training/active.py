@@ -1,24 +1,26 @@
 from __future__ import annotations
 
-import mlptrain
+import multiprocessing as mp
 import os
 import shutil
-import numpy as np
-import multiprocessing as mp
 from copy import deepcopy
-from typing import TYPE_CHECKING, Optional, Union, List
 from subprocess import Popen
+from typing import TYPE_CHECKING
+
+import numpy as np
 from ase import units as ase_units
 from ase.io import write as ase_write
 from ase.io.trajectory import Trajectory as ASETrajectory
+
+import mlptrain
+from mlptrain.box import Box
 from mlptrain.config import Config
-from mlptrain.sampling import PlumedBias
-from mlptrain.sampling.md_openmm import run_mlp_md_openmm
-from mlptrain.sampling.md import run_mlp_md
-from mlptrain.training.selection import SelectionMethod, AbsDiffE
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.log import logger
-from mlptrain.box import Box
+from mlptrain.sampling import PlumedBias
+from mlptrain.sampling.md import run_mlp_md
+from mlptrain.sampling.md_openmm import run_mlp_md_openmm
+from mlptrain.training.selection import AbsDiffE, SelectionMethod
 
 if TYPE_CHECKING:
     from mlptrain.potentials import MLPotential
@@ -31,23 +33,23 @@ def train(
     max_active_time: float = 1000,
     n_configs_iter: int = 10,
     temp: float = 300.0,
-    max_e_threshold: Optional[float] = None,
+    max_e_threshold: float | None = None,
     max_active_iters: int = 50,
     n_init_configs: int = 10,
-    init_configs: Optional['mlptrain.ConfigurationSet'] = None,
+    init_configs: mlptrain.ConfigurationSet | None = None,
     fix_init_config: bool = False,
-    bbond_energy: Optional[dict] = None,
-    fbond_energy: Optional[dict] = None,
-    init_active_temp: Optional[float] = None,
+    bbond_energy: dict | None = None,
+    fbond_energy: dict | None = None,
+    init_active_temp: float | None = None,
     min_active_iters: int = 1,
     bias_start_iter: int = 0,
-    restart_iter: Optional[int] = None,
+    restart_iter: int | None = None,
     inherit_metad_bias: bool = False,
-    constraints: Optional[List] = None,
+    constraints: list | None = None,
     bias: mlptrain.Bias | mlptrain.PlumedBias | None = None,
     md_program: str = 'ASE',
     pbc: bool = False,
-    box_size: Optional[list] = None,
+    box_size: list | None = None,
     keep_al_trajs: bool = False,
 ) -> None:
     """
@@ -272,12 +274,11 @@ def train(
         _remove_last_inherited_metad_bias_file(max_active_iters)
 
     logger.info(f'Final dataset size = {mlp.n_train} Active learning = DONE')
-    return None
 
 
 def _add_active_configs(
     mlp: MLPotential,
-    init_config: 'mlptrain.Configuration',
+    init_config: mlptrain.Configuration,
     selection_method: SelectionMethod,
     n_configs: int = 10,
     **kwargs,
@@ -367,18 +368,16 @@ def _add_active_configs(
 
             os.remove(traj_name)
 
-    return None
-
 
 def _gen_active_config(
-    config: 'mlptrain.Configuration',
-    mlp: 'MLPotential',
+    config: mlptrain.Configuration,
+    mlp: MLPotential,
     selector: SelectionMethod,
     n_cores: int,
     max_time: float,
     method_name: str,
     **kwargs,
-) -> Optional['mlptrain.Configuration']:
+) -> mlptrain.Configuration | None:
     """
     Generate a configuration based on 'active learning', by running MLP-MD
     until a configuration that satisfies the selection_method is found.
@@ -566,16 +565,15 @@ def _gen_active_config(
 
 
 def _set_init_training_configs(
-    mlp: 'MLPotential',
-    init_configs: 'mlptrain.ConfigurationSet',
+    mlp: MLPotential,
+    init_configs: mlptrain.ConfigurationSet,
     method_name: str,
 ) -> None:
     """Set some initial training configurations"""
 
     if len(init_configs) == 0:
         raise ValueError(
-            'Cannot set initial training configurations with a '
-            'set of size 0'
+            'Cannot set initial training configurations with a set of size 0'
         )
 
     if not all(cfg.energy.true is not None for cfg in init_configs):
@@ -587,8 +585,6 @@ def _set_init_training_configs(
 
     mlp.training_data += init_configs
 
-    return None
-
 
 def _gen_and_set_init_training_configs(
     mlp: MLPotential, method_name: str, num: int
@@ -599,7 +595,7 @@ def _gen_and_set_init_training_configs(
     """
     if len(mlp.training_data) >= num:
         logger.warning('MLP had sufficient training data')
-        return None
+        return
 
     # Initial configurations are not defined, so make some - will use random
     # with the largest maximum distance between molecules possible
@@ -657,8 +653,6 @@ def _save_ase_traj_as_xyz(
     ase_traj = ASETrajectory(traj_name, 'r')
     ase_write(xyz_name, ase_traj, 'xyz')
 
-    return None
-
 
 def _initialise_restart(
     mlp: MLPotential,
@@ -681,11 +675,9 @@ def _initialise_restart(
                 f'{restart_iter} not found'
             )
 
-    return None
-
 
 def _attach_plumed_coords_to_init_configs(
-    init_configs: 'mlptrain.ConfigurationSet', bias: 'mlptrain.PlumedBias'
+    init_configs: mlptrain.ConfigurationSet, bias: mlptrain.PlumedBias
 ) -> None:
     """
     Attach PLUMED collective variable values to the configurations in the
@@ -712,8 +704,7 @@ def _attach_plumed_coords_to_init_configs(
     driver_setup = list(dict.fromkeys(driver_setup))
 
     with open('driver_setup.dat', 'w') as f:
-        for line in driver_setup:
-            f.write(f'{line}\n')
+        f.writelines(f'{line}\n' for line in driver_setup)
 
     driver_process = Popen(
         [
@@ -743,18 +734,16 @@ def _attach_plumed_coords_to_init_configs(
         for j, config in enumerate(init_configs):
             config.plumed_coordinates[i] = cv_values[j]
 
-    return None
-
 
 def _update_init_config(
-    init_config: 'mlptrain.Configuration',
+    init_config: mlptrain.Configuration,
     mlp: MLPotential,
     fix_init_config: bool,
     bias: mlptrain.PlumedBias | mlptrain.Bias | None,
     inherit_metad_bias: bool,
     bias_start_iter: int,
     iteration: int,
-) -> 'mlptrain.Configuration':
+) -> mlptrain.Configuration:
     """Update initial configuration for an active learning iteration"""
 
     if fix_init_config:
@@ -778,7 +767,7 @@ def _update_init_config(
 
 
 def _check_bias(
-    bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
+    bias: mlptrain.Bias | mlptrain.PlumedBias | None,
     temp: float,
     inherit_metad_bias: bool,
 ) -> None:
@@ -787,7 +776,16 @@ def _check_bias(
     requested parameters
     """
 
-    _check_bias_parameters(bias, temp)
+    if (
+        isinstance(bias, PlumedBias)
+        and not bias.from_file
+        and bias.metadynamics
+        and bias.height == 0
+    ):
+        logger.info(
+            'Setting the height for metadynamics active learning to 5*k_B*T'
+        )
+        bias.height = 5 * ase_units.kB * temp
 
     if inherit_metad_bias:
         if not isinstance(bias, PlumedBias):
@@ -800,28 +798,6 @@ def _check_bias(
                 'Metadynamics bias cannot be inherited using '
                 'PlumedBias from a file'
             )
-
-    return None
-
-
-def _check_bias_parameters(
-    bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']], temp: float
-) -> None:
-    """
-    Check if all the required parameters of the bias are set (currently
-    only checks PlumedBias initialised not from a file)
-    """
-
-    if isinstance(bias, PlumedBias):
-        if bias.from_file is False and bias.metadynamics is True:
-            if bias.height == 0:
-                logger.info(
-                    'Setting the height for metadynamics active '
-                    'learning to 5*k_B*T'
-                )
-                bias.height = 5 * ase_units.kB * temp
-
-    return None
 
 
 def _remove_bias_potential(
@@ -889,12 +865,10 @@ def _generate_inheritable_metad_bias(n_configs: int, kwargs: dict) -> None:
             'metadynamics bias could not be found'
         )
 
-    return None
-
 
 def _generate_inheritable_metad_bias_hills(
     n_configs: int,
-    hills_files: List[str],
+    hills_files: list[str],
     iteration: int,
     bias_start_iter: int,
 ) -> None:
@@ -983,14 +957,12 @@ def _generate_inheritable_metad_bias_hills(
         dst=f'accumulated_bias/bias_after_iter_{iteration}.dat',
     )
 
-    return None
-
 
 def _attach_inherited_bias_energies(
-    configurations: 'mlptrain.ConfigurationSet',
+    configurations: mlptrain.ConfigurationSet,
     iteration: int,
     bias_start_iter: int,
-    bias: 'mlptrain.PlumedBias',
+    bias: mlptrain.PlumedBias,
 ) -> None:
     """
     Attach inherited metadynamics bias energies from the previous active
@@ -1010,14 +982,14 @@ def _attach_inherited_bias_energies(
             for config in configurations:
                 config.energy.inherited_bias = 0
 
-            return None
+            return
 
         else:
             _generate_grid_from_hills(
                 configurations=configurations, iteration=iteration, bias=bias
             )
 
-        cvs_cols = range(0, bias.n_metad_cvs)
+        cvs_cols = range(bias.n_metad_cvs)
         cvs_grid = np.loadtxt(
             f'bias_grid_{iteration-1}.dat', usecols=cvs_cols, ndmin=2
         )
@@ -1075,13 +1047,13 @@ def _attach_inherited_bias_energies(
 
         os.remove(f'bias_grid_{iteration-1}.dat')
 
-    return None
+    return
 
 
 def _generate_grid_from_hills(
-    configurations: 'mlptrain.ConfigurationSet',
+    configurations: mlptrain.ConfigurationSet,
     iteration: int,
-    bias: 'mlptrain.PlumedBias',
+    bias: mlptrain.PlumedBias,
 ) -> None:
     """
     Generate bias_grid_{iteration-1}.dat from HILLS_{iteration-1}.dat
@@ -1132,8 +1104,6 @@ def _generate_grid_from_hills(
     )
     sum_hills_process.wait()
 
-    return None
-
 
 def _remove_last_inherited_metad_bias_file(max_active_iters: int) -> None:
     """Remove the last inherited metadynamics bias file"""
@@ -1144,5 +1114,3 @@ def _remove_last_inherited_metad_bias_file(max_active_iters: int) -> None:
         if os.path.exists(fname):
             os.remove(fname)
             break
-
-    return None
