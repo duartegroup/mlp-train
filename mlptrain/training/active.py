@@ -867,11 +867,12 @@ def _update_init_config(
         return mlp.training_data.lowest_energy
 
     if inherit_metad_bias and iteration >= bias_start_iter:
+        assert isinstance(bias, mlptrain.PlumedBias)
         _attach_inherited_bias_energies(
             configurations=mlp.training_data,
             iteration=iteration,
             bias_start_iter=bias_start_iter,
-            bias=bias,  # ty: ignore[invalid-argument-type]
+            bias=bias,
         )
 
         return mlp.training_data.lowest_inherited_biased_energy
