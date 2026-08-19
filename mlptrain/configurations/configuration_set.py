@@ -234,9 +234,7 @@ class ConfigurationSet(list):
             return
 
         if not self.allow_duplicates and value in self:
-            logger.warning(
-                'Not appending configuration to set - already present'
-            )
+            logger.info('Not appending configuration to set - already present')
             return
 
         return super().append(value)
@@ -784,23 +782,16 @@ class ConfigurationSet(list):
 
     def __add__(
         self,
-        other: 'Configuration | ConfigurationSet',
-    ) -> 'ConfigurationSet':  # ty:ignore[invalid-method-override]
+        other: object,
+    ) -> ConfigurationSet:
         """Add another configuration or set of configurations onto this one"""
 
         if isinstance(other, Configuration):
             self.append(other)
-
         elif isinstance(other, ConfigurationSet):
             self.extend(other)
-
         else:
-            raise TypeError(
-                'Can only add a Configuration or'
-                f' ConfigurationSet, not {type(other)}'
-            )
-
-        logger.info(f'Current number of configurations is {len(self)}')
+            return NotImplemented
         return self
 
     def _run_parallel_method(
