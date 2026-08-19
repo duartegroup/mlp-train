@@ -200,6 +200,11 @@ def train(
             # to ensure they are part of training set
             init_configs.extend(al_starting_configs)
 
+        if not fix_init_config:
+            logger.warning('`fix_init_config` must be set to True if you provide al_starting_configs')
+            logger.warning("setting 'fix_init_config = True'")
+            fix_init_config = True
+
     if restart_iter is not None:
         _initialise_restart(
             mlp=mlp,
