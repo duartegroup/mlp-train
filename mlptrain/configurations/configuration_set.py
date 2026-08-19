@@ -790,17 +790,10 @@ class ConfigurationSet(list):
 
         if isinstance(other, Configuration):
             self.append(other)
-
         elif isinstance(other, ConfigurationSet):
             self.extend(other)
-
         else:
-            raise TypeError(
-                'Can only add a Configuration or'
-                f' ConfigurationSet, not {type(other)}'
-            )
-
-        logger.info(f'Current number of configurations is {len(self)}')
+            return NotImplemented
         return self
 
     def _run_parallel_method(
