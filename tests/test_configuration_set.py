@@ -84,10 +84,8 @@ def test_addition_unsupported(mlp_caplog):
 def test_addition_none():
     configs = ConfigurationSet()
     # Weirdly, appending None is silently skipped,
-    # but adding None raises TypeError!
+    # (but adding None raises TypeError! See above)
     configs.append(None)
-    with pytest.raises(TypeError, match='unsupported operand type'):
-        configs + None
     assert len(configs) == 0
 
 
@@ -101,6 +99,8 @@ def test_config_addition(mlp_caplog):
 
     # By default, identical configs are not added
     configs = configs + config
+    assert len(configs) == 1
+
     configs.append(config)
     assert len(configs) == 1
 
@@ -125,9 +125,35 @@ def test_config_addition_with_duplicates(mlp_caplog):
     assert len(mlp_caplog.records) == 0
 
 
+def test_two_config_sets_addition(mlp_caplog):
+    mlp_caplog.set_level(logging.INFO, logger='mlptrain')
+
+    # Currently, adding two ConfigurationSets,
+    # or calling the "extend()" method, doesn't check for duplicates!
+    # We should probably change that!
+    config = Configuration()
+    configs1 = ConfigurationSet(config)
+    configs2 = ConfigurationSet(config)
+
+    assert len(configs1 + configs2) == 2
+
+    configs2.extend(configs2)
+    assert len(configs2) == 2
+
+
 def test_addition_expression():
-    """This is weird! Test that just having an addition expression
-    modifies the original ConfigurationSet
+    """This is weird! Just having an addition expression
+    modifies the original ConfigurationSet.
+
+    Notably, this is NOT how how stdlib list works!
+    >>> a = [1]
+    >>> a + [2]
+    [1, 2]
+    >>> a
+    [1]
+
+    Notice that the addition expression creates a copy,
+    and doesn't modify the original list `a`.
     """
     config = Configuration()
     config_set = ConfigurationSet(allow_duplicates=True)
@@ -135,6 +161,7 @@ def test_addition_expression():
     config_set + config
     assert len(config_set) == 1
 
+    # This also behaves when adding two ConfigurationSets
     config_set + config_set
     assert len(config_set) == 2
 
