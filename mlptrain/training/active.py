@@ -99,7 +99,7 @@ def train(
         init_configs: (gt.ConfigurationSet) A set of configurations from
                       which to start the active learning from
 
-        starting_configs: Starting configurations for the AL iterations.
+        al_starting_configs: Starting configurations for the AL iterations.
                           If provided, their length must equal n_configs_iter.
 
         fix_init_config: (bool) Always start from the same initial
