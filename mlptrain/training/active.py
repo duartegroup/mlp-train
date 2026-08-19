@@ -198,7 +198,8 @@ def train(
         else:
             # Merge al_starting_configs to init_configs,
             # to ensure they are part of training set
-            init_configs.extend(al_starting_configs)
+            for config in al_starting_configs:
+                init_configs.append(config)
 
         if not fix_init_config:
             logger.warning(
