@@ -782,8 +782,8 @@ class ConfigurationSet(list):
 
     def __add__(
         self,
-        other: 'Configuration | ConfigurationSet',
-    ) -> 'ConfigurationSet':  # ty:ignore[invalid-method-override]
+        other: object,
+    ) -> ConfigurationSet:
         """Add another configuration or set of configurations onto this one"""
 
         if isinstance(other, Configuration):
