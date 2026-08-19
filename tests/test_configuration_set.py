@@ -69,6 +69,76 @@ def config_set_xyz_with_energies_forces():
     return configs, expected_values
 
 
+def test_addition_unsupported(mlp_caplog):
+    mlp_caplog.set_level(logging.INFO, logger='mlptrain')
+    configs = ConfigurationSet()
+
+    with pytest.raises(TypeError, match='unsupported operand type'):
+        configs + 1
+    with pytest.raises(TypeError, match='unsupported operand type'):
+        1 + configs  # ty: ignore[unsupported-operator]
+    with pytest.raises(TypeError, match='unsupported operand type'):
+        configs + None
+
+
+def test_addition_none():
+    configs = ConfigurationSet()
+    # Weirdly, appending None is silently skipped,
+    # but adding None raises TypeError!
+    configs.append(None)
+    with pytest.raises(TypeError, match='unsupported operand type'):
+        configs + None
+    assert len(configs) == 0
+
+
+def test_config_addition(mlp_caplog):
+    mlp_caplog.set_level(logging.INFO, logger='mlptrain')
+    configs = ConfigurationSet()
+    config = Configuration()
+
+    configs = configs + config
+    assert len(configs) == 1
+
+    # By default, identical configs are not added
+    configs = configs + config
+    configs.append(config)
+    assert len(configs) == 1
+
+    assert len(mlp_caplog.records) == 2
+    for record in mlp_caplog.records:
+        assert (
+            record.message
+            == 'Not appending configuration to set - already present'
+        )
+
+
+def test_config_addition_with_duplicates(mlp_caplog):
+    mlp_caplog.set_level(logging.INFO, logger='mlptrain')
+
+    config = Configuration()
+    configs_with_duplicates = ConfigurationSet(allow_duplicates=True)
+
+    configs_with_duplicates = configs_with_duplicates + config + config
+    configs_with_duplicates.append(config)
+
+    assert len(configs_with_duplicates) == 3
+    assert len(mlp_caplog.records) == 0
+
+
+def test_addition_expression():
+    """This is weird! Test that just having an addition expression
+    modifies the original ConfigurationSet
+    """
+    config = Configuration()
+    config_set = ConfigurationSet(allow_duplicates=True)
+
+    config_set + config
+    assert len(config_set) == 1
+
+    config_set + config_set
+    assert len(config_set) == 2
+
+
 @work_in_tmp_dir()
 def test_configurations_print(config_set_xyz_with_energies_forces):
     """Regression test for https://github.com/duartegroup/mlp-train/issues/223"""
