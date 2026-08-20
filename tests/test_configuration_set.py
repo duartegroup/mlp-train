@@ -128,17 +128,22 @@ def test_config_addition_with_duplicates(mlp_caplog):
 def test_two_config_sets_addition(mlp_caplog):
     mlp_caplog.set_level(logging.INFO, logger='mlptrain')
 
-    # Currently, adding two ConfigurationSets,
-    # or calling the "extend()" method, doesn't check for duplicates!
-    # We should probably change that!
     config = Configuration()
     configs1 = ConfigurationSet(config)
-    configs2 = ConfigurationSet(config)
+    configs2 = ConfigurationSet(config, allow_duplicates=True)
 
-    assert len(configs1 + configs2) == 2
+    # Duplicates should be filtered out for configs1
+    assert len(configs1 + configs2) == 1
 
-    configs2.extend(configs2)
+    configs1.extend(configs2)
+    assert len(configs2) == 1
+
+    # Duplicates should be allowed for configs2
+    configs2.extend(configs1)
     assert len(configs2) == 2
+
+    configs2 + configs2
+    assert len(configs2) == 4
 
 
 def test_addition_expression():
