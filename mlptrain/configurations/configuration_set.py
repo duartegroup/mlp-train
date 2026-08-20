@@ -4,6 +4,7 @@ import mlptrain
 import os
 import re
 import numpy as np
+from collections.abc import Iterable
 from time import time
 from multiprocessing import Pool
 from typing import TYPE_CHECKING, Optional, List, Literal, Union
@@ -793,6 +794,19 @@ class ConfigurationSet(list):
         else:
             return NotImplemented
         return self
+
+    def extend(self, other: Iterable) -> None:
+        if not isinstance(other, ConfigurationSet):
+            raise TypeError(
+                'You can only extend ConfigurationSet with another ConfigurationSet'
+            )
+
+        # Without this the loop below becomes infinite!
+        if self is other:
+            other = other.copy()
+
+        for conf in other:
+            self.append(conf)
 
     def _run_parallel_method(
         self, function, n_cores_pp, keep_output_files, **kwargs
