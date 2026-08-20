@@ -130,13 +130,20 @@ def test_two_config_sets_addition(mlp_caplog):
 
     config = Configuration()
     configs1 = ConfigurationSet(config)
-    configs2 = ConfigurationSet(config)
+    configs2 = ConfigurationSet(config, allow_duplicates=True)
 
-    # Duplicates should be filtered out
+    # Duplicates should be filtered out for configs1
     assert len(configs1 + configs2) == 1
 
     configs1.extend(configs2)
     assert len(configs2) == 1
+
+    # Duplicates should be allowed for configs2
+    configs2.extend(configs1)
+    assert len(configs2) == 2
+
+    configs2 + configs2
+    assert len(configs2) == 4
 
 
 def test_addition_expression():
