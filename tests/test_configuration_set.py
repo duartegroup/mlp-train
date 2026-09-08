@@ -105,7 +105,7 @@ def test_config_addition(mlp_caplog):
 
     assert len(mlp_caplog.records) == 1
     assert (
-        mlp_caplog.records[0].record.message
+        mlp_caplog.records[0].message
         == 'Not appending configuration to set - already present'
     )
 
