@@ -222,17 +222,19 @@ class ConfigurationSet(list):
             c.time if c.time is not None else 0.0 for c in self[from_idx:]
         )
 
-    def append(self, value: Optional['mlptrain.Configuration']) -> None:
+    def append(self, value: Configuration) -> None:
         """
-        Append an item onto these set of configurations. None will not be
-        appended
+        Append an item onto these set of configurations.
 
         Arguments:
             value (Configuration): Structure in a form of Configuration
+        raises: TypeError if added item is not Configuration
         """
 
-        if value is None:
-            return
+        if not isinstance(value, Configuration):
+            raise TypeError(
+                f'Cannot append value {value} of type {type(value)} to ConfigurationSet'
+            )
 
         if not self.allow_duplicates and value in self:
             logger.info('Not appending configuration to set - already present')
@@ -795,12 +797,7 @@ class ConfigurationSet(list):
             return NotImplemented
         return self
 
-    def extend(self, other: Iterable) -> None:
-        if not isinstance(other, ConfigurationSet):
-            raise TypeError(
-                'You can only extend ConfigurationSet with another ConfigurationSet'
-            )
-
+    def extend(self, other: Iterable[Configuration]) -> None:
         # Without this the loop below becomes infinite!
         if self is other:
             other = other.copy()

@@ -81,11 +81,16 @@ def test_addition_unsupported(mlp_caplog):
         configs + None
 
 
-def test_addition_none():
+def test_append_nonconfig_fails():
     configs = ConfigurationSet()
-    # Weirdly, appending None is silently skipped,
-    # (but adding None raises TypeError! See above)
-    configs.append(None)
+
+    # Trying to append anything else beyond Configuration must raise
+    with pytest.raises(TypeError, match='Cannot append value.*'):
+        configs.append(None)  # ty: ignore[invalid-argument-type]
+
+    with pytest.raises(TypeError, match='Cannot append value.*'):
+        configs.append(1)  # ty: ignore[invalid-argument-type]
+
     assert len(configs) == 0
 
 
@@ -154,6 +159,21 @@ def test_two_config_sets_addition(mlp_caplog):
 
     configs2 + configs2
     assert len(configs2) == 4
+
+
+def test_extend_accepts_iterables():
+    config = Configuration()
+    configs = ConfigurationSet(allow_duplicates=True)
+
+    configs.extend([config, config])
+    assert len(configs) == 2
+
+    configs.extend((config, config))
+    assert len(configs) == 4
+
+    # If the list contains a member that is not Configuration (or None),
+    # we should raise.
+    # configs.extend([config, 1])
 
 
 def test_addition_expression():
