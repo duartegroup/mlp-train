@@ -94,6 +94,8 @@ def test_config_addition(mlp_caplog):
     configs = ConfigurationSet()
     config = Configuration()
 
+    assert len(configs) == 0
+
     configs = configs + config
     assert len(configs) == 1
 
@@ -149,17 +151,18 @@ def test_two_config_sets_addition(mlp_caplog):
 
 def test_addition_expression():
     """This is weird! Just having an addition expression
-    modifies the original ConfigurationSet.
+    modifies the original ConfigurationSet instead of creating a copy.
 
     Notably, this is NOT how how stdlib list works!
+    Here is the actual behaviour for list type:
+
     >>> a = [1]
     >>> a + [2]
     [1, 2]
     >>> a
     [1]
 
-    Notice that the addition expression creates a copy,
-    and doesn't modify the original list `a`.
+    Notice that the original list `a` is not modified.
     """
     config = Configuration()
     config_set = ConfigurationSet(allow_duplicates=True)
