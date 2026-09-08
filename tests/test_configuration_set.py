@@ -144,11 +144,13 @@ def test_two_config_sets_addition(mlp_caplog):
     assert len(configs1 + configs2) == 1
 
     configs1.extend(configs2)
+    assert len(configs1) == 1
     assert len(configs2) == 1
 
     # Duplicates should be allowed for configs2
     configs2.extend(configs1)
     assert len(configs2) == 2
+    assert len(configs1) == 1
 
     configs2 + configs2
     assert len(configs2) == 4
