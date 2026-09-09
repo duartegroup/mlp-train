@@ -243,6 +243,19 @@ def test_addition_expression():
     assert len(config_set) == 2
 
 
+def test_extend_with_itself():
+    """This is a regression test to ensure that
+    when adding (extending) ConfigurationSet to itself
+    does not enter infinite loop"""
+    config = Configuration()
+    config_set = ConfigurationSet(config, allow_duplicates=True)
+
+    config_set + config_set
+    config_set.extend(config_set)
+
+    config_set.extend(iter(config_set))
+
+
 @work_in_tmp_dir()
 def test_configurations_print(config_set_xyz_with_energies_forces):
     """Regression test for https://github.com/duartegroup/mlp-train/issues/223"""

@@ -801,11 +801,10 @@ class ConfigurationSet(list):
         return self.__add__(other)
 
     def extend(self, other: Iterable[Configuration]) -> None:
-        # Without this the loop below becomes infinite!
-        if self is other:
-            other = other.copy()
-
-        for conf in other:
+        # NOTE: It is very important to make a copy of "other"
+        # before iterating over it, otherwise we'll get infinite loop
+        # if we try to extend / add instance of ConfigurationSet to itself.
+        for conf in list(other):
             self.append(conf)
 
     def _run_parallel_method(
