@@ -80,6 +80,12 @@ def test_addition_unsupported(mlp_caplog):
     with pytest.raises(TypeError, match='unsupported operand type'):
         configs + None
 
+    # Same for in-place addition (__iadd__ method)
+    with pytest.raises(TypeError, match='unsupported operand type'):
+        configs += 1
+    with pytest.raises(TypeError, match='unsupported operand type'):
+        configs += None
+
 
 def test_append_nonconfig_fails():
     configs = ConfigurationSet()
@@ -152,6 +158,28 @@ def test_two_config_sets_addition():
     configs2 + configs1
     assert len(configs2) == 2
     assert len(configs1) == 1
+
+
+def test_in_place_addition():
+    config = Configuration()
+    configs1 = ConfigurationSet(config)
+    configs2 = ConfigurationSet(config, allow_duplicates=True)
+
+    # Duplicates should be filtered out for configs1
+    configs1 += configs2
+    assert len(configs1) == 1
+    assert len(configs2) == 1
+
+    # Duplicates should be allowed for configs2
+    configs2 += configs1
+    assert len(configs2) == 2
+    assert len(configs1) == 1
+
+    # Addition of single configuration is also supported
+    configs1 += config
+    configs2 += config
+    assert len(configs1) == 1
+    assert len(configs2) == 3
 
 
 def test_extend():
