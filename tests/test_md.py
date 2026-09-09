@@ -139,9 +139,16 @@ def test_sim_time_print(mlp_caplog):
         == 'MLP MD simulation completed in 01 h 01 min 5.70 s.'
     )
 
-    _log_sim_time(4 * 24 * 3600 + 3 * 3600 + 11 * 60 + 0)
+    _log_sim_time(24 * 3600 + 12 * 3600 + 7 * 60 + 0.01)
     assert len(mlp_caplog.records) == 4
     assert (
         mlp_caplog.records[3].message
+        == 'MLP MD simulation completed in 1 day 12 h 07 min 0.01 s.'
+    )
+
+    _log_sim_time(4 * 24 * 3600 + 3 * 3600 + 11 * 60 + 0)
+    assert len(mlp_caplog.records) == 5
+    assert (
+        mlp_caplog.records[4].message
         == 'MLP MD simulation completed in 4 days 03 h 11 min 0.00 s.'
     )
