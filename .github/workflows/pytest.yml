@@ -45,7 +45,7 @@ jobs:
       run: ./install_ace.sh
 
     - name: Test ACE
-      run: pytest --cov=mlptrain -k "not test_openmm"
+      run: pytest -v --cov=mlptrain -k "not test_openmm"
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v7
@@ -83,7 +83,7 @@ jobs:
         cache: true
 
     - name: Test MACE install
-      run: pixi run -e mace pytest --cov=mlptrain
+      run: pixi run -e mace pytest -v --cov=mlptrain
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v7
@@ -122,7 +122,7 @@ jobs:
       run: ./install_mace.sh
 
     - name: Test MACE install
-      run: pytest --cov=mlptrain
+      run: pytest -v --cov=mlptrain
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v7
