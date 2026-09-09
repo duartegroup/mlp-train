@@ -78,7 +78,8 @@ jobs:
     - uses: prefix-dev/setup-pixi@v0.10.2
       with:
         environments: mace
-        cache: true
+        # As of Sep 2026, caching on GitHub is actually slower :-(
+        cache: false
 
     - name: Test MACE install
       run: pixi run -e mace pytest --cov=mlptrain
