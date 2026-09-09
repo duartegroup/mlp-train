@@ -212,7 +212,7 @@ def _log_sim_time(delta_time: float) -> None:
         days_str = ''
 
     logger.info(
-        f'MLP MD simulation completed in {days_str}{int(hours):02d} h {int(minutes):02d} min {seconds:02.2f} s.'
+        f'MLP MD simulation completed in {days_str}{int(hours):02d} h {int(minutes):02d} min {seconds:.2f} s.'
     )
 
 
