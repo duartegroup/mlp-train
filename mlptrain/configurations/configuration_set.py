@@ -797,6 +797,9 @@ class ConfigurationSet(list):
             return NotImplemented
         return self
 
+    def __iadd__(self, other: object) -> ConfigurationSet:
+        return self.__add__(other)
+
     def extend(self, other: Iterable[Configuration]) -> None:
         # Without this the loop below becomes infinite!
         if self is other:
