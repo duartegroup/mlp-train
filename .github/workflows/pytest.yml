@@ -14,9 +14,10 @@ jobs:
   test-ace:
     name: ACE (${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: ["ubuntu-22.04"]
         python-version: ["3.10"]
@@ -56,6 +57,7 @@ jobs:
   test-mace:
     name: MACE pixi (${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     # The pixi lock pins CUDA builds (system-requirements cuda = "12"); this lets
     # them install on the GPU-less runner. They run fine on CPU for the tests.
@@ -63,7 +65,7 @@ jobs:
       CONDA_OVERRIDE_CUDA: "12.0"
 
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: ["ubuntu-22.04"]
         python-version: ["3.10"]
@@ -93,9 +95,10 @@ jobs:
   test-mace-conda:
     name: MACE conda (${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: ["ubuntu-22.04"]
         python-version: ["3.10"]
