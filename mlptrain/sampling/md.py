@@ -196,7 +196,7 @@ def run_mlp_md(
         minutes, seconds = divmod(remainder, 60)
 
         logger.info(
-            f'MLP MD simulation completed in {hours:02d} h {minutes:02d} min {seconds:02d} s.'
+            f'MLP MD simulation completed in {hours:02d} h {minutes:02d} min {seconds:02.2f} s.'
         )
 
     return traj
