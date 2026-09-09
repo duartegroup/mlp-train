@@ -138,16 +138,28 @@ def test_config_addition_with_duplicates(mlp_caplog):
     assert len(mlp_caplog.records) == 0
 
 
-def test_two_config_sets_addition(mlp_caplog):
-    mlp_caplog.set_level(logging.INFO, logger='mlptrain')
-
+def test_two_config_sets_addition():
     config = Configuration()
     configs1 = ConfigurationSet(config)
     configs2 = ConfigurationSet(config, allow_duplicates=True)
 
     # Duplicates should be filtered out for configs1
     assert len(configs1 + configs2) == 1
+    assert len(configs1) == 1
+    assert len(configs2) == 1
 
+    # Duplicates should be allowed for configs2
+    configs2 + configs1
+    assert len(configs2) == 2
+    assert len(configs1) == 1
+
+
+def test_extend():
+    config = Configuration()
+    configs1 = ConfigurationSet(config)
+    configs2 = ConfigurationSet(config, allow_duplicates=True)
+
+    # Duplicates should be filtered out for configs1
     configs1.extend(configs2)
     assert len(configs1) == 1
     assert len(configs2) == 1
@@ -156,9 +168,6 @@ def test_two_config_sets_addition(mlp_caplog):
     configs2.extend(configs1)
     assert len(configs2) == 2
     assert len(configs1) == 1
-
-    configs2 + configs2
-    assert len(configs2) == 4
 
 
 def test_extend_accepts_iterables():
@@ -171,9 +180,13 @@ def test_extend_accepts_iterables():
     configs.extend((config, config))
     assert len(configs) == 4
 
-    # If the list contains a member that is not Configuration (or None),
+    # If the list contains a member that is not Configuration,
     # we should raise.
-    # configs.extend([config, 1])
+    with pytest.raises(TypeError, match='Cannot append value 1 of type'):
+        configs.extend([config, 1])  # ty: ignore[invalid-argument-type]
+
+    with pytest.raises(TypeError, match='Cannot append value None of type'):
+        configs.extend((config, None))  # ty: ignore[invalid-argument-type]
 
 
 def test_addition_expression():
