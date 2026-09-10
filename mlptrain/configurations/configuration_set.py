@@ -788,7 +788,15 @@ class ConfigurationSet(list):
         other: object,
     ) -> ConfigurationSet:
         """Add another configuration or set of configurations onto this one"""
+        if not isinstance(other, (Configuration, ConfigurationSet)):
+            return NotImplemented
+        result = ConfigurationSet(
+            *self, allow_duplicates=self.allow_duplicates
+        )
+        result += other
+        return result
 
+    def __iadd__(self, other: object) -> ConfigurationSet:
         if isinstance(other, Configuration):
             self.append(other)
         elif isinstance(other, ConfigurationSet):
@@ -796,9 +804,6 @@ class ConfigurationSet(list):
         else:
             return NotImplemented
         return self
-
-    def __iadd__(self, other: object) -> ConfigurationSet:
-        return self.__add__(other)
 
     def extend(self, other: Iterable[Configuration]) -> None:
         # NOTE: It is very important to make a copy of "other"
