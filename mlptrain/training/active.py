@@ -37,6 +37,7 @@ def train(
     max_active_iters: int = 50,
     n_init_configs: int = 10,
     init_configs: mlptrain.ConfigurationSet | None = None,
+    al_starting_configs: mlptrain.ConfigurationSet | None = None,
     fix_init_config: bool = False,
     bbond_energy: dict | None = None,
     fbond_energy: dict | None = None,
@@ -97,6 +98,9 @@ def train(
 
         init_configs: (gt.ConfigurationSet) A set of configurations from
                       which to start the active learning from
+
+        al_starting_configs: Starting configurations for the AL iterations.
+                          If provided, their length must equal n_configs_iter.
 
         fix_init_config: (bool) Always start from the same initial
                          configuration for the active learning loop.
@@ -176,6 +180,34 @@ def train(
     if pbc and box_size is None:
         raise ValueError('For PBC in MD, the box_size cannot be None')
 
+    if al_starting_configs is not None:
+        # For now, al_starting_configs are not compatible with restart
+        if restart_iter is not None:
+            raise NotImplementedError(
+                'al_starting_configs not compatible with restart'
+            )
+        if len(al_starting_configs) != n_configs_iter:
+            raise ValueError(
+                f'len(al_starting_configs) must equal n_configs_iter ({n_configs_iter}'
+            )
+        if init_configs is None:
+            logger.info(
+                'Setting initial training set from `al_starting_configs`'
+            )
+            init_configs = al_starting_configs
+        else:
+            # Merge al_starting_configs to init_configs,
+            # to ensure they are part of training set
+            for config in al_starting_configs:
+                init_configs.append(config)
+
+        if not fix_init_config:
+            logger.warning(
+                '`fix_init_config` must be set to True if you provide al_starting_configs'
+            )
+            logger.warning("setting 'fix_init_config = True'")
+            fix_init_config = True
+
     if restart_iter is not None:
         _initialise_restart(
             mlp=mlp,
@@ -194,7 +226,10 @@ def train(
         )
 
     else:
-        init_config = init_configs[0]
+        if al_starting_configs is not None:
+            init_config = al_starting_configs
+        else:
+            init_config = init_configs[0]
         _set_init_training_configs(
             mlp=mlp,
             init_configs=init_configs,
@@ -288,7 +323,7 @@ def train(
 
 def _add_active_configs(
     mlp: MLPotential,
-    init_config: mlptrain.Configuration,
+    init_config: mlptrain.Configuration | mlptrain.ConfigurationSet,
     selection_method: SelectionMethod,
     n_configs: int = 10,
     **kwargs,
@@ -317,8 +352,17 @@ def _add_active_configs(
         )
         kwargs['bias'] = _remove_bias_potential(kwargs['bias'])
 
-    configs = ConfigurationSet()
+    new_configs = ConfigurationSet()
     results = []
+    if isinstance(init_config, mlptrain.Configuration):
+        initial_configurations = [init_config.copy() for _ in range(n_configs)]
+    else:
+        initial_configurations = init_config.copy()
+
+    if len(initial_configurations) != n_configs:
+        raise ValueError(
+            f"Number of initial configurations ({len(initial_configurations)}) doesn't match {n_configs=}"
+        )
 
     with mp.get_context('spawn').Pool(processes=n_processes) as pool:
         for idx in range(n_configs):
@@ -327,7 +371,7 @@ def _add_active_configs(
             result = pool.apply_async(
                 _gen_active_config,
                 args=(
-                    init_config.copy(),
+                    initial_configurations[idx],
                     mlp.copy(),
                     selection_method.copy(),
                     n_cores_pp,
@@ -339,7 +383,7 @@ def _add_active_configs(
         pool.close()
         for result in results:
             try:
-                configs.append(result.get(timeout=None))
+                new_configs.append(result.get(timeout=None))
 
             # Lots of different exceptions can be raised when trying to
             # generate an active config, continue regardless..
@@ -348,8 +392,8 @@ def _add_active_configs(
                 continue
         pool.join()
 
-    if 'method_name' in kwargs and configs.has_a_none_energy:
-        for config in configs:
+    if 'method_name' in kwargs and new_configs.has_a_none_energy:
+        for config in new_configs:
             if config.energy.true is None:
                 config.single_point(
                     kwargs['method_name'],
@@ -363,7 +407,7 @@ def _add_active_configs(
     ):
         _generate_inheritable_metad_bias(n_configs=n_configs, kwargs=kwargs)
 
-    mlp.training_data += configs
+    mlp.training_data += new_configs
 
     os.makedirs('datasets', exist_ok=True)
     mlp.training_data.save(
@@ -667,12 +711,10 @@ def _set_init_training_configs(
             f'Not all structures have defined reference.'
         )
 
-        output_name = 'initial'
-
         init_configs.single_point(
             method=method_name,
             keep_output_files=keep_output_files,
-            output_name=output_name,
+            output_name='initial',
         )
     else:
         logger.info('Using reference defined in input file.')
@@ -840,14 +882,14 @@ def _attach_plumed_coords_to_init_configs(
 
 
 def _update_init_config(
-    init_config: mlptrain.Configuration,
+    init_config: mlptrain.Configuration | mlptrain.ConfigurationSet,
     mlp: MLPotential,
     fix_init_config: bool,
     bias: mlptrain.PlumedBias | mlptrain.Bias | None,
     inherit_metad_bias: bool,
     bias_start_iter: int,
     iteration: int,
-) -> mlptrain.Configuration:
+) -> mlptrain.Configuration | mlptrain.ConfigurationSet:
     """Update initial configuration for an active learning iteration"""
 
     if fix_init_config:
@@ -857,11 +899,12 @@ def _update_init_config(
         return mlp.training_data.lowest_energy
 
     if inherit_metad_bias and iteration >= bias_start_iter:
+        assert isinstance(bias, mlptrain.PlumedBias)
         _attach_inherited_bias_energies(
             configurations=mlp.training_data,
             iteration=iteration,
             bias_start_iter=bias_start_iter,
-            bias=bias,  # ty: ignore[invalid-argument-type]
+            bias=bias,
         )
 
         return mlp.training_data.lowest_inherited_biased_energy
