@@ -156,6 +156,10 @@ def test_two_config_sets_addition():
 
     # Duplicates should be allowed for configs2
     configs2 + configs1
+    assert len(configs2) == 1
+    assert len(configs1) == 1
+
+    configs2 = configs2 + configs1
     assert len(configs2) == 2
     assert len(configs1) == 1
 
@@ -218,10 +222,8 @@ def test_extend_accepts_iterables():
 
 
 def test_addition_expression():
-    """This is weird! Just having an addition expression
-    modifies the original ConfigurationSet instead of creating a copy.
+    """Make sure addition expression does not modify operands
 
-    Notably, this is NOT how how stdlib list works!
     Here is the actual behaviour for list type:
 
     >>> a = [1]
@@ -236,11 +238,10 @@ def test_addition_expression():
     config_set = ConfigurationSet(allow_duplicates=True)
 
     config_set + config
-    assert len(config_set) == 1
+    assert len(config_set) == 0
 
-    # This also behaves when adding two ConfigurationSets
     config_set + config_set
-    assert len(config_set) == 2
+    assert len(config_set) == 0
 
 
 def test_extend_with_itself():
