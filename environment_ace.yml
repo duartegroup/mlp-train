@@ -4,14 +4,14 @@ name: mlptrain-ace
 channels:
   - conda-forge
 dependencies:
-  - python=3.10
+  - python=3.12
   - libgfortran=14.*
   - pip
   - ase
   - autode=1.4.5
   - coloredlogs
   - cython
-  - dscribe=2.0
+  - dscribe=2.1
   - matplotlib-base
   - numpy<2
   - py-plumed
