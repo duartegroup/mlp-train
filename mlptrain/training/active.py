@@ -339,7 +339,9 @@ def _add_active_configs(
         pool.close()
         for result in results:
             try:
-                configs.append(result.get(timeout=None))
+                new_config = result.get(timeout=None)
+                if new_config is not None:
+                    configs.append(new_config)
 
             # Lots of different exceptions can be raised when trying to
             # generate an active config, continue regardless..

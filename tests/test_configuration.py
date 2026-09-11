@@ -14,7 +14,7 @@ import pytest
 import os
 from mlptrain.potentials._base import MLPotential
 
-ade.config._ConfigClass.max_core = Allocation(1, units='GB')
+ade.config.Config.max_core = Allocation(1, units='GB')
 
 
 def test_equality():

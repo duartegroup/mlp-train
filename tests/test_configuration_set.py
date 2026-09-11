@@ -80,12 +80,23 @@ def test_addition_unsupported(mlp_caplog):
     with pytest.raises(TypeError, match='unsupported operand type'):
         configs + None
 
+    # Same for in-place addition (__iadd__ method)
+    with pytest.raises(TypeError, match='unsupported operand type'):
+        configs += 1
+    with pytest.raises(TypeError, match='unsupported operand type'):
+        configs += None
 
-def test_addition_none():
+
+def test_append_nonconfig_fails():
     configs = ConfigurationSet()
-    # Weirdly, appending None is silently skipped,
-    # (but adding None raises TypeError! See above)
-    configs.append(None)
+
+    # Trying to append anything else beyond Configuration must raise
+    with pytest.raises(TypeError, match='Cannot append value.*'):
+        configs.append(None)  # ty: ignore[invalid-argument-type]
+
+    with pytest.raises(TypeError, match='Cannot append value.*'):
+        configs.append(1)  # ty: ignore[invalid-argument-type]
+
     assert len(configs) == 0
 
 
@@ -133,20 +144,77 @@ def test_config_addition_with_duplicates(mlp_caplog):
     assert len(mlp_caplog.records) == 0
 
 
-def test_two_config_sets_addition(mlp_caplog):
-    mlp_caplog.set_level(logging.INFO, logger='mlptrain')
-
-    # Currently, adding two ConfigurationSets,
-    # or calling the "extend()" method, doesn't check for duplicates!
-    # We should probably change that!
+def test_two_config_sets_addition():
     config = Configuration()
     configs1 = ConfigurationSet(config)
-    configs2 = ConfigurationSet(config)
+    configs2 = ConfigurationSet(config, allow_duplicates=True)
 
-    assert len(configs1 + configs2) == 2
+    # Duplicates should be filtered out for configs1
+    assert len(configs1 + configs2) == 1
+    assert len(configs1) == 1
+    assert len(configs2) == 1
 
-    configs2.extend(configs2)
+    # Duplicates should be allowed for configs2
+    configs2 + configs1
     assert len(configs2) == 2
+    assert len(configs1) == 1
+
+
+def test_in_place_addition():
+    config = Configuration()
+    configs1 = ConfigurationSet(config)
+    configs2 = ConfigurationSet(config, allow_duplicates=True)
+
+    # Duplicates should be filtered out for configs1
+    configs1 += configs2
+    assert len(configs1) == 1
+    assert len(configs2) == 1
+
+    # Duplicates should be allowed for configs2
+    configs2 += configs1
+    assert len(configs2) == 2
+    assert len(configs1) == 1
+
+    # Addition of single configuration is also supported
+    configs1 += config
+    configs2 += config
+    assert len(configs1) == 1
+    assert len(configs2) == 3
+
+
+def test_extend():
+    config = Configuration()
+    configs1 = ConfigurationSet(config)
+    configs2 = ConfigurationSet(config, allow_duplicates=True)
+
+    # Duplicates should be filtered out for configs1
+    configs1.extend(configs2)
+    assert len(configs1) == 1
+    assert len(configs2) == 1
+
+    # Duplicates should be allowed for configs2
+    configs2.extend(configs1)
+    assert len(configs2) == 2
+    assert len(configs1) == 1
+
+
+def test_extend_accepts_iterables():
+    config = Configuration()
+    configs = ConfigurationSet(allow_duplicates=True)
+
+    configs.extend([config, config])
+    assert len(configs) == 2
+
+    configs.extend((config, config))
+    assert len(configs) == 4
+
+    # If the list contains a member that is not Configuration,
+    # we should raise.
+    with pytest.raises(TypeError, match='Cannot append value 1 of type'):
+        configs.extend([config, 1])  # ty: ignore[invalid-argument-type]
+
+    with pytest.raises(TypeError, match='Cannot append value None of type'):
+        configs.extend((config, None))  # ty: ignore[invalid-argument-type]
 
 
 def test_addition_expression():
@@ -173,6 +241,19 @@ def test_addition_expression():
     # This also behaves when adding two ConfigurationSets
     config_set + config_set
     assert len(config_set) == 2
+
+
+def test_extend_with_itself():
+    """This is a regression test to ensure that
+    when adding (extending) ConfigurationSet to itself
+    does not enter infinite loop"""
+    config = Configuration()
+    config_set = ConfigurationSet(config, allow_duplicates=True)
+
+    config_set + config_set
+    config_set.extend(config_set)
+
+    config_set.extend(iter(config_set))
 
 
 @work_in_tmp_dir()

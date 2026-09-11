@@ -4,6 +4,7 @@ import mlptrain
 import os
 import re
 import numpy as np
+from collections.abc import Iterable
 from time import time
 from multiprocessing import Pool
 from typing import TYPE_CHECKING, Optional, List, Literal, Union
@@ -221,19 +222,21 @@ class ConfigurationSet(list):
             c.time if c.time is not None else 0.0 for c in self[from_idx:]
         )
 
-    def append(self, value: Optional['mlptrain.Configuration']) -> None:
+    def append(self, value: Configuration) -> None:
         """
-        Append an item onto these set of configurations. None will not be
-        appended
+        Append an item onto these set of configurations.
 
         Arguments:
             value (Configuration): Structure in a form of Configuration
+        raises: TypeError if added item is not Configuration
         """
 
-        if value is None:
-            return
+        if not isinstance(value, Configuration):
+            raise TypeError(
+                f'Cannot append value {value} of type {type(value)} to ConfigurationSet'
+            )
 
-        if not self.allow_duplicates and value in self:
+        if not getattr(self, 'allow_duplicates', True) and value in self:
             logger.info('Not appending configuration to set - already present')
             return
 
@@ -793,6 +796,16 @@ class ConfigurationSet(list):
         else:
             return NotImplemented
         return self
+
+    def __iadd__(self, other: object) -> ConfigurationSet:
+        return self.__add__(other)
+
+    def extend(self, other: Iterable[Configuration]) -> None:
+        # NOTE: It is very important to make a copy of "other"
+        # before iterating over it, otherwise we'll get infinite loop
+        # if we try to extend / add instance of ConfigurationSet to itself.
+        for conf in list(other):
+            self.append(conf)
 
     def _run_parallel_method(
         self, function, n_cores_pp, keep_output_files, **kwargs

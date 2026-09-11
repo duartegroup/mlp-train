@@ -12,6 +12,7 @@ env:
 jobs:
   pre-commit:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     # The pixi lock pins CUDA builds (system-requirements cuda = "12"); this lets
     # them install on the GPU-less runner so the `ty` type checker has its deps.
