@@ -535,7 +535,7 @@ class UmbrellaSampling:
         dt: float,
         bias: 'mlptrain.Bias',
         **kwargs,
-    ):
+    ) -> mlptrain.Trajectory:
         """Run an individual umbrella sampling window"""
 
         logger.info(
@@ -556,7 +556,6 @@ class UmbrellaSampling:
             kept_substrings=['.traj'],
             **kwargs,
         )
-
         return traj
 
     @staticmethod

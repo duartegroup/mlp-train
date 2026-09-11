@@ -236,7 +236,7 @@ class ConfigurationSet(list):
                 f'Cannot append value {value} of type {type(value)} to ConfigurationSet'
             )
 
-        if not self.allow_duplicates and value in self:
+        if not getattr(self, 'allow_duplicates', True) and value in self:
             logger.info('Not appending configuration to set - already present')
             return
 

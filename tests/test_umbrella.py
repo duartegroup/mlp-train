@@ -9,8 +9,6 @@ from .data.utils import work_in_zipped_dir
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-pytest.skip(allow_module_level=True)
-
 
 def _h2_umbrella():
     return mlt.UmbrellaSampling(
