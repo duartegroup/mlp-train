@@ -7,13 +7,14 @@ dependencies:
   - python=3.10
   - libgfortran=14.*
   - pip
-  - ase
+  - ase=3.27.0
   - autode=1.4.5
   - coloredlogs
   - cython
   - dscribe=2.0
   - matplotlib-base
   - numpy<2
+  - plumed<2.10
   - py-plumed
   - scipy
   - xtb
@@ -22,4 +23,3 @@ dependencies:
   - pip:
     - julia   # Python-Julia integration (this will not install Julia itself!)
     - pyjulip@git+https://github.com/casv2/pyjulip.git@72280a6ac3 # Integration with ACE
-    - ase@git+https://gitlab.com/ase/ase.git@f2615a6e9a # For PLUMED
