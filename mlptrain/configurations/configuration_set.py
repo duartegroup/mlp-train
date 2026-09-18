@@ -391,8 +391,13 @@ class ConfigurationSet(list):
         box: Optional[Box] = None,
         load_energies: bool = False,
         load_forces: bool = False,
+        allow_duplicates: bool = False,
     ) -> 'ConfigurationSet':
-        config_set = cls()
+        """Create a new ConfigurationSet instance from a XYZ file.
+
+        The parameters are the same as for the `load_xyz` method.
+        """
+        config_set = cls(allow_duplicates=allow_duplicates)
         config_set.load_xyz(
             filename, charge, mult, box, load_energies, load_forces
         )
@@ -408,7 +413,7 @@ class ConfigurationSet(list):
         load_forces: bool = False,
     ) -> None:
         """
-        Load configurations from a .xyz file with optional box, energies and forces if specified.
+        Append configurations from a .xyz file with optional box, energies and forces if specified.
         Note: this currently assumes that all configurations have the same charge and multiplicity.
 
         Arguments:
@@ -540,22 +545,13 @@ class ConfigurationSet(list):
         Raises:
             (ValueError): If an unsupported file extension is present
         """
-
-        if filename.endswith('.npz'):
-            self._load_npz(filename)
-
-        elif filename.endswith('.xyz'):
+        if filename.endswith('.xyz'):
             raise ValueError(
-                'Loading .xyz files is not supported. Call '
-                'load_xyz() with defined charge & multiplicity'
+                'Loading .xyz files is not supported. '
+                'Call load_xyz method with charge & multiplicity as arguments.'
             )
 
-        else:
-            raise ValueError(
-                f'Cannot load {filename}. Must be either a .xyz or .npz file'
-            )
-
-        return None
+        self._load_npz(filename)
 
     def single_point(
         self,
@@ -720,7 +716,13 @@ class ConfigurationSet(list):
         return None
 
     def _load_npz(self, filename: str) -> None:
-        """Load a compressed numpy array of all the data in this set"""
+        """Load a compressed numpy array of all the data in this set
+
+        The data are appended to existing ConfigurationSet.
+        """
+
+        if not filename.endswith('.npz'):
+            raise ValueError(f"File {filename} doesn't have .npz extension")
 
         data = np.load(filename, allow_pickle=True)
 
