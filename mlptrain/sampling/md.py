@@ -26,6 +26,7 @@ from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.md.nptberendsen import NPTBerendsen
 from ase.md import Langevin, VelocityVerlet
 from ase import units as ase_units
+import time
 
 if TYPE_CHECKING:
     from mlptrain.potentials import MLPotential
@@ -162,6 +163,8 @@ def run_mlp_md(
     else:
         logger.info('Running MLP MD')
 
+    start_time = time.perf_counter()
+
     decorator = work_in_tmp_dir(
         copied_substrings=copied_substrings_list,
         kept_substrings=kept_substrings_list,
@@ -185,7 +188,32 @@ def run_mlp_md(
         **kwargs,
     )
 
+    delta_time = time.perf_counter() - start_time
+    _log_sim_time(delta_time)
+
     return traj
+
+
+def _log_sim_time(delta_time: float) -> None:
+    """Log total simulation time in a nice format"""
+    if delta_time < 60:
+        logger.info(f'MLP MD simulation completed in {delta_time:02.2f} s.')
+        return
+
+    days, remainder = divmod(delta_time, 3600 * 24)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    if int(days) == 1:
+        days_str = '1 day '
+    elif days > 1:
+        days_str = f'{int(days)} days '
+    else:
+        days_str = ''
+
+    logger.info(
+        f'MLP MD simulation completed in {days_str}{int(hours):02d} h {int(minutes):02d} min {seconds:.2f} s.'
+    )
 
 
 def _run_mlp_md(

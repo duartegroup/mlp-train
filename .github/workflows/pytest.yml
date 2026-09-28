@@ -54,7 +54,45 @@ jobs:
           slug: duartegroup/mlp-train
 
   test-mace:
-    name: MACE (${{ matrix.python-version }}, ${{ matrix.os }})
+    name: MACE pixi (${{ matrix.python-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    # The pixi lock pins CUDA builds (system-requirements cuda = "12"); this lets
+    # them install on the GPU-less runner. They run fine on CPU for the tests.
+    env:
+      CONDA_OVERRIDE_CUDA: "12.0"
+
+    strategy:
+      fail-fast: true
+      matrix:
+        os: ["ubuntu-22.04"]
+        python-version: ["3.10"]
+
+    defaults:
+      run:
+        shell: bash -l {0}
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - uses: prefix-dev/setup-pixi@v0.10.2
+      with:
+        environments: mace
+        # As of Sep 2026, caching on GitHub is actually slower :-(
+        cache: false
+
+    - name: Test MACE install
+      run: pixi run -e mace pytest --cov=mlptrain
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v7
+      with:
+          flags: python-${{ matrix.python-version }}-mace-pixi
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: duartegroup/mlp-train
+
+  test-mace-conda:
+    name: MACE conda (${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -87,6 +125,6 @@ jobs:
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v7
       with:
-          flags: python-${{ matrix.python-version }}-mace
+          flags: python-${{ matrix.python-version }}-mace-conda
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: duartegroup/mlp-train

@@ -3,17 +3,12 @@ version: 2
 build:
   os: "ubuntu-22.04"
   tools:
-    python: "mambaforge-22.9"
-
-conda:
-  environment: environment_mace.yml
-
-python:
-  install:
-    - method: pip
-      path: .
-      extra_requirements:
-       - docs
+    python: "3.12"
+  commands:
+    - curl -fsSL https://pixi.sh/install.sh | bash
+    # CONDA_OVERRIDE_CUDA: the docs env includes the mace feature, whose lock
+    # pins CUDA builds; this lets them install on the GPU-less RTD builder.
+    - CONDA_OVERRIDE_CUDA=12.0 ~/.pixi/bin/pixi run -e docs sphinx-build docs $READTHEDOCS_OUTPUT/html
 
 sphinx:
   configuration: docs/conf.py
@@ -22,4 +17,3 @@ sphinx:
 # formats:
 #    - pdf
 #    - epub
-
