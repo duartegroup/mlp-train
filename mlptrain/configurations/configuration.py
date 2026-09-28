@@ -728,6 +728,8 @@ class Configuration(AtomCollection):
 
             keep_output_files: If true, copy back the QM outputs.
         """
+        from mlptrain.potentials import MLPotential
+
         implemented_methods = ['xtb', 'orca', 'g09', 'g16']
 
         if isinstance(method, str) and method.lower() in implemented_methods:
