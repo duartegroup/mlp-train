@@ -867,7 +867,7 @@ class ConfigurationSet(list):
 
         name = ''
         for arg in args:
-            if hasattr(arg, 'predict'):
+            if isinstance(arg, MLPotential):
                 name += arg.name
 
             if isinstance(arg, str):

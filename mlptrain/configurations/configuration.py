@@ -768,8 +768,8 @@ class Configuration(AtomCollection):
             self.n_ref_evals += 1
             return None
 
-        elif hasattr(method, 'predict'):
-            method.predict(self)  # ty:ignore[call-non-callable]
+        elif isinstance(method, MLPotential):
+            method.predict(self)
 
         else:
             raise ValueError(
