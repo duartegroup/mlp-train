@@ -264,46 +264,45 @@ class ConfigurationSet(list):
         name = self._comparison_name(*args)
 
         if os.path.exists(f'{name}.npz'):
-            logger.info(f'Loading energies and forces from {name}.npz')
-            self.load(f'{name}.npz')
+            raise RuntimeError(
+                f'File {name}.npz already exists. Remove or rename it before proceeding'
+            )
 
-        else:
-            for arg in args:
-                # if is an mlp model with a 'predict' function
-                if hasattr(arg, 'predict'):
-                    arg.predict(self)  # ty:ignore[call-non-callable]
+        for arg in args:
+            # if is an mlp model with a 'predict' function
+            if isinstance(arg, MLPotential):
+                arg.predict(self)
 
-                # if is a string reference to a QM calculation method
-                elif isinstance(arg, str):
-                    # if true energies and forces do not already exist for this config set
+            # if is a string reference to a QM calculation method
+            elif isinstance(arg, str):
+                # if true energies and forces do not already exist for this config set
 
-                    if all(c.energy.true is None for c in self):
-                        logger.info(
-                            f'Running single point calcs with method {arg}'
-                        )
-                        self.single_point(
-                            method=arg,
-                            output_name='comparison',
-                            keep_output_files=keep_output_files,
-                        )
+                if all(c.energy.true is None for c in self):
+                    logger.info(
+                        f'Running single point calcs with method {arg}'
+                    )
+                    self.single_point(
+                        method=arg,
+                        output_name='comparison',
+                        keep_output_files=keep_output_files,
+                    )
 
-                    elif self.has_a_none_energy:
-                        raise ValueError(
-                            'Data set contains mix of labelled and non-labelled data!'
-                        )
-                    else:
-                        logger.info(
-                            f'Not using method {arg}, true energies and forces '
-                            f'are already defined'
-                        )
-
+                elif self.has_a_none_energy:
+                    raise ValueError(
+                        'Data set contains mix of labelled and non-labelled data!'
+                    )
                 else:
-                    raise ValueError(f'Cannot compare using {arg}')
+                    logger.info(
+                        f'Not using method {arg}, true energies and forces '
+                        f'are already defined'
+                    )
 
-            self.save(filename=f'{name}.npz')
+            else:
+                raise TypeError(f'Invalid argument type {type(arg)}')
+
+        self.save(filename=f'{name}.npz')
 
         parity_plot(self, file_name=name)
-        return None
 
     def save_xyz(
         self, filename: str, true: bool = False, predicted: bool = False
@@ -868,7 +867,7 @@ class ConfigurationSet(list):
 
         name = ''
         for arg in args:
-            if hasattr(arg, 'predict'):
+            if isinstance(arg, MLPotential):
                 name += arg.name
 
             if isinstance(arg, str):
