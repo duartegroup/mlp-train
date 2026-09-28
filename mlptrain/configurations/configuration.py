@@ -728,7 +728,6 @@ class Configuration(AtomCollection):
 
             keep_output_files: If true, copy back the QM outputs.
         """
-        from mlptrain.potentials import MLPotential
 
         implemented_methods = ['xtb', 'orca', 'g09', 'g16']
 
@@ -770,8 +769,8 @@ class Configuration(AtomCollection):
             self.n_ref_evals += 1
             return None
 
-        elif isinstance(method, MLPotential):
-            method.predict(self)
+        elif hasattr(method, 'predict'):
+            method.predict(self)  # ty: ignore[call-non-callable]
 
         else:
             raise ValueError(
