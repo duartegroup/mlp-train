@@ -14,6 +14,7 @@ from mlptrain.forces import Forces
 from mlptrain.energy import Energy
 from mlptrain.configurations.configuration import Configuration
 from mlptrain.box import Box
+from copy import deepcopy
 
 if TYPE_CHECKING:
     from mlptrain.potentials import MLPotential
@@ -119,7 +120,7 @@ class ConfigurationSet(list):
         """
         if len(self) == 0:
             raise ValueError(
-                'No lowest biased energy configuration in an ' 'empty set'
+                'No lowest biased energy configuration in an empty set'
             )
 
         true_energy = np.array(
@@ -145,7 +146,7 @@ class ConfigurationSet(list):
         """
         if len(self) == 0:
             raise ValueError(
-                'No lowest biased energy configuration in an ' 'empty set'
+                'No lowest biased energy configuration in an empty set'
             )
 
         true_energy = np.array(
@@ -233,20 +234,23 @@ class ConfigurationSet(list):
             return
 
         if not self.allow_duplicates and value in self:
-            logger.warning(
-                'Not appending configuration to set - already ' 'present'
-            )
+            logger.info('Not appending configuration to set - already present')
             return
 
         return super().append(value)
 
-    def compare(self, *args: MLPotential | str) -> None:
+    def compare(
+        self,
+        *args: MLPotential | str,
+        keep_output_files: bool = True,
+    ) -> None:
         """
         Compare methods e.g. a MLP to a ground truth reference method over
         these set of configurations. Will generate plots of total energies
         over these configurations and save a text file with ∆s
 
         Arguments:
+            keep_output_files: If True, save outputs of QM computations to designated folder
             *args (mlptrain.potentials.MLPotential): Strings defining the method or MLPs
         """
         from mlptrain.configurations.plotting import parity_plot
@@ -260,40 +264,45 @@ class ConfigurationSet(list):
         name = self._comparison_name(*args)
 
         if os.path.exists(f'{name}.npz'):
-            logger.info(f'Loading energies and forces from {name}.npz')
-            self.load(f'{name}.npz')
+            raise RuntimeError(
+                f'File {name}.npz already exists. Remove or rename it before proceeding'
+            )
 
-        else:
-            for arg in args:
-                # if is an mlp model with a 'predict' function
-                if hasattr(arg, 'predict'):
-                    arg.predict(self)  # ty:ignore[call-non-callable]
+        for arg in args:
+            # if is an mlp model with a 'predict' function
+            if isinstance(arg, MLPotential):
+                arg.predict(self)
 
-                # if is a string reference to a QM calculation method
-                elif isinstance(arg, str):
-                    # if true energies and forces do not already exist for this config set
-                    if all(c.energy.true is None for c in self):
-                        logger.info(
-                            f'Running single point calcs with method {arg}'
-                        )
-                        self.single_point(method=arg)
-                    elif self.has_a_none_energy:
-                        raise ValueError(
-                            'Data set contains mix of labelled and non-labelled data!'
-                        )
-                    else:
-                        logger.info(
-                            f'Not using method {arg}, true energies and forces '
-                            f'are already defined'
-                        )
+            # if is a string reference to a QM calculation method
+            elif isinstance(arg, str):
+                # if true energies and forces do not already exist for this config set
 
+                if all(c.energy.true is None for c in self):
+                    logger.info(
+                        f'Running single point calcs with method {arg}'
+                    )
+                    self.single_point(
+                        method=arg,
+                        output_name='comparison',
+                        keep_output_files=keep_output_files,
+                    )
+
+                elif self.has_a_none_energy:
+                    raise ValueError(
+                        'Data set contains mix of labelled and non-labelled data!'
+                    )
                 else:
-                    raise ValueError(f'Cannot compare using {arg}')
+                    logger.info(
+                        f'Not using method {arg}, true energies and forces '
+                        f'are already defined'
+                    )
 
-            self.save(filename=f'{name}.npz')
+            else:
+                raise TypeError(f'Invalid argument type {type(arg)}')
+
+        self.save(filename=f'{name}.npz')
 
         parity_plot(self, file_name=name)
-        return None
 
     def save_xyz(
         self, filename: str, true: bool = False, predicted: bool = False
@@ -381,8 +390,13 @@ class ConfigurationSet(list):
         box: Optional[Box] = None,
         load_energies: bool = False,
         load_forces: bool = False,
+        allow_duplicates: bool = False,
     ) -> 'ConfigurationSet':
-        config_set = cls()
+        """Create a new ConfigurationSet instance from a XYZ file.
+
+        The parameters are the same as for the `load_xyz` method.
+        """
+        config_set = cls(allow_duplicates=allow_duplicates)
         config_set.load_xyz(
             filename, charge, mult, box, load_energies, load_forces
         )
@@ -398,7 +412,7 @@ class ConfigurationSet(list):
         load_forces: bool = False,
     ) -> None:
         """
-        Load configurations from a .xyz file with optional box, energies and forces if specified.
+        Append configurations from a .xyz file with optional box, energies and forces if specified.
         Note: this currently assumes that all configurations have the same charge and multiplicity.
 
         Arguments:
@@ -530,25 +544,21 @@ class ConfigurationSet(list):
         Raises:
             (ValueError): If an unsupported file extension is present
         """
-
-        if filename.endswith('.npz'):
-            self._load_npz(filename)
-
-        elif filename.endswith('.xyz'):
+        if filename.endswith('.xyz'):
             raise ValueError(
-                'Loading .xyz files is not supported. Call '
-                'load_xyz() with defined charge & multiplicity'
+                'Loading .xyz files is not supported. '
+                'Call load_xyz method with charge & multiplicity as arguments.'
             )
 
-        else:
-            raise ValueError(
-                f'Cannot load {filename}. Must be either a '
-                f'.xyz or .npz file'
-            )
+        self._load_npz(filename)
 
-        return None
-
-    def single_point(self, method: str, n_cores_pp: int = 0) -> None:
+    def single_point(
+        self,
+        method: str,
+        output_name: Optional[str] = None,
+        n_cores_pp: int = 0,
+        keep_output_files: bool = True,
+    ) -> None:
         """
         Evaluate energies and forces on all configuration in this set
 
@@ -563,10 +573,16 @@ class ConfigurationSet(list):
                         rounded down to the nearest integer.
 
         """
+
+        if output_name is None:
+            output_name = method
+
         return self._run_parallel_method(
             function=_single_point_eval,
             method_name=method,
+            output_name=output_name,
             n_cores_pp=n_cores_pp,
+            keep_output_files=keep_output_files,
         )
 
     @property
@@ -608,8 +624,7 @@ class ConfigurationSet(list):
 
         elif len(n_cvs_set) != 1:
             logger.info(
-                'Number of CVs differ between configurations - '
-                'returning None'
+                'Number of CVs differ between configurations - returning None'
             )
             return None
 
@@ -665,13 +680,15 @@ class ConfigurationSet(list):
     ) -> Optional[np.ndarray]:
         """True or predicted forces. Returns a 3D np.ndarray."""
 
-        all_forces = []
-        for config in self:
-            if getattr(config.forces, kind) is None:
-                logger.warning(f'{kind} forces not defined - returning None')
-                return None
+        all_forces = [getattr(config.forces, kind) for config in self]
+        if all(force is None for force in all_forces):
+            if kind == 'true':
+                logger.debug(f'{kind} forces not defined - returning None')
+            return None
 
-            all_forces.append(getattr(config.forces, kind))
+        if any(force is None for force in all_forces):
+            logger.warning(f'{kind} forces partially defined - returning None')
+            return None
 
         return np.array(all_forces, dtype=object)
 
@@ -698,7 +715,13 @@ class ConfigurationSet(list):
         return None
 
     def _load_npz(self, filename: str) -> None:
-        """Load a compressed numpy array of all the data in this set"""
+        """Load a compressed numpy array of all the data in this set
+
+        The data are appended to existing ConfigurationSet.
+        """
+
+        if not filename.endswith('.npz'):
+            raise ValueError(f"File {filename} doesn't have .npz extension")
 
         data = np.load(filename, allow_pickle=True)
 
@@ -760,26 +783,21 @@ class ConfigurationSet(list):
 
     def __add__(
         self,
-        other: 'Configuration | ConfigurationSet',
-    ) -> 'ConfigurationSet':  # ty:ignore[invalid-method-override]
+        other: object,
+    ) -> ConfigurationSet:
         """Add another configuration or set of configurations onto this one"""
 
         if isinstance(other, Configuration):
             self.append(other)
-
         elif isinstance(other, ConfigurationSet):
             self.extend(other)
-
         else:
-            raise TypeError(
-                'Can only add a Configuration or'
-                f' ConfigurationSet, not {type(other)}'
-            )
-
-        logger.info(f'Current number of configurations is {len(self)}')
+            return NotImplemented
         return self
 
-    def _run_parallel_method(self, function, n_cores_pp, **kwargs):
+    def _run_parallel_method(
+        self, function, n_cores_pp, keep_output_files, **kwargs
+    ):
         """Run a set of electronic structure calculations on this set
         in parallel
 
@@ -809,9 +827,12 @@ class ConfigurationSet(list):
             )
 
         with Pool(processes=n_processes) as pool:
-            for _, config in enumerate(self):
+            for num, config in enumerate(self):
+                kw = deepcopy(kwargs)
+                kw['index'] = num
+                kw['keep_output_files'] = keep_output_files
                 result = pool.apply_async(
-                    func=function, args=(config,), kwds=kwargs
+                    func=function, args=(config,), kwds=kw
                 )
                 results.append(result)
 
@@ -846,7 +867,7 @@ class ConfigurationSet(list):
 
         name = ''
         for arg in args:
-            if hasattr(arg, 'predict'):
+            if isinstance(arg, MLPotential):
                 name += arg.name
 
             if isinstance(arg, str):
@@ -855,9 +876,11 @@ class ConfigurationSet(list):
         return name
 
 
-def _single_point_eval(config, method_name, **kwargs):
+def _single_point_eval(config, method_name, output_name, **kwargs):
     """Top-level hashable function useful for multiprocessing"""
-    config.single_point(method_name, **kwargs)
+    if 'index' in kwargs:
+        output_name = f'{output_name}_{kwargs.pop("index")}'
+    config.single_point(method=method_name, output_name=output_name, **kwargs)
     return config
 
 

@@ -1,4 +1,6 @@
+import logging
 import os
+
 import numpy as np
 import pytest
 from autode.atoms import Atom
@@ -7,6 +9,9 @@ from mlptrain.utils import work_in_tmp_dir
 from mlptrain.box import Box
 
 here = os.path.abspath(os.path.dirname(__file__))
+
+# Shared by the tests below
+_PARTIAL_FORCES_WARNING = 'predicted forces'
 
 
 @pytest.fixture
@@ -64,6 +69,112 @@ def config_set_xyz_with_energies_forces():
     return configs, expected_values
 
 
+def test_addition_unsupported(mlp_caplog):
+    mlp_caplog.set_level(logging.INFO, logger='mlptrain')
+    configs = ConfigurationSet()
+
+    with pytest.raises(TypeError, match='unsupported operand type'):
+        configs + 1
+    with pytest.raises(TypeError, match='unsupported operand type'):
+        1 + configs  # ty: ignore[unsupported-operator]
+    with pytest.raises(TypeError, match='unsupported operand type'):
+        configs + None
+
+
+def test_addition_none():
+    configs = ConfigurationSet()
+    # Weirdly, appending None is silently skipped,
+    # (but adding None raises TypeError! See above)
+    configs.append(None)
+    assert len(configs) == 0
+
+
+def test_config_addition(mlp_caplog):
+    mlp_caplog.set_level(logging.INFO, logger='mlptrain')
+    configs = ConfigurationSet()
+    config = Configuration()
+
+    assert len(configs) == 0
+
+    configs = configs + config
+    assert len(configs) == 1
+
+    # By default, identical configs are not added
+    configs = configs + config
+    assert len(configs) == 1
+
+    assert len(mlp_caplog.records) == 1
+    assert (
+        mlp_caplog.records[0].message
+        == 'Not appending configuration to set - already present'
+    )
+
+    configs.append(config)
+    assert len(configs) == 1
+
+    assert len(mlp_caplog.records) == 2
+    for record in mlp_caplog.records:
+        assert (
+            record.message
+            == 'Not appending configuration to set - already present'
+        )
+
+
+def test_config_addition_with_duplicates(mlp_caplog):
+    mlp_caplog.set_level(logging.INFO, logger='mlptrain')
+
+    config = Configuration()
+    configs_with_duplicates = ConfigurationSet(allow_duplicates=True)
+
+    configs_with_duplicates = configs_with_duplicates + config + config
+    configs_with_duplicates.append(config)
+
+    assert len(configs_with_duplicates) == 3
+    assert len(mlp_caplog.records) == 0
+
+
+def test_two_config_sets_addition(mlp_caplog):
+    mlp_caplog.set_level(logging.INFO, logger='mlptrain')
+
+    # Currently, adding two ConfigurationSets,
+    # or calling the "extend()" method, doesn't check for duplicates!
+    # We should probably change that!
+    config = Configuration()
+    configs1 = ConfigurationSet(config)
+    configs2 = ConfigurationSet(config)
+
+    assert len(configs1 + configs2) == 2
+
+    configs2.extend(configs2)
+    assert len(configs2) == 2
+
+
+def test_addition_expression():
+    """This is weird! Just having an addition expression
+    modifies the original ConfigurationSet instead of creating a copy.
+
+    Notably, this is NOT how how stdlib list works!
+    Here is the actual behaviour for list type:
+
+    >>> a = [1]
+    >>> a + [2]
+    [1, 2]
+    >>> a
+    [1]
+
+    Notice that the original list `a` is not modified.
+    """
+    config = Configuration()
+    config_set = ConfigurationSet(allow_duplicates=True)
+
+    config_set + config
+    assert len(config_set) == 1
+
+    # This also behaves when adding two ConfigurationSets
+    config_set + config_set
+    assert len(config_set) == 2
+
+
 @work_in_tmp_dir()
 def test_configurations_print(config_set_xyz_with_energies_forces):
     """Regression test for https://github.com/duartegroup/mlp-train/issues/223"""
@@ -95,6 +206,53 @@ def test_configurations_save():
     configs.save('tmp.npz')
 
     assert os.path.exists('tmp.npz')
+
+
+@work_in_tmp_dir()
+def test_configurations_save_true_forces_without_predicted_is_quiet(
+    mlp_caplog,
+):
+    mlp_caplog.set_level(logging.WARNING, logger='mlptrain')
+    config = Configuration(atoms=[Atom('H')])
+    config.energy.true = -1.0
+    config.forces.true = np.ones(shape=(1, 3))
+
+    ConfigurationSet(config).save('tmp.npz')
+
+    assert not any(
+        _PARTIAL_FORCES_WARNING in record.message
+        for record in mlp_caplog.records
+    )
+
+    loaded_config = ConfigurationSet('tmp.npz')[0]
+    assert loaded_config.forces.true is not None
+    assert loaded_config.forces.predicted is None
+
+
+@work_in_tmp_dir()
+def test_configurations_save_partially_predicted_forces_warns(mlp_caplog):
+    mlp_caplog.set_level(logging.WARNING, logger='mlptrain')
+    config1 = Configuration(atoms=[Atom('H')])
+    config1.energy.true = -1.0
+    config1.forces.true = np.ones(shape=(1, 3))
+    config1.forces.predicted = 1.1 * np.ones(shape=(1, 3))
+
+    config2 = Configuration(atoms=[Atom('He', 1.0, 0.0, 0.0)])
+    config2.energy.true = -2.0
+    config2.forces.true = 2.0 * np.ones(shape=(1, 3))
+
+    ConfigurationSet(config1, config2).save('tmp.npz')
+
+    assert (
+        sum(
+            _PARTIAL_FORCES_WARNING in record.message
+            for record in mlp_caplog.records
+        )
+        == 1
+    )
+
+    loaded_configs = ConfigurationSet('tmp.npz')
+    assert all(config.forces.predicted is None for config in loaded_configs)
 
 
 @work_in_tmp_dir()

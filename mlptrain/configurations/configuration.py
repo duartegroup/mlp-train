@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import shutil
+
 import ase
 import numpy as np
 import os
@@ -327,6 +329,7 @@ class Configuration(AtomCollection):
         ___________________________________________________________________________
 
         """
+        assert self.atoms is not None
         # Calculate the box size if not provided, based on the maximum distance between any two atoms in the solute
         # and the buffer distance
         if box_size is None:
@@ -622,6 +625,8 @@ class Configuration(AtomCollection):
                 f'quantities to {filename}'
             )
 
+        assert self.atoms is not None
+
         if not (true or predicted):
             prop_str = ''
 
@@ -706,6 +711,9 @@ class Configuration(AtomCollection):
         self,
         method: Union[str, MLPotential],
         n_cores: int = 1,
+        keep_output_files: bool = True,
+        output_name: str | None = None,
+        **kwargs,
     ) -> None:
         """
         Run a single point energy and gradient (force) evaluation using
@@ -717,16 +725,52 @@ class Configuration(AtomCollection):
             method:
 
             n_cores: Number of cores to use for the calculation
+
+            keep_output_files: If true, copy back the QM outputs.
         """
+
         implemented_methods = ['xtb', 'orca', 'g09', 'g16']
 
         if isinstance(method, str) and method.lower() in implemented_methods:
-            run_autode(self, method, n_cores=n_cores)
+            kept_substrings_list = []
+            if keep_output_files:
+                os.makedirs('QM_outputs', exist_ok=True)
+                if method in ('g09', 'g16'):
+                    kept_substrings_list.append('.log')
+                else:
+                    kept_substrings_list.append('.out')
+            decorator = work_in_tmp_dir(
+                kept_substrings=kept_substrings_list,
+                output_name=output_name,
+            )
+            run_autode_decorated = decorator(run_autode)
+            run_autode_decorated(
+                self,
+                method,
+                n_cores=n_cores,
+                **kwargs,
+            )
+
+            if keep_output_files:
+                if output_name is None:
+                    method_name = method.lower()
+                    shutil.move(
+                        src=f'tmp_{method_name}{kept_substrings_list[0]}',
+                        dst=f'QM_outputs/{method_name}{kept_substrings_list[0]}',
+                    )
+                elif 'energy' in output_name:
+                    pass
+                else:
+                    shutil.move(
+                        src=f'{output_name}{kept_substrings_list[0]}',
+                        dst='QM_outputs/',
+                    )
+
             self.n_ref_evals += 1
             return None
 
         elif hasattr(method, 'predict'):
-            method.predict(self)  # ty:ignore[call-non-callable]
+            method.predict(self)  # ty: ignore[call-non-callable]
 
         else:
             raise ValueError(
@@ -860,7 +904,7 @@ class Configuration(AtomCollection):
         # Update box if cell information is available
         cell_array = np.array(ase_atoms.get_cell())
         if np.any(cell_array != 0):
-            box = Box(np.diag(cell_array))
+            box = Box(np.diag(cell_array))  # ty: ignore[invalid-argument-type]
             logger.info(f'Updated box with dimensions: {np.diag(cell_array)}')
 
         # Load mol_dict if available
@@ -895,6 +939,9 @@ class Configuration(AtomCollection):
         """
         if not self.mol_dict:
             return True
+
+        if self.atoms is None:
+            return False
 
         total_atoms = len(self.atoms)
 
