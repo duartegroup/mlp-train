@@ -28,6 +28,7 @@ dependencies:
   - seaborn
   - pip:
     - mace-torch==0.3.10
+    - numpy<2.0
     - cuequivariance==0.1.0
     - cuequivariance-torch==0.1.0
     - cuequivariance-ops-torch-cu11==0.1.0
