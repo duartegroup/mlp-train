@@ -6,28 +6,72 @@
 [![License](https://img.shields.io/badge/License-MIT%202.0-blue.svg)](https://opensource.org/licenses/mit)
 
 # mlp-train
-General machine learning potentials (MLP) training for molecular systems in gas phase and solution
+General machine learning potentials (MLP) training for molecular systems in the gas phase and solution
 
 Available models:
-- GAP
 - ACE
 - MACE
 
+## Documentation and tutorial
+
+The (incomplete) readthedocs documentation for the mlp-train package is available [here](https://mlp-train.readthedocs.io/en/latest/index.html)
+
+Simple tutorials illustrating the use of mlp-train are available at: [https://github.com/duartegroup/euchems_tutorial](https://github.com/duartegroup/euchems_tutorial).
 
 ## Install
 
-Each model is installed into an individual conda environment:
+MACE environment can be installed through conda or pixi.
+
+### MACE (conda)
+
+To install MACE via conda, run:
 
 ```
-# Install GAP
-./install_gap.sh
+./install_mace.sh
+```
 
-# Install ACE
+The MACE installation benefits from CUDA acceleration. If you would like to install a GPU version of MACE on machine without GPU,
+ you might need to prefix the mace_install.sh with instructions for conda:
+```
+CONDA_OVERRIDE_CUDA=12.0 ./install_mace.sh
+```
+
+### MACE (pixi)
+
+The MACE environment can be also managed with [pixi](https://pixi.sh). First install pixi:
+
+```
+curl -fsSL https://pixi.sh/install.sh | bash
+```
+
+Then, from the repository root, create the environment (mace or mace-cpu), which also installs
+`mlptrain` in editable mode, and run the tests:
+
+```
+pixi install -e mace
+pixi run -e mace test
+```
+
+The `pixi.toml` currently supports `linux-64` and `arm64` platforms. For a `linux-64` machines, you can choose to install CPU or GPU version of MACE.
+If you would like to install a GPU version on a machine without a GPU
+(e.g. a head node, or to install CUDA builds for later GPU use), set the CUDA
+override instruction for conda so the locked CUDA packages can be installed:
+
+```
+CONDA_OVERRIDE_CUDA=12.0 pixi install -e mace
+```
+
+To see how to use mlp-train with pixi environemnt, see the corresponding part in Documentation.
+
+### ACE (conda)
+
+ACE is still installed into its own conda environment:
+
+```
 ./install_ace.sh
-
-# Install MACE
-./install_mace.sh 
 ```
+
+The environment for ACE requires the installation of Julia (version >= 1.6), which needs to be present in $PATH.
 
 ### Notes
 
@@ -35,31 +79,22 @@ Each model is installed into an individual conda environment:
 
 ## Using with OpenMM
 
-The OpenMM backend only works with MACE at the moment. The necessary dependencies are installed automatically via conda:
+The OpenMM backend only works with MACE at the moment. The necessary dependencies are installed automatically during MACE installation.
 
-```
-./install_mace.sh
-```
-
-Depending on your machine, you might need to prefix the command above with something like `CONDA_OVERRIDE_CUDA="11.2"` in two scenarios:
-
-- To ensure an environment that is compatible with your CUDA driver.
-- To force CUDA builds to be installed, even if the installation is being done from a CPU-only machine. This is typical in a situation where you are installing from a head node without GPUs but intend to run on GPUs and want to install the CUDA builds.
-
-You should now be able to run `water_openmm.py` in `./examples` or run the jupyter notebook on Google Colab [`water_openmm_colab.ipynb`](./examples/water_openmm_colab.ipynb).
+You should then be able to run `water_openmm.py` in `./examples` or run the Jupyter notebook on Google Colab [`water_openmm_colab.ipynb`](./examples/water_openmm_colab.ipynb).
 
 You can use OpenMM during active learning by passing the keyword argument `md_program="OpenMM"` to the `al_train` method.
 You can run MD with OpenMM using `mlptrain.md_openmm.run_mlp_md_openmm()`
 
 ## For developers
 
-We are happy to accept pull requests from users. Please first fork mlp-train repository. We use `pre-commit`, `Ruff` and `pytest` to check the code. Your PR needs to pass through these checks before is accepted. `Pre-commit` is installed as one the dependecies. To use it in your repository, run the following command in the mlp-train folder:
+We are happy to accept pull requests from users. Please first fork the mlp-train repository. We use `pre-commit`, `Ruff` and `pytest` to check the code. Your PR needs to pass through these checks before is accepted. `Pre-commit` is installed as one of the dependencies. To use it in your repository, run the following command in the mlp-train folder:
 
 ```
 pre-commit install 
 ```
 
-`Pre-commit` will then run automatically at each commit and will take care of installation and running of `Ruff`.
+`Pre-commit` will then run automatically at each commit and will take care of the installation and running of `Ruff`.
 
 ## Citations
 

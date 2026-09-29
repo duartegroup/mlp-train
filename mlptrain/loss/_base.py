@@ -1,6 +1,11 @@
+from __future__ import annotations
+
 import mlptrain
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from mlptrain.potentials import MLPotential
 
 
 class LossValue(ABC, float):
@@ -46,7 +51,7 @@ class LossFunction(ABC):
     def __call__(
         self,
         configurations: 'mlptrain.ConfigurationSet',
-        mlp: 'mlptrain.potentials._base.MLPotential',
+        mlp: MLPotential,
         **kwargs,
     ) -> LossValue:
         """Compute a loss value"""

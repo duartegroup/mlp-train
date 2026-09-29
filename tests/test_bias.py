@@ -3,7 +3,6 @@ import numpy as np
 
 import mlptrain as mlt
 from mlptrain.utils import work_in_tmp_dir
-from .test_potential import TestPotential
 
 mlt.Config.n_cores = 1
 here = os.path.abspath(os.path.dirname(__file__))
@@ -20,9 +19,9 @@ def _get_avg_dists(atoms, atom_pair_list):
 
 
 @work_in_tmp_dir()
-def test_bias(h2):
+def test_bias(h2, test_potential):
     system = mlt.System(h2, box=[50, 50, 50])
-    pot = TestPotential('1D')
+    pot = test_potential('1D')
 
     config = system.random_configuration()
 
@@ -30,7 +29,9 @@ def test_bias(h2):
 
     assert bias.ref is not None
     assert bias.kappa is not None
-    assert bias.f.atom_pair_list == [(0, 1)]
+    assert bias.f.atom_pair_list == [  # ty: ignore[unresolved-attribute]
+        (0, 1)
+    ]
 
     new_pos = [[0, 0, 0], [0, 0, 1]]
 

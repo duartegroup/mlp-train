@@ -67,11 +67,11 @@ def from_ase_to_autode(atoms):
     return autode_atoms
 
 
-@mlt.utils.work_in_tmp_dir(copied_exts=['.xml', '.json'])
+@mlt.utils.work_in_tmp_dir(copied_substrings=['.xml', '.json'])
 def md_with_file(
     configuration, mlp, temp, dt, interval, init_temp=None, **kwargs
 ):
-    from mltrain.md import _convert_ase_traj, _n_simulation_steps
+    from mlptrain.sampling.md import _convert_ase_traj, _n_simulation_steps
     from ase.io.trajectory import Trajectory as ASETrajectory
     from ase.md.langevin import Langevin
     from ase.md.verlet import VelocityVerlet

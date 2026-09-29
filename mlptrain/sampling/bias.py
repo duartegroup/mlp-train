@@ -1,5 +1,10 @@
-import mlptrain
+from __future__ import annotations
+
+import typing as t
 from mlptrain.sampling._base import Function, ASEConstraint
+
+if t.TYPE_CHECKING:
+    from mlptrain.sampling.reaction_coord import ReactionCoordinate
 
 
 class Bias(ASEConstraint, Function):
@@ -7,7 +12,7 @@ class Bias(ASEConstraint, Function):
 
     def __init__(
         self,
-        zeta_func: 'mlptrain.sampling.reaction_coord.ReactionCoordinate',
+        zeta_func: ReactionCoordinate,
         kappa: float,
         reference: float,
     ):

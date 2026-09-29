@@ -1,16 +1,19 @@
+from __future__ import annotations
+
 import os
 import ase
+import ase.io
 import mlptrain
 import shutil
 import numpy as np
 import autode as ade
 from copy import deepcopy
-from typing import Optional, Sequence, List, Union
+from typing import TYPE_CHECKING, Optional, Sequence, List, Union
 from numpy.random import RandomState
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.config import Config
+from mlptrain.sampling import PlumedBias
 from mlptrain.sampling.plumed import (
-    PlumedBias,
     PlumedCalculator,
     plumed_setup,
     get_colvar_filename,
@@ -21,15 +24,17 @@ from mlptrain.utils import work_in_tmp_dir
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.md.nptberendsen import NPTBerendsen
-from ase.md.langevin import Langevin
-from ase.md.verlet import VelocityVerlet
-from ase.io import read
+from ase.md import Langevin, VelocityVerlet
 from ase import units as ase_units
+import time
+
+if TYPE_CHECKING:
+    from mlptrain.potentials import MLPotential
 
 
 def run_mlp_md(
     configuration: 'mlptrain.Configuration',
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     temp: float,
     dt: float,
     interval: int,
@@ -38,7 +43,7 @@ def run_mlp_md(
     init_temp: Optional[float] = None,
     fbond_energy: Optional[dict] = None,
     bbond_energy: Optional[dict] = None,
-    bias: Optional = None,
+    bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']] = None,
     restart_files: Optional[List[str]] = None,
     copied_substrings: Optional[Sequence[str]] = None,
     kept_substrings: Optional[Sequence[str]] = None,
@@ -158,6 +163,8 @@ def run_mlp_md(
     else:
         logger.info('Running MLP MD')
 
+    start_time = time.perf_counter()
+
     decorator = work_in_tmp_dir(
         copied_substrings=copied_substrings_list,
         kept_substrings=kept_substrings_list,
@@ -181,12 +188,37 @@ def run_mlp_md(
         **kwargs,
     )
 
+    delta_time = time.perf_counter() - start_time
+    _log_sim_time(delta_time)
+
     return traj
+
+
+def _log_sim_time(delta_time: float) -> None:
+    """Log total simulation time in a nice format"""
+    if delta_time < 60:
+        logger.info(f'MLP MD simulation completed in {delta_time:02.2f} s.')
+        return
+
+    days, remainder = divmod(delta_time, 3600 * 24)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    if int(days) == 1:
+        days_str = '1 day '
+    elif days > 1:
+        days_str = f'{int(days)} days '
+    else:
+        days_str = ''
+
+    logger.info(
+        f'MLP MD simulation completed in {days_str}{int(hours):02d} h {int(minutes):02d} min {seconds:.2f} s.'
+    )
 
 
 def _run_mlp_md(
     configuration: 'mlptrain.Configuration',
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     temp: float,
     dt: float,
     interval: int,
@@ -195,7 +227,7 @@ def _run_mlp_md(
     init_temp: Optional[float] = None,
     fbond_energy: Optional[dict] = None,
     bbond_energy: Optional[dict] = None,
-    bias: Optional = None,
+    bias: Optional[mlptrain.Bias | mlptrain.PlumedBias] = None,
     restart_files: Optional[List[str]] = None,
     **kwargs,
 ) -> 'mlptrain.Trajectory':
@@ -305,7 +337,7 @@ def _run_mlp_md(
 
 def _attach_calculator_and_constraints(
     ase_atoms: 'ase.atoms.Atoms',
-    mlp: 'mlptrain.potentials._base.MLPotential',
+    mlp: MLPotential,
     bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
     temp: float,
     interval: int,
@@ -357,7 +389,7 @@ def _attach_calculator_and_constraints(
 
 def _run_dynamics(
     ase_atoms: 'ase.atoms.Atoms',
-    ase_traj: 'ase.io.trajectory.Trajectory',
+    ase_traj: ase.io.trajectory.TrajectoryWriter,
     traj_name: str,
     interval: int,
     temp: float,
@@ -372,7 +404,7 @@ def _run_dynamics(
 ) -> None:
     """Initialise dynamics object and run dynamics"""
 
-    if all([value is not None for value in [pressure, compress]]) and temp > 0:
+    if pressure is not None and compress is not None and temp > 0:
         # Run NPT dynamics if pressure and compressibility are specified
         pressure_au = pressure * ase_units.bar
         compress_au = compress / ase_units.bar
@@ -420,7 +452,7 @@ def _run_dynamics(
 
 
 def _save_trajectory(
-    ase_traj: 'ase.io.trajectory.Trajectory', traj_name: str, **kwargs
+    ase_traj: ase.io.trajectory.TrajectoryWriter, traj_name: str, **kwargs
 ) -> None:
     """
     Save the trajectory with a unique name based on the current simulation
@@ -436,6 +468,11 @@ def _save_trajectory(
         if key in kwargs:
             specified_key = key
             break
+
+    if specified_key is None:
+        raise ValueError(
+            'Could not determine time units for saving the trajectory'
+        )
 
     traj_basename = traj_name[:-5]
     time_units = specified_key.split('_')[-1]
@@ -469,9 +506,9 @@ def _get_traj_name(restart_files: Optional[List[str]] = None, **kwargs) -> str:
     else:
         for filename in restart_files:
             if filename.endswith('.traj'):
-                traj_name = filename
+                return filename
 
-                return traj_name
+    raise ValueError('Could not determine trajectory file name')
 
 
 def _convert_ase_traj(
@@ -494,7 +531,7 @@ def _convert_ase_traj(
 
         # Set the atom_pair_list of every atom in the configuration
         for i, position in enumerate(atoms.get_positions()):
-            config.atoms[i].coord = position
+            config.atoms[i].coord = position  # ty: ignore[not-subscriptable]
 
         mlt_traj.append(config)
 
@@ -531,8 +568,8 @@ def _attach_plumed_coordinates(
 def _set_momenta_and_geometry(
     ase_atoms: 'ase.atoms.Atoms',
     temp: float,
-    bbond_energy: dict,
-    fbond_energy: dict,
+    bbond_energy: dict | None,
+    fbond_energy: dict | None,
     restart: bool,
     traj_name: str,
 ) -> None:
@@ -593,7 +630,12 @@ def _set_momenta_and_geometry(
             'last configuration'
         )
 
-        last_configuration = read(traj_name)
+        last_configuration = ase.io.read(traj_name)
+
+        # Make sure we've only read a single structure, not multiple of them!
+        assert isinstance(
+            last_configuration, ase.Atoms
+        ), 'more than one configuration in file {traj_name}!'
 
         ase_atoms.set_positions(last_configuration.get_positions())
         ase_atoms.set_momenta(last_configuration.get_momenta())
@@ -606,7 +648,7 @@ def _initialise_traj(
     restart: bool,
     traj_name: str,
     remove_last: bool = True,
-) -> 'ase.io.trajectory.Trajectory':
+) -> ase.io.trajectory.TrajectoryWriter:
     """Initialise ASE trajectory object"""
 
     if not restart:

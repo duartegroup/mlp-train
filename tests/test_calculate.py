@@ -84,10 +84,14 @@ class MockUnitConversion:
 @pytest.fixture
 def configuration():
     """Fixture for a mock Configuration object"""
-    config = Configuration(atoms=['H', 'O'], charge=0, mult=1)
+    config = Configuration(
+        atoms=['H', 'O'],  # ty: ignore[invalid-argument-type]
+        charge=0,
+        mult=1,
+    )
     config.forces = Forces()
     config.energy = Energy()
-    config.partial_charges = None
+    config.partial_charges = None  # ty: ignore[unresolved-attribute]
     return config
 
 

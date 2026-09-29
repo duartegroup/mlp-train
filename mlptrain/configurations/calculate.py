@@ -1,14 +1,18 @@
 import mlptrain
 import autode
-from typing import Tuple
+from typing import TYPE_CHECKING
 from mlptrain.log import logger
-from mlptrain.utils import work_in_tmp_dir
 from mlptrain.config import Config
 
+if TYPE_CHECKING:
+    import autode.wrappers.keywords
+    import autode.wrappers.methods
 
-@work_in_tmp_dir()
+
 def run_autode(
-    configuration: 'mlptrain.Configuration', method_name: str, n_cores: int = 1
+    configuration: 'mlptrain.Configuration',
+    method_name: str,
+    n_cores: int = 1,
 ) -> None:
     """
     Run an autodE calculation
@@ -20,6 +24,7 @@ def run_autode(
         method_name: Name of the method. Case insensitive
 
         n_cores: Number of cores to use for the calculation
+
     """
     from autode.species import Species
     from autode.calculations import Calculation
@@ -43,7 +48,11 @@ def run_autode(
     calc.run()
 
     try:
-        configuration.forces.true = -calc.molecule.gradient.to('eV Å^-1')
+        configuration.forces.true = (
+            -calc.molecule.gradient.to(  # ty: ignore[unresolved-attribute]
+                'eV Å^-1'
+            )
+        )
 
     except CouldNotGetProperty:
         logger.error('Failed to set forces')
@@ -57,13 +66,17 @@ def run_autode(
         return None
 
     configuration.energy.true = energy.to('eV')
-    configuration.partial_charges = calc.molecule.partial_charges
+    configuration.partial_charges = (  # ty: ignore[unresolved-attribute]
+        calc.molecule.partial_charges
+    )
     return None
 
 
 def _method_and_keywords(
     method_name: str,
-) -> Tuple['autode.wrappers.Method', 'autode.wrappers.keywords.Keywords']:
+) -> tuple[
+    'autode.wrappers.methods.Method', 'autode.wrappers.keywords.Keywords'
+]:
     """Get the method and associated keywords to use in a QM calculation"""
     from autode.methods import ORCA, XTB, G16, G09
 
