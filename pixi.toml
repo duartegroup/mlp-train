@@ -13,7 +13,8 @@ platforms = [
 python = "3.10.*"
 pip = "*"
 libgfortran = "14.*"
-ase = "3.23.*"
+# NOTE: ase 3.29 and plumed 2.10 break our Plumed integration
+ase = "3.28.*"
 autode = "1.4.5.*"
 coloredlogs = "*"
 cython = "*"
@@ -33,11 +34,6 @@ git = "*"
 seaborn = "*"
 
 # --- MACE feature: PyPI dependencies (from the pip: block) ---
-# NOTE: the original environment_mace.yml pip-installed an ASE fork
-# (gitlab.com/ase/ase@f2615a6e9a, v3.23.0b1) "for PLUMED", force-overwriting
-# conda's ase. pixi/uv require a coherent solve, and that beta fork is not on
-# conda-forge, so we use conda's ase instead (the fork's PLUMED fixes are
-# upstream by ase 3.28). PLUMED support is verified by the test suite.
 [feature.mace.pypi-dependencies]
 mace-torch = "==0.3.10"
 # Install the project itself, editable (replaces `pip install -e .`).
