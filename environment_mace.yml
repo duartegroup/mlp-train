@@ -6,6 +6,7 @@ channels:
   - pytorch
 dependencies:
   - python=3.10
+  # https://github.com/duartegroup/mlp-train/issues/259
   - ase=3.28.*
   - pip
   - libgfortran=14.*
@@ -16,6 +17,7 @@ dependencies:
   - matplotlib-base>=3.9.0
   - numpy
   - py-plumed
+  # https://github.com/duartegroup/mlp-train/issues/259
   - plumed<2.10
   - scipy
   - xtb
@@ -28,6 +30,7 @@ dependencies:
   - seaborn
   - pip:
     - mace-torch==0.3.10
+    # https://github.com/duartegroup/mlp-train/issues/260
     - numpy<2.0
     - cuequivariance==0.1.0
     - cuequivariance-torch==0.1.0
