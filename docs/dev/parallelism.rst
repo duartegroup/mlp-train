@@ -70,8 +70,7 @@ clean interpreter that initialises CUDA for itself, which is the only way for
 a child to use the GPU at all.
 
 **Unification across platforms.** ``spawn`` is the only start method available on
-all supported platforms, so contributors developing on macOS exercise the same
-process semantics that CI and Linux HPC do.
+all supported platforms, i.e., macOS, Linux and CI.
 
 The cost is that everything crossing a process boundary has to be picklable,
 and that ``Config`` is rebuilt from the import in each child. Both are made
