@@ -1,14 +1,23 @@
 import logging
-
-import mlptrain as mlt
-import pytest
-import numpy as np
-from autode.atoms import Atom
 import os
 
+import autode
+import autode.values
+import numpy as np
+import pytest
 from ase.calculators.lj import Calculator, LennardJones
+from autode.atoms import Atom
 
+import mlptrain as mlt
 from mlptrain.log import logger as mlp_logger
+
+
+@pytest.fixture(autouse=True, scope='session')
+def patch_autode_config():
+    """Patch autode's default memory requirements to make sure
+    that tests can run on hardware with less than 16Gb RAM
+    """
+    autode.config.Config.max_core = autode.values.Allocation(1, units='GB')
 
 
 @pytest.fixture
