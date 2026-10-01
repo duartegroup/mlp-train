@@ -304,8 +304,7 @@ Setting ``Config.n_cores == n_configs_iter`` gives one core per worker and is
 the simplest choice.
 
 The default ``dynamics_timeout`` of 100,000 hours is effectively infinite for 
-active learning, but this is done temporarily so as to not affect default 
-behaviour for other modes of operation (metadynamics etc.). A suitable 
+active learning, this is done temporarily to not affect cases when molecular dynamics runs outside of active learning (e.g., sampling, metadynamics etc.). A suitable 
 dynamics_timeout can be set based on the expected runtime of each step, as each 
 step takes ``2 + n_calls**3 + extra_time`` fs, which is typically tens to 
 hundreds of femtoseconds. A reasonable suggestion for active learning would be 
