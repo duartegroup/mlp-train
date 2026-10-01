@@ -51,7 +51,7 @@ non-daemonic workers, which are free to do this, and it is what
 
 **The parent must be able to reclaim an individual worker.**
 ``_add_active_configs`` manages raw ``mp.Process`` objects and an ``mp.Queue``
-directly, so it can poll each worker, notice one that has outrun its timeout,
+directly, so it notices process that has outrun its timeout,
 and terminate just that one while the rest of the iteration carries on.
 
 =================================
