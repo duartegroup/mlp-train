@@ -45,7 +45,7 @@ Two properties of the tree above decide how workers are launched.
 
 **Workers must be able to have children.** A metadynamics worker starts
 PLUMED, and an active-learning worker may start a QM code, so no level of the
-tree can be a leaf. ``concurrent.futures.ProcessPoolExecutor`` creates
+tree can be a leaf (i.e., terminal node with no children). ``concurrent.futures.ProcessPoolExecutor`` creates
 non-daemonic workers, which are free to do this, and it is what
 ``Metadynamics`` uses. 
 
