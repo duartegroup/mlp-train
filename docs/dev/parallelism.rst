@@ -55,7 +55,7 @@ directly, so it can poll each worker, notice one that has outrun its timeout,
 and terminate just that one while the rest of the iteration carries on.
 
 =================================
-Why the ``spawn`` start method
+``spawn`` start method in multiprocessing
 =================================
 
 Every child is started with ``spawn``: a fresh interpreter that imports
