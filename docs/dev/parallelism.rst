@@ -37,44 +37,6 @@ The process tree
 
 All process creation uses the ``spawn`` start method.
 
-=======================================
-``mp.Process`` and the executor
-=======================================
-
-Two properties of the tree above decide how workers are launched.
-
-**Workers must be able to have children.** A metadynamics worker starts
-PLUMED, and an active-learning worker may start a QM code, so no level of the
-tree can be a leaf (i.e., terminal node with no children). ``concurrent.futures.ProcessPoolExecutor`` creates
-non-daemonic workers, which are free to do this, and it is what
-``Metadynamics`` uses. 
-
-**The parent must be able to reclaim an individual worker.**
-``_add_active_configs`` manages raw ``mp.Process`` objects and an ``mp.Queue``
-directly, so it notices process that has outrun its timeout,
-and terminate just that one while the rest of the iteration carries on.
-
-=================================
-``spawn`` start method in multiprocessing
-=================================
-
-Every child is started with ``spawn``: a fresh interpreter that imports
-``mlptrain`` from scratch and inherits nothing from the parent's memory. That
-matters because by the time workers are created the parent is holding state
-that does not survive being copied.
-
-**A live CUDA context.** ``al_train`` calls ``mlp.train()`` before entering
-the iteration loop, and the MACE backend calls ``torch.cuda.empty_cache()``,
-so the parent holds an initialised CUDA context. ``spawn`` gives each child a
-clean interpreter that initialises CUDA for itself, which is the only way for
-a child to use the GPU at all.
-
-**Unification across platforms.** ``spawn`` is the only start method available on
-all supported platforms, i.e., macOS, Linux and CI.
-
-The cost is that everything crossing a process boundary has to be picklable,
-and that ``Config`` is rebuilt from the import in each child. Both are made
-concrete in `Important caveats for code that runs in a worker`_.
 
 =====================
 The three timeouts
@@ -105,13 +67,13 @@ The three timeouts
      - —
      - The poll loop itself failing to make progress
 
-The inner timeout is the graceful layer. ``SIGALRM`` is delivered to the main
+The inner timeout triggers a ``SIGALRM`` signal which is delivered to the main
 thread, ``run_with_timeout`` raises, and ``run_mlp_md`` unwinds through its
-normal ``finally`` blocks. C-extension code — PLUMED and PyTorch both do this
-in places — can hold a signal until it returns to the interpreter, so a
-trajectory deep inside such a call may run past ``dynamics_timeout``. When it
-does, the per-worker timeout is the layer that still delivers the bound: the
-parent terminates the worker and the iteration moves on.
+``finally`` block. The C-extension code, such as PLUMED and PyTorch,
+can hold a signal until it returns to the interpreter, so a
+trajectory deep inside such a call may run past ``dynamics_timeout``.
+When it does, the per-worker timeout will eventually trigger; the
+parent will terminate the worker and the iteration moves on.
 
 What each layer covers
 ----------------------
@@ -222,17 +184,20 @@ entry rather than disappearing along with the process.
 Important caveats for code that runs in a worker
 ================================================
 
-**Everything crossing a process boundary must be picklable under spawn.**
-There is no shared memory and no inherited state: the child re-imports
-``mlptrain`` from scratch. This is why the worker arguments are built with
-``init_config.copy()``, ``mlp.copy()`` and ``selection_method.copy()``, and
-why backends must keep their calculators constructible from picklable state.
+Every child is started with a `spawn method <https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods>`__:
+a fresh interpreter that imports ``mlptrain`` from scratch and inherits nothing from the parent's memory.
+
+**Every object crossing a process boundary (e.g. function arguments and return values)
+must be serializable** with the `pickle protocol <https://docs.python.org/3/library/pickle.html#module-pickle>`__.
+There is no shared memory between the processes and no inherited state:
+the child re-imports ``mlptrain`` from scratch.
+This is why the worker arguments are built with
+``init_config.copy()``, ``mlp.copy()`` and ``selection_method.copy()``.
 
 **Set Config attributes at module scope.** ``Config`` is a module-level
-singleton, and each spawned worker builds its own by re-importing — including
-re-importing the script it was launched from. That re-import runs everything
-at module scope but skips the ``if __name__ == '__main__':`` block, which is
-exactly the split you want::
+singleton (global class instance), and each spawned worker builds its own instance by re-importing
+the default config in the ``mlptrain.config`` module and re-importing the script it was launched from.
+This re-import runs everything at module scope but skips the ``if __name__ == '__main__':`` block::
 
     import mlptrain as mlt
 
@@ -257,14 +222,20 @@ arguments.
 ``examples/methane.py`` uses this layout — ``Config`` at the top of the file,
 everything else under the guard.
 
-**A lost worker costs configurations, not the iteration.** A worker whose
-trajectory hit ``dynamics_timeout``, that was terminated at
+**A live CUDA context.** ``al_train`` calls ``mlp.train()`` before entering
+the iteration loop, and the MACE backend calls ``torch.cuda.empty_cache()``,
+so the parent holds an initialised CUDA context. ``spawn`` gives each child a
+clean interpreter that initialises CUDA for itself, which is the only way for
+a child to use the GPU at all.
+
+**A lost AL worker does not interrupt the AL iteration.** A worker whose
+trajectory hits ``dynamics_timeout``, that was terminated at
 ``process_timeout``, or that raised and reported through the
-``(idx, 'error', …)`` tuple, contributes ``None`` to the pool of results. The
-iteration continues with the configurations that did arrive and logs how many
-trajectories were lost. Functions along this path return ``Optional`` for that
-reason — ``run_mlp_md``, ``_run_mlp_md``, ``Metadynamics._run_single_metad``
-and ``_gen_active_config`` all may return ``None``, and callers must check.
+``(idx, 'error', …)`` tuple, does not contribute to the pool of results. 
+Nevertheless, the iteration continues with the configurations from other workers
+and logs how many trajectories were lost. For this reason, functions
+``run_mlp_md``, ``_run_mlp_md``, ``Metadynamics._run_single_metad``
+and ``_gen_active_config`` may return ``None``.
 
 .. note::
   As of now the above is only true for active learning. Metadynamics, umbrella 
