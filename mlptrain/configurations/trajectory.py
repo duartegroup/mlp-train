@@ -30,7 +30,7 @@ class Trajectory(ConfigurationSet):
             if frame.time is None:
                 logger.warning(
                     'Attempted to set the initial time but a '
-                    f'time was note defined. Setting to {value}'
+                    f'time was not defined. Setting to {value}'
                 )
                 frame.time = value
 
