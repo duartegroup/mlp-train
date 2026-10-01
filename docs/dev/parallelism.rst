@@ -47,7 +47,7 @@ Two properties of the tree above decide how workers are launched.
 PLUMED, and an active-learning worker may start a QM code, so no level of the
 tree can be a leaf. ``concurrent.futures.ProcessPoolExecutor`` creates
 non-daemonic workers, which are free to do this, and it is what
-``Metadynamics`` uses. `
+``Metadynamics`` uses. 
 
 **The parent must be able to reclaim an individual worker.**
 ``_add_active_configs`` manages raw ``mp.Process`` objects and an ``mp.Queue``
