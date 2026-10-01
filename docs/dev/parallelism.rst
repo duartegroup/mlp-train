@@ -38,7 +38,7 @@ The process tree
 All process creation uses the ``spawn`` start method.
 
 =======================================
-Why ``mp.Process`` and the executor
+``mp.Process`` and the executor
 =======================================
 
 Two properties of the tree above decide how workers are launched.
