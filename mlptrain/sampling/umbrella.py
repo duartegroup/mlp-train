@@ -535,7 +535,7 @@ class UmbrellaSampling:
         dt: float,
         bias: 'mlptrain.Bias',
         **kwargs,
-    ):
+    ) -> mlptrain.Trajectory | None:
         """Run an individual umbrella sampling window"""
 
         logger.info(
@@ -546,7 +546,7 @@ class UmbrellaSampling:
 
         kwargs['n_cores'] = 1
 
-        traj = run_mlp_md(
+        return run_mlp_md(
             configuration=frame,
             mlp=mlp,
             temp=temp,
@@ -556,8 +556,6 @@ class UmbrellaSampling:
             kept_substrings=['.traj'],
             **kwargs,
         )
-
-        return traj
 
     @staticmethod
     def _move_and_save_files(
