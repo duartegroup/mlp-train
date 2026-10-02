@@ -437,9 +437,7 @@ def _add_active_configs(
                     f'configuration idx={idx}. Terminating pid={worker.pid}'
                 )
                 worker.terminate()
-                logger.info(
-                    f'Sent SIGTERM to idx={idx} pid={worker.pid}.'
-                )
+                logger.info(f'Sent SIGTERM to idx={idx} pid={worker.pid}.')
                 worker.join(timeout=5)
                 if worker.is_alive():
                     logger.error(
@@ -448,8 +446,8 @@ def _add_active_configs(
                     )
                     worker.kill()
                     logger.info(
-                            f'Sent SIGKILL to idx={idx} pid={worker.pid}. '
-                            'Calling join(timeout=10)...'
+                        f'Sent SIGKILL to idx={idx} pid={worker.pid}. '
+                        'Calling join(timeout=10)...'
                     )
                     worker.join(timeout=10)
                     logger.info(
@@ -516,9 +514,7 @@ def _add_active_configs(
             'or timed out'
         )
     if n_succeeded == 0:
-        raise RuntimeError(
-            'All active learning workers failed or timed out'
-        )
+        raise RuntimeError('All active learning workers failed or timed out')
     else:
         logger.info(
             f'Added {n_succeeded} new configurations to the training set'

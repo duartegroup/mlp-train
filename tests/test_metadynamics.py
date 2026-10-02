@@ -78,8 +78,7 @@ def _fake_executor(results):
 def test_estimate_width_raises_when_all_runs_time_out(
     h2_configuration, test_potential, monkeypatch
 ):
-    """Every width run timing out is fatal, not a silently empty result.
-    """
+    """Every width run timing out is fatal, not a silently empty result."""
 
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
@@ -101,8 +100,7 @@ def test_estimate_width_raises_when_all_runs_time_out(
 def test_estimate_width_uses_surviving_runs(
     h2_configuration, test_potential, monkeypatch
 ):
-    """A timed-out run is dropped; the remaining widths still give a result.
-    """
+    """A timed-out run is dropped; the remaining widths still give a result."""
 
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
@@ -135,8 +133,7 @@ def test_estimate_width_uses_surviving_runs(
 def test_run_metadynamics_bails_out_when_all_runs_time_out(
     h2_configuration, test_potential, monkeypatch, mlp_caplog
 ):
-    """All trajectories timing out degrades to a warning, not a crash.
-    """
+    """All trajectories timing out degrades to a warning, not a crash."""
 
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
     metad = mlt.Metadynamics(cv1)
