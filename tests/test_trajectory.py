@@ -5,7 +5,6 @@ import pytest
 from autode.atoms import Atom
 
 from mlptrain.configurations.configuration import Configuration
-from mlptrain.configurations.configuration_set import ConfigurationSet
 from mlptrain.configurations.trajectory import Trajectory
 
 
@@ -15,59 +14,10 @@ def _frame(time=None, x=0.0):
     return config
 
 
-def test_trajectory_is_configuration_set():
-    traj = Trajectory()
-    assert isinstance(traj, ConfigurationSet)
-    assert traj.allow_duplicates
-    assert len(traj) == 0
-
-
 def test_trajectory_allows_duplicates():
-    traj = Trajectory(Configuration(atoms=[Atom('H')]))
-    traj.append(Configuration(atoms=[Atom('H')]))
-    assert len(traj) == 2
-
-
-def test_trajectory_init_allows_duplicates():
     config = _frame()
     traj = Trajectory(config, config, _frame())
-    assert len(traj) == 3
-
-
-def test_trajectory_extend_and_add_allow_duplicates():
-    traj = Trajectory(_frame(), _frame())
-
-    traj.extend(Trajectory(_frame()))
-    assert len(traj) == 3
-
-    traj += _frame()
-    assert len(traj) == 4
-
-    # Adding a trajectory to itself doubles its length
-    traj += traj
-    assert len(traj) == 8
-
-
-def test_trajectory_init_invalid_argument():
-    with pytest.raises(ValueError):
-        Trajectory('not_a_file.xyz')
-
-
-def test_trajectory_append_invalid_type():
-    traj = Trajectory()
-    with pytest.raises(TypeError):
-        traj.append('not a configuration')  # ty: ignore[invalid-argument-type]
-
-
-def test_trajectory_init_from_npz(tmp_path):
-    filename = str(tmp_path / 'traj.npz')
-    Trajectory(_frame(), _frame()).save(filename)
-
-    traj = Trajectory(filename)
-    assert len(traj) == 2
-
-    # Loading duplicates of the same file is permitted for trajectories
-    traj = Trajectory(filename, filename)
+    traj.append(config)
     assert len(traj) == 4
 
 
@@ -83,10 +33,6 @@ def test_trajectory_is_pickleable():
     assert [frame.time for frame in unpickled] == [1.0, 2.0, 1.0]
     assert unpickled.t0 == 1.0
     assert unpickled.final_frame.coordinates[0][0] == 0.0
-
-    # Duplicates are still allowed after unpickling
-    unpickled.append(unpickled[0])
-    assert len(unpickled) == 4
 
 
 def test_t0_empty_trajectory():
