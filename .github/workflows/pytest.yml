@@ -14,9 +14,10 @@ jobs:
   test-ace:
     name: ACE (${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: ["ubuntu-22.04"]
         python-version: ["3.10"]
@@ -44,7 +45,7 @@ jobs:
       run: ./install_ace.sh
 
     - name: Test ACE
-      run: pytest --cov=mlptrain -k "not test_openmm"
+      run: pytest -v --cov=mlptrain -k "not test_openmm"
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v7
@@ -56,6 +57,7 @@ jobs:
   test-mace:
     name: MACE pixi (${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     # The pixi lock pins CUDA builds (system-requirements cuda = "12"); this lets
     # them install on the GPU-less runner. They run fine on CPU for the tests.
@@ -63,7 +65,7 @@ jobs:
       CONDA_OVERRIDE_CUDA: "12.0"
 
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: ["ubuntu-22.04"]
         python-version: ["3.10"]
@@ -82,7 +84,7 @@ jobs:
         cache: false
 
     - name: Test MACE install
-      run: pixi run -e mace pytest --cov=mlptrain
+      run: pixi run -e mace pytest -v --cov=mlptrain
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v7
@@ -94,9 +96,10 @@ jobs:
   test-mace-conda:
     name: MACE conda (${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: ["ubuntu-22.04"]
         python-version: ["3.10"]
@@ -120,7 +123,7 @@ jobs:
       run: ./install_mace.sh
 
     - name: Test MACE install
-      run: pytest --cov=mlptrain
+      run: pytest -v --cov=mlptrain
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v7
