@@ -230,7 +230,10 @@ def test_add_active_configs_collects_all_results(
     _run_add_active_configs(mlp, n_configs=3)
 
     assert mlp.n_train == 3
-    assert 'Collected 3/3 active configurations' in mlp_caplog.messages
+    assert (
+        'Computing mock reference for 3 new configurations'
+        in mlp_caplog.messages
+    )
     assert os.path.exists('datasets/dataset_after_iter_0.npz')
 
 
@@ -259,7 +262,10 @@ def test_add_active_configs_tolerates_failed_worker(
         '1/3 active learning workers failed or timed out'
         in mlp_caplog.messages
     )
-    assert 'Collected 2/3 active configurations' in mlp_caplog.messages
+    assert (
+        'Computing mock reference for 2 new configurations'
+        in mlp_caplog.messages
+    )
 
 
 @work_in_tmp_dir()
@@ -295,11 +301,7 @@ def test_add_active_configs_survives_worker_exception(
 def test_add_active_configs_kills_timed_out_worker(
     mlp_caplog, monkeypatch, test_potential
 ):
-    """A wedged worker is SIGTERMed, then SIGKILLed if it ignores SIGTERM.
-
-    This is the regression that motivated the branch: previously the parent
-    blocked forever in ``AsyncResult.get(timeout=None)``.
-    """
+    """A wedged worker is SIGTERMed, then SIGKILLed if it ignores SIGTERM."""
 
     monkeypatch.setattr(
         active, '_gen_active_config', lambda *args, **kwargs: _config(0.0)
@@ -310,7 +312,10 @@ def test_add_active_configs_kills_timed_out_worker(
 
     mlp = test_potential()
 
-    _run_add_active_configs(mlp, n_configs=1)
+    with pytest.raises(
+        RuntimeError, match='All active learning workers failed or timed out'
+    ):
+        _run_add_active_configs(mlp, n_configs=1)
 
     assert ctx.processes[0].calls == ['terminate', 'kill']
     assert mlp.n_train == 0
@@ -319,21 +324,13 @@ def test_add_active_configs_kills_timed_out_worker(
         in message
         for message in mlp_caplog.messages
     )
-    assert (
-        'All active learning workers failed or timed out; '
-        'no new configurations generated this iteration' in mlp_caplog.messages
-    )
 
 
 @work_in_tmp_dir()
 def test_add_active_configs_hard_caps_poll_loop(
     mlp_caplog, monkeypatch, test_potential
 ):
-    """The poll loop force-kills workers even when process_timeout is None.
-
-    Note the consequence: setting ``Config.process_timeout = None`` does not
-    disable killing, it only raises the cap to the hard 7200 + 120 s default.
-    """
+    """The poll loop force-kills workers even when process_timeout is None."""
 
     monkeypatch.setattr(
         active, '_gen_active_config', lambda *args, **kwargs: _config(0.0)
@@ -345,7 +342,10 @@ def test_add_active_configs_hard_caps_poll_loop(
 
     mlp = test_potential()
 
-    _run_add_active_configs(mlp, n_configs=1)
+    with pytest.raises(
+        RuntimeError, match='All active learning workers failed or timed out'
+    ):
+        _run_add_active_configs(mlp, n_configs=1)
 
     assert ctx.processes[0].calls == ['kill']
     assert mlp.n_train == 0

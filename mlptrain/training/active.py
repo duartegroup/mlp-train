@@ -394,7 +394,7 @@ def _add_active_configs(
         if now - last_status_log > 60:
             elapsed_loop = now - loop_start
             alive_info = {i: w.is_alive() for i, w in workers if i in pending}
-            logger.info(
+            logger.debug(
                 f'Worker poll loop: {elapsed_loop:.0f}s elapsed. '
                 f'pending={sorted(pending)}, alive={alive_info}'
             )
@@ -515,23 +515,17 @@ def _add_active_configs(
         )
     if n_succeeded == 0:
         raise RuntimeError('All active learning workers failed or timed out')
-    else:
-        logger.info(
-            f'Added {n_succeeded} new configurations to the training set'
-        )
 
-    if (
-        'method_name' in kwargs
-        and len(configs) > 0
-        and configs.has_a_none_energy
-    ):
-        for config in configs:
-            if config.energy.true is None:
-                config.single_point(
-                    kwargs['method_name'],
-                    n_cores=Config.n_cores,
-                    keep_output_files=kwargs['keep_output_files'],
-                )
+    logger.info(
+        f"Computing {kwargs['method_name']} reference for {n_succeeded} new configurations"
+    )
+    for config in configs:
+        if config.energy.true is None:
+            config.single_point(
+                kwargs['method_name'],
+                n_cores=Config.n_cores,
+                keep_output_files=kwargs['keep_output_files'],
+            )
 
     if (
         kwargs['inherit_metad_bias'] is True
