@@ -79,9 +79,6 @@ def test_estimate_width_raises_when_all_runs_time_out(
     h2_configuration, test_potential, monkeypatch
 ):
     """Every width run timing out is fatal, not a silently empty result.
-
-    Previously ``np.min`` was called on an empty array and raised an opaque
-    ValueError from deep inside numpy.
     """
 
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
@@ -105,10 +102,6 @@ def test_estimate_width_uses_surviving_runs(
     h2_configuration, test_potential, monkeypatch
 ):
     """A timed-out run is dropped; the remaining widths still give a result.
-
-    This also pins the ``all_widths = np.array(...)`` placement: building the
-    array inside the collection loop turned the second iteration into a
-    ragged append and broke ``np.min(axis=0)``.
     """
 
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
@@ -143,9 +136,6 @@ def test_run_metadynamics_bails_out_when_all_runs_time_out(
     h2_configuration, test_potential, monkeypatch, mlp_caplog
 ):
     """All trajectories timing out degrades to a warning, not a crash.
-
-    Previously the empty trajectory list was passed straight to
-    ``_move_and_save_files`` and the post-processing raised.
     """
 
     cv1 = mlt.PlumedAverageCV('cv1', (0, 1))

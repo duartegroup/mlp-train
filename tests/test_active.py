@@ -17,14 +17,6 @@ from mlptrain.training.selection import AbsDiffE
 from mlptrain.utils import work_in_tmp_dir
 
 
-# These tests exercise the active-learning process plumbing and the HILLS
-# hardening added in jl/timeout-resolution, without running expensive MD,
-# MACE training, ORCA, or PLUMED. The bugs they protect against live in
-# process/result handling and in file parsing, so the unit tests use cheap
-# fake workers/stub subprocesses and a single spawned subprocess covers the
-# real multiprocessing path.
-
-
 def _config(x: float, energy: float = -1.0) -> Configuration:
     """Build a small, serialisable configuration for active-learning tests."""
     config = Configuration(atoms=[Atom('H', x, 0.0, 0.0)])

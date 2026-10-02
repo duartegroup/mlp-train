@@ -32,7 +32,7 @@ def _gen_active_config_worker(
     result_queue: mp.queues.Queue | queue.Queue,
     idx: int,
     config: mlptrain.Configuration,
-    mlp: mlptrain.potentials._base.MLPotential,
+    mlp: MLPotential,
     selector: SelectionMethod,
     n_cores: int,
     kwargs: dict,
@@ -53,11 +53,11 @@ def _gen_active_config_worker(
             f'(result is {"None" if result is None else "a Configuration"})'
         )
         result_queue.put((idx, 'ok', result, None))
-        logger.info(f'Worker idx={idx} pid={pid} put result on queue')
+        logger.debug(f'Worker idx={idx} pid={pid} put result on queue')
     except BaseException as err:  # noqa: BLE001
         logger.error(f'Worker idx={idx} pid={pid} caught exception: {err!r}')
         result_queue.put((idx, 'error', None, repr(err)))
-        logger.info(f'Worker idx={idx} pid={pid} put error on queue')
+        logger.debug(f'Worker idx={idx} pid={pid} put error on queue')
 
 
 def train(
@@ -375,16 +375,13 @@ def _add_active_configs(
             ),
         )
         worker.start()
-        logger.info(
-            f'Started active-learning worker idx={idx} pid={worker.pid}'
-        )
         workers.append((idx, worker))
         start_times[idx] = time.monotonic()
 
     pending = {idx for idx, _ in workers}
     loop_start = time.monotonic()
     last_status_log = loop_start
-    max_loop_s = (timeout_s or 7200) + 120  # safety: timeout + 2 min buffer
+    max_loop_s = (timeout_s or 1000000) + 120  # safety: timeout + 2 min buffer
     logger.info(
         f'Entering worker poll loop. pending={sorted(pending)}, '
         f'process_timeout={timeout_s}s, max_loop={max_loop_s}s'
@@ -428,14 +425,9 @@ def _add_active_configs(
             if not worker.is_alive():
                 exit_code = worker.exitcode
                 logger.info(
-                    f'Worker idx={idx} pid={worker.pid} is no longer '
-                    f'alive (exitcode={exit_code}). Joining...'
+                    f'Worker idx={idx} pid={worker.pid} has finished with {exit_code=}).'
                 )
                 worker.join(timeout=5)
-                logger.info(
-                    f'Worker idx={idx} pid={worker.pid} joined '
-                    f'(is_alive={worker.is_alive()})'
-                )
                 pending.remove(idx)
                 continue
 
@@ -446,36 +438,25 @@ def _add_active_configs(
                 )
                 worker.terminate()
                 logger.info(
-                    f'Sent SIGTERM to idx={idx} pid={worker.pid}. '
-                    'Calling join(timeout=5)...'
+                    f'Sent SIGTERM to idx={idx} pid={worker.pid}.'
                 )
                 worker.join(timeout=5)
-                logger.info(
-                    f'join(timeout=5) returned for idx={idx} '
-                    f'pid={worker.pid}. is_alive={worker.is_alive()}'
-                )
                 if worker.is_alive():
                     logger.error(
                         f'Worker idx={idx} pid={worker.pid} did not '
                         'terminate gracefully; sending SIGKILL'
                     )
-                    if hasattr(worker, 'kill'):
-                        worker.kill()
-                        logger.info(
+                    worker.kill()
+                    logger.info(
                             f'Sent SIGKILL to idx={idx} pid={worker.pid}. '
                             'Calling join(timeout=10)...'
-                        )
-                        worker.join(timeout=10)
-                        logger.info(
-                            f'join after kill returned for idx={idx} '
-                            f'pid={worker.pid}. '
-                            f'is_alive={worker.is_alive()}'
-                        )
-                    else:
-                        logger.error(
-                            f'Worker idx={idx} pid={worker.pid} could not '
-                            'be force-killed on this Python version'
-                        )
+                    )
+                    worker.join(timeout=10)
+                    logger.info(
+                        f'join after kill returned for idx={idx} '
+                        f'pid={worker.pid}. '
+                        f'is_alive={worker.is_alive()}'
+                    )
                 pending.remove(idx)
                 worker_results[idx] = None
 
@@ -485,12 +466,12 @@ def _add_active_configs(
                 q_idx, q_status, q_config, q_err = result_queue.get_nowait()
                 if q_status == 'ok':
                     worker_results[q_idx] = q_config
-                    logger.info(
+                    logger.debug(
                         f'Drained result from queue: idx={q_idx} '
                         f'status={q_status}'
                     )
                 else:
-                    logger.error(
+                    logger.debug(
                         f'Drained error from queue: idx={q_idx}: ' f'{q_err}'
                     )
                     worker_results[q_idx] = None
@@ -499,7 +480,7 @@ def _add_active_configs(
 
         time.sleep(0.2)
 
-    logger.info('Worker poll loop exited. Performing final queue drain...')
+    logger.debug('Worker poll loop exited. Performing final queue drain...')
 
     # Final queue drain (pick up any remaining results)
     drain_count = 0
@@ -512,18 +493,20 @@ def _add_active_configs(
         drain_count += 1
         if status == 'ok':
             worker_results[idx] = config
-            logger.info(f'Final drain: idx={idx} status={status}')
+            logger.debug(f'Final drain: idx={idx} status={status}')
         else:
-            logger.error(f'Final drain: exception for idx={idx}: \n{err}')
+            logger.debug(f'Final drain: exception for idx={idx}: \n{err}')
             worker_results[idx] = None
 
-    logger.info(
+    logger.debug(
         f'Queue drain complete. Got {drain_count} item(s). '
         f'worker_results keys={sorted(worker_results.keys())}'
     )
 
     for idx in range(n_configs):
-        configs.append(worker_results.get(idx, None))
+        config = worker_results.get(idx, None)
+        if config is not None:
+            configs.append(config)
 
     n_succeeded = len(configs)
     n_failed = n_configs - n_succeeded
@@ -533,13 +516,12 @@ def _add_active_configs(
             'or timed out'
         )
     if n_succeeded == 0:
-        logger.error(
-            'All active learning workers failed or timed out; '
-            'no new configurations generated this iteration'
+        raise RuntimeError(
+            'All active learning workers failed or timed out'
         )
     else:
         logger.info(
-            f'Collected {n_succeeded}/{n_configs} active configurations'
+            f'Added {n_succeeded} new configurations to the training set'
         )
 
     if (

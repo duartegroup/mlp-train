@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from mlptrain.potentials import MLPotential
 
 
-def run_with_timeout(fn, *args, fn_timeout=None, **kwargs):
+def run_with_timeout(fn, *args, fn_timeout=None, **kwargs) -> tuple[Any, bool]:
     """
     Run a callable with a best-effort signal-based timeout.
 
@@ -66,8 +66,6 @@ def run_with_timeout(fn, *args, fn_timeout=None, **kwargs):
     def _handle_timeout(signum, frame):
         raise _TimeoutException()
 
-    # Only the arming is guarded; wrapping the call itself would swallow
-    # genuine errors from fn and then silently run it a second time
     old_handler = None
     try:
         old_handler = signal.signal(signal.SIGALRM, _handle_timeout)
@@ -77,9 +75,8 @@ def run_with_timeout(fn, *args, fn_timeout=None, **kwargs):
         # run without an inner timeout — the parent process
         # enforces the hard-kill via Config.process_timeout
         logger.warning(
-            f'Failed to set signal-based timeout ({e}); '
-            'running without inner timeout. The parent process '
-            'timeout (Config.process_timeout) remains as safety net.'
+            f'Failed to set signal-based timeout ({e})\n'
+            'running without dynamics_timeout.'
         )
         if old_handler is not None:
             signal.signal(signal.SIGALRM, old_handler)
@@ -95,7 +92,7 @@ def run_with_timeout(fn, *args, fn_timeout=None, **kwargs):
         )
         return None, False
     finally:
-        # Always disarm the timer and restore the previous handler
+        # Always cancel the timer and restore the previous handler
         try:
             signal.setitimer(signal.ITIMER_REAL, 0)
         finally:
