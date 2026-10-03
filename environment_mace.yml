@@ -6,9 +6,10 @@ channels:
   - pytorch
 dependencies:
   - python=3.12
+  # https://github.com/duartegroup/mlp-train/issues/259
+  - ase=3.28.*
   - pip
   - libgfortran=14.*
-  - ase
   - autode=1.4.5
   - coloredlogs
   - cython
@@ -16,6 +17,8 @@ dependencies:
   - matplotlib-base>=3.9.0
   - numpy
   - py-plumed
+  # https://github.com/duartegroup/mlp-train/issues/259
+  - plumed<2.10
   - scipy
   - xtb
   - scikit-learn
@@ -26,8 +29,9 @@ dependencies:
   - git
   - seaborn
   - pip:
-    - ase@git+https://gitlab.com/ase/ase.git@f2615a6e9a # For PLUMED
     - mace-torch==0.3.10
+    # https://github.com/duartegroup/mlp-train/issues/260
+    - numpy<2.0
     - cuequivariance==0.1.0
     - cuequivariance-torch==0.1.0
     - cuequivariance-ops-torch-cu11==0.1.0
