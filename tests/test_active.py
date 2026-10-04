@@ -379,6 +379,238 @@ def test_add_active_configs_skips_missing_trajectory(
 
 
 # --------------------------------------------------------------------------
+# train() handling of al_starting_configs
+# --------------------------------------------------------------------------
+
+
+def _config_set(*xs: float, energy: float = -1.0) -> ConfigurationSet:
+    configs = ConfigurationSet()
+    for x in xs:
+        configs.append(_config(x, energy=energy))
+    return configs
+
+
+def _x_positions(configs) -> list[float]:
+    return [float(config.atoms[0].coord[0]) for config in configs]
+
+
+@pytest.fixture
+def train_mlp(monkeypatch, test_potential):
+    """TestPotential with training and atomic energies stubbed out."""
+    mlp = test_potential()
+    monkeypatch.setattr(mlp, 'train', lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        mlp, 'set_atomic_energies', lambda *args, **kwargs: None
+    )
+    return mlp
+
+
+@pytest.fixture
+def add_active_configs_spy(monkeypatch):
+    """Replace _add_active_configs, recording the starting configuration(s)
+    passed for each iteration. Optionally appends a low-energy configuration
+    to the training data so that, without fix_init_config, the next iteration
+    would start from it instead."""
+
+    calls = []
+
+    def _spy(mlp, init_config, selection_method, n_configs, **kwargs):
+        calls.append(
+            {
+                'init_config': init_config,
+                'n_configs': n_configs,
+                'iteration': kwargs['iteration'],
+            }
+        )
+        mlp.training_data.append(_config(50.0 + len(calls), energy=-100.0))
+
+    monkeypatch.setattr(active, '_add_active_configs', _spy)
+    return calls
+
+
+def _run_train(mlp, **kwargs):
+    kwargs.setdefault('method_name', 'mock')
+    kwargs.setdefault('max_active_iters', 1)
+    kwargs.setdefault('n_configs_iter', 2)
+    return active.train(mlp, **kwargs)
+
+
+@work_in_tmp_dir()
+def test_train_al_starting_configs_wrong_length_raises(
+    train_mlp, add_active_configs_spy
+):
+    with pytest.raises(ValueError, match='must equal n_configs_iter'):
+        _run_train(
+            train_mlp,
+            n_configs_iter=3,
+            al_starting_configs=_config_set(0.0, 1.0),
+        )
+
+    assert add_active_configs_spy == []
+    assert train_mlp.n_train == 0
+
+
+@work_in_tmp_dir()
+def test_train_al_starting_configs_incompatible_with_restart(
+    train_mlp, add_active_configs_spy
+):
+    with pytest.raises(
+        NotImplementedError, match='not compatible with restart'
+    ):
+        _run_train(
+            train_mlp,
+            restart_iter=0,
+            al_starting_configs=_config_set(0.0, 1.0),
+        )
+
+    assert add_active_configs_spy == []
+
+
+@work_in_tmp_dir()
+def test_train_al_starting_configs_used_as_training_set(
+    mlp_caplog, train_mlp, add_active_configs_spy
+):
+    """Without init_configs, al_starting_configs seed the training data
+    and are passed as-is as the per-worker starting configurations."""
+
+    al_starting_configs = _config_set(0.0, 1.0)
+
+    _run_train(train_mlp, al_starting_configs=al_starting_configs)
+
+    assert (
+        'Setting initial training set from `al_starting_configs`'
+        in mlp_caplog.messages
+    )
+    # 2 starting configs + 1 appended by the spy
+    assert _x_positions(train_mlp.training_data)[:2] == [0.0, 1.0]
+    assert train_mlp.n_train == 3
+
+    assert len(add_active_configs_spy) == 1
+    init_config = add_active_configs_spy[0]['init_config']
+    assert isinstance(init_config, ConfigurationSet)
+    assert _x_positions(init_config) == [0.0, 1.0]
+    assert add_active_configs_spy[0]['n_configs'] == 2
+
+
+@work_in_tmp_dir()
+def test_train_al_starting_configs_merged_with_init_configs(
+    train_mlp, add_active_configs_spy
+):
+    """With init_configs, al_starting_configs are appended to the training
+    set, but AL starts from al_starting_configs, not init_configs[0]."""
+
+    _run_train(
+        train_mlp,
+        init_configs=_config_set(10.0, 11.0, 12.0),
+        al_starting_configs=_config_set(0.0, 1.0),
+    )
+
+    assert _x_positions(train_mlp.training_data)[:5] == [
+        10.0,
+        11.0,
+        12.0,
+        0.0,
+        1.0,
+    ]
+
+    init_config = add_active_configs_spy[0]['init_config']
+    assert isinstance(init_config, ConfigurationSet)
+    assert _x_positions(init_config) == [0.0, 1.0]
+
+
+@work_in_tmp_dir()
+def test_train_al_starting_configs_forces_fix_init_config(
+    mlp_caplog, train_mlp, add_active_configs_spy
+):
+    """fix_init_config is switched on, so every iteration restarts from
+    al_starting_configs even when a lower energy configuration was added."""
+
+    _run_train(
+        train_mlp,
+        max_active_iters=2,
+        fix_init_config=False,
+        al_starting_configs=_config_set(0.0, 1.0),
+    )
+
+    assert any(
+        '`fix_init_config` must be set to True' in message
+        for message in mlp_caplog.messages
+    )
+    assert [call['iteration'] for call in add_active_configs_spy] == [0, 1]
+    for call in add_active_configs_spy:
+        assert _x_positions(call['init_config']) == [0.0, 1.0]
+
+
+@work_in_tmp_dir()
+def test_train_without_al_starting_configs_starts_from_first_init_config(
+    train_mlp, add_active_configs_spy
+):
+    """By default, a single Configuration is used as the starting point."""
+
+    _run_train(
+        train_mlp,
+        fix_init_config=True,
+        init_configs=_config_set(10.0, 11.0, 12.0),
+    )
+
+    init_config = add_active_configs_spy[0]['init_config']
+    assert isinstance(init_config, Configuration)
+    assert _x_positions([init_config]) == [10.0]
+
+
+@work_in_tmp_dir()
+def test_train_al_starting_configs_computes_missing_reference(
+    monkeypatch, train_mlp, add_active_configs_spy
+):
+    """Starting configs without true energies are evaluated with the
+    reference method before being added to the training set."""
+
+    al_starting_configs = _config_set(0.0, 1.0)
+    for config in al_starting_configs:
+        config.energy.true = None
+
+    single_point_calls = []
+
+    def _single_point(self, method, **kwargs):
+        single_point_calls.append(method)
+        for config in self:
+            config.energy.true = -2.0
+
+    monkeypatch.setattr(ConfigurationSet, 'single_point', _single_point)
+
+    _run_train(train_mlp, al_starting_configs=al_starting_configs)
+
+    assert single_point_calls == ['mock']
+    assert all(
+        config.energy.true is not None for config in train_mlp.training_data
+    )
+
+
+@work_in_tmp_dir()
+def test_train_al_starting_configs_each_worker_gets_own_config(
+    monkeypatch, train_mlp
+):
+    """End-to-end through _add_active_configs: worker idx starts its MD
+    from al_starting_configs[idx]."""
+
+    started_from = {}
+
+    def _gen(config, *args, **kwargs):
+        started_from[kwargs['idx']] = float(config.atoms[0].coord[0])
+        return _config(100.0 + kwargs['idx'])
+
+    monkeypatch.setattr(active, '_gen_active_config', _gen)
+    _install_fake_context(monkeypatch)
+    monkeypatch.setattr(Config, 'n_cores', 2)
+    monkeypatch.setattr(Config, 'process_timeout', 30)
+
+    _run_train(train_mlp, al_starting_configs=_config_set(0.0, 1.0))
+
+    assert started_from == {0: 0.0, 1: 1.0}
+    assert train_mlp.n_train == 4
+
+
+# --------------------------------------------------------------------------
 # HILLS validation and bias inheritance
 # --------------------------------------------------------------------------
 
