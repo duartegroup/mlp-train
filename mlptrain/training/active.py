@@ -352,7 +352,7 @@ def _add_active_configs(
         )
         kwargs['bias'] = _remove_bias_potential(kwargs['bias'])
 
-    new_configs = ConfigurationSet()
+    configs = ConfigurationSet()
     results = []
     if isinstance(init_config, mlptrain.Configuration):
         initial_configurations = [init_config.copy() for _ in range(n_configs)]
@@ -383,7 +383,7 @@ def _add_active_configs(
         pool.close()
         for result in results:
             try:
-                new_configs.append(result.get(timeout=None))
+                configs.append(result.get(timeout=None))
 
             # Lots of different exceptions can be raised when trying to
             # generate an active config, continue regardless..
@@ -392,8 +392,8 @@ def _add_active_configs(
                 continue
         pool.join()
 
-    if 'method_name' in kwargs and new_configs.has_a_none_energy:
-        for config in new_configs:
+    if 'method_name' in kwargs and configs.has_a_none_energy:
+        for config in configs:
             if config.energy.true is None:
                 config.single_point(
                     kwargs['method_name'],
@@ -407,7 +407,7 @@ def _add_active_configs(
     ):
         _generate_inheritable_metad_bias(n_configs=n_configs, kwargs=kwargs)
 
-    mlp.training_data += new_configs
+    mlp.training_data += configs
 
     os.makedirs('datasets', exist_ok=True)
     mlp.training_data.save(
@@ -711,10 +711,12 @@ def _set_init_training_configs(
             f'Not all structures have defined reference.'
         )
 
+        output_name = 'initial'
+
         init_configs.single_point(
             method=method_name,
             keep_output_files=keep_output_files,
-            output_name='initial',
+            output_name=output_name,
         )
     else:
         logger.info('Using reference defined in input file.')
