@@ -457,8 +457,7 @@ class Metadynamics:
 
         finish_metad = time.perf_counter()
         logger.info(
-            'Metadynamics done in '
-            f'{(finish_metad - start_metad) / 60:.1f} m'
+            f'Metadynamics done in {(finish_metad - start_metad) / 60:.1f} m'
         )
 
         metad_trajs = [traj for traj in metad_trajs if traj is not None]
@@ -502,7 +501,7 @@ class Metadynamics:
         bias_path = f'accumulated_bias/bias_after_iter_{al_iter}.dat'
         if os.path.exists(bias_path):
             for idx in range(n_runs):
-                shutil.copyfile(src=bias_path, dst=f'HILLS_{idx+1}.dat')
+                shutil.copyfile(src=bias_path, dst=f'HILLS_{idx + 1}.dat')
 
         else:
             raise FileNotFoundError(
@@ -572,9 +571,7 @@ class Metadynamics:
     ) -> Optional['mlptrain.Trajectory']:
         """Initiate a single metadynamics run"""
 
-        logger.info(
-            'Running Metadynamics simulation ' f'number {kwargs["idx"]}'
-        )
+        logger.info(f'Running Metadynamics simulation number {kwargs["idx"]}')
 
         if al_iter is not None:
             kwargs['copied_substrings'] = [f'HILLS_{kwargs["idx"]}.dat']
@@ -874,7 +871,7 @@ class Metadynamics:
 
         if cvs_holder.n_cvs > 2:
             raise NotImplementedError(
-                'Plotting using more than two CVs is ' 'not implemented'
+                'Plotting using more than two CVs is not implemented'
             )
 
         assert cvs_holder.metad_cvs is not None
@@ -991,9 +988,7 @@ class Metadynamics:
         if len(plotted_cvs) == 2:
             plot_cv1_and_cv2(
                 filenames=filenames,
-                cvs_units=[
-                    cv.units for cv in plotted_cvs
-                ],  # ty: ignore[invalid-argument-type]
+                cvs_units=[cv.units for cv in plotted_cvs],  # ty: ignore[invalid-argument-type]
                 label=f'biasf{bias.biasfactor}',
             )
 
@@ -1091,7 +1086,7 @@ class Metadynamics:
         )
 
         min_max_params = self._get_min_max_params(
-            cvs_bounds=cvs_bounds, path='plumed_files/' 'metadynamics'
+            cvs_bounds=cvs_bounds, path='plumed_files/metadynamics'
         )
 
         # The number of frames PLUMED driver takes into account
@@ -1101,7 +1096,7 @@ class Metadynamics:
 
         if max_blocksize < min_blocksize:
             raise ValueError(
-                'The simulation is too short to perform ' 'block analysis'
+                'The simulation is too short to perform block analysis'
             )
 
         logger.info(
@@ -1195,9 +1190,7 @@ class Metadynamics:
             config.atoms = [ade.Atom(label) for label in atoms.symbols]
 
             for i, position in enumerate(atoms.get_positions()):
-                config.atoms[
-                    i
-                ].coord = position  # ty: ignore[not-subscriptable]
+                config.atoms[i].coord = position  # ty: ignore[not-subscriptable]
 
             _mlt_configuration_set.append(config)
 
@@ -1316,7 +1309,7 @@ class Metadynamics:
         stride_setup = f'STRIDE={blocksize} ' if blocksize is not None else ''
 
         reweight_setup = [
-            'as: REWEIGHT_BIAS ' f'TEMP={temp} ' 'ARG=metad.bias',
+            f'as: REWEIGHT_BIAS TEMP={temp} ARG=metad.bias',
             'hist: HISTOGRAM '
             f'ARG={self.bias.metad_cv_sequence} '
             f'STRIDE=1 '
@@ -1326,7 +1319,7 @@ class Metadynamics:
             f'GRID_BIN={bin_param_seq} '
             f'BANDWIDTH={bandwidth_seq} '
             'LOGWEIGHTS=as',
-            'DUMPGRID ' 'GRID=hist ' f'{stride_setup}' 'FILE=hist.dat',
+            f'DUMPGRID GRID=hist {stride_setup}FILE=hist.dat',
         ]
 
         os.rename('plumed_setup.dat', 'reweight.dat')
@@ -1435,8 +1428,7 @@ class Metadynamics:
 
             else:
                 logger.info(
-                    'Using fes_raw.npy in the current directory for '
-                    'plotting'
+                    'Using fes_raw.npy in the current directory for plotting'
                 )
 
                 fes = np.load('fes_raw.npy')
@@ -1563,7 +1555,7 @@ class Metadynamics:
         start_frame_index = int((start_time * 1e3) / (dt * interval))
 
         min_max_params = self._get_min_max_params(
-            cvs_bounds=cvs_bounds, path='plumed_files/' 'metadynamics'
+            cvs_bounds=cvs_bounds, path='plumed_files/metadynamics'
         )
         n_runs = len(glob.glob('trajectories/trajectory_*.traj'))
         n_processes = min(Config.n_cores, n_runs)
@@ -1821,7 +1813,7 @@ class Metadynamics:
 
         std_error_cbar = fig.colorbar(std_error_contourf, ax=ax_std_error)
         std_error_cbar.set_label(
-            label='Confidence interval / ' f'{convert_exponents(energy_units)}'
+            label=f'Confidence interval / {convert_exponents(energy_units)}'
         )
 
         assert self.bias.metad_cvs is not None
@@ -1965,7 +1957,7 @@ class Metadynamics:
         # Remove the final FES if it has already been computed with the stride
         # (file enumeration using stride starts from zero)
         if remove_duplicate:
-            os.remove(f'fes_{idx}_{len(fes_time)-1}.dat')
+            os.remove(f'fes_{idx}_{len(fes_time) - 1}.dat')
             fes_time = fes_time[:-1]
 
         cv_grids, fes_grids = self._fes_files_to_grids(
@@ -2309,7 +2301,7 @@ class Metadynamics:
         if isinstance(cvs_bounds, list) or isinstance(cvs_bounds, tuple):
             if len(cvs_bounds) == 0:
                 raise TypeError(
-                    'CVs bounds cannot be an empty list or ' 'an empty tuple'
+                    'CVs bounds cannot be an empty list or an empty tuple'
                 )
 
             elif all(

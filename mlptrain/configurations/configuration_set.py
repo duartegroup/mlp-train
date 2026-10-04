@@ -475,18 +475,18 @@ class ConfigurationSet(list):
                         )
 
                     if load_energies:
-                        assert (
-                            config_info_dict.get('energy') is not None
-                        ), "Property 'energy' not specified on properties line..."
+                        assert config_info_dict.get('energy') is not None, (
+                            "Property 'energy' not specified on properties line..."
+                        )
                         energy = float(config_info_dict['energy'])
 
                 # get atom lines
                 for _ in range(num_atoms):
                     line_id += 1
                     line = xyz_file.readline()
-                    assert is_xyz_line(
-                        line
-                    ), f'There was an error in parsing your xyz file on line: {line_id}'
+                    assert is_xyz_line(line), (
+                        f'There was an error in parsing your xyz file on line: {line_id}'
+                    )
                     line_split = line.split()
                     atom, x, y, z = line_split[:4]
                     atoms.append(Atom(atom, x, y, z))
@@ -495,9 +495,9 @@ class ConfigurationSet(list):
                         # add forces to forces dict in configuration
                         if len(line_split) > 4:
                             force = tuple([float(x) for x in line_split[4:]])
-                            assert (
-                                len(force) == 3
-                            ), f'Force is not a 3D vector: {force}'
+                            assert len(force) == 3, (
+                                f'Force is not a 3D vector: {force}'
+                            )
                             forces.append(force)
 
                 # create configuration, add forces, energy and append it to config set

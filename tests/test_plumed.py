@@ -64,7 +64,7 @@ def test_plumed_cv_from_file():
     assert cv1.name == 'p1.spath'
     assert cv1.units == 'Å'
     assert cv1.setup == [
-        'p1: PATH ' 'REFERENCE=path.pdb ' 'TYPE=OPTIMAL ' 'LAMBDA=500.0'
+        'p1: PATH REFERENCE=path.pdb TYPE=OPTIMAL LAMBDA=500.0'
     ]
 
     with open('path.pdb', 'r') as f:
@@ -160,10 +160,9 @@ def test_plumed_bias_from_file():
     assert bias.setup == [
         'dof1: DISTANCE ATOMS=1,2',
         'dof2: DISTANCE ATOMS=2,3',
-        'cv1: CUSTOM ARG=dof1,dof2 VAR=dof1,dof2 '
-        'FUNC=dof2-dof1 PERIODIC=NO',
+        'cv1: CUSTOM ARG=dof1,dof2 VAR=dof1,dof2 FUNC=dof2-dof1 PERIODIC=NO',
         'lwall: LOWER_WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
-        'p1: PATH REFERENCE=path.pdb TYPE=OPTIMAL ' 'LAMBDA=500.0',
+        'p1: PATH REFERENCE=path.pdb TYPE=OPTIMAL LAMBDA=500.0',
         'UPPER_WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3',
         'METAD ARG=cv1,p1.spath PACE=100 HEIGHT=0.1 '
         'SIGMA=0.5 BIASFACTOR=4 FILE=HILLS.dat',
@@ -188,10 +187,9 @@ def test_plumed_bias_from_file():
     assert bias.setup == [
         'dof1: DISTANCE ATOMS=1,2',
         'dof2: DISTANCE ATOMS=2,3',
-        'cv1: CUSTOM ARG=dof1,dof2 VAR=dof1,dof2 '
-        'FUNC=dof2-dof1 PERIODIC=NO',
+        'cv1: CUSTOM ARG=dof1,dof2 VAR=dof1,dof2 FUNC=dof2-dof1 PERIODIC=NO',
         'lwall: LOWER_WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
-        'p1: PATH REFERENCE=path.pdb TYPE=OPTIMAL ' 'LAMBDA=500.0',
+        'p1: PATH REFERENCE=path.pdb TYPE=OPTIMAL LAMBDA=500.0',
         'UPPER_WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3',
     ]
 

@@ -397,7 +397,7 @@ class PlumedBias(ASEConstraint):
             if isinstance(params, list) or isinstance(params, tuple):
                 if len(params) == 0:
                     raise ValueError(
-                        'The supplied parameter sequence ' 'is empty'
+                        'The supplied parameter sequence is empty'
                     )
 
                 elif len(params) != self.n_metad_cvs:
@@ -721,7 +721,7 @@ class _PlumedCV:
 
         if self.lower_wall is not None:
             raise TypeError(
-                f'Lower wall for {self.name} CV has already ' 'been set'
+                f'Lower wall for {self.name} CV has already been set'
             )
 
         self.lower_wall = {'location': location, 'kappa': kappa, 'exp': exp}
@@ -756,7 +756,7 @@ class _PlumedCV:
 
         if self.upper_wall is not None:
             raise TypeError(
-                f'Upper wall for {self.name} CV has already ' 'been set'
+                f'Upper wall for {self.name} CV has already been set'
             )
 
         self.upper_wall = {'location': location, 'kappa': kappa, 'exp': exp}
@@ -868,8 +868,7 @@ class _PlumedCV:
         _illegal_substrings = ('fes', 'colvar', 'HILLS')
         if any(substr in name for substr in _illegal_substrings):
             raise ValueError(
-                'Please do not use "fes", "colvar", "HILLS" in '
-                'your CV names'
+                'Please do not use "fes", "colvar", "HILLS" in your CV names'
             )
 
         return name
@@ -888,19 +887,19 @@ class _PlumedCV:
             dof_name = f'{self.name}_dist{idx + 1}'
             self.dof_names.append(dof_name)
             self.dof_units.append('Å')
-            self.setup.extend([f'{dof_name}: ' f'DISTANCE ATOMS={atoms}'])
+            self.setup.extend([f'{dof_name}: DISTANCE ATOMS={atoms}'])
 
         if len(atom_list) == 3:
             dof_name = f'{self.name}_ang{idx + 1}'
             self.dof_names.append(dof_name)
             self.dof_units.append('rad')
-            self.setup.extend([f'{dof_name}: ' f'ANGLE ATOMS={atoms}'])
+            self.setup.extend([f'{dof_name}: ANGLE ATOMS={atoms}'])
 
         if len(atom_list) == 4:
             dof_name = f'{self.name}_tor{idx + 1}'
             self.dof_names.append(dof_name)
             self.dof_units.append('rad')
-            self.setup.extend([f'{dof_name}: ' f'TORSION ATOMS={atoms}'])
+            self.setup.extend([f'{dof_name}: TORSION ATOMS={atoms}'])
 
         if len(atom_list) > 4:
             raise NotImplementedError(
@@ -994,7 +993,7 @@ class PlumedDifferenceCV(_PlumedCV):
 
         if len(self.dof_names) != 2:
             raise ValueError(
-                'DifferenceCV must comprise exactly two ' 'groups of atoms'
+                'DifferenceCV must comprise exactly two groups of atoms'
             )
 
         func = f'{self.dof_names[0]}-{self.dof_names[-1]}'
@@ -1338,10 +1337,7 @@ def plumed_setup(
     time_conversion = 1 / (ase_units.fs * 1000)
     energy_conversion = ase_units.mol / ase_units.kJ
     units_setup = [
-        'UNITS '
-        'LENGTH=A '
-        f'TIME={time_conversion} '
-        f'ENERGY={energy_conversion}'
+        f'UNITS LENGTH=A TIME={time_conversion} ENERGY={energy_conversion}'
     ]
 
     if bias.from_file:
@@ -1404,10 +1400,7 @@ def plumed_setup(
             args = cv.name
 
         print_setup = [
-            'PRINT '
-            f'ARG={args} '
-            f'FILE={colvar_filename} '
-            f'STRIDE={interval}'
+            f'PRINT ARG={args} FILE={colvar_filename} STRIDE={interval}'
         ]
         setup.extend(print_setup)
 

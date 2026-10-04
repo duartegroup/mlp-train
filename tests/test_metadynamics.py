@@ -217,11 +217,9 @@ def test_run_metadynamics(h2_configuration, run_metadynamics):
 
         for sim_time in [200, 400]:
             assert os.path.exists(
-                f'trajectories/' f'trajectory_{idx}_{sim_time}fs.traj'
+                f'trajectories/trajectory_{idx}_{sim_time}fs.traj'
             )
-            assert os.path.exists(
-                f'trajectories/' f'metad_{idx}_{sim_time}fs.xyz'
-            )
+            assert os.path.exists(f'trajectories/metad_{idx}_{sim_time}fs.xyz')
 
         assert os.path.exists(os.path.join(metad_dir, f'colvar_cv1_{idx}.dat'))
         assert os.path.exists(os.path.join(metad_dir, f'HILLS_{idx}.dat'))
@@ -357,16 +355,16 @@ def test_run_metadynamics_with_additional_cvs(
     assert plumed_setup[1:] == [
         'cv1_dist1: DISTANCE ATOMS=1,2',
         'cv1: CUSTOM ARG=cv1_dist1 VAR=cv1_dist1 '
-        f'FUNC={1/1}*(cv1_dist1) PERIODIC=NO',
+        f'FUNC={1 / 1}*(cv1_dist1) PERIODIC=NO',
         'cv2_dist1: DISTANCE ATOMS=3,2',
         'cv2: CUSTOM ARG=cv2_dist1 VAR=cv2_dist1 '
-        f'FUNC={1/1}*(cv2_dist1) PERIODIC=NO',
+        f'FUNC={1 / 1}*(cv2_dist1) PERIODIC=NO',
         'UPPER_WALLS ARG=cv2 AT=3.0 KAPPA=150.0 EXP=2',
         'metad: METAD ARG=cv1 PACE=100 HEIGHT=0.1 '
         'SIGMA=0.05 TEMP=300 BIASFACTOR=3 '
         'FILE=HILLS_1.dat',
-        'PRINT ARG=cv1,cv1_dist1 ' 'FILE=colvar_cv1_1.dat STRIDE=10',
-        'PRINT ARG=cv2,cv2_dist1 ' 'FILE=colvar_cv2_1.dat STRIDE=10',
+        'PRINT ARG=cv1,cv1_dist1 FILE=colvar_cv1_1.dat STRIDE=10',
+        'PRINT ARG=cv2,cv2_dist1 FILE=colvar_cv2_1.dat STRIDE=10',
     ]
 
 
