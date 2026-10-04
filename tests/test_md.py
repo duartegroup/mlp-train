@@ -1,15 +1,79 @@
 import logging
 import os
+import signal
+import time
 
 import numpy as np
-from ase.constraints import Hookean
-from ase.io.trajectory import Trajectory as ASETrajectory
-
+import pytest
 import mlptrain as mlt
+from ase.io.trajectory import Trajectory as ASETrajectory
+from ase.constraints import Hookean
 
 from .data.utils import work_in_zipped_dir
 
 here = os.path.abspath(os.path.dirname(__file__))
+
+
+def test_run_with_timeout_returns_result_when_fast():
+    result, finished_in_time = mlt.md.run_with_timeout(
+        lambda x: x + 1, 1, fn_timeout=30
+    )
+
+    assert (result, finished_in_time) == (2, True)
+    assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
+
+
+def test_run_with_timeout_cancels_slow_call():
+    """A call that overruns is abandoned rather than left to run forever."""
+
+    original_handler = signal.getsignal(signal.SIGALRM)
+
+    result, finished_in_time = mlt.md.run_with_timeout(
+        time.sleep, 30, fn_timeout=0.1
+    )
+
+    assert (result, finished_in_time) == (None, False)
+
+    # The timer must be cancelled and the previous handler restored, otherwise
+    # a later unrelated call in the same worker inherits a live alarm
+    assert signal.getsignal(signal.SIGALRM) is original_handler
+    assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
+
+
+def test_run_with_timeout_propagates_other_exceptions():
+    """Exception raised in `fn` must be propagated to the caller."""
+
+    n_calls = []
+
+    def _boom():
+        n_calls.append(1)
+        raise ValueError('bad forces')
+
+    original_handler = signal.getsignal(signal.SIGALRM)
+
+    with pytest.raises(ValueError, match='bad forces'):
+        mlt.md.run_with_timeout(_boom, fn_timeout=30)
+
+    assert len(n_calls) == 1
+    assert signal.getsignal(signal.SIGALRM) is original_handler
+    assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
+
+
+def test_run_with_timeout_falls_back_when_alarm_unavailable(monkeypatch):
+    """Without a usable SIGALRM the call still runs, just unbounded."""
+
+    def _no_alarm(*args, **kwargs):
+        raise ValueError('SIGALRM not available here')
+
+    monkeypatch.setattr(signal, 'setitimer', _no_alarm)
+    original_handler = signal.getsignal(signal.SIGALRM)
+
+    result, finished_in_time = mlt.md.run_with_timeout(
+        lambda: 'ok', fn_timeout=0.1
+    )
+
+    assert (result, finished_in_time) == ('ok', True)
+    assert signal.getsignal(signal.SIGALRM) is original_handler
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
@@ -102,6 +166,8 @@ def test_md_traj_attachments(h2o_configuration, test_potential):
         constraints=[hookean_constraint],
         ps=1,
     )
+
+    assert traj is not None
 
     plumed_coordinates = np.loadtxt('colvar_cv1.dat', usecols=1)
 

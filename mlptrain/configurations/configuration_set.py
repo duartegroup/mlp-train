@@ -4,6 +4,7 @@ import mlptrain
 import os
 import re
 import numpy as np
+from collections.abc import Iterable
 from time import time
 from multiprocessing import Pool
 from typing import TYPE_CHECKING, Optional, List, Literal, Union
@@ -221,19 +222,21 @@ class ConfigurationSet(list):
             c.time if c.time is not None else 0.0 for c in self[from_idx:]
         )
 
-    def append(self, value: Optional['mlptrain.Configuration']) -> None:
+    def append(self, value: Configuration) -> None:
         """
-        Append an item onto these set of configurations. None will not be
-        appended
+        Append an item onto these set of configurations.
 
         Arguments:
             value (Configuration): Structure in a form of Configuration
+        raises: TypeError if added item is not Configuration
         """
 
-        if value is None:
-            return
+        if not isinstance(value, Configuration):
+            raise TypeError(
+                f'Cannot append value {value} of type {type(value)} to ConfigurationSet'
+            )
 
-        if not self.allow_duplicates and value in self:
+        if not getattr(self, 'allow_duplicates', True) and value in self:
             logger.info('Not appending configuration to set - already present')
             return
 
@@ -264,46 +267,45 @@ class ConfigurationSet(list):
         name = self._comparison_name(*args)
 
         if os.path.exists(f'{name}.npz'):
-            logger.info(f'Loading energies and forces from {name}.npz')
-            self.load(f'{name}.npz')
+            raise RuntimeError(
+                f'File {name}.npz already exists. Remove or rename it before proceeding'
+            )
 
-        else:
-            for arg in args:
-                # if is an mlp model with a 'predict' function
-                if hasattr(arg, 'predict'):
-                    arg.predict(self)  # ty:ignore[call-non-callable]
+        for arg in args:
+            # if is an mlp model with a 'predict' function
+            if isinstance(arg, MLPotential):
+                arg.predict(self)
 
-                # if is a string reference to a QM calculation method
-                elif isinstance(arg, str):
-                    # if true energies and forces do not already exist for this config set
+            # if is a string reference to a QM calculation method
+            elif isinstance(arg, str):
+                # if true energies and forces do not already exist for this config set
 
-                    if all(c.energy.true is None for c in self):
-                        logger.info(
-                            f'Running single point calcs with method {arg}'
-                        )
-                        self.single_point(
-                            method=arg,
-                            output_name='comparison',
-                            keep_output_files=keep_output_files,
-                        )
+                if all(c.energy.true is None for c in self):
+                    logger.info(
+                        f'Running single point calcs with method {arg}'
+                    )
+                    self.single_point(
+                        method=arg,
+                        output_name='comparison',
+                        keep_output_files=keep_output_files,
+                    )
 
-                    elif self.has_a_none_energy:
-                        raise ValueError(
-                            'Data set contains mix of labelled and non-labelled data!'
-                        )
-                    else:
-                        logger.info(
-                            f'Not using method {arg}, true energies and forces '
-                            f'are already defined'
-                        )
-
+                elif self.has_a_none_energy:
+                    raise ValueError(
+                        'Data set contains mix of labelled and non-labelled data!'
+                    )
                 else:
-                    raise ValueError(f'Cannot compare using {arg}')
+                    logger.info(
+                        f'Not using method {arg}, true energies and forces '
+                        f'are already defined'
+                    )
 
-            self.save(filename=f'{name}.npz')
+            else:
+                raise TypeError(f'Invalid argument type {type(arg)}')
+
+        self.save(filename=f'{name}.npz')
 
         parity_plot(self, file_name=name)
-        return None
 
     def save_xyz(
         self, filename: str, true: bool = False, predicted: bool = False
@@ -391,8 +393,13 @@ class ConfigurationSet(list):
         box: Optional[Box] = None,
         load_energies: bool = False,
         load_forces: bool = False,
+        allow_duplicates: bool = False,
     ) -> 'ConfigurationSet':
-        config_set = cls()
+        """Create a new ConfigurationSet instance from a XYZ file.
+
+        The parameters are the same as for the `load_xyz` method.
+        """
+        config_set = cls(allow_duplicates=allow_duplicates)
         config_set.load_xyz(
             filename, charge, mult, box, load_energies, load_forces
         )
@@ -408,7 +415,7 @@ class ConfigurationSet(list):
         load_forces: bool = False,
     ) -> None:
         """
-        Load configurations from a .xyz file with optional box, energies and forces if specified.
+        Append configurations from a .xyz file with optional box, energies and forces if specified.
         Note: this currently assumes that all configurations have the same charge and multiplicity.
 
         Arguments:
@@ -540,22 +547,13 @@ class ConfigurationSet(list):
         Raises:
             (ValueError): If an unsupported file extension is present
         """
-
-        if filename.endswith('.npz'):
-            self._load_npz(filename)
-
-        elif filename.endswith('.xyz'):
+        if filename.endswith('.xyz'):
             raise ValueError(
-                'Loading .xyz files is not supported. Call '
-                'load_xyz() with defined charge & multiplicity'
+                'Loading .xyz files is not supported. '
+                'Call load_xyz method with charge & multiplicity as arguments.'
             )
 
-        else:
-            raise ValueError(
-                f'Cannot load {filename}. Must be either a .xyz or .npz file'
-            )
-
-        return None
+        self._load_npz(filename)
 
     def single_point(
         self,
@@ -720,7 +718,13 @@ class ConfigurationSet(list):
         return None
 
     def _load_npz(self, filename: str) -> None:
-        """Load a compressed numpy array of all the data in this set"""
+        """Load a compressed numpy array of all the data in this set
+
+        The data are appended to existing ConfigurationSet.
+        """
+
+        if not filename.endswith('.npz'):
+            raise ValueError(f"File {filename} doesn't have .npz extension")
 
         data = np.load(filename, allow_pickle=True)
 
@@ -785,7 +789,15 @@ class ConfigurationSet(list):
         other: object,
     ) -> ConfigurationSet:
         """Add another configuration or set of configurations onto this one"""
+        if not isinstance(other, (Configuration, ConfigurationSet)):
+            return NotImplemented
+        result = ConfigurationSet(
+            *self, allow_duplicates=self.allow_duplicates
+        )
+        result += other
+        return result
 
+    def __iadd__(self, other: object) -> ConfigurationSet:
         if isinstance(other, Configuration):
             self.append(other)
         elif isinstance(other, ConfigurationSet):
@@ -793,6 +805,13 @@ class ConfigurationSet(list):
         else:
             return NotImplemented
         return self
+
+    def extend(self, other: Iterable[Configuration]) -> None:
+        # NOTE: It is very important to make a copy of "other"
+        # before iterating over it, otherwise we'll get infinite loop
+        # if we try to extend / add instance of ConfigurationSet to itself.
+        for conf in list(other):
+            self.append(conf)
 
     def _run_parallel_method(
         self, function, n_cores_pp, keep_output_files, **kwargs
@@ -866,7 +885,7 @@ class ConfigurationSet(list):
 
         name = ''
         for arg in args:
-            if hasattr(arg, 'predict'):
+            if isinstance(arg, MLPotential):
                 name += arg.name
 
             if isinstance(arg, str):

@@ -728,6 +728,7 @@ class Configuration(AtomCollection):
 
             keep_output_files: If true, copy back the QM outputs.
         """
+
         implemented_methods = ['xtb', 'orca', 'g09', 'g16']
 
         if isinstance(method, str) and method.lower() in implemented_methods:
@@ -769,7 +770,7 @@ class Configuration(AtomCollection):
             return None
 
         elif hasattr(method, 'predict'):
-            method.predict(self)  # ty:ignore[call-non-callable]
+            method.predict(self)  # ty: ignore[call-non-callable]
 
         else:
             raise ValueError(
