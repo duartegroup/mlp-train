@@ -8605,7 +8605,7 @@ packages:
   - sphinx~=7.4.7 ; extra == 'docs'
   - sphinx-copybutton~=0.5.2 ; extra == 'docs'
   - sphinx-rtd-theme~=3.0.2 ; extra == 'docs'
-  requires_python: '>=3.10'
+  requires_python: '>=3.12'
 - pypi: https://files.pythonhosted.org/packages/0a/7b/18a8c0bcec9182c05a0b3ec2a776bba4ead82750a55ff798e8d406dae604/sphinxcontrib_htmlhelp-2.1.0-py3-none-any.whl
   name: sphinxcontrib-htmlhelp
   version: 2.1.0
