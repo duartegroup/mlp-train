@@ -79,12 +79,12 @@ jobs:
 
     - uses: prefix-dev/setup-pixi@v0.10.2
       with:
-        environments: mace
+        environments: ${{ startswith(matrix.os, 'ubuntu') && 'mace' || 'mace-cpu' }}
         # As of Sep 2026, caching on GitHub is actually slower :-(
         cache: false
 
     - name: Test MACE install
-      run: pixi run -e mace pytest -v --cov=mlptrain
+      run: pixi run -e ${{ startswith(matrix.os, 'ubuntu') && 'mace' || 'mace-cpu' }} pytest -v --cov=mlptrain
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v7
