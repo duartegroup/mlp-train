@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 from multiprocessing import Pool
 from time import time
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, Self
 
 import numpy as np
 from autode.atoms import Atom, elements
@@ -20,7 +20,8 @@ from mlptrain.forces import Forces
 from mlptrain.log import logger
 
 if TYPE_CHECKING:
-    from mlptrain.potentials import MLPotential
+    # This import must be guarded by TYPE_CHECKING to avoid circular import
+    from mlptrain.potentials import MLPotential  # noqa: TC004
 
 
 class ConfigurationSet(list):
@@ -255,6 +256,7 @@ class ConfigurationSet(list):
             *args (mlptrain.potentials.MLPotential): Strings defining the method or MLPs
         """
         from mlptrain.configurations.plotting import parity_plot
+        from mlptrain.potentials import MLPotential
 
         if _num_strings_in(args) > 1:
             raise NotImplementedError(
@@ -489,14 +491,20 @@ class ConfigurationSet(list):
                     atom, x, y, z = line_split[:4]
                     atoms.append(Atom(atom, x, y, z))
 
+                    # add forces to forces dict in configuration
+                    # WARNING: We're simply assuming here that columns 5-7 are forces!
+                    # This assumption is not validated.
                     if load_forces:
-                        # add forces to forces dict in configuration
                         if len(line_split) > 4:
                             force = tuple([float(x) for x in line_split[4:]])
                             assert len(force) == 3, (
                                 f'Force is not a 3D vector: {force}'
                             )
                             forces.append(force)
+                        else:
+                            raise ValueError(
+                                'XYZ file does not appear to have forces'
+                            )
 
                 # create configuration, add forces, energy and append it to config set
                 configuration = Configuration(atoms, charge, mult, config_box)
@@ -787,7 +795,7 @@ class ConfigurationSet(list):
         result += other
         return result
 
-    def __iadd__(self, other: object) -> ConfigurationSet:
+    def __iadd__(self, other: object) -> Self:
         if isinstance(other, Configuration):
             self.append(other)
         elif isinstance(other, ConfigurationSet):
