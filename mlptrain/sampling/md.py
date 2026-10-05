@@ -24,8 +24,8 @@ from mlptrain.box import Box
 from mlptrain.config import Config
 from mlptrain.configurations import Configuration, Trajectory
 from mlptrain.log import logger
-from mlptrain.sampling import PlumedBias
 from mlptrain.sampling.plumed import (
+    PlumedBias,
     PlumedCalculator,
     get_colvar_filename,
     plumed_setup,
