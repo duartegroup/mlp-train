@@ -541,7 +541,7 @@ class Configuration(AtomCollection):
 
                 # Query the nearest neighbours of the trial coordinates and check if they are within the contact_threshold
                 # This now includes periodic boundary conditions through the periodic images
-                distances, indeces = existing_tree.query(trial_coords)
+                distances, _indices = existing_tree.query(trial_coords)
                 if all(distances > contact_threshold):
                     solvent_translated = deepcopy(solvent_molecule)
 

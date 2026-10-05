@@ -522,10 +522,7 @@ def _run_dynamics(
         # The calling process waits until PLUMED process has finished
         ase_atoms.calc.plumed.finalize()
 
-    if not finished_in_time:
-        return False
-
-    return True
+    return finished_in_time
 
 
 def _save_trajectory(

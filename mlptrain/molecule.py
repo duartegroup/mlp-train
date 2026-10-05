@@ -35,10 +35,7 @@ class Molecule(ade.Molecule):
             return False
 
         # Maximum x, y, z component of all atoms should be < a, b, c
-        if max(np.max(self.coordinates, axis=0) - box.size) > 0:
-            return False
-
-        return True
+        return not max(np.max(self.coordinates, axis=0) - box.size) > 0
 
     def min_distance_to(self, coords: np.ndarray) -> float:
         """Calculate the minimum distance from this molecule to a set

@@ -195,7 +195,7 @@ class System:
         Returns:
             (list(str)):
         """
-        return sorted(set([a.label for a in self.atoms]))
+        return sorted({a.label for a in self.atoms})
 
     def _shift_to_midpoint(self, molecule) -> None:
         """Shift a molecule to the midpoint in the box, if defined"""

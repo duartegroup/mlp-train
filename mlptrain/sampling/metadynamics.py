@@ -19,6 +19,7 @@ from typing import (
 )
 
 import ase
+import ase.io
 import autode as ade
 import numpy as np
 from ase import units as ase_units
@@ -47,8 +48,6 @@ from mlptrain.utils import (
 )
 
 if TYPE_CHECKING:
-    import ase.io
-
     from mlptrain.potentials import MLPotential
     from mlptrain.sampling.plumed import _PlumedCV
 
@@ -611,14 +610,14 @@ class Metadynamics:
         move_files(
             ['.dat'],
             dst_folder='plumed_files/metadynamics',
-            unique=True if not restart else False,
+            unique=bool(not restart),
         )
 
         move_files(
             [r'trajectory_\d+\.traj', r'trajectory_\d+_\w+\.traj'],
             dst_folder='trajectories',
             regex=True,
-            unique=True if not restart else False,
+            unique=bool(not restart),
         )
 
         os.chdir('trajectories')
@@ -1291,15 +1290,17 @@ class Metadynamics:
 
         reweight_setup = [
             f'as: REWEIGHT_BIAS TEMP={temp} ARG=metad.bias',
-            'hist: HISTOGRAM '
-            f'ARG={self.bias.metad_cv_sequence} '
-            f'STRIDE=1 '
-            f'{clear_setup}'
-            f'GRID_MIN={min_param_seq} '
-            f'GRID_MAX={max_param_seq} '
-            f'GRID_BIN={bin_param_seq} '
-            f'BANDWIDTH={bandwidth_seq} '
-            'LOGWEIGHTS=as',
+            (
+                'hist: HISTOGRAM '
+                f'ARG={self.bias.metad_cv_sequence} '
+                f'STRIDE=1 '
+                f'{clear_setup}'
+                f'GRID_MIN={min_param_seq} '
+                f'GRID_MAX={max_param_seq} '
+                f'GRID_BIN={bin_param_seq} '
+                f'BANDWIDTH={bandwidth_seq} '
+                'LOGWEIGHTS=as'
+            ),
             f'DUMPGRID GRID=hist {stride_setup}FILE=hist.dat',
         ]
 
@@ -2262,21 +2263,20 @@ class Metadynamics:
             (Sequence): CVs bounds in a universal format
         """
 
-        if isinstance(cvs_bounds, list) or isinstance(cvs_bounds, tuple):
+        if isinstance(cvs_bounds, (list, tuple)):
             if len(cvs_bounds) == 0:
                 raise TypeError(
                     'CVs bounds cannot be an empty list or an empty tuple'
                 )
 
             elif all(
-                isinstance(cv_bounds, list) or isinstance(cv_bounds, tuple)
+                isinstance(cv_bounds, (list, tuple))
                 for cv_bounds in cvs_bounds
             ):
                 _cvs_bounds = cvs_bounds
 
             elif all(
-                isinstance(cv_bound, float) or isinstance(cv_bound, int)
-                for cv_bound in cvs_bounds
+                isinstance(cv_bound, (float, int)) for cv_bound in cvs_bounds
             ):
                 _cvs_bounds = [cvs_bounds]
 

@@ -50,11 +50,13 @@ class PlumedCalculator(Plumed):
     def calculate(
         self,
         atoms=None,
-        properties=['energy', 'forces', 'energy_bias', 'forces_bias'],
+        properties=None,
         system_changes=all_changes,
     ) -> None:
         """Compute the properties and attach them to the results"""
 
+        if properties is None:
+            properties = ['energy', 'forces', 'energy_bias', 'forces_bias']
         Calculator.calculate(self, atoms, properties, system_changes)
 
         # Why are we using self.atoms here and not atoms?
@@ -194,7 +196,7 @@ class PlumedBias(ASEConstraint):
             param = getattr(self, f'metad_grid_{param_name}')
 
             if param is not None:
-                if isinstance(param, list) or isinstance(param, tuple):
+                if isinstance(param, (list, tuple)):
                     param_str = ','.join(str(p) for p in param)
 
                 else:
@@ -273,7 +275,7 @@ class PlumedBias(ASEConstraint):
         if not isinstance(pace, int) or pace <= 0:
             raise ValueError('Pace (τ_G/dt) must be a positive integer')
 
-        if isinstance(width, float) or isinstance(width, int):
+        if isinstance(width, (float, int)):
             if width <= 0:
                 raise ValueError('Gaussian width (σ) must be positive')
 
@@ -390,7 +392,7 @@ class PlumedBias(ASEConstraint):
             _sequences.pop('grid_bin')
 
         for param_name, params in _sequences.items():
-            if isinstance(params, list) or isinstance(params, tuple):
+            if isinstance(params, (list, tuple)):
                 if len(params) == 0:
                     raise ValueError(
                         'The supplied parameter sequence is empty'
@@ -544,7 +546,7 @@ class PlumedBias(ASEConstraint):
             _attributes = deepcopy(self.__dict__)
             _attributes.pop('cvs')
 
-            for param_name in _attributes.keys():
+            for param_name in _attributes:
                 setattr(self, param_name, None)
 
     def _strip_setup(self) -> None:
@@ -708,11 +710,13 @@ class _PlumedCV:
         self.lower_wall = {'location': location, 'kappa': kappa, 'exp': exp}
         self.setup.extend(
             [
-                'LOWER_WALLS '
-                f'ARG={self.name} '
-                f'AT={location} '
-                f'KAPPA={kappa} '
-                f'EXP={exp}'
+                (
+                    'LOWER_WALLS '
+                    f'ARG={self.name} '
+                    f'AT={location} '
+                    f'KAPPA={kappa} '
+                    f'EXP={exp}'
+                )
             ]
         )
 
@@ -741,11 +745,13 @@ class _PlumedCV:
         self.upper_wall = {'location': location, 'kappa': kappa, 'exp': exp}
         self.setup.extend(
             [
-                'UPPER_WALLS '
-                f'ARG={self.name} '
-                f'AT={location} '
-                f'KAPPA={kappa} '
-                f'EXP={exp}'
+                (
+                    'UPPER_WALLS '
+                    f'ARG={self.name} '
+                    f'AT={location} '
+                    f'KAPPA={kappa} '
+                    f'EXP={exp}'
+                )
             ]
         )
 
@@ -927,11 +933,13 @@ class PlumedAverageCV(_PlumedCV):
 
         self.setup.extend(
             [
-                f'{self.name}: '
-                f'CUSTOM ARG={self.dof_sequence} '
-                f'VAR={self.dof_sequence} '
-                f'FUNC={func} '
-                f'PERIODIC=NO'
+                (
+                    f'{self.name}: '
+                    f'CUSTOM ARG={self.dof_sequence} '
+                    f'VAR={self.dof_sequence} '
+                    f'FUNC={func} '
+                    f'PERIODIC=NO'
+                )
             ]
         )
 
@@ -969,11 +977,13 @@ class PlumedDifferenceCV(_PlumedCV):
 
         self.setup.extend(
             [
-                f'{self.name}: '
-                f'CUSTOM ARG={self.dof_sequence} '
-                f'VAR={self.dof_sequence} '
-                f'FUNC={func} '
-                f'PERIODIC=NO'
+                (
+                    f'{self.name}: '
+                    f'CUSTOM ARG={self.dof_sequence} '
+                    f'VAR={self.dof_sequence} '
+                    f'FUNC={func} '
+                    f'PERIODIC=NO'
+                )
             ]
         )
 
@@ -1029,11 +1039,13 @@ class PlumedCNCV(_PlumedCV):
 
         self.setup.extend(
             [
-                f'{self.name}: '
-                f'CUSTOM ARG={self.dof_sequence} '
-                f'VAR={self.dof_sequence} '
-                f'FUNC={func} '
-                f'PERIODIC=NO'
+                (
+                    f'{self.name}: '
+                    f'CUSTOM ARG={self.dof_sequence} '
+                    f'VAR={self.dof_sequence} '
+                    f'FUNC={func} '
+                    f'PERIODIC=NO'
+                )
             ]
         )
 
@@ -1110,7 +1122,7 @@ def _find_files(setup: list[str]) -> list:
                 element = element.split('=')
                 name = element[-1]
 
-                if name.endswith('.dat') or name.endswith('.pdb'):
+                if name.endswith(('.dat', '.pdb')):
                     filenames.append(name)
 
     return filenames
@@ -1341,16 +1353,18 @@ def plumed_setup(
             load_metad_bias_setup = ''
 
         metad_setup = [
-            'metad: METAD '
-            f'ARG={bias.metad_cv_sequence} '
-            f'PACE={bias.pace} '
-            f'HEIGHT={bias.height} '
-            f'SIGMA={bias.width_sequence} '
-            f'TEMP={temp} '
-            f'{bias.biasfactor_setup}'
-            f'{bias.metad_grid_setup}'
-            f'{load_metad_bias_setup}'
-            f'FILE={hills_filename}'
+            (
+                'metad: METAD '
+                f'ARG={bias.metad_cv_sequence} '
+                f'PACE={bias.pace} '
+                f'HEIGHT={bias.height} '
+                f'SIGMA={bias.width_sequence} '
+                f'TEMP={temp} '
+                f'{bias.biasfactor_setup}'
+                f'{bias.metad_grid_setup}'
+                f'{load_metad_bias_setup}'
+                f'FILE={hills_filename}'
+            )
         ]
         setup.extend(metad_setup)
 

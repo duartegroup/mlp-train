@@ -35,7 +35,7 @@ def parity_plot(
 
         file_name: Name of the file to save the plot
     """
-    fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(8, 7.5))
+    _fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(8, 7.5))
 
     if _all_energies_are_defined(config_set):
         _add_energy_time_plot(config_set, axis=ax[0, 0])
@@ -67,7 +67,7 @@ def error_histogram(
 
     """
 
-    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(8, 3.75))
+    _fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(8, 3.75))
 
     if _all_energies_are_defined(config_set):
         _add_energy_error_histogram(
@@ -104,7 +104,7 @@ def error_histogram_index(
 
     """
 
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 3.75))
+    _fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 3.75))
 
     if _all_forces_are_defined(config_set):
         _add_force_error_histogram(
@@ -420,7 +420,7 @@ def error_force_histogram_per_elements(
 
     nrows, ncols = _choose_grid(N_elements, max_cols=3)
 
-    fig, axes = plt.subplots(
+    _fig, axes = plt.subplots(
         nrows, ncols, squeeze=False, figsize=(4 * ncols, 3 * nrows)
     )
 
@@ -524,7 +524,7 @@ def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
             va='bottom',
         )
     else:
-        slope, intercept, r, p, se = linregress(x, y)
+        _slope, _intercept, r, _p, _se = linregress(x, y)
         axis.annotate(
             f'$R^2$ = {r**2:.3f}\n'
             f'MAD = {np.mean(np.abs(x - y)) * factor:.1f} {unit}',
@@ -583,8 +583,6 @@ def _choose_grid(n: int, max_cols: int = 3) -> tuple[int, int]:
         squareness = abs(nrows - ncols)
         candidates.append((squareness, unused, nrows, ncols))
 
-    _, _, nrows, ncols = sorted(candidates, key=lambda t: (t[0], t[1], t[2]))[
-        0
-    ]
+    _, _, nrows, ncols = min(candidates, key=lambda t: (t[0], t[1], t[2]))
 
     return nrows, ncols

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import sys
 import typing as t
 from subprocess import PIPE, Popen
 from time import time
@@ -183,7 +184,6 @@ class ACE(MLPotential):
         print(
             'Dn = Dict( "default" => 1.0 )\n'
             'Dl = Dict( "default" => 1.5 )',  # l_weights
-            sep='\n',
             file=inp_file,
         )
 
@@ -275,7 +275,7 @@ def _check_julia_install_exists() -> None:
     """Ensure that a julia install is present"""
 
     if shutil.which('julia') is None:
-        exit(
+        sys.exit(
             "Failed to find a Julia installation. Make sure it's present "
             'in your $PATH'
         )

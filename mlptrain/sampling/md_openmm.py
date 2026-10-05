@@ -124,7 +124,7 @@ def run_mlp_md_openmm(
             fbond_energy,
             bbond_energy,
             bias,
-            kwargs['constraints'] if 'constraints' in kwargs else None,
+            kwargs.get('constraints', None),
         ]
     ):
         raise NotImplementedError(

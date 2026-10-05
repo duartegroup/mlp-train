@@ -94,7 +94,7 @@ class SoapDescriptor(Descriptor):
         if self.soap is None:
             if not self.elements:
                 self.elements = list(
-                    set(atom.label for c in configurations for atom in c.atoms)
+                    {atom.label for c in configurations for atom in c.atoms}
                 )
 
             self.soap = SOAP(
