@@ -30,7 +30,7 @@ class SoapDescriptor(Descriptor):
             average (Optional[str]): Averaging mode for the SOAP descriptor:
                 - `"inner"` (default): Averages SOAP vectors before computing the power spectrum.
                 - `"outer"`: Computes the power spectrum for each atom, then averages.
-                - `None`: No averaging, returns per-atom descriptors."""
+                - `"off"`: No averaging, returns per-atom descriptors."""
 
         super().__init__(name='SoapDescriptor')
         self.elements = elements
