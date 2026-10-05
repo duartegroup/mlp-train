@@ -48,10 +48,8 @@ def run_autode(
     calc.run()
 
     try:
-        configuration.forces.true = (
-            -calc.molecule.gradient.to(  # ty: ignore[unresolved-attribute]
-                'eV Å^-1'
-            )
+        configuration.forces.true = -calc.molecule.gradient.to(  # ty: ignore[unresolved-attribute]
+            'eV Å^-1'
         )
 
     except CouldNotGetProperty:

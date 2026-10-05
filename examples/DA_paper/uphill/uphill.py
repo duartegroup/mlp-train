@@ -190,7 +190,7 @@ def traj_study(configs, ml_potential, init_md_time_fs=500, max_time_fs=3000):
             )
             ending = 0
             for i, j in zip(C2_C7_list, C4_C6_list):
-                logger.info(f'C2-C7 and C4-C6 bond lengths are {(i,j)}')
+                logger.info(f'C2-C7 and C4-C6 bond lengths are {(i, j)}')
                 if i <= 1.6 and j <= 1.6:
                     ending += 1
                     break

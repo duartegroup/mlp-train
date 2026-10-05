@@ -374,7 +374,7 @@ class MockMLPotential(MLPotential):
 
             else:
                 raise ValueError(
-                    'Cannot predict the energy and forces on ' f'{type(arg)}'
+                    f'Cannot predict the energy and forces on {type(arg)}'
                 )
 
         for configuration in all_configurations:

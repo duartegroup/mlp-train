@@ -59,7 +59,7 @@ class MLPotential(ABC):
 
         if any(c.energy.true is None for c in self.training_data):
             raise RuntimeError(
-                'Cannot train on configurations, an ' 'energy was undefined'
+                'Cannot train on configurations, an energy was undefined'
             )
 
         if self.requires_atomic_energies and len(self.atomic_energies) == 0:
@@ -111,7 +111,7 @@ class MLPotential(ABC):
 
             else:
                 raise ValueError(
-                    'Cannot predict the energy and forces on ' f'{type(arg)}'
+                    f'Cannot predict the energy and forces on {type(arg)}'
                 )
 
         logger.info(
@@ -153,8 +153,7 @@ class MLPotential(ABC):
 
         else:
             raise ValueError(
-                f'Cannot set the training data for {self.name} '
-                f'with {value}'
+                f'Cannot set the training data for {self.name} with {value}'
             )
 
     @property
@@ -325,7 +324,7 @@ class MLPotential(ABC):
 
                 else:
                     raise RuntimeError(
-                        'Failed to calculate an energy for ' f'{symbol}'
+                        f'Failed to calculate an energy for {symbol}'
                     )
 
             self.atomic_energies[symbol] = config.energy.true

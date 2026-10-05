@@ -711,9 +711,9 @@ def _set_momenta_and_geometry(
         last_configuration = ase.io.read(traj_name)
 
         # Make sure we've only read a single structure, not multiple of them!
-        assert isinstance(
-            last_configuration, ase.Atoms
-        ), 'more than one configuration in file {traj_name}!'
+        assert isinstance(last_configuration, ase.Atoms), (
+            'more than one configuration in file {traj_name}!'
+        )
 
         ase_atoms.set_positions(last_configuration.get_positions())
         ase_atoms.set_momenta(last_configuration.get_momenta())

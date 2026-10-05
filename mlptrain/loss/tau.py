@@ -50,8 +50,7 @@ class TauCalculator(LossFunction):
 
         if time_interval < dt:
             raise ValueError(
-                'The calculated interval must be more than a '
-                'single timestep'
+                'The calculated interval must be more than a single timestep'
             )
 
         self.dt = float(dt)
@@ -107,8 +106,7 @@ class TauCalculator(LossFunction):
         # Calculate τ_acc as the average ± the standard error in the mean
         return Tau(
             np.average(taus),
-            error=np.std(taus)
-            / np.sqrt(len(taus) - 1),  # ty:ignore[unknown-argument]
+            error=np.std(taus) / np.sqrt(len(taus) - 1),  # ty:ignore[unknown-argument]
         )
 
     def _calculate_single(self, config, mlp, method_name):

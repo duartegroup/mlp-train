@@ -289,9 +289,7 @@ def chdir_tmp_path(request, tmp_path):
 class HarmonicPotential(Calculator):
     __test__ = False
 
-    def get_potential_energy(
-        self, atoms
-    ):  # ty:ignore[invalid-method-override]
+    def get_potential_energy(self, atoms):  # ty:ignore[invalid-method-override]
         r = atoms.get_distance(0, 1)
 
         return (r - 1) ** 2
@@ -332,7 +330,7 @@ class TestPotential(mlt.potentials.MLPotential):
 
         else:
             raise NotImplementedError(
-                f'{self.calculator} is not implemented ' f'as a test potential'
+                f'{self.calculator} is not implemented as a test potential'
             )
 
     def _train(self) -> None:

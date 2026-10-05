@@ -336,7 +336,7 @@ def train(
                 continue
         else:
             logger.info(
-                f'{mlp.n_train-previous_n_train} AL configurations found'
+                f'{mlp.n_train - previous_n_train} AL configurations found'
             )
 
         # If required, remove high-lying energy configurations from the data
@@ -514,7 +514,7 @@ def _add_active_configs(
                     )
                 else:
                     logger.debug(
-                        f'Drained error from queue: idx={q_idx}: ' f'{q_err}'
+                        f'Drained error from queue: idx={q_idx}: {q_err}'
                     )
                     worker_results[q_idx] = None
             except queue.Empty:
@@ -561,7 +561,7 @@ def _add_active_configs(
         raise RuntimeError('All active learning workers failed or timed out')
 
     logger.info(
-        f"Computing {kwargs['method_name']} reference for {n_succeeded} new configurations"
+        f'Computing {kwargs["method_name"]} reference for {n_succeeded} new configurations'
     )
     for config in configs:
         if config.energy.true is None:
@@ -581,7 +581,7 @@ def _add_active_configs(
 
     os.makedirs('datasets', exist_ok=True)
     mlp.training_data.save(
-        f'datasets/' f'dataset_after_iter_{kwargs["iteration"]}.npz'
+        f'datasets/dataset_after_iter_{kwargs["iteration"]}.npz'
     )
 
     if kwargs.get('keep_al_trajs') is True:
@@ -690,9 +690,9 @@ def _gen_active_config(
         config.box = Box(box_size)
 
     if kwargs['md_program'].lower() == 'openmm':
-        assert isinstance(
-            mlp, mlptrain.potentials.MACE
-        ), 'OpenMM is only available with MACE potential at the moment'
+        assert isinstance(mlp, mlptrain.potentials.MACE), (
+            'OpenMM is only available with MACE potential at the moment'
+        )
         traj = run_mlp_md_openmm(
             config,
             mlp=mlp,
@@ -764,7 +764,7 @@ def _gen_active_config(
                     idx=kwargs['idx'],
                 )
                 if selector.select is False:
-                    logger.info(f'Selecting {i-1} th configuration.')
+                    logger.info(f'Selecting {i - 1} th configuration.')
                     frame = back_traj[i - 1]
                     break
                 else:
@@ -1021,10 +1021,7 @@ def _attach_plumed_coords_to_init_configs(
     for cv in bias.cvs:
         driver_setup.extend(cv.setup)
         driver_setup.append(
-            'PRINT '
-            f'ARG={cv.name} '
-            f'FILE=colvar_{cv.name}_driver.dat '
-            'STRIDE=1'
+            f'PRINT ARG={cv.name} FILE=colvar_{cv.name}_driver.dat STRIDE=1'
         )
 
     # Remove duplicate lines
@@ -1153,7 +1150,7 @@ def _modify_kwargs_for_metad_bias_inheritance(kwargs: dict) -> dict:
     hills_fname = f'HILLS_{kwargs["iteration"]}_{kwargs["idx"]}.dat'
 
     if kwargs['iteration'] > kwargs['bias_start_iter']:
-        previous_hills_fname = f'HILLS_{kwargs["iteration"]-1}.dat'
+        previous_hills_fname = f'HILLS_{kwargs["iteration"] - 1}.dat'
 
         # Overwrites hills_fname when it is present during recursive MD
         shutil.copyfile(src=previous_hills_fname, dst=hills_fname)
@@ -1259,9 +1256,9 @@ def _generate_inheritable_metad_bias_hills(
     logger.info('Generating metadynamics bias HILLS file to inherit from')
 
     if iteration == bias_start_iter:
-        open(f'HILLS_{iteration-1}.dat', 'w').close()
+        open(f'HILLS_{iteration - 1}.dat', 'w').close()
 
-    shutil.move(src=f'HILLS_{iteration-1}.dat', dst=f'HILLS_{iteration}.dat')
+    shutil.move(src=f'HILLS_{iteration - 1}.dat', dst=f'HILLS_{iteration}.dat')
 
     # Remove inherited bias from files containing new bias
     for fname in hills_files:
@@ -1306,7 +1303,7 @@ def _generate_inheritable_metad_bias_hills(
         # Therefore, the number of columns is compared to the previous line
         if len(f_lines[-1].split()) != len(f_lines[-2].split()):
             logger.warning(
-                f'Truncated last line detected in {fname}; ' 'removing it'
+                f'Truncated last line detected in {fname}; removing it'
             )
             f_lines.pop()
 
@@ -1341,7 +1338,7 @@ def _generate_inheritable_metad_bias_hills(
 
             if n_skipped > 0:
                 logger.warning(
-                    f'Skipped {n_skipped} invalid/NaN line(s) ' f'in {fname}'
+                    f'Skipped {n_skipped} invalid/NaN line(s) in {fname}'
                 )
 
         os.remove(fname)
@@ -1365,7 +1362,7 @@ def _attach_inherited_bias_energies(
     """
 
     logger.info(
-        'Attaching inherited bias energies to the whole training ' 'data set'
+        'Attaching inherited bias energies to the whole training data set'
     )
 
     if iteration == bias_start_iter:
@@ -1373,7 +1370,7 @@ def _attach_inherited_bias_energies(
             config.energy.inherited_bias = 0
 
     else:
-        if os.path.getsize(f'HILLS_{iteration-1}.dat') == 0:
+        if os.path.getsize(f'HILLS_{iteration - 1}.dat') == 0:
             for config in configurations:
                 config.energy.inherited_bias = 0
 
@@ -1396,17 +1393,17 @@ def _attach_inherited_bias_energies(
 
         cvs_cols = range(bias.n_metad_cvs)
         cvs_grid = np.loadtxt(
-            f'bias_grid_{iteration-1}.dat', usecols=cvs_cols, ndmin=2
+            f'bias_grid_{iteration - 1}.dat', usecols=cvs_cols, ndmin=2
         )
         cvs_grid = np.flip(cvs_grid, axis=1)
 
         bias_grid = np.loadtxt(
-            f'bias_grid_{iteration-1}.dat', usecols=bias.n_metad_cvs
+            f'bias_grid_{iteration - 1}.dat', usecols=bias.n_metad_cvs
         )
         bias_grid = -bias_grid
 
         header = []
-        with open(f'bias_grid_{iteration-1}.dat', 'r') as f:
+        with open(f'bias_grid_{iteration - 1}.dat', 'r') as f:
             for line in f:
                 if line.startswith('#!'):
                     header.append(line)
@@ -1450,7 +1447,7 @@ def _attach_inherited_bias_energies(
 
             config.energy.inherited_bias = bias_grid[start_idxs[-1]]
 
-        os.remove(f'bias_grid_{iteration-1}.dat')
+        os.remove(f'bias_grid_{iteration - 1}.dat')
 
     return
 
@@ -1493,8 +1490,8 @@ def _generate_grid_from_hills(
     min_sequence = ','.join(str(param) for param in min_params)
     max_sequence = ','.join(str(param) for param in max_params)
 
-    hills_path = f'HILLS_{iteration-1}.dat'
-    grid_path = f'bias_grid_{iteration-1}.dat'
+    hills_path = f'HILLS_{iteration - 1}.dat'
+    grid_path = f'bias_grid_{iteration - 1}.dat'
 
     sum_hills_process = Popen(
         [

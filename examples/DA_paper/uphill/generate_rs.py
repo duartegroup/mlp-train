@@ -70,12 +70,12 @@ def solvation(solute_config, solvent_config, apm, radius, enforce=True):
         atoms.set_positions(positions.reshape((-1, 3)))
         return atoms
 
-    assert not (
-        solvent.cell.diagonal() == 0
-    ).any(), 'solvent atoms have no cell'
-    assert (
-        solvent.cell == np.diag(solvent.cell.diagonal())
-    ).all(), 'sol cell not orthorhombic'
+    assert not (solvent.cell.diagonal() == 0).any(), (
+        'solvent atoms have no cell'
+    )
+    assert (solvent.cell == np.diag(solvent.cell.diagonal())).all(), (
+        'sol cell not orthorhombic'
+    )
     if enforce:
         solvent.pbc = True
 
