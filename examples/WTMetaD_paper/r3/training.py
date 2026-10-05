@@ -120,9 +120,9 @@ def solvation(solute_config, solvent_config, apm, radius, enforce=True):
     return solvation
 
 
-def generate_init_configs(
-    n, solute_xyz, solvent_xyz, box_size=[18.5, 18.5, 18.5]
-):
+def generate_init_configs(n, solute_xyz, solvent_xyz, box_size=None):
+    if box_size is None:
+        box_size = [18.5, 18.5, 18.5]
     solute = mlt.ConfigurationSet()
     solute.load_xyz(
         filename=solute_xyz, charge=1, mult=1, box=mlt.box.Box(box_size)

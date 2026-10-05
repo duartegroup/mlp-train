@@ -83,9 +83,9 @@ def test_atoms_property(test_system):
 def test_unique_atomic_symbols_property(test_system):
     """Test getting unique atomic symbols in the system."""
     unique_symbols = test_system.unique_atomic_symbols
-    expected_symbols = set(
+    expected_symbols = {
         atom.label for mol in test_system.molecules for atom in mol.atoms
-    )
+    }
     assert set(unique_symbols) == expected_symbols
 
 

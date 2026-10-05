@@ -49,11 +49,9 @@ def test_solvate(h2o_configuration, h2o_solvated_with_h2o):
     h2o_configuration.solvate(solvent_name='water')
     assert len(h2o_configuration.atoms) == 159
     assert all(
-        [
-            np.round(atom.coordinate, 3)
+        np.round(atom.coordinate, 3)
             == h2o_solvated_with_h2o.atoms[i].coordinate
             for i, atom in enumerate(h2o_configuration.atoms)
-        ]
     )
 
 

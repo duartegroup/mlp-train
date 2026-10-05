@@ -14,7 +14,7 @@ _ENV_VAR = 'MLT_LOG_LEVEL'
 @pytest.fixture
 def throwaway_logger():
     """A logger that is not registered in the global logging manager."""
-    logger = logging.Logger('mlptrain-test')
+    logger = logging.Logger('mlptrain-test')  # noqa: LOG001
     logger.setLevel(logging.WARNING)
     return logger
 

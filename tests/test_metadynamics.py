@@ -355,15 +355,21 @@ def test_run_metadynamics_with_additional_cvs(
     # Not including the units
     assert plumed_setup[1:] == [
         'cv1_dist1: DISTANCE ATOMS=1,2',
-        'cv1: CUSTOM ARG=cv1_dist1 VAR=cv1_dist1 '
-        f'FUNC={1 / 1}*(cv1_dist1) PERIODIC=NO',
+        (
+            'cv1: CUSTOM ARG=cv1_dist1 VAR=cv1_dist1 '
+            f'FUNC={1 / 1}*(cv1_dist1) PERIODIC=NO'
+        ),
         'cv2_dist1: DISTANCE ATOMS=3,2',
-        'cv2: CUSTOM ARG=cv2_dist1 VAR=cv2_dist1 '
-        f'FUNC={1 / 1}*(cv2_dist1) PERIODIC=NO',
+        (
+            'cv2: CUSTOM ARG=cv2_dist1 VAR=cv2_dist1 '
+            f'FUNC={1 / 1}*(cv2_dist1) PERIODIC=NO'
+        ),
         'UPPER_WALLS ARG=cv2 AT=3.0 KAPPA=150.0 EXP=2',
-        'metad: METAD ARG=cv1 PACE=100 HEIGHT=0.1 '
-        'SIGMA=0.05 TEMP=300 BIASFACTOR=3 '
-        'FILE=HILLS_1.dat',
+        (
+            'metad: METAD ARG=cv1 PACE=100 HEIGHT=0.1 '
+            'SIGMA=0.05 TEMP=300 BIASFACTOR=3 '
+            'FILE=HILLS_1.dat'
+        ),
         'PRINT ARG=cv1,cv1_dist1 FILE=colvar_cv1_1.dat STRIDE=10',
         'PRINT ARG=cv2,cv2_dist1 FILE=colvar_cv2_1.dat STRIDE=10',
     ]

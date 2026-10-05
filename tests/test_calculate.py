@@ -174,7 +174,7 @@ def test_method_and_keywords_success(set_config):
     """Test _method_and_keywords for valid methods"""
     methods = {'orca': 'orca', 'g09': 'g09', 'g16': 'g16', 'xtb': 'xtb'}
     for method_name, expected in methods.items():
-        method, keywords = _method_and_keywords(method_name)
+        method, _keywords = _method_and_keywords(method_name)
         assert (
             method.name == expected
         )  # Mocked ORCA, G09, etc., should have these names
