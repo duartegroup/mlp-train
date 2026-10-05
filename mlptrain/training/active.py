@@ -71,6 +71,7 @@ def train(
     max_active_iters: int = 50,
     n_init_configs: int = 10,
     init_configs: mlptrain.ConfigurationSet | None = None,
+    al_starting_configs: mlptrain.ConfigurationSet | None = None,
     fix_init_config: bool = False,
     bbond_energy: dict | None = None,
     fbond_energy: dict | None = None,
@@ -131,6 +132,9 @@ def train(
 
         init_configs: (gt.ConfigurationSet) A set of configurations from
                       which to start the active learning from
+
+        al_starting_configs: Starting configurations for the AL iterations.
+                          If provided, their length must equal `n_configs_iter`, and `fix_init_config` is set to True.
 
         fix_init_config: (bool) Always start from the same initial
                          configuration for the active learning loop.
@@ -210,6 +214,33 @@ def train(
     if pbc and box_size is None:
         raise ValueError('For PBC in MD, the box_size cannot be None')
 
+    if al_starting_configs is not None:
+        # For now, al_starting_configs are not compatible with restart
+        if restart_iter is not None:
+            raise NotImplementedError(
+                'al_starting_configs not compatible with restart'
+            )
+        if len(al_starting_configs) != n_configs_iter:
+            raise ValueError(
+                f'len(al_starting_configs) must equal n_configs_iter ({n_configs_iter}'
+            )
+        if init_configs is None:
+            logger.info(
+                'Setting initial training set from `al_starting_configs`'
+            )
+            init_configs = al_starting_configs
+        else:
+            # Merge al_starting_configs to init_configs,
+            # to ensure they are part of training set
+            init_configs.extend(al_starting_configs)
+
+        if not fix_init_config:
+            logger.warning(
+                '`fix_init_config` must be set to True if you provide al_starting_configs'
+            )
+            logger.warning("setting 'fix_init_config = True'")
+            fix_init_config = True
+
     if restart_iter is not None:
         _initialise_restart(
             mlp=mlp,
@@ -228,7 +259,10 @@ def train(
         )
 
     else:
-        init_config = init_configs[0]
+        if al_starting_configs is not None:
+            init_config = al_starting_configs
+        else:
+            init_config = init_configs[0]
         _set_init_training_configs(
             mlp=mlp,
             init_configs=init_configs,
@@ -322,7 +356,7 @@ def train(
 
 def _add_active_configs(
     mlp: MLPotential,
-    init_config: mlptrain.Configuration,
+    init_config: mlptrain.Configuration | mlptrain.ConfigurationSet,
     selection_method: SelectionMethod,
     n_configs: int = 10,
     **kwargs,
@@ -359,6 +393,16 @@ def _add_active_configs(
     workers = []
     start_times = {}
 
+    if isinstance(init_config, mlptrain.Configuration):
+        initial_configurations = [init_config.copy() for _ in range(n_configs)]
+    else:
+        initial_configurations = init_config.copy()
+
+    if len(initial_configurations) != n_configs:
+        raise ValueError(
+            f"Number of initial configurations ({len(initial_configurations)}) doesn't match {n_configs=}"
+        )
+
     for idx in range(n_configs):
         kwargs['idx'] = idx
         kwargs_single = deepcopy(kwargs)
@@ -367,7 +411,7 @@ def _add_active_configs(
             args=(
                 result_queue,
                 idx,
-                init_config.copy(),
+                initial_configurations[idx],
                 mlp.copy(),
                 selection_method.copy(),
                 n_cores_pp,
@@ -1019,14 +1063,14 @@ def _attach_plumed_coords_to_init_configs(
 
 
 def _update_init_config(
-    init_config: mlptrain.Configuration,
+    init_config: mlptrain.Configuration | mlptrain.ConfigurationSet,
     mlp: MLPotential,
     fix_init_config: bool,
     bias: mlptrain.PlumedBias | mlptrain.Bias | None,
     inherit_metad_bias: bool,
     bias_start_iter: int,
     iteration: int,
-) -> mlptrain.Configuration:
+) -> mlptrain.Configuration | mlptrain.ConfigurationSet:
     """Update initial configuration for an active learning iteration"""
 
     if fix_init_config:
