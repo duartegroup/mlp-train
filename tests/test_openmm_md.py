@@ -66,7 +66,7 @@ def test_openmm_simulation(h2o_system_config):
     mace = mlt.potentials.MACE('water', system=system)
 
     topology = mlt.md_openmm._create_openmm_topology(atoms)
-    platform = mlt.md_openmm._get_openmm_platform()
+    platform = mlt.md_openmm._get_openmm_platform('cpu')
 
     simulation = mlt.md_openmm._create_openmm_simulation(
         mlp=mace,
@@ -132,6 +132,7 @@ def test_openmm_md(h2o_system_config):
         interval=10,
         fs=100,
         kept_substrings=['.state.xml', '.traj'],
+        platform='cpu',
     )
 
     traj = ASETrajectory('trajectory.traj')
@@ -157,6 +158,7 @@ def test_openmm_md_restart(h2o_system_config):
         interval=10,
         restart_files=['md_restart_h2o.traj', 'md_restart_h2o.state.xml'],
         fs=100,
+        platform='cpu',
     )
 
     assert os.path.exists('md_restart_h2o.traj')
@@ -186,6 +188,7 @@ def test_openmm_md_save(h2o_system_config):
         kept_substrings=['.traj'],
         fs=100,
         save_fs=20,
+        platform='cpu',
     )
 
     assert os.path.exists('trajectory.traj')
