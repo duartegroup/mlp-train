@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from copy import deepcopy
-from typing import TYPE_CHECKING, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, List, Literal, Optional, Sequence, Union
 
 import ase
 import ase.io
@@ -29,6 +29,9 @@ if TYPE_CHECKING:
 _KJ_PER_MOL_TO_EV = (ase.units.kJ / ase.units.mol) / ase.units.eV
 
 
+_PlatformType = Literal['CUDA', 'OpenCL', 'CPU', 'Reference']
+
+
 def run_mlp_md_openmm(
     configuration: 'mlt.Configuration',
     mlp: MACE,
@@ -42,7 +45,7 @@ def run_mlp_md_openmm(
     restart_files: Optional[List[str]] = None,
     copied_substrings: Optional[Sequence[str]] = None,
     kept_substrings: Optional[Sequence[str]] = None,
-    platform: Optional[str] = None,
+    platform: _PlatformType | None = None,
     **kwargs,
 ) -> 'mlt.Trajectory':
     """
@@ -207,7 +210,7 @@ def _run_mlp_md_openmm(
     bbond_energy: Optional[dict] = None,
     bias: Optional[Union['mlt.Bias', 'mlt.PlumedBias']] = None,
     restart_files: Optional[List[str]] = None,
-    platform: Optional[str] = None,
+    platform: _PlatformType | None = None,
     **kwargs,
 ) -> 'mlt.Trajectory':
     """
@@ -341,7 +344,9 @@ def _create_openmm_topology(ase_atoms: 'ase.Atoms') -> 'openmm.app.Topology':
     return topology
 
 
-def _get_openmm_platform(platform: Optional[str] = None) -> 'openmm.Platform':
+def _get_openmm_platform(
+    platform: _PlatformType | None = None,
+) -> openmm.Platform:
     """Get the OpenMM platform to use."""
     import openmm
     import torch
