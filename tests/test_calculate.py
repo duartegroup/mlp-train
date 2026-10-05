@@ -32,12 +32,10 @@ class MockCalculation:
         self.method = method
         self.keywords = keywords
         self.n_cores = n_cores
-        self._energy_success = (
-            True  # Flag for controlling energy calculation success
-        )
-        self._gradient_success = (
-            True  # Flag for controlling gradient calculation success
-        )
+        # Flag for controlling energy calculation success
+        self._energy_success = True
+        # Flag for controlling gradient calculation success
+        self._gradient_success = True
 
     def run(self):
         """Simulate the run behavior."""
@@ -48,7 +46,7 @@ class MockCalculation:
         if self._gradient_success:
             return MockUnitConversion(np.array([-0.1, 0.2, -0.3]))
         else:
-            raise Exception('Could not get gradients')
+            raise RuntimeError('Could not get gradients')
 
     def get_energy(self):
         """Return mock energy or None if _energy_success is False"""
