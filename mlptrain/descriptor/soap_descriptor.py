@@ -31,7 +31,7 @@ class SoapDescriptor(Descriptor):
             average (Optional[str]): Averaging mode for the SOAP descriptor:
                 - `"inner"` (default): Averages SOAP vectors before computing the power spectrum.
                 - `"outer"`: Computes the power spectrum for each atom, then averages.
-                - `"off"`: No averaging, returns per-atom descriptors."""
+                - `"off"`: No averaging, returns per-atom descriptors.
             centers (Optional[Sequence[int]]): Indices of the atoms where to calculate SOAP. The same indices
                 are used for every configuration. If `None` (default), every atom is a centre.
         """
