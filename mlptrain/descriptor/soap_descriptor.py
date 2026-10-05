@@ -113,6 +113,14 @@ class SoapDescriptor(Descriptor):
         soap_vec = self.soap.create(
             [conf.ase_atoms for conf in configurations], centers=centers
         )
+
+        # dscribe drops the leading configuration axis for a single system
+        if self.average == 'off':
+            return (
+                soap_vec
+                if soap_vec.ndim > 2
+                else soap_vec.reshape(1, *soap_vec.shape)
+            )
         return soap_vec if soap_vec.ndim > 1 else soap_vec.reshape(1, -1)
 
     def kernel_vector(
@@ -139,24 +147,26 @@ class SoapDescriptor(Descriptor):
         Returns:
             (np.ndarray): Vector, shape = len(configurations)"""
 
-        v1 = self.compute_representation(configuration)
-        m1 = self.compute_representation(configurations)
-
         if self.average in ['inner', 'outer']:
-            """ If the averaging mode is 'inner' or 'outer', the SOAP descriptor is averaged over atomic sites to yield a single vector per molecule.
-        In this case, the kernel similarity is computed as the dot product of the averaged SOAP vectors, raised to the power of zeta.
+            """ If the averaging mode is 'inner' or 'outer',
+            the SOAP descriptor is averaged over atomic sites to yield a single vector per molecule.
+            In this case, the kernel similarity is computed
+            as the dot product of the averaged SOAP vectors, raised to the power of zeta.
 
-        - In **inner averaging**, the expansion coefficients are averaged across atoms *before* computing the power spectrum.
-        This is mathematically represented as:
+            - In **inner averaging**, the expansion coefficients are averaged across atoms *before* computing the power spectrum.
+            This is mathematically represented as:
 
-        p ~ sum_m [ (1/n) * sum_i c_nlm(i, Z1) ] * [ (1/n) * sum_i c_n'lm(i, Z2) ]
+            p ~ sum_m [ (1/n) * sum_i c_nlm(i, Z1) ] * [ (1/n) * sum_i c_n'lm(i, Z2) ]
 
-        -In **outer averaging**, the power spectrum is computed at each atomic site first, and then averaged across all atoms:
+            -In **outer averaging**, the power spectrum is computed at each atomic site first, and then averaged across all atoms:
 
-        p ~ (1/n) * sum_i sum_m c_nlm(i, Z1) * c_n'lm(i, Z2)"""
+            p ~ (1/n) * sum_i sum_m c_nlm(i, Z1) * c_n'lm(i, Z2)
+            """
 
-            v1 = v1[0]  # Single vector for entire structure
-            m1 = m1  # Each row represents one configuration
+            # Single vector for entire structure
+            v1 = self.compute_representation(configuration)[0]
+            # Each row represents one configuration
+            m1 = self.compute_representation(configurations)
 
             # Normalize vectors
             v1 /= np.linalg.norm(v1)
@@ -165,17 +175,31 @@ class SoapDescriptor(Descriptor):
             return np.power(np.dot(m1, v1), zeta)
 
         elif self.average == 'off':
-            """ Example: Consider a water molecule (H₂O). In a non-averaged SOAP setup, each atom has its own descriptor: one for the oxygen and one for each hydrogen. 
-        To compare two water molecules A and B, compute a kernel similarity for each matching pair of atoms:
-        K = [k(d_O^A, d_O^B),
-             k(d_H1^A, d_H1^B),
-             k(d_H2^A, d_H2^B)]
-        The overall molecular similarity is then the average of these atomic similarities:
-         k_mol(A, B) = (1/3) * [k_O + k_H1 + k_H2]
+            """Example: Consider a water molecule (H₂O).
+            In a non-averaged SOAP setup, each atom has its own descriptor:
+            one for the oxygen and one for each hydrogen. 
+            To compare two water molecules A and B, compute a kernel similarity for each matching pair of atoms:
+                K = [k(d_O^A, d_O^B),
+                     k(d_H1^A, d_H1^B),
+                     k(d_H2^A, d_H2^B)]
+            The overall molecular similarity is then the average of these atomic similarities:
+                 k_mol(A, B) = (1/3) * [k_O + k_H1 + k_H2]
 
-        More generally, for a molecule with N atoms:
-        k_mol(A, B) = (1/N) * sum_i k(d_i^A, d_i^B)
-         """
+            More generally, for a molecule with N atoms:
+                k_mol(A, B) = (1/N) * sum_i k(d_i^A, d_i^B)
+            """
+
+            labels = [atom.label for atom in configuration.atoms or []]
+            for i, conf in enumerate(configurations):
+                if [atom.label for atom in conf.atoms or []] != labels:
+                    raise ValueError(
+                        "Kernel with average='off' requires all configurations "
+                        'to have the same atoms in the same order, but '
+                        f'configuration {i} differs from the query configuration'
+                    )
+
+            v1 = self.compute_representation(configuration)[0]
+            m1 = self.compute_representation(configurations)
 
             v1 /= np.linalg.norm(v1, axis=1, keepdims=True)
             m1 /= np.linalg.norm(m1, axis=2, keepdims=True)
@@ -186,6 +210,9 @@ class SoapDescriptor(Descriptor):
             structure_similarity = np.mean(
                 per_atom_similarities, axis=1
             )  # Average per-atom similarities
+            # TODO: The docstring above defines the average of per-atom kernels,
+            # i.e. mean_i(cos_i^zeta), but here zeta is applied after averaging,
+            # i.e. (mean_i cos_i)^zeta. Decide which form is intended.
             structure_similarity = np.power(structure_similarity, zeta)
 
             return structure_similarity
