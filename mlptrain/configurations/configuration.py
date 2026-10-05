@@ -138,17 +138,17 @@ class Configuration(AtomCollection):
             if 'Total Charge' in cline:
                 charge = int(cline.split()[4])
 
-        assert (
-            charge is not None
-        ), f'Could not determine charge from output file {file_path}'
+        assert charge is not None, (
+            f'Could not determine charge from output file {file_path}'
+        )
 
         for line in lines:
             if 'Multiplicity' in line:
                 mult = int(line.split()[-1])
 
-        assert (
-            mult is not None
-        ), f'Could not determine multiplicity from output file {file_path}'
+        assert mult is not None, (
+            f'Could not determine multiplicity from output file {file_path}'
+        )
         assert mult > 0, 'Multiplicity must be > 0'
 
         read_coord = False
@@ -225,9 +225,9 @@ class Configuration(AtomCollection):
                             [float(dadx), float(dady), float(dadz)]
                         )
 
-            assert (
-                len(gradients) == num_atoms
-            ), f'Number of gradient lines ({len(gradients)}) != number of atoms ({num_atoms})'
+            assert len(gradients) == num_atoms, (
+                f'Number of gradient lines ({len(gradients)}) != number of atoms ({num_atoms})'
+            )
 
             forces = -Gradient(gradients, units='Ha a0^-1').to('Ha Å^-1')
 
@@ -621,8 +621,7 @@ class Configuration(AtomCollection):
 
         if true and predicted:
             raise ValueError(
-                'Cannot save both predicted and true '
-                f'quantities to {filename}'
+                f'Cannot save both predicted and true quantities to {filename}'
             )
 
         assert self.atoms is not None
@@ -632,7 +631,7 @@ class Configuration(AtomCollection):
 
         else:
             energy = self.energy.predicted if predicted else self.energy.true
-            prop_str = f'energy={energy if energy is not None else 0.:.8f} '
+            prop_str = f'energy={energy if energy is not None else 0.0:.8f} '
 
             prop_str += 'Properties=species:S:1:pos:R:3'
             forces = self.forces.predicted if predicted else self.forces.true
@@ -774,7 +773,7 @@ class Configuration(AtomCollection):
 
         else:
             raise ValueError(
-                f'Cannot use {method} to predict energies and ' f'forces'
+                f'Cannot use {method} to predict energies and forces'
             )
 
         return None

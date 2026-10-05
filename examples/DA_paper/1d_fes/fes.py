@@ -34,10 +34,10 @@ if __name__ == '__main__':
     )
 
     logger.info(
-        f'average bond length in reactant is {(r112_reactant+r611_reactant)/2}'
+        f'average bond length in reactant is {(r112_reactant + r611_reactant) / 2}'
     )
     logger.info(
-        f'average bond length in product is {(r112_product+r611_product)/2}'
+        f'average bond length in product is {(r112_product + r611_product) / 2}'
     )
 
     irc.reverse()  # Go product -> reactant, the NEB path is from reactant -> product

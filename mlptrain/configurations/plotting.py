@@ -527,8 +527,8 @@ def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
         slope, intercept, r, p, se = linregress(xs, ys)
         axis.annotate(
             f'$R^2$ = {r**2:.3f}\n'
-            f' MAD$_{{relative}}$ = {np.mean(np.abs(xs - ys))*factor:.1f} {unit}\n'
-            f'MAD = {np.mean(np.abs(x - y))*factor:.1f} {unit}',
+            f' MAD$_{{relative}}$ = {np.mean(np.abs(xs - ys)) * factor:.1f} {unit}\n'
+            f'MAD = {np.mean(np.abs(x - y)) * factor:.1f} {unit}',
             xy=(1, 0),
             xycoords='axes fraction',
             fontsize=12,
@@ -541,7 +541,7 @@ def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
         slope, intercept, r, p, se = linregress(x, y)
         axis.annotate(
             f'$R^2$ = {r**2:.3f}\n'
-            f'MAD = {np.mean(np.abs(x - y))*factor:.1f} {unit}',
+            f'MAD = {np.mean(np.abs(x - y)) * factor:.1f} {unit}',
             xy=(1, 0),
             xycoords='axes fraction',
             fontsize=12,
@@ -566,7 +566,7 @@ def _add_max_and_mad(axis, x, y, unit):
 
     axis.annotate(
         f'MAD = {mad:.3f} {unit}\n'
-        f'MAX = {np.max(np.abs(x - y))*1000:.1f} {unit}',
+        f'MAX = {np.max(np.abs(x - y)) * 1000:.1f} {unit}',
         xy=(1, 1),
         xycoords='axes fraction',
         fontsize=12,

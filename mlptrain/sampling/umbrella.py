@@ -253,7 +253,7 @@ class _Window:
 
             if np.min(np.abs(bin_centres - gaussian.mean)) > 1.0:
                 raise RuntimeError(
-                    'Gaussian mean was not within the 1 Å of ' 'the ζ range'
+                    'Gaussian mean was not within the 1 Å of the ζ range'
                 )
 
         except RuntimeError:
@@ -535,7 +535,7 @@ class UmbrellaSampling:
         dt: float,
         bias: 'mlptrain.Bias',
         **kwargs,
-    ):
+    ) -> mlptrain.Trajectory | None:
         """Run an individual umbrella sampling window"""
 
         logger.info(
@@ -546,7 +546,7 @@ class UmbrellaSampling:
 
         kwargs['n_cores'] = 1
 
-        traj = run_mlp_md(
+        return run_mlp_md(
             configuration=frame,
             mlp=mlp,
             temp=temp,
@@ -556,8 +556,6 @@ class UmbrellaSampling:
             kept_substrings=['.traj'],
             **kwargs,
         )
-
-        return traj
 
     @staticmethod
     def _move_and_save_files(
@@ -702,9 +700,7 @@ class UmbrellaSampling:
 
         for iteration in range(max_iterations):
             # Equation 8.8.18 from Tuckerman, p. 343
-            hist_sum = sum(
-                w_k.hist for w_k in self.windows
-            )  # ty: ignore[no-matching-overload]
+            hist_sum = sum(w_k.hist for w_k in self.windows)  # ty: ignore[no-matching-overload]
             p = hist_sum / sum(
                 w_k.n
                 * np.exp(
@@ -803,7 +799,7 @@ class UmbrellaSampling:
         os.mkdir(folder_name)
         for idx, window in enumerate(self.windows):
             window.save(
-                filename=os.path.join(folder_name, f'window_{idx+1}.txt')
+                filename=os.path.join(folder_name, f'window_{idx + 1}.txt')
             )
 
         return None

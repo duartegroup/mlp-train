@@ -70,8 +70,7 @@ class System:
         for molecule in self.molecules:
             if with_intra:
                 logger.info(
-                    f'Adding random normal displacement with '
-                    f'σ={intra_sigma} Å'
+                    f'Adding random normal displacement with σ={intra_sigma} Å'
                 )
                 molecule.random_normal_jiggle(sigma=intra_sigma)
 
@@ -188,9 +187,7 @@ class System:
         # NOTE: If you have no idea how the heck can a 'sum' function
         # return a list of Atom, it's because autode's definition of Atoms class
         # overrides the __add__ method.
-        return sum(
-            (mol.atoms for mol in self.molecules), None
-        )  # ty: ignore[no-matching-overload]
+        return sum((mol.atoms for mol in self.molecules), None)  # ty: ignore[no-matching-overload]
 
     @property
     def unique_atomic_symbols(self) -> List[str]:

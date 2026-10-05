@@ -153,7 +153,7 @@ class ACE(MLPotential):
 
         print(
             f'species = [{_str}]\n'
-            f"N = {Config.ace_params['N']}",  # maximum correlation order
+            f'N = {Config.ace_params["N"]}',  # maximum correlation order
             file=inp_file,
         )
 
@@ -162,7 +162,7 @@ class ACE(MLPotential):
 
         # maximum degrees for each correlation order
         print(
-            'Dd = Dict("default" => 10,\n' '1 => 20,\n' '2 => 16,\n',
+            'Dd = Dict("default" => 10,\n1 => 20,\n2 => 16,\n',
             file=inp_file,
         )
 
@@ -192,10 +192,10 @@ class ACE(MLPotential):
         print(
             'r0 = 1.3\n'
             f'r_in = {self._r_in_estimate:.4f}\n'  # inner cutoff of ACE, choose a little more than min dist in dataset
-            f"r_cut = {Config.ace_params['r_cut']}\n"  # outer cutoff of ACE
+            f'r_cut = {Config.ace_params["r_cut"]}\n'  # outer cutoff of ACE
             '\n'
-            f"deg_pair = {Config.ace_params['deg_pair']}\n"  # Specify the pair potential
-            f"r_cut_pair = {Config.ace_params['r_cut_pair']}\n",
+            f'deg_pair = {Config.ace_params["deg_pair"]}\n'  # Specify the pair potential
+            f'r_cut_pair = {Config.ace_params["r_cut_pair"]}\n',
             file=inp_file,
         )
 

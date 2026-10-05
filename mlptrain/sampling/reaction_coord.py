@@ -56,7 +56,7 @@ class ReactionCoordinate(Function, ABC):
 
         if not isinstance(atoms, ase.atoms.Atoms):
             raise NotImplementedError(
-                'Grad must be called with a set of ' 'ASE atoms'
+                'Grad must be called with a set of ASE atoms'
             )
 
         return self._grad(atoms)
@@ -119,7 +119,7 @@ class AverageDistance(ReactionCoordinate, _Distances):
 
         if len(set(atom_idxs)) != len(atom_idxs):
             raise ValueError(
-                'All atoms in reaction coordinate must be ' 'different'
+                'All atoms in reaction coordinate must be different'
             )
 
     def _call(self, atoms: ase.atoms.Atoms):
@@ -191,8 +191,7 @@ class DifferenceDistance(ReactionCoordinate, _Distances):
 
         if len(args) != 2:
             raise ValueError(
-                'DifferenceDistance must comprise exactly two '
-                'pairs of atoms'
+                'DifferenceDistance must comprise exactly two pairs of atoms'
             )
 
     def _call(self, atoms: ase.atoms.Atoms):

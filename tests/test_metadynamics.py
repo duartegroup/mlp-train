@@ -1,12 +1,166 @@
 import os
+from types import SimpleNamespace
+
 import numpy as np
 import mlptrain as mlt
 import pytest
 from ase.io.trajectory import Trajectory as ASETrajectory
+
+from mlptrain.sampling import metadynamics as metad_module
+from mlptrain.utils import work_in_tmp_dir
 from .data.utils import work_in_zipped_dir
 
 mlt.Config.n_cores = 2
 here = os.path.abspath(os.path.dirname(__file__))
+
+
+# --------------------------------------------------------------------------
+# Timeout degradation
+#
+# These use synchronous stand-ins for the process pools so the None-handling
+# paths can be reached without running (or timing out) real MD.
+# --------------------------------------------------------------------------
+
+
+class _FakePool:
+    """Synchronous stand-in for multiprocessing.Pool."""
+
+    def __init__(self, results):
+        self._results = list(results)
+        self._idx = 0
+
+    def apply_async(self, func, args, kwds):
+        result = self._results[self._idx]
+        self._idx += 1
+
+        return SimpleNamespace(get=lambda r=result: r)
+
+    def close(self):
+        return None
+
+    def join(self):
+        return None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        return False
+
+
+def _fake_pool_context(results):
+    return SimpleNamespace(Pool=lambda processes: _FakePool(results))
+
+
+def _fake_executor(results):
+    """Synchronous stand-in for concurrent.futures.ProcessPoolExecutor."""
+
+    class _FakeExecutor:
+        def __init__(self, max_workers=None, mp_context=None):
+            self._idx = 0
+
+        def submit(self, fn, *args, **kwargs):
+            result = results[self._idx]
+            self._idx += 1
+
+            return SimpleNamespace(result=lambda r=result: r)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc_info):
+            return False
+
+    return _FakeExecutor
+
+
+@work_in_tmp_dir()
+def test_estimate_width_raises_when_all_runs_time_out(
+    h2_configuration, test_potential, monkeypatch
+):
+    """Every width run timing out is fatal, not a silently empty result."""
+
+    cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
+    metad = mlt.Metadynamics(cv1)
+
+    monkeypatch.setattr(
+        metad_module.mp, 'get_context', lambda method: _fake_pool_context([[]])
+    )
+
+    with pytest.raises(RuntimeError, match='Width estimation failed'):
+        metad.estimate_width(
+            configurations=h2_configuration,
+            mlp=test_potential('1D'),
+            plot=False,
+            fs=100,
+        )
+
+
+@work_in_tmp_dir()
+def test_estimate_width_uses_surviving_runs(
+    h2_configuration, test_potential, monkeypatch
+):
+    """A timed-out run is dropped; the remaining widths still give a result."""
+
+    cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
+    metad = mlt.Metadynamics(cv1)
+
+    displaced = h2_configuration.copy()
+    displaced.atoms[0].coord[0] += 0.1
+
+    configurations = mlt.ConfigurationSet()
+    configurations.append(h2_configuration)
+    configurations.append(displaced)
+    assert len(configurations) == 2
+
+    monkeypatch.setattr(
+        metad_module.mp,
+        'get_context',
+        lambda method: _fake_pool_context([[], [0.07]]),
+    )
+
+    widths = metad.estimate_width(
+        configurations=configurations,
+        mlp=test_potential('1D'),
+        plot=False,
+        fs=100,
+    )
+
+    assert widths == pytest.approx([0.07])
+
+
+@work_in_tmp_dir()
+def test_run_metadynamics_bails_out_when_all_runs_time_out(
+    h2_configuration, test_potential, monkeypatch, mlp_caplog
+):
+    """All trajectories timing out degrades to a warning, not a crash."""
+
+    cv1 = mlt.PlumedAverageCV('cv1', (0, 1))
+    metad = mlt.Metadynamics(cv1)
+
+    monkeypatch.setattr(
+        metad_module, 'ProcessPoolExecutor', _fake_executor([None, None])
+    )
+
+    metad.run_metadynamics(
+        configuration=h2_configuration,
+        mlp=test_potential('1D'),
+        n_runs=2,
+        temp=300,
+        dt=1,
+        interval=10,
+        pace=100,
+        width=0.05,
+        height=0.1,
+        biasfactor=3,
+        fs=100,
+    )
+
+    assert (
+        'All metadynamics trajectories were skipped due to MD timeout.'
+        in mlp_caplog.messages
+    )
+    assert not os.path.exists('trajectories')
 
 
 @pytest.fixture
@@ -63,11 +217,9 @@ def test_run_metadynamics(h2_configuration, run_metadynamics):
 
         for sim_time in [200, 400]:
             assert os.path.exists(
-                f'trajectories/' f'trajectory_{idx}_{sim_time}fs.traj'
+                f'trajectories/trajectory_{idx}_{sim_time}fs.traj'
             )
-            assert os.path.exists(
-                f'trajectories/' f'metad_{idx}_{sim_time}fs.xyz'
-            )
+            assert os.path.exists(f'trajectories/metad_{idx}_{sim_time}fs.xyz')
 
         assert os.path.exists(os.path.join(metad_dir, f'colvar_cv1_{idx}.dat'))
         assert os.path.exists(os.path.join(metad_dir, f'HILLS_{idx}.dat'))
@@ -203,16 +355,16 @@ def test_run_metadynamics_with_additional_cvs(
     assert plumed_setup[1:] == [
         'cv1_dist1: DISTANCE ATOMS=1,2',
         'cv1: CUSTOM ARG=cv1_dist1 VAR=cv1_dist1 '
-        f'FUNC={1/1}*(cv1_dist1) PERIODIC=NO',
+        f'FUNC={1 / 1}*(cv1_dist1) PERIODIC=NO',
         'cv2_dist1: DISTANCE ATOMS=3,2',
         'cv2: CUSTOM ARG=cv2_dist1 VAR=cv2_dist1 '
-        f'FUNC={1/1}*(cv2_dist1) PERIODIC=NO',
+        f'FUNC={1 / 1}*(cv2_dist1) PERIODIC=NO',
         'UPPER_WALLS ARG=cv2 AT=3.0 KAPPA=150.0 EXP=2',
         'metad: METAD ARG=cv1 PACE=100 HEIGHT=0.1 '
         'SIGMA=0.05 TEMP=300 BIASFACTOR=3 '
         'FILE=HILLS_1.dat',
-        'PRINT ARG=cv1,cv1_dist1 ' 'FILE=colvar_cv1_1.dat STRIDE=10',
-        'PRINT ARG=cv2,cv2_dist1 ' 'FILE=colvar_cv2_1.dat STRIDE=10',
+        'PRINT ARG=cv1,cv1_dist1 FILE=colvar_cv1_1.dat STRIDE=10',
+        'PRINT ARG=cv2,cv2_dist1 FILE=colvar_cv2_1.dat STRIDE=10',
     ]
 
 

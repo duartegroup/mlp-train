@@ -335,9 +335,7 @@ def _create_openmm_topology(ase_atoms: 'ase.Atoms') -> 'openmm.app.Topology':
         topology.addAtom(element.name, element, residue)
 
     topology.setPeriodicBoxVectors(
-        ase_atoms.get_cell().array
-        * 0.1
-        * unit.nanometer  # ty: ignore[unresolved-attribute]
+        ase_atoms.get_cell().array * 0.1 * unit.nanometer  # ty: ignore[unresolved-attribute]
     )
 
     return topology
