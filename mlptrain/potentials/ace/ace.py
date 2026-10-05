@@ -138,7 +138,7 @@ class ACE(MLPotential):
 
             **kwargs:
         """
-        inp_file = open(filename, 'w')
+        inp_file = open(filename, 'w')  # noqa: SIM115
 
         print(
             'using IPFitting, ACE, JuLIP, LinearAlgebra\n'

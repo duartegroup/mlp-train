@@ -115,7 +115,7 @@ def run_mlp_md_openmm(
         (mlt.Trajectory):
     """
     if not isinstance(mlp, mlt.potentials.MACE):
-        raise ValueError(
+        raise TypeError(
             'The OpenMM backend only supports the use of the MACE potential.'
         )
 

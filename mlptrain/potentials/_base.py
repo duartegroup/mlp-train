@@ -112,7 +112,7 @@ class MLPotential(ABC):
                 all_configurations.append(arg)
 
             else:
-                raise ValueError(
+                raise TypeError(
                     f'Cannot predict the energy and forces on {type(arg)}'
                 )
 

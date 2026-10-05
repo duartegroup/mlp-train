@@ -159,7 +159,9 @@ class _Window:
         Returns:
             (mlptrain.sampling.umbrella._Window):
         """
-        file_lines = open(filename, 'r', errors='ignore').readlines()
+        with open(filename, 'r', errors='ignore') as f:
+            file_lines = f.readlines()
+
         header_line = file_lines.pop(0)  # Pop the first line
 
         ref_zeta = float(header_line.split()[0])  # Å

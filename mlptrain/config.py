@@ -1,4 +1,5 @@
 import os
+from typing import ClassVar
 
 from autode.wrappers.keywords import GradientKeywords
 
@@ -45,7 +46,7 @@ class _ConfigClass:
     _gaussian_keywords = None
 
     # ACE params
-    ace_params = {
+    ace_params: ClassVar = {
         'N': 4,  # maximum correlation order
         'r_cut': 4.0,  # outer cutoff of ACE
         'deg_pair': 5,  # Specify the pair potential
@@ -53,11 +54,11 @@ class _ConfigClass:
     }
 
     # NeQUIP params
-    nequip_params = {'cutoff': 4.0, 'train_fraction': 0.9}
+    nequip_params: ClassVar = {'cutoff': 4.0, 'train_fraction': 0.9}
 
     # MACE params
 
-    mace_params = {
+    mace_params: ClassVar = {
         'valid_fraction': 0.1,
         'valid_file': None,
         'max_num_epochs': 1200,

@@ -42,9 +42,9 @@ class ReactionCoordinate(Function, ABC):
             return np.array([self._call(c.ase_atoms) for c in arg])
 
         else:
-            raise ValueError(
-                'Reaction coordinate must be called using ase '
-                'atoms, a configuration or configuration set'
+            raise TypeError(
+                'Reaction coordinate must be called using ase.Atoms, '
+                'Configuration of ConfigurationSet object.'
             )
 
     @abstractmethod

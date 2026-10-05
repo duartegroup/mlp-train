@@ -865,7 +865,7 @@ class Configuration(AtomCollection):
         ase_atoms = ase.io.read(filename)
         # Check that we've read a single structure and not more!
         if isinstance(ase_atoms, list):
-            raise ValueError(
+            raise TypeError(
                 f'Read more than one structure from file {filename}'
             )
 

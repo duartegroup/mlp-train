@@ -510,7 +510,7 @@ def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
     else:
         factor = 1
     if xs is not None and ys is not None:
-        slope, intercept, r, p, se = linregress(xs, ys)
+        _slope, _intercept, r, _p, _se = linregress(xs, ys)
         axis.annotate(
             f'$R^2$ = {r**2:.3f}\n'
             f' MAD$_{{relative}}$ = {np.mean(np.abs(xs - ys)) * factor:.1f} {unit}\n'

@@ -71,7 +71,7 @@ def run_with_timeout(fn, *args, fn_timeout=None, **kwargs) -> tuple[Any, bool]:
     try:
         old_handler = signal.signal(signal.SIGALRM, _handle_timeout)
         signal.setitimer(signal.ITIMER_REAL, fn_timeout)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         # signal module unavailable or handler setup failed;
         # run without an inner timeout — the parent process
         # enforces the hard-kill via Config.process_timeout

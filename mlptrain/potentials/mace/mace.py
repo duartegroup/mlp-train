@@ -92,7 +92,7 @@ class MACE(MLPotential):
         """Fraction of the whole dataset to be used as validation set"""
         valid_fraction = Config.mace_params['valid_fraction']
         if not isinstance(valid_fraction, float):
-            raise ValueError(
+            raise TypeError(
                 f"Invalid parameter valid_fraction '{valid_fraction}'"
             )
 
@@ -114,7 +114,7 @@ class MACE(MLPotential):
         """Batch size of the training set"""
         batch_size = Config.mace_params['batch_size']
         if not isinstance(batch_size, int):
-            raise ValueError(f"Invalid parameter batch_size '{batch_size}'")
+            raise TypeError(f"Invalid parameter batch_size '{batch_size}'")
 
         if self.n_train * (1 - self.valid_fraction) < batch_size:
             return int(np.floor(self.n_train * (1 - self.valid_fraction)))

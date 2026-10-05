@@ -86,7 +86,7 @@ class SoapDescriptor(Descriptor):
         if isinstance(configurations, mlptrain.Configuration):
             configurations = mlptrain.ConfigurationSet(configurations)
         elif not isinstance(configurations, mlptrain.ConfigurationSet):
-            raise ValueError(
+            raise TypeError(
                 f'Unsupported configuration type: {type(configurations)}'
             )
 

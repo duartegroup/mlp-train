@@ -63,7 +63,7 @@ def _gen_active_config_worker(
 def train(
     mlp: MLPotential,
     method_name: str,
-    selection_method: SelectionMethod = AbsDiffE(),
+    selection_method: SelectionMethod = AbsDiffE(),  # noqa: B008
     max_active_time: float = 1000,
     n_configs_iter: int = 10,
     temp: float = 300.0,
@@ -457,7 +457,7 @@ def _add_active_configs(
                     try:
                         w.kill()
                         w.join(timeout=5)
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001
                         logger.error(f'Failed to kill idx={i}: {e}')
             pending.clear()
             break
