@@ -1,8 +1,10 @@
-import mlptrain
-import numpy as np
-from copy import deepcopy
 from abc import ABC, abstractmethod
-from typing import Optional, TYPE_CHECKING
+from copy import deepcopy
+from typing import TYPE_CHECKING
+
+import numpy as np
+
+import mlptrain
 from mlptrain.log import logger
 
 if TYPE_CHECKING:
@@ -19,7 +21,7 @@ class SelectionMethod(ABC):
         """A selection method should determine whether its configuration
         should be selected during active learning"""
 
-        self._configuration: Optional['mlptrain.Configuration'] = None
+        self._configuration: mlptrain.Configuration | None = None
 
     @abstractmethod
     def __call__(
@@ -108,7 +110,6 @@ class AbsDiffE(SelectionMethod):
             keep_output_files=kwargs['keep_output_files'],
             output_name=f'{method_name}_energy_selector_{kwargs["idx"]}',
         )
-        return None
 
     @property
     def select(self) -> bool:
@@ -174,13 +175,13 @@ class AtomicEnvSimilarity(SelectionMethod):
             mlp: Machine learning potential with some associated training data
         """
         if len(mlp.training_data) == 0:
-            return None
+            return
 
         self._k_vec = self.descriptor.kernel_vector(
             configuration, configurations=mlp.training_data, zeta=8
         )
 
-        return None
+        return
 
     @property
     def select(self) -> bool:

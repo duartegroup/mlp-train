@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from copy import deepcopy
-from typing import TYPE_CHECKING, List, Literal, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Literal
 
 import ase
 import ase.io
@@ -10,7 +11,6 @@ import ase.units
 
 import mlptrain as mlt
 from mlptrain.log import logger
-from mlptrain.utils import work_in_tmp_dir
 from mlptrain.sampling.md import (
     _convert_ase_traj,
     _get_traj_name,
@@ -19,11 +19,13 @@ from mlptrain.sampling.md import (
     _save_trajectory,
     _traj_saving_interval,
 )
+from mlptrain.utils import work_in_tmp_dir
 
 if TYPE_CHECKING:
-    from mlptrain.potentials import MACE
     import openmm.app
     import openmm.unit
+
+    from mlptrain.potentials import MACE
 
 # Conversion factor from kJ/mol to eV
 _KJ_PER_MOL_TO_EV = (ase.units.kJ / ase.units.mol) / ase.units.eV
@@ -33,21 +35,21 @@ _PlatformType = Literal['CUDA', 'OpenCL', 'CPU', 'Reference']
 
 
 def run_mlp_md_openmm(
-    configuration: 'mlt.Configuration',
+    configuration: mlt.Configuration,
     mlp: MACE,
     temp: float,
     dt: float,
     interval: int,
-    init_temp: Optional[float] = None,
-    fbond_energy: Optional[dict] = None,
-    bbond_energy: Optional[dict] = None,
-    bias: Optional[Union['mlt.Bias', 'mlt.PlumedBias']] = None,
-    restart_files: Optional[List[str]] = None,
-    copied_substrings: Optional[Sequence[str]] = None,
-    kept_substrings: Optional[Sequence[str]] = None,
+    init_temp: float | None = None,
+    fbond_energy: dict | None = None,
+    bbond_energy: dict | None = None,
+    bias: mlt.Bias | mlt.PlumedBias | None = None,
+    restart_files: list[str] | None = None,
+    copied_substrings: Sequence[str] | None = None,
+    kept_substrings: Sequence[str] | None = None,
     platform: _PlatformType | None = None,
     **kwargs,
-) -> 'mlt.Trajectory':
+) -> mlt.Trajectory:
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and OpenMM to drive dynamics. The function is executed in a temporary
@@ -200,19 +202,19 @@ def run_mlp_md_openmm(
 
 
 def _run_mlp_md_openmm(
-    configuration: 'mlt.Configuration',
+    configuration: mlt.Configuration,
     mlp: MACE,
     temp: float,
     dt: float,
     interval: int,
-    init_temp: Optional[float] = None,
-    fbond_energy: Optional[dict] = None,
-    bbond_energy: Optional[dict] = None,
-    bias: Optional[Union['mlt.Bias', 'mlt.PlumedBias']] = None,
-    restart_files: Optional[List[str]] = None,
+    init_temp: float | None = None,
+    fbond_energy: dict | None = None,
+    bbond_energy: dict | None = None,
+    bias: mlt.Bias | mlt.PlumedBias | None = None,
+    restart_files: list[str] | None = None,
     platform: _PlatformType | None = None,
     **kwargs,
-) -> 'mlt.Trajectory':
+) -> mlt.Trajectory:
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and OpenMM to drive dynamics
@@ -322,7 +324,7 @@ def _run_mlp_md_openmm(
 # ============================================================================= #
 #             Auxiliary functions to create the OpenMM Simulation               #
 # ============================================================================= #
-def _create_openmm_topology(ase_atoms: 'ase.Atoms') -> 'openmm.app.Topology':
+def _create_openmm_topology(ase_atoms: ase.Atoms) -> openmm.app.Topology:
     """Create an OpenMM topology from an ASE atoms object."""
     from openmm import app, unit
 
@@ -385,14 +387,14 @@ def _get_openmm_platform(
 
 def _create_openmm_simulation(
     mlp: MACE,
-    topology: 'openmm.app.Topology',
+    topology: openmm.app.Topology,
     temp: float,
     dt: float,
-    platform: 'openmm.Platform',
-) -> 'openmm.app.Simulation':
+    platform: openmm.Platform,
+) -> openmm.app.Simulation:
     """Create an OpenMM simulation object."""
-    from openmm import app, unit, LangevinMiddleIntegrator, VerletIntegrator
     import openmmml
+    from openmm import LangevinMiddleIntegrator, VerletIntegrator, app, unit
 
     logger.info('Creating the OpenMM simulation object')
 
@@ -423,11 +425,11 @@ def _create_openmm_simulation(
 
 
 def _set_momenta_and_geometry(
-    simulation: 'openmm.app.Simulation',
-    positions: 'openmm.unit.Quantity',
+    simulation: openmm.app.Simulation,
+    positions: openmm.unit.Quantity,
     temp: float,
-    restart_file: Optional[str] = None,
-) -> 'openmm.app.Simulation':
+    restart_file: str | None = None,
+) -> openmm.app.Simulation:
     """Set the momenta and geometry for the OpenMM simulation."""
     from openmm import unit
 
@@ -452,7 +454,7 @@ def _set_momenta_and_geometry(
 
 
 def _get_simulation_name(
-    restart_files: Optional[List[str]] = None, **kwargs
+    restart_files: list[str] | None = None, **kwargs
 ) -> str:
     """Return the name of the OpenMM simulation to be created or restarted."""
     if restart_files is None:
@@ -476,17 +478,17 @@ def _get_simulation_name(
 #               Auxiliary functions to run the OpenMM Simulation                #
 # ============================================================================= #
 def _run_dynamics(
-    simulation: 'openmm.app.Simulation',
+    simulation: openmm.app.Simulation,
     simulation_name: str,
-    ase_atoms: 'ase.Atoms',
-    ase_traj: 'ase.io.trajectory.TrajectoryWriter',
+    ase_atoms: ase.Atoms,
+    ase_traj: ase.io.trajectory.TrajectoryWriter,
     traj_name: str,
     dt: float,
     interval: int,
     n_steps: int,
     n_previous_steps: int,
-    energies: List[Optional[float]],
-    biased_energies: List[Optional[float]],
+    energies: list[float | None],
+    biased_energies: list[float | None],
     **kwargs,
 ) -> None:
     """Run the MD and save frames to the mlt.Trajectory."""

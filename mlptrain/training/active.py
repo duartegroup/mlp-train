@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import queue
 import multiprocessing as mp
 import os
+import queue
 import shutil
 import time
 from copy import deepcopy

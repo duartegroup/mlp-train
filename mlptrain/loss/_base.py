@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-import mlptrain
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
+
+import mlptrain
 
 if TYPE_CHECKING:
     from mlptrain.potentials import MLPotential
 
 
 class LossValue(ABC, float):
-    def __init__(self, x, error: Optional[float] = None):
+    def __init__(self, x, error: float | None = None):
         """
         Loss value with a possible associated error
 
@@ -22,7 +23,7 @@ class LossValue(ABC, float):
         """
 
         float.__init__(float(x))
-        self.error: Optional[float] = error
+        self.error: float | None = error
 
     @abstractmethod
     def __repr__(self) -> str:
@@ -35,7 +36,7 @@ class LossValue(ABC, float):
 
 
 class LossFunction(ABC):
-    def __init__(self, method_name: Optional[str] = None):
+    def __init__(self, method_name: str | None = None):
         """
         Construct a loss function
 
@@ -50,7 +51,7 @@ class LossFunction(ABC):
     @abstractmethod
     def __call__(
         self,
-        configurations: 'mlptrain.ConfigurationSet',
+        configurations: mlptrain.ConfigurationSet,
         mlp: MLPotential,
         **kwargs,
     ) -> LossValue:

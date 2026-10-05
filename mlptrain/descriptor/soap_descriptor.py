@@ -1,7 +1,9 @@
+from collections.abc import Sequence
+
 import numpy as np
-import mlptrain
-from typing import Union, Optional, Sequence
 from dscribe.descriptors import SOAP
+
+import mlptrain
 from mlptrain.descriptor._base import Descriptor
 
 
@@ -10,12 +12,12 @@ class SoapDescriptor(Descriptor):
 
     def __init__(
         self,
-        elements: Optional[Sequence[str]] = None,
+        elements: Sequence[str] | None = None,
         r_cut: float = 5.0,
         n_max: int = 6,
         l_max: int = 6,
-        average: Optional[str] = 'inner',
-        centers: Optional[Sequence[int]] = None,
+        average: str | None = 'inner',
+        centers: Sequence[int] | None = None,
     ):
         """
         SOAP Descriptor Representation.
@@ -58,9 +60,7 @@ class SoapDescriptor(Descriptor):
 
     def compute_representation(
         self,
-        configurations: Union[
-            mlptrain.Configuration, mlptrain.ConfigurationSet
-        ],
+        configurations: mlptrain.Configuration | mlptrain.ConfigurationSet,
     ) -> np.ndarray:
         """Create a SOAP vector using dscribe (https://github.com/SINGROUP/dscribe)
         for a set of configurations

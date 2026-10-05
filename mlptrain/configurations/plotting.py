@@ -1,12 +1,13 @@
-import mlptrain
 import math
-import numpy as np
-import seaborn as sns
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from mlptrain.log import logger
+import numpy as np
+import seaborn as sns
 from scipy.stats import linregress
 
+import mlptrain
+from mlptrain.log import logger
 
 mpl.rcParams['figure.dpi'] = 400
 mpl.rcParams['axes.labelsize'] = 15
@@ -46,7 +47,6 @@ def parity_plot(
 
     plt.tight_layout()
     plt.savefig(f'{file_name}.pdf')
-    return None
 
 
 def error_histogram(
@@ -82,8 +82,6 @@ def error_histogram(
     plt.tight_layout()
     plt.savefig(f'{file_name}.pdf')
 
-    return None
-
 
 def error_histogram_index(
     config_set: 'mlptrain.ConfigurationSet',
@@ -118,8 +116,6 @@ def error_histogram_index(
 
     plt.tight_layout()
     plt.savefig(f'{file_name}.pdf')
-
-    return None
 
 
 def _all_energies_are_defined(cfgs) -> bool:
@@ -170,8 +166,6 @@ def _add_energy_time_plot(config_set, axis) -> None:
     axis.set_xlabel(xlabel)
     axis.set_ylabel('$E - E_{min, true}$ (eV)')
 
-    return None
-
 
 def _add_energy_parity_plot(config_set, axis) -> None:
     """Plot true vs predicted energies"""
@@ -195,8 +189,6 @@ def _add_energy_parity_plot(config_set, axis) -> None:
 
     axis.set_xlabel('$E_{rel, true}$ (eV)')
     axis.set_ylabel('$E_{rel, predicted}$ (eV)')
-
-    return None
 
 
 def _add_force_component_plot(config_set, axis) -> None:
@@ -254,8 +246,6 @@ def _add_force_component_plot(config_set, axis) -> None:
     axis.set_xlabel('$F_{true}$ (eV Å$^{-1})$')
     axis.set_ylabel('$F_{predicted}$ (eV Å$^{-1})$')
 
-    return None
-
 
 def _add_force_magnitude_plot(config_set, axis) -> None:
     """Add a parity plot of the force magnitudes"""
@@ -284,8 +274,6 @@ def _add_force_magnitude_plot(config_set, axis) -> None:
 
     axis.set_xlabel('$|{\\bf{F}}|_{true}$ (eV Å$^{-1}$)')
     axis.set_ylabel('$|{\\bf{F}}|_{predicted}$ (eV Å$^{-1}$)')
-
-    return None
 
 
 def _add_energy_error_histogram(
@@ -506,8 +494,6 @@ def error_force_histogram_per_elements(
     plt.tight_layout()
     plt.savefig(f'{file_name}.pdf')
 
-    return None
-
 
 def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
     """
@@ -550,8 +536,6 @@ def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
             ha='right',
             va='bottom',
         )
-
-    return None
 
 
 def _add_max_and_mad(axis, x, y, unit):

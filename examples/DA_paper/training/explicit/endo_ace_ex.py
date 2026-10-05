@@ -1,8 +1,9 @@
-import mlptrain as mlt
 import numpy as np
 from autode.atoms import Atom
-from mlptrain.log import logger
+
+import mlptrain as mlt
 from mlptrain.box import Box
+from mlptrain.log import logger
 from mlptrain.training.selection import AtomicEnvSimilarity
 
 mlt.Config.n_cores = 10
@@ -38,7 +39,7 @@ def add_water(solute, n=2):
     solute: mlt.Configuration, the molecule to add water molecules, should including box
     n: number of water molecules to add"""
     from ase import Atoms
-    from ase.calculators.tip3p import rOH, angleHOH
+    from ase.calculators.tip3p import angleHOH, rOH
 
     # water molecule
     x = angleHOH * np.pi / 180 / 2
@@ -149,7 +150,6 @@ def solvation(solute_config, solvent_config, apm, radius, enforce=True):
                 d = D[:, i]
                 L = cell[i]
                 d[:] = (d + L / 2) % L - L / 2
-        return None
 
     def molwrap(atoms, n, idx=0):
         """Wrap to cell without breaking molecule

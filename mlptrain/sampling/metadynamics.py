@@ -1,57 +1,56 @@
 from __future__ import annotations
 
-import mlptrain
-import ase
+import glob
+import multiprocessing as mp
 import os
 import re
-import time
-import glob
 import shutil
+import time
 import warnings
-import numpy as np
-import multiprocessing as mp
+from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor
-import autode as ade
+from copy import deepcopy
+from multiprocessing import Pool
+from subprocess import Popen
 from typing import (
     TYPE_CHECKING,
     Any,
-    Optional,
-    Sequence,
-    Union,
-    Tuple,
     TypedDict,
-    List,
 )
-from multiprocessing import Pool
-from subprocess import Popen
-from copy import deepcopy
+
+import ase
+import autode as ade
+import numpy as np
 from ase import units as ase_units
 from ase.io import read as ase_read
 from ase.io import write as ase_write
 from ase.io.trajectory import Trajectory as ASETrajectory
+
+import mlptrain
+from mlptrain.config import Config
 from mlptrain.configurations import Configuration, ConfigurationSet
+from mlptrain.log import logger
 from mlptrain.sampling.md import run_mlp_md
 from mlptrain.sampling.plumed import (
     PlumedBias,
-    plumed_setup,
-    plot_cv_versus_time,
     plot_cv1_and_cv2,
+    plot_cv_versus_time,
+    plumed_setup,
 )
-from mlptrain.config import Config
-from mlptrain.log import logger
 from mlptrain.utils import (
-    work_in_tmp_dir,
-    unique_name,
-    move_files,
-    convert_ase_time,
     convert_ase_energy,
+    convert_ase_time,
     convert_exponents,
+    move_files,
+    unique_name,
+    work_in_tmp_dir,
 )
 
 if TYPE_CHECKING:
     import ase.io
-    from mlptrain.sampling.plumed import _PlumedCV
+
     from mlptrain.potentials import MLPotential
+    from mlptrain.sampling.plumed import _PlumedCV
 
 
 class MetaParams(TypedDict):
@@ -69,8 +68,8 @@ class Metadynamics:
 
     def __init__(
         self,
-        cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'],
-        bias: Optional['mlptrain.PlumedBias'] = None,
+        cvs: Sequence[_PlumedCV] | _PlumedCV,
+        bias: mlptrain.PlumedBias | None = None,
     ):
         """
         Molecular dynamics using metadynamics bias. Used for calculating free
@@ -113,16 +112,14 @@ class Metadynamics:
 
     def estimate_width(
         self,
-        configurations: Union[
-            'mlptrain.Configuration', 'mlptrain.ConfigurationSet'
-        ],
+        configurations: mlptrain.Configuration | mlptrain.ConfigurationSet,
         mlp: MLPotential,
         temp: float = 300,
         interval: int = 10,
         dt: float = 1,
         plot: bool = True,
         **kwargs,
-    ) -> List:
+    ) -> list:
         """
         Estimate optimal widths (σ) to be used in metadynamics.
 
@@ -235,15 +232,15 @@ class Metadynamics:
 
     def _get_width_for_single(
         self,
-        configuration: 'mlptrain.Configuration',
+        configuration: mlptrain.Configuration,
         mlp: MLPotential,
         temp: float,
         dt: float,
         interval: int,
-        bias: 'mlptrain.PlumedBias',
+        bias: mlptrain.PlumedBias,
         plot: bool,
         **kwargs,
-    ) -> List:
+    ) -> list:
         """Estimate optimal widths (σ) for a single configuration"""
 
         logger.info(f'Running MD simulation number {kwargs["idx"]}')
@@ -289,16 +286,16 @@ class Metadynamics:
 
     def run_metadynamics(
         self,
-        configuration: 'mlptrain.Configuration',
+        configuration: mlptrain.Configuration,
         mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
         pace: int = 100,
-        height: Optional[float] = None,
-        width: Optional[Union[list[float], float]] = None,
-        biasfactor: Optional[float] = None,
-        al_iter: Optional[int] = None,
+        height: float | None = None,
+        width: list[float] | float | None = None,
+        biasfactor: float | None = None,
+        al_iter: int | None = None,
         n_runs: int = 1,
         save_sep: bool = True,
         all_to_xyz: bool = False,
@@ -465,7 +462,7 @@ class Metadynamics:
             logger.warning(
                 'All metadynamics trajectories were skipped due to MD timeout.'
             )
-            return None
+            return
         if len(metad_trajs) != n_runs:
             logger.warning(
                 'Some metadynamics trajectories were skipped due to MD timeout.'
@@ -489,7 +486,7 @@ class Metadynamics:
             interval=interval,
             **kwargs,
         )
-        return None
+        return
 
     @staticmethod
     def _initialise_inherited_bias(al_iter: int, n_runs: int) -> None:
@@ -508,8 +505,6 @@ class Metadynamics:
                 'Inherited bias generated after AL '
                 f'iteration {al_iter} not found'
             )
-
-        return None
 
     def _initialise_restart(self, n_runs: int) -> None:
         """
@@ -555,20 +550,18 @@ class Metadynamics:
             unique=False,
         )
 
-        return None
-
     def _run_single_metad(
         self,
-        configuration: 'mlptrain.Configuration',
+        configuration: mlptrain.Configuration,
         mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
-        bias: 'mlptrain.PlumedBias',
-        al_iter: Optional[int] = None,
-        restart: Optional[bool] = False,
+        bias: mlptrain.PlumedBias,
+        al_iter: int | None = None,
+        restart: bool | None = False,
         **kwargs,
-    ) -> Optional['mlptrain.Trajectory']:
+    ) -> mlptrain.Trajectory | None:
         """Initiate a single metadynamics run"""
 
         logger.info(f'Running Metadynamics simulation number {kwargs["idx"]}')
@@ -605,7 +598,7 @@ class Metadynamics:
 
     @staticmethod
     def _move_and_save_files(
-        metad_trajs: List['mlptrain.Trajectory'],
+        metad_trajs: list[mlptrain.Trajectory],
         save_sep: bool,
         all_to_xyz: bool,
         restart: bool,
@@ -655,11 +648,9 @@ class Metadynamics:
 
         os.chdir('..')
 
-        return None
-
     def _set_previous_parameters(
         self,
-        configuration: 'mlptrain.Configuration',
+        configuration: mlptrain.Configuration,
         mlp: MLPotential,
         temp: float,
         dt: float,
@@ -729,8 +720,6 @@ class Metadynamics:
             regex=True,
         )
 
-        return None
-
     @staticmethod
     def _plot_gaussian_heights_single(
         idx: int, energy_units: str = 'kcal mol-1', time_units: str = 'ps'
@@ -772,20 +761,18 @@ class Metadynamics:
         fig.savefig(f'gaussian_heights_{idx}.pdf')
         plt.close(fig)
 
-        return None
-
     def try_multiple_biasfactors(
         self,
-        configuration: 'mlptrain.Configuration',
+        configuration: mlptrain.Configuration,
         mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
         biasfactors: Sequence[float],
         pace: int = 500,
-        height: Optional[float] = None,
-        width: Optional[Union[list[float], float]] = None,
-        plotted_cvs: Optional[Sequence[_PlumedCV]] = None,
+        height: float | None = None,
+        width: list[float] | float | None = None,
+        plotted_cvs: Sequence[_PlumedCV] | None = None,
         **kwargs,
     ) -> None:
         """
@@ -940,16 +927,14 @@ class Metadynamics:
             regex=True,
         )
 
-        return None
-
     def _try_single_biasfactor(
         self,
-        configuration: 'mlptrain.Configuration',
+        configuration: mlptrain.Configuration,
         mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
-        bias: 'mlptrain.PlumedBias',
+        bias: mlptrain.PlumedBias,
         plotted_cvs: Sequence[_PlumedCV],
         **kwargs,
     ):
@@ -972,7 +957,7 @@ class Metadynamics:
             logger.warning(
                 'Biasfactor trial MD cancelled due to timeout; skipping.'
             )
-            return None
+            return
 
         filenames = [
             f'colvar_{cv.name}_{kwargs["idx"]}.dat' for cv in plotted_cvs
@@ -992,7 +977,7 @@ class Metadynamics:
                 label=f'biasf{bias.biasfactor}',
             )
 
-        return None
+        return
 
     def block_analysis(
         self,
@@ -1004,10 +989,10 @@ class Metadynamics:
         min_blocksize: int = 10,
         blocksize_interval: int = 10,
         bandwidth: float = 0.02,
-        cvs_bounds: Optional[Sequence] = None,
-        temp: Optional[float] = None,
-        dt: Optional[float] = None,
-        interval: Optional[int] = None,
+        cvs_bounds: Sequence | None = None,
+        temp: float | None = None,
+        dt: float | None = None,
+        interval: int | None = None,
     ) -> None:
         """
         Perform block averaging analysis on the sliced trajectory of the most
@@ -1146,8 +1131,6 @@ class Metadynamics:
         finish = time.perf_counter()
         logger.info(f'Block analysis done in {(finish - start) / 60:.1f} m')
 
-        return None
-
     def _reweighting_params(
         self, temp: float | None, dt: float | None, interval: int | None
     ) -> tuple[PlumedBias, float, float, int]:
@@ -1196,8 +1179,6 @@ class Metadynamics:
 
         _mlt_configuration_set.save('traj.xyz')
 
-        return None
-
     @work_in_tmp_dir(
         copied_substrings=['traj.xyz', 'plumed_setup.dat', 'HILLS']
     )
@@ -1205,11 +1186,11 @@ class Metadynamics:
         self,
         blocksize: int,
         temp: float,
-        min_max_params: Tuple,
+        min_max_params: tuple,
         n_bins: int,
         bandwidth: float,
         energy_units: str,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Compute CV and FES error grids over blocks for a given block size and
         return both grids"""
 
@@ -1259,7 +1240,7 @@ class Metadynamics:
 
     def _read_histogram(
         self, filename: str, n_bins: int, compute_cvs: bool = False
-    ) -> Tuple:
+    ) -> tuple:
         """
         Read the histogram file and return the normalisation together with
         the CVs and the histogram as numpy grids
@@ -1288,9 +1269,9 @@ class Metadynamics:
 
     def _generate_hist_files_by_reweighting(
         self,
-        blocksize: Optional[int],
+        blocksize: int | None,
         temp: float,
-        min_max_params: Tuple,
+        min_max_params: tuple,
         n_bins: int,
         bandwidth: float,
     ) -> None:
@@ -1324,8 +1305,7 @@ class Metadynamics:
 
         os.rename('plumed_setup.dat', 'reweight.dat')
         with open('reweight.dat', 'a') as f:
-            for line in reweight_setup:
-                f.write(f'{line}\n')
+            f.writelines(f'{line}\n' for line in reweight_setup)
 
         self.bias.write_cv_files()
 
@@ -1343,11 +1323,9 @@ class Metadynamics:
         )
         driver_process.wait()
 
-        return None
-
     @staticmethod
     def _plot_block_analysis(
-        blocksizes: List, data_dict: dict, energy_units: str
+        blocksizes: list, data_dict: dict, energy_units: str
     ) -> None:
         """Plot the standard deviation versus block size"""
         import matplotlib.pyplot as plt
@@ -1375,16 +1353,14 @@ class Metadynamics:
         fig.savefig(figname)
         plt.close(fig)
 
-        return None
-
     def plot_fes(
         self,
         energy_units: str = 'kcal mol-1',
         confidence_level: float = 0.95,
         n_bins: int = 300,
-        cvs_bounds: Optional[Sequence] = None,
-        fes_npy: Optional[str] = None,
-        blocksize: Optional[int] = None,
+        cvs_bounds: Sequence | None = None,
+        fes_npy: str | None = None,
+        blocksize: int | None = None,
     ) -> None:
         """
         Plot the free energy surface with a confidence interval. If the .npy
@@ -1458,19 +1434,17 @@ class Metadynamics:
                 'and two collective variables'
             )
 
-        return None
-
     def compute_fes(
         self,
         energy_units: str = 'kcal mol-1',
         n_bins: int = 300,
-        cvs_bounds: Optional[Sequence] = None,
+        cvs_bounds: Sequence | None = None,
         via_reweighting: bool = False,
         start_time: float = 0.00,
         bandwidth: float = 0.02,
-        temp: Optional[float] = None,
-        dt: Optional[float] = None,
-        interval: Optional[int] = None,
+        temp: float | None = None,
+        dt: float | None = None,
+        interval: int | None = None,
     ) -> np.ndarray:
         """
         Compute a grid containing collective variable grids and free energy
@@ -1604,14 +1578,14 @@ class Metadynamics:
         traj_path: str,
         hills_path: str,
         start_frame_index: int,
-        bias: 'mlptrain.PlumedBias',
+        bias: mlptrain.PlumedBias,
         temp: float,
         interval: int,
-        min_max_params: Tuple,
+        min_max_params: tuple,
         n_bins: int,
         bandwidth: float,
         energy_units: str,
-    ) -> Tuple:
+    ) -> tuple:
         """Compute CVs and FES grids for a single run by reweighting"""
 
         sliced_traj = ase_read(traj_path, index=f'{start_frame_index}:')
@@ -1654,7 +1628,7 @@ class Metadynamics:
         self,
         energy_units: str = 'kcal mol-1',
         n_bins: int = 300,
-        cvs_bounds: Optional[Sequence] = None,
+        cvs_bounds: Sequence | None = None,
     ) -> np.ndarray:
         """Compute the free energy surface grid using the deposited bias"""
 
@@ -1689,7 +1663,7 @@ class Metadynamics:
         fes: np.ndarray,
         energy_units: str = 'kcal mol-1',
         confidence_level: float = 0.95,
-        blocksize: Optional[int] = None,
+        blocksize: int | None = None,
     ) -> None:
         """Plot 1D mean free energy surface with a confidence interval"""
         import matplotlib.pyplot as plt
@@ -1748,19 +1722,17 @@ class Metadynamics:
         fig.savefig(figname)
         plt.close(fig)
 
-        return None
-
     def _plot_2d_fes(
         self,
         fes: np.ndarray,
         energy_units: str = 'kcal mol-1',
         confidence_level: float = 0.95,
-        blocksize: Optional[int] = None,
+        blocksize: int | None = None,
     ) -> None:
         """Plot 2D mean free energy surface with a confidence interval"""
-        from matplotlib.colors import ListedColormap
         import matplotlib.pyplot as plt
         import scipy.stats
+        from matplotlib.colors import ListedColormap
 
         logger.info('Plotting 2D FES')
 
@@ -1845,11 +1817,9 @@ class Metadynamics:
         fig.savefig(figname)
         plt.close(fig)
 
-        return None
-
     @staticmethod
     def _compute_fes_error(
-        fes_grids: np.ndarray, blocksize: Optional[int] = None
+        fes_grids: np.ndarray, blocksize: int | None = None
     ) -> np.ndarray:
         """Compute standard error of the free energy to use in plotting"""
 
@@ -1886,7 +1856,7 @@ class Metadynamics:
         time_units: str = 'ps',
         energy_units: str = 'kcal mol-1',
         n_bins: int = 300,
-        cvs_bounds: Optional[Sequence] = None,
+        cvs_bounds: Sequence | None = None,
         idx: int = 1,
     ) -> None:
         """
@@ -1989,8 +1959,6 @@ class Metadynamics:
             src_folder='plumed_files/fes_convergence',
         )
 
-        return None
-
     @staticmethod
     def _plot_surface_difference(
         fes_grids: np.ndarray,
@@ -2021,8 +1989,6 @@ class Metadynamics:
 
         fig.savefig('fes_convergence_diff.pdf')
         plt.close(fig)
-
-        return None
 
     def _plot_multiple_1d_fes_surfaces(
         self,
@@ -2072,9 +2038,9 @@ class Metadynamics:
     def _generate_fes_files(
         self,
         n_bins: int,
-        cvs_bounds: Optional[Sequence] = None,
-        stride: Optional[int] = None,
-        idx: Optional[int] = None,
+        cvs_bounds: Sequence | None = None,
+        stride: int | None = None,
+        idx: int | None = None,
     ) -> None:
         """
         Generate fes.dat files from a HILLS.dat file.
@@ -2140,11 +2106,9 @@ class Metadynamics:
             )
             compute_fes.wait()
 
-        return None
-
     def _fes_files_to_grids(
         self, energy_units: str, n_bins: int, relative: bool = True
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Use fes.dat files in a current directory to compute a grid containing
         collective variables and a grid containing free energy surfaces.
@@ -2215,8 +2179,8 @@ class Metadynamics:
         return total_cv_grid, total_fes_grid
 
     def _get_min_max_params(
-        self, cvs_bounds: Optional[Sequence] = None, path: Optional[str] = None
-    ) -> Tuple:
+        self, cvs_bounds: Sequence | None = None, path: str | None = None
+    ) -> tuple:
         """
         Compute min and max parameters for generating fes.dat files from
         HILLS.dat files.

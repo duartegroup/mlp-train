@@ -1,12 +1,13 @@
 import os
+
+import ase.units
 import numpy as np
-import mlptrain as mlt
 import pytest
 from ase.io.trajectory import Trajectory as ASETrajectory
 
-from .data.utils import work_in_zipped_dir
+import mlptrain as mlt
 
-import ase.units
+from .data.utils import work_in_zipped_dir
 
 here = os.path.abspath(os.path.dirname(__file__))
 

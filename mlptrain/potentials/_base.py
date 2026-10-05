@@ -1,23 +1,26 @@
 from __future__ import annotations
 
 import os
-import numpy as np
-import mlptrain as mlt
-from copy import deepcopy
-from autode.atoms import Atom
-from mlptrain.log import logger
-from mlptrain.configurations.configuration import Configuration
-from mlptrain.training.active import train as al_train
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Optional
+from copy import deepcopy
+from typing import TYPE_CHECKING
+
+import numpy as np
+from autode.atoms import Atom
+
+import mlptrain as mlt
+from mlptrain.configurations.configuration import Configuration
+from mlptrain.log import logger
+from mlptrain.training.active import train as al_train
 
 if TYPE_CHECKING:
     from ase.calculators.calculator import Calculator as ASECalculator
+
     from mlptrain.sampling.reaction_coord import ReactionCoordinate
 
 
 class MLPotential(ABC):
-    def __init__(self, name: str, system: 'mlt.System'):
+    def __init__(self, name: str, system: mlt.System):
         """
         Machine learnt potential. Name defines the name of the potential
         which will be saved. Training data is populated
@@ -35,7 +38,7 @@ class MLPotential(ABC):
         self.atomic_energies = {}
 
     def train(
-        self, configurations: Optional['mlt.ConfigurationSet'] = None
+        self, configurations: mlt.ConfigurationSet | None = None
     ) -> None:
         """
         Train this potential on a set of configurations
@@ -71,7 +74,6 @@ class MLPotential(ABC):
             )
         logger.info(f'Training on nodename: {os.uname().nodename}')
         self._train()
-        return None
 
     @abstractmethod
     def _train(self) -> None:
@@ -130,10 +132,8 @@ class MLPotential(ABC):
             configuration.energy.predicted = atoms.get_potential_energy()
             configuration.forces.predicted = atoms.get_forces()
 
-        return None
-
     @property
-    def training_data(self) -> 'mlt.ConfigurationSet':
+    def training_data(self) -> mlt.ConfigurationSet:
         """Training data which this potential was trained on
 
         Returns:
@@ -142,7 +142,7 @@ class MLPotential(ABC):
         return self._training_data
 
     @training_data.setter
-    def training_data(self, value: Optional['mlt.ConfigurationSet']):
+    def training_data(self, value: mlt.ConfigurationSet | None):
         """Set the training date for this MLP"""
 
         if value is None:
@@ -186,8 +186,6 @@ class MLPotential(ABC):
                 filename=f'{self.name}_al.{file_extension}'
             )
 
-        return None
-
     def al_train(self, method_name: str, **kwargs) -> None:
         """
         Train this MLP using active learning (AL) using a defined reference
@@ -202,14 +200,12 @@ class MLPotential(ABC):
         al_train(self, method_name=method_name, **kwargs)
         self._save_training_data_as_npz_and_xyz()
 
-        return None
-
     def al_train_then_bias(
         self,
         method_name: str,
         coordinate: ReactionCoordinate,
-        min_coordinate: Optional[float] = None,
-        max_coordinate: Optional[float] = None,
+        min_coordinate: float | None = None,
+        max_coordinate: float | None = None,
         **kwargs,
     ) -> None:
         r"""
@@ -277,11 +273,9 @@ class MLPotential(ABC):
                 **kwargs,
             )
 
-        return None
-
     def _best_bias_init_frame(
         self, value: float, values: np.ndarray
-    ) -> 'mlt.configurations.ConfigurationSet':
+    ) -> mlt.configurations.ConfigurationSet:
         """
         Get the closest single frame as a configuration set to start a biased
         AL loop, where the closest distance from the value to any one of the
@@ -329,9 +323,7 @@ class MLPotential(ABC):
 
             self.atomic_energies[symbol] = config.energy.true
 
-        return None
-
-    def copy(self) -> 'MLPotential':
+    def copy(self) -> MLPotential:
         return deepcopy(self)
 
 

@@ -1,6 +1,7 @@
+import autode as ade
+
 import mlptrain as mlt
 from mlptrain.training.selection import AbsDiffE
-import autode as ade
 
 mlt.Config.n_cores = 10
 mlt.Config.orca_keywords = ade.Config.ORCA.keywords.grad

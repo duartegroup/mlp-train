@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-import mlptrain
-import numpy as np
-import ase
-import mlptrain as mlt
 from abc import ABC, abstractmethod
-from typing import Union, overload
+from typing import overload
+
+import ase
+import numpy as np
+
+import mlptrain
+import mlptrain as mlt
 from mlptrain.sampling._base import Function
 
 
@@ -24,12 +26,10 @@ class ReactionCoordinate(Function, ABC):
 
     def __call__(
         self,
-        arg: Union[
-            ase.atoms.Atoms,
-            'mlptrain.Configuration',
-            'mlptrain.ConfigurationSet',
-        ],
-    ) -> Union[float, np.ndarray]:
+        arg: ase.atoms.Atoms
+        | mlptrain.Configuration
+        | mlptrain.ConfigurationSet,
+    ) -> float | np.ndarray:
         """Value of this reaction coordinate"""
 
         if isinstance(arg, ase.atoms.Atoms):

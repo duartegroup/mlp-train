@@ -1,5 +1,6 @@
-import mlptrain as mlt
 import autode as ade
+
+import mlptrain as mlt
 
 mlt.Config.n_cores = 10
 mlt.Config.orca_keywords = ade.Config.ORCA.keywords.grad

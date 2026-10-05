@@ -1,8 +1,9 @@
+import numpy as np
 import pytest
 from autode.atoms import Atom
-from mlptrain.descriptor import SoapDescriptor
+
 from mlptrain import Configuration, ConfigurationSet
-import numpy as np
+from mlptrain.descriptor import SoapDescriptor
 
 
 @pytest.fixture

@@ -1,6 +1,9 @@
 import os
+
 import pytest
+
 import mlptrain as mlt
+
 from .data.utils import work_in_zipped_dir
 
 here = os.path.abspath(os.path.dirname(__file__))

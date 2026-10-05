@@ -1,5 +1,6 @@
-import mlptrain as mlt
 import numpy as np
+
+import mlptrain as mlt
 from mlptrain.box import Box
 from mlptrain.log import logger
 

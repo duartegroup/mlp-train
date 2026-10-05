@@ -1,12 +1,14 @@
 import os
-import mlptrain as mlt
-from mlptrain.box import Box
-from mlptrain.log import logger
-from mlptrain.config import Config
-from mlptrain.sampling.md import _convert_ase_traj
+
+import numpy as np
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from numpy.random import RandomState
-import numpy as np
+
+import mlptrain as mlt
+from mlptrain.box import Box
+from mlptrain.config import Config
+from mlptrain.log import logger
+from mlptrain.sampling.md import _convert_ase_traj
 
 mlt.Config.n_cores = 10
 
@@ -54,7 +56,6 @@ def solvation(solute_config, solvent_config, apm, radius, enforce=True):
                 d = D[:, i]
                 L = cell[i]
                 d[:] = (d + L / 2) % L - L / 2
-        return None
 
     def molwrap(atoms, n, idx=0):
         """Wrap to cell without breaking molecule
@@ -142,10 +143,10 @@ def mlpmd_fix_solute(
     solute, configuration, mlp, temp, dt, interval, n_steps, **kwargs
 ):
     """run MLP MD with fixed solute atoms"""
+    from ase import units as ase_units
     from ase.constraints import FixAtoms
     from ase.io.trajectory import Trajectory as ASETrajectory
     from ase.md.langevin import Langevin
-    from ase import units as ase_units
 
     assert configuration.box is not None, 'configuration must have box'
 
@@ -270,11 +271,12 @@ def get_reactant_states(TS, solution, mlp):
 
 @mlt.utils.work_in_tmp_dir(copied_substrings=['.xml', '.json', '.pth'])
 def baised_md(configuration, mlp, temp, dt, interval, bias, **kwargs):
-    from mlptrain.sampling.md import _convert_ase_traj, _n_simulation_steps
+    from ase import units as ase_units
     from ase.io.trajectory import Trajectory as ASETrajectory
     from ase.md.langevin import Langevin
     from ase.md.verlet import VelocityVerlet
-    from ase import units as ase_units
+
+    from mlptrain.sampling.md import _convert_ase_traj, _n_simulation_steps
 
     logger.info('Running MLP MD')
 

@@ -1,15 +1,17 @@
-import mlptrain as mlt
+import os
+import random
+
+import numpy as np
+import pytest
 from autode.atoms import Atom
 from autode.exceptions import SolventNotFound
+
+import mlptrain as mlt
 from mlptrain.configurations.configuration import (
     Configuration,
-    _random_vector_in_box,
     _get_max_mol_distance,
+    _random_vector_in_box,
 )
-import numpy as np
-import random
-import pytest
-import os
 from mlptrain.potentials._base import MLPotential
 
 

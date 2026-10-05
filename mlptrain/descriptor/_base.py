@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
+
 import numpy as np
-from typing import Union
-from mlptrain.log import logger
+
 import mlptrain
+from mlptrain.log import logger
 
 
 class Descriptor(ABC):
@@ -21,9 +22,7 @@ class Descriptor(ABC):
     @abstractmethod
     def compute_representation(
         self,
-        configurations: Union[
-            mlptrain.Configuration, mlptrain.ConfigurationSet
-        ],
+        configurations: mlptrain.Configuration | mlptrain.ConfigurationSet,
     ) -> np.ndarray:
         """
         Compute descriptor representation for a given molecular configuration.

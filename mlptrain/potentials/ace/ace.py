@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import os
 import shutil
-from subprocess import Popen, PIPE
-from time import time
 import typing as t
+from subprocess import PIPE, Popen
+from time import time
 
 import numpy as np
 from scipy.spatial import distance_matrix
+
 from mlptrain.box import Box
-from mlptrain.log import logger
 from mlptrain.config import Config
+from mlptrain.log import logger
 from mlptrain.potentials import MLPotential
 
 if t.TYPE_CHECKING:
@@ -77,8 +78,6 @@ class ACE(MLPotential):
 
         for filename in (f'{self.name}_data.xyz', f'{self.name}.jl'):
             os.remove(filename)
-
-        return None
 
     @property
     def requires_atomic_energies(self) -> bool:
@@ -270,8 +269,6 @@ class ACE(MLPotential):
         )
 
         inp_file.close()
-
-        return None
 
 
 def _check_julia_install_exists() -> None:

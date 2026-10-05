@@ -4,9 +4,10 @@ import os
 import numpy as np
 import pytest
 from autode.atoms import Atom
-from mlptrain.configurations import ConfigurationSet, Configuration
-from mlptrain.utils import work_in_tmp_dir
+
 from mlptrain.box import Box
+from mlptrain.configurations import Configuration, ConfigurationSet
+from mlptrain.utils import work_in_tmp_dir
 
 here = os.path.abspath(os.path.dirname(__file__))
 

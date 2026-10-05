@@ -1,7 +1,8 @@
-import mlptrain
-import numpy as np
 import autode as ade
+import numpy as np
 from scipy.spatial.distance import cdist
+
+import mlptrain
 
 
 class Molecule(ade.Molecule):
@@ -78,5 +79,3 @@ class Molecule(ade.Molecule):
         )
 
         self.coordinates += dx
-
-        return None

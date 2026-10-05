@@ -1,9 +1,10 @@
-import pytest
 import numpy as np
+import pytest
+from autode.atoms import Atom
+
 import mlptrain as mlt
 from mlptrain.box import Box
 from mlptrain.configurations import Configuration, ConfigurationSet
-from autode.atoms import Atom
 
 
 @pytest.fixture

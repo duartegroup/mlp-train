@@ -2,12 +2,13 @@ import os
 from types import SimpleNamespace
 
 import numpy as np
-import mlptrain as mlt
 import pytest
 from ase.io.trajectory import Trajectory as ASETrajectory
 
+import mlptrain as mlt
 from mlptrain.sampling import metadynamics as metad_module
 from mlptrain.utils import work_in_tmp_dir
+
 from .data.utils import work_in_zipped_dir
 
 mlt.Config.n_cores = 2

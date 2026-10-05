@@ -1,10 +1,12 @@
-import mlptrain as mlt
-import numpy as np
-from mlptrain.log import logger
-from mlptrain.box import Box
-from scipy.spatial import distance_matrix
 import os
+
+import numpy as np
 from generate_rs import generate_rs
+from scipy.spatial import distance_matrix
+
+import mlptrain as mlt
+from mlptrain.box import Box
+from mlptrain.log import logger
 
 mlt.Config.n_cores = 10
 
@@ -71,13 +73,14 @@ def from_ase_to_autode(atoms):
 def md_with_file(
     configuration, mlp, temp, dt, interval, init_temp=None, **kwargs
 ):
-    from mlptrain.sampling.md import _convert_ase_traj, _n_simulation_steps
+    from ase import units as ase_units
     from ase.io.trajectory import Trajectory as ASETrajectory
     from ase.md.langevin import Langevin
-    from ase.md.verlet import VelocityVerlet
-    from ase import units as ase_units
     from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+    from ase.md.verlet import VelocityVerlet
     from numpy.random import RandomState
+
+    from mlptrain.sampling.md import _convert_ase_traj, _n_simulation_steps
 
     logger.info('Running MLP MD')
 
@@ -211,7 +214,6 @@ def traj_study(configs, ml_potential, init_md_time_fs=500, max_time_fs=3000):
             md_time_fs_f = 1000
             tol_md_time_f += md_time_fs_f
             logger.info(f'current simulation time is {tol_md_time_f} fs')
-    return None
 
 
 if __name__ == '__main__':

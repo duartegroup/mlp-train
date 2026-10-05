@@ -1,29 +1,30 @@
 from __future__ import annotations
 
+import itertools
+import json
+import os
+import random
 import shutil
+from copy import deepcopy
+from math import dist
+from typing import TYPE_CHECKING
 
 import ase
-import numpy as np
-import os
-import json
-import itertools
-from typing import TYPE_CHECKING, Optional, Union, List, Dict
-from copy import deepcopy
-from autode.atoms import AtomCollection, Atom
-import autode.atoms
-from autode.values import PotentialEnergy, Gradient
 import ase.atoms
-from mlptrain.log import logger
-from mlptrain.energy import Energy
-from mlptrain.forces import Forces
+import autode as ade
+import autode.atoms
+import numpy as np
+from autode.atoms import Atom, AtomCollection
+from autode.solvent.solvents import get_solvent
+from autode.values import Gradient, PotentialEnergy
+from scipy.spatial import cKDTree
+
 from mlptrain.box import Box
 from mlptrain.configurations.calculate import run_autode
+from mlptrain.energy import Energy
+from mlptrain.forces import Forces
+from mlptrain.log import logger
 from mlptrain.utils import work_in_tmp_dir
-from scipy.spatial import cKDTree
-import random
-import autode as ade
-from math import dist
-from autode.solvent.solvents import get_solvent
 
 if TYPE_CHECKING:
     from mlptrain.potentials import MLPotential
@@ -34,10 +35,10 @@ class Configuration(AtomCollection):
 
     def __init__(
         self,
-        atoms: Union[autode.atoms.Atoms, List[Atom], None] = None,
+        atoms: autode.atoms.Atoms | list[Atom] | None = None,
         charge: int = 0,
         mult: int = 1,
-        box: Optional[Box] = None,
+        box: Box | None = None,
     ):
         """
         Set of atoms perhaps in a periodic box with an overall charge and
@@ -67,18 +68,18 @@ class Configuration(AtomCollection):
         self.forces = Forces()
 
         # Dictionary to track molecule types and their atom ranges
-        self.mol_dict: Dict[str, List[Dict[str, Union[int, str]]]] = {}
+        self.mol_dict: dict[str, list[dict[str, int | str]]] = {}
 
         # Collective variable values (obtained using PLUMED)
-        self.plumed_coordinates: Optional[np.ndarray] = None
+        self.plumed_coordinates: np.ndarray | None = None
 
-        self.time: Optional[float] = None  # Time in a trajectory
+        self.time: float | None = None  # Time in a trajectory
         self.n_ref_evals = 0  # Number of reference evaluations
 
     @classmethod
     def from_xyz(
         cls, filename: str, charge: int = 0, mult: int = 1
-    ) -> 'Configuration':
+    ) -> Configuration:
         """
         Create a Configuration from an xyz file and automatically load mol_dict if available.
 
@@ -107,7 +108,7 @@ class Configuration(AtomCollection):
         *,
         load_energy: bool = True,
         load_forces: bool = True,
-    ) -> 'Configuration':
+    ) -> Configuration:
         """
         Return Configuration from existing ORCA calculation output files.
 
@@ -250,7 +251,7 @@ class Configuration(AtomCollection):
         return config
 
     @property
-    def ase_atoms(self) -> 'ase.atoms.Atoms':
+    def ase_atoms(self) -> ase.atoms.Atoms:
         """
         ASE atoms for this configuration, absent of energy  and force
         properties.
@@ -372,7 +373,7 @@ class Configuration(AtomCollection):
             )
             solvent_molecule = optimise_solvent(solvent_molecule)
 
-            if solvent.name not in solvent_densities.keys():
+            if solvent.name not in solvent_densities:
                 raise ValueError(
                     f'The density of {solvent.name} is not in the database'
                     f'Please provide the solvent molecule and density explicitly'
@@ -531,12 +532,10 @@ class Configuration(AtomCollection):
                 # Translate the rotated solvent molecule and check if it is within the box
                 trial_coords = rot_solvent + translation
                 if not np.all(
-                    (
-                        [
-                            np.all(coord < box_size) and np.all(coord > 0)
-                            for coord in trial_coords
-                        ]
-                    )
+                    [
+                        np.all(coord < box_size) and np.all(coord > 0)
+                        for coord in trial_coords
+                    ]
                 ):
                     continue
 
@@ -577,7 +576,7 @@ class Configuration(AtomCollection):
 
         return system_coords
 
-    def update_attr_from(self, configuration: 'Configuration') -> None:
+    def update_attr_from(self, configuration: Configuration) -> None:
         """
         Update system attributes from a configuration
 
@@ -589,8 +588,6 @@ class Configuration(AtomCollection):
         self.charge = configuration.charge
         self.mult = configuration.mult
         self.box = deepcopy(configuration.box)
-
-        return None
 
     def save_xyz(
         self,
@@ -667,8 +664,6 @@ class Configuration(AtomCollection):
         if self.mol_dict:
             self.save_mol_dict(filename)
 
-        return None
-
     def save_mol_dict(self, filename: str) -> None:
         """
         Save the mol_dict to a hidden .mol_dict.txt file alongside the xyz file.
@@ -708,7 +703,7 @@ class Configuration(AtomCollection):
 
     def single_point(
         self,
-        method: Union[str, MLPotential],
+        method: str | MLPotential,
         n_cores: int = 1,
         keep_output_files: bool = True,
         output_name: str | None = None,
@@ -766,7 +761,7 @@ class Configuration(AtomCollection):
                     )
 
             self.n_ref_evals += 1
-            return None
+            return
 
         elif hasattr(method, 'predict'):
             method.predict(self)  # ty: ignore[call-non-callable]
@@ -776,7 +771,7 @@ class Configuration(AtomCollection):
                 f'Cannot use {method} to predict energies and forces'
             )
 
-        return None
+        return
 
     def __eq__(self, other) -> bool:
         """Another configuration is identical to this one"""
@@ -793,7 +788,7 @@ class Configuration(AtomCollection):
             return bool(rmsd < 1e-10)
         return eq
 
-    def copy(self) -> 'Configuration':
+    def copy(self) -> Configuration:
         return deepcopy(self)
 
     def _get_formula_from_atoms(self, atoms) -> str:
@@ -823,7 +818,7 @@ class Configuration(AtomCollection):
         return ''.join(formula_parts)
 
     @staticmethod
-    def _load_mol_dict_from_file(filename: str) -> Optional[Dict]:
+    def _load_mol_dict_from_file(filename: str) -> dict | None:
         """
         Load mol_dict from a hidden .mol_dict.txt file if it exists.
 
@@ -844,7 +839,7 @@ class Configuration(AtomCollection):
                     mol_dict = json.load(f)
                 logger.info(f'Loaded mol_dict from {mol_dict_file}')
                 return mol_dict
-            except (json.JSONDecodeError, IOError) as e:
+            except (OSError, json.JSONDecodeError) as e:
                 logger.warning(
                     f'Failed to load mol_dict from {mol_dict_file}: {e}'
                 )
@@ -863,6 +858,7 @@ class Configuration(AtomCollection):
         """
         import ase.io
         from autode.atoms import Atom
+
         from mlptrain.box import Box
 
         # Load atoms from xyz file
@@ -1018,7 +1014,7 @@ def _build_cKDTree(coords: np.ndarray) -> cKDTree:
     return cKDTree(coords)
 
 
-def _get_max_mol_distance(conf_atoms: List[Atom]) -> float:
+def _get_max_mol_distance(conf_atoms: list[Atom]) -> float:
     return max(
         [
             dist(atom1.coordinate, atom2.coordinate)

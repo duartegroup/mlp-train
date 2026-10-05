@@ -1,15 +1,16 @@
-import pytest
 import numpy as np
-from mlptrain.configurations import Configuration
+import pytest
+
 from mlptrain.config import Config  # Import Config from mlptrain.config
-from mlptrain.energy import Energy
-from mlptrain.forces import Forces
+from mlptrain.configurations import Configuration
 from mlptrain.configurations.calculate import (
-    run_autode,
+    _gaussian_keywords,
     _method_and_keywords,
     _orca_keywords,
-    _gaussian_keywords,
+    run_autode,
 )
+from mlptrain.energy import Energy
+from mlptrain.forces import Forces
 
 
 class MockSpecies:
@@ -40,7 +41,7 @@ class MockCalculation:
 
     def run(self):
         """Simulate the run behavior."""
-        pass  # Assume the calculation runs successfully
+        # Assume the calculation runs successfully
 
     def get_gradients(self):
         """Return mock gradients or raise an error if _gradient_success is False"""

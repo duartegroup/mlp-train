@@ -1,7 +1,10 @@
 import os
+
 import numpy as np
+
 from mlptrain.sampling.bias import Bias
-from mlptrain.sampling.umbrella import _Window, UmbrellaSampling
+from mlptrain.sampling.umbrella import UmbrellaSampling, _Window
+
 from .data.utils import work_in_zipped_dir
 
 here = os.path.dirname(os.path.abspath(__file__))

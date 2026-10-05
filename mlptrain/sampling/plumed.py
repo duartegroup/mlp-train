@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 import os
-import mlptrain
-import numpy as np
-from typing import Sequence, List, Dict, Optional, Union
+from collections.abc import Sequence
 from copy import deepcopy
+
+import numpy as np
 from ase import units as ase_units
-from ase.calculators.plumed import Plumed
 from ase.calculators.calculator import Calculator, all_changes
-from ase.parallel import broadcast
-from ase.parallel import world
+from ase.calculators.plumed import Plumed
+from ase.parallel import broadcast, world
+
+import mlptrain
+from mlptrain.log import logger
 from mlptrain.sampling._base import ASEConstraint
 from mlptrain.utils import convert_ase_time
-from mlptrain.log import logger
 
 
 class PlumedCalculator(Plumed):
@@ -69,8 +70,6 @@ class PlumedCalculator(Plumed):
         self.results['energy_bias'] = energy_bias
         self.results['forces_bias'] = forces_bias
 
-        return None
-
 
 class PlumedBias(ASEConstraint):
     """
@@ -99,20 +98,20 @@ class PlumedBias(ASEConstraint):
             filename: (str) Complete PLUMED input file
         """
 
-        self.setup: Optional[List[str]] = None
+        self.setup: list[str] | None = None
         self.cv_files: list[tuple[str, str]] | None = None
 
-        self.pace: Optional[int] = None
-        self.width: Optional[Sequence[float]] = None
-        self.height: Optional[float] = None
-        self.biasfactor: Optional[float] = None
+        self.pace: int | None = None
+        self.width: Sequence[float] | None = None
+        self.height: float | None = None
+        self.biasfactor: float | None = None
 
-        self.metad_cvs: Optional[Sequence['_PlumedCV']] = None
+        self.metad_cvs: Sequence[_PlumedCV] | None = None
 
         for param_name in ['min', 'max', 'bin', 'wstride', 'wfile', 'rfile']:
             setattr(self, f'metad_grid_{param_name}', None)
 
-        self.cvs: tuple['_PlumedCV', ...] = ()
+        self.cvs: tuple[_PlumedCV, ...] = ()
 
         if filename is not None:
             self._from_file(filename)
@@ -218,16 +217,16 @@ class PlumedBias(ASEConstraint):
     def _set_metad_params(
         self,
         pace: int,
-        width: Union[Sequence[float], float],
+        width: Sequence[float] | float,
         height: float,
-        biasfactor: Optional[float] = None,
+        biasfactor: float | None = None,
         cvs: Sequence[_PlumedCV] | _PlumedCV | None = None,
-        grid_min: Union[Sequence[float], float, None] = None,
-        grid_max: Union[Sequence[float], float, None] = None,
-        grid_bin: Union[Sequence[float], float, None] = None,
-        grid_wstride: Optional[int] = None,
-        grid_wfile: Optional[str] = None,
-        grid_rfile: Optional[str] = None,
+        grid_min: Sequence[float] | float | None = None,
+        grid_max: Sequence[float] | float | None = None,
+        grid_bin: Sequence[float] | float | None = None,
+        grid_wstride: int | None = None,
+        grid_wfile: str | None = None,
+        grid_rfile: str | None = None,
         **kwargs,
     ) -> None:
         """
@@ -310,10 +309,9 @@ class PlumedBias(ASEConstraint):
             grid_wfile=grid_wfile,
             grid_rfile=grid_rfile,
         )
-        return None
 
     def _set_metad_cvs(
-        self, cvs: Union[Sequence['_PlumedCV'], '_PlumedCV', None] = None
+        self, cvs: Sequence[_PlumedCV] | _PlumedCV | None = None
     ) -> None:
         """
         Attach PLUMED collective variables to PlumedBias which will be used in
@@ -347,16 +345,14 @@ class PlumedBias(ASEConstraint):
         else:
             self.metad_cvs = self.cvs
 
-        return None
-
     def _set_metad_grid_params(
         self,
-        grid_min: Union[Sequence[float], float, None] = None,
-        grid_max: Union[Sequence[float], float, None] = None,
-        grid_bin: Union[Sequence[float], float, None] = None,
-        grid_wstride: Optional[int] = None,
-        grid_wfile: Optional[str] = None,
-        grid_rfile: Optional[str] = None,
+        grid_min: Sequence[float] | float | None = None,
+        grid_max: Sequence[float] | float | None = None,
+        grid_bin: Sequence[float] | float | None = None,
+        grid_wstride: int | None = None,
+        grid_wfile: str | None = None,
+        grid_rfile: str | None = None,
     ) -> None:
         """
         Define grid parameters used in (well-tempered) metadynamics. Grid
@@ -423,8 +419,6 @@ class PlumedBias(ASEConstraint):
             if param is not None:
                 setattr(self, f'metad_{param_name}', param)
 
-        return None
-
     def _from_file(self, filename: str) -> None:
         """Method to extract PLUMED setup from a file"""
 
@@ -442,9 +436,7 @@ class PlumedBias(ASEConstraint):
         if len(cv_filenames) > 0:
             self._attach_cv_files(cv_filenames)
 
-        return None
-
-    def _attach_cv_files(self, cv_filenames: List[str]) -> None:
+    def _attach_cv_files(self, cv_filenames: list[str]) -> None:
         """Attach files required for CVs from the PlumedBias setup"""
 
         self.cv_files = []
@@ -463,8 +455,6 @@ class PlumedBias(ASEConstraint):
 
             self.cv_files.append((filename, data))
 
-        return None
-
     def write_cv_files(self) -> None:
         """Write files attached to the CVs to the current directory"""
 
@@ -478,18 +468,16 @@ class PlumedBias(ASEConstraint):
             for cv in self.cvs:
                 cv.write_files()
 
-        return None
-
     def initialise_for_metad_al(
         self,
-        width: Union[Sequence[float], float],
+        width: Sequence[float] | float,
         pace: int = 20,
-        height: Optional[float] = None,
-        biasfactor: Optional[float] = None,
+        height: float | None = None,
+        biasfactor: float | None = None,
         cvs: Sequence[_PlumedCV] | _PlumedCV | None = None,
-        grid_min: Union[Sequence[float], float, None] = None,
-        grid_max: Union[Sequence[float], float, None] = None,
-        grid_bin: Union[Sequence[float], float, None] = None,
+        grid_min: Sequence[float] | float | None = None,
+        grid_max: Sequence[float] | float | None = None,
+        grid_bin: Sequence[float] | float | None = None,
     ) -> None:
         """
         Initialise PlumedBias for metadynamics active learning by setting the
@@ -541,8 +529,6 @@ class PlumedBias(ASEConstraint):
             grid_bin=grid_bin,
         )
 
-        return None
-
     def strip(self) -> None:
         """
         Change the bias such that it would only contain the definitions of
@@ -560,8 +546,6 @@ class PlumedBias(ASEConstraint):
 
             for param_name in _attributes.keys():
                 setattr(self, param_name, None)
-
-        return None
 
     def _strip_setup(self) -> None:
         """
@@ -584,12 +568,10 @@ class PlumedBias(ASEConstraint):
 
         self.setup = _stripped_setup
 
-        return None
-
     @staticmethod
     def _check_cvs_format(
-        cvs: Sequence['_PlumedCV'] | '_PlumedCV',
-    ) -> tuple['_PlumedCV', ...]:
+        cvs: Sequence[_PlumedCV] | _PlumedCV,
+    ) -> tuple[_PlumedCV, ...]:
         """
         Check if the supplied collective variables are in the correct
         format
@@ -619,11 +601,10 @@ class PlumedBias(ASEConstraint):
 
         forces_bias = atoms.calc.get_property('forces_bias', atoms)
         forces += forces_bias
-        return None
 
     def adjust_positions(self, atoms, newpositions) -> None:
         """Method required for ASE but not used in mlp-train"""
-        return None
+        return
 
 
 class _PlumedCV:
@@ -635,7 +616,7 @@ class _PlumedCV:
         name: str | None = None,
         atom_groups: Sequence | None = None,
         filename: str | None = None,
-        component: Optional[str] = None,
+        component: str | None = None,
     ):
         """
         This class contains methods to initialise PLUMED collective variables
@@ -671,15 +652,15 @@ class _PlumedCV:
                              e.g. 'spath' for PATH collective variable.
         """
 
-        self.setup: List = []
+        self.setup: list = []
         self.files: list[tuple[str, str]] | None = None
 
-        self.units: Optional[str] = None
+        self.units: str | None = None
         self.dof_names: list[str] = []
         self.dof_units: list[str] = []
 
-        self.lower_wall: Optional[Dict] = None
-        self.upper_wall: Optional[Dict] = None
+        self.lower_wall: dict | None = None
+        self.upper_wall: dict | None = None
 
         if filename is not None:
             name = self._from_file(filename, component)
@@ -703,7 +684,7 @@ class _PlumedCV:
         return ','.join(self.dof_names)
 
     def attach_lower_wall(
-        self, location: Union[float, str], kappa: float, exp: float = 2
+        self, location: float | str, kappa: float, exp: float = 2
     ) -> None:
         """
         Attach lower wall bias to the collective variable.
@@ -735,10 +716,8 @@ class _PlumedCV:
             ]
         )
 
-        return None
-
     def attach_upper_wall(
-        self, location: Union[float, str], kappa: float, exp: float = 2
+        self, location: float | str, kappa: float, exp: float = 2
     ) -> None:
         """
         Attach upper wall bias to the collective variable.
@@ -770,8 +749,6 @@ class _PlumedCV:
             ]
         )
 
-        return None
-
     def _from_file(self, filename: str, component: str | None) -> str:
         """Generate DOFs and a CV from a file"""
 
@@ -801,7 +778,7 @@ class _PlumedCV:
 
         return name
 
-    def _attach_files(self, filenames: List[str]) -> None:
+    def _attach_files(self, filenames: list[str]) -> None:
         """Attache files found in the CV initialisation to the CV object"""
 
         self.files = []
@@ -820,8 +797,6 @@ class _PlumedCV:
 
             self.files.append((filename, data))
 
-        return None
-
     def write_files(self) -> None:
         """Write files attached to the CV to the current directory"""
 
@@ -829,8 +804,6 @@ class _PlumedCV:
             for filename, data in self.files:
                 with open(filename, 'w') as f:
                     f.write(data)
-
-        return None
 
     def _from_atom_groups(
         self, atom_groups: Sequence[int] | Sequence[Sequence[int]]
@@ -908,9 +881,7 @@ class _PlumedCV:
                 'not larger than four'
             )
 
-        return None
-
-    def _set_units(self, units: Optional[str] = None) -> None:
+    def _set_units(self, units: str | None = None) -> None:
         """Set units of the collective variable as a string"""
 
         if self.dof_units is not None:
@@ -925,8 +896,6 @@ class _PlumedCV:
 
         else:
             self.units = units
-
-        return None
 
 
 class PlumedAverageCV(_PlumedCV):
@@ -1075,8 +1044,8 @@ class PlumedCustomCV(_PlumedCV):
     def __init__(
         self,
         filename: str,
-        component: Optional[str] = None,
-        units: Optional[str] = None,
+        component: str | None = None,
+        units: str | None = None,
     ):
         """
         PLUMED collective variable from a file. The file must be written in the
@@ -1126,7 +1095,7 @@ def _defines_cv(line: str) -> bool:
     return False
 
 
-def _find_files(setup: List[str]) -> List:
+def _find_files(setup: list[str]) -> list:
     """
     Find and return filenames required for PLUMED collective variables
     during a simulation
@@ -1147,7 +1116,7 @@ def _find_files(setup: List[str]) -> List:
     return filenames
 
 
-def _find_args(line: str) -> List:
+def _find_args(line: str) -> list:
     """
     Find and return inputs to ARG parameter in a given line of a PLUMED
     setup
@@ -1169,9 +1138,9 @@ def plot_cv_versus_time(
     filename: str,
     style: str = 'trajectory',
     time_units: str = 'ps',
-    cv_units: Optional[str] = None,
-    cv_limits: Optional[Sequence[float]] = None,
-    label: Optional[str] = None,
+    cv_units: str | None = None,
+    cv_limits: Sequence[float] | None = None,
+    label: str | None = None,
 ) -> None:
     """
     Plot a collective variable as a function of time from a given colvar file.
@@ -1234,15 +1203,13 @@ def plot_cv_versus_time(
 
     plt.close(fig)
 
-    return None
-
 
 def plot_cv1_and_cv2(
     filenames: Sequence[str],
     style: str = 'scatter',
-    cvs_units: Optional[Sequence[str]] = None,
-    cvs_limits: Optional[Sequence[Sequence[float]]] = None,
-    label: Optional[str] = None,
+    cvs_units: Sequence[str] | None = None,
+    cvs_limits: Sequence[Sequence[float]] | None = None,
+    label: str | None = None,
 ) -> None:
     """
     Plot the trajectory of the system by tracking two collective variables
@@ -1312,12 +1279,10 @@ def plot_cv1_and_cv2(
 
     plt.close(fig)
 
-    return None
-
 
 def plumed_setup(
-    bias: 'mlptrain.PlumedBias', temp: float, interval: int, **kwargs
-) -> List[str]:
+    bias: mlptrain.PlumedBias, temp: float, interval: int, **kwargs
+) -> list[str]:
     """
     Generate a list which represents the PLUMED input file
 
@@ -1420,7 +1385,7 @@ def plumed_setup(
     return setup
 
 
-def get_colvar_filename(cv: '_PlumedCV', **kwargs) -> str:
+def get_colvar_filename(cv: _PlumedCV, **kwargs) -> str:
     """
     Return the name of the file where the trajectory in terms of collective
     variable values would be written
