@@ -134,7 +134,7 @@ def train(
                       which to start the active learning from
 
         al_starting_configs: Starting configurations for the AL iterations.
-                          If provided, their length must equal n_configs_iter.
+                          If provided, their length must equal `n_configs_iter`, and `fix_init_config` is set to True. 
 
         fix_init_config: (bool) Always start from the same initial
                          configuration for the active learning loop.
@@ -232,8 +232,7 @@ def train(
         else:
             # Merge al_starting_configs to init_configs,
             # to ensure they are part of training set
-            for config in al_starting_configs:
-                init_configs.append(config)
+            init_configs.extend(al_starting_configs)
 
         if not fix_init_config:
             logger.warning(

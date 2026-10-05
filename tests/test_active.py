@@ -519,7 +519,7 @@ def test_train_al_starting_configs_merged_with_init_configs(
 
 
 @work_in_tmp_dir()
-def test_train_al_starting_configs_forces_fix_init_config(
+def test_train_al_starting_configs_enforces_fix_init_config(
     mlp_caplog, train_mlp, add_active_configs_spy
 ):
     """fix_init_config is switched on, so every iteration restarts from
