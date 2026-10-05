@@ -1,6 +1,6 @@
 import numpy as np
 import mlptrain
-from typing import Union, Optional, Sequence
+from typing import assert_never, Literal, Union, Optional, Sequence
 from dscribe.descriptors import SOAP
 from mlptrain.descriptor._base import Descriptor
 
@@ -14,7 +14,7 @@ class SoapDescriptor(Descriptor):
         r_cut: float = 5.0,
         n_max: int = 6,
         l_max: int = 6,
-        average: Optional[str] = 'inner',
+        average: Literal['inner', 'outer', 'off'] = 'inner',
         centers: Optional[Sequence[int]] = None,
     ):
         """
@@ -189,3 +189,6 @@ class SoapDescriptor(Descriptor):
             structure_similarity = np.power(structure_similarity, zeta)
 
             return structure_similarity
+
+        else:
+            assert_never(self.average)
