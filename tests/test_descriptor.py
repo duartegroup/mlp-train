@@ -130,6 +130,6 @@ def test_kernel_vector_different_molecules_soap(h2o_configuration, methane):
         h2o_configuration, configurations, zeta=4
     )
     expected_value = [1.0, 0.29503]
-    assert np.allclose(
-        kernel_vector, expected_value, atol=1e-3
-    ), f'Expected vector {expected_value}, but got {kernel_vector}'
+    assert np.allclose(kernel_vector, expected_value, atol=1e-3), (
+        f'Expected vector {expected_value}, but got {kernel_vector}'
+    )

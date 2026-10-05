@@ -1,3 +1,4 @@
+import logging
 import os
 
 import autode
@@ -21,10 +22,19 @@ def patch_autode_config():
 
 @pytest.fixture
 def mlp_caplog(caplog):
-    """caplog for the mlptrain logger, which sets propagate = False."""
+    """``caplog`` wired up to the mlptrain logger.
+
+    The project logger sets ``propagate = False`` to avoid duplicating
+    records into root handlers. As a side effect pytest's ``caplog`` handler
+    never sees mlptrain records unless it is attached to that logger
+    directly, so a bare ``caplog`` silently reports zero records.
+    """
+    caplog.set_level(logging.INFO, logger='mlptrain')
     mlp_logger.addHandler(caplog.handler)
-    yield caplog
-    mlp_logger.removeHandler(caplog.handler)
+    try:
+        yield caplog
+    finally:
+        mlp_logger.removeHandler(caplog.handler)
 
 
 @pytest.fixture
@@ -279,9 +289,7 @@ def chdir_tmp_path(request, tmp_path):
 class HarmonicPotential(Calculator):
     __test__ = False
 
-    def get_potential_energy(
-        self, atoms
-    ):  # ty:ignore[invalid-method-override]
+    def get_potential_energy(self, atoms):  # ty:ignore[invalid-method-override]
         r = atoms.get_distance(0, 1)
 
         return (r - 1) ** 2
@@ -322,7 +330,7 @@ class TestPotential(mlt.potentials.MLPotential):
 
         else:
             raise NotImplementedError(
-                f'{self.calculator} is not implemented ' f'as a test potential'
+                f'{self.calculator} is not implemented as a test potential'
             )
 
     def _train(self) -> None:
