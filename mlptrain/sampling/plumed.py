@@ -23,13 +23,12 @@ class PlumedCalculator(Plumed):
     energy and force biases separately.
     """
 
-    # We cannot annotatate this with ClassVar because the parent class doesn't
-    implemented_properties = [  # noqa: RUF012
+    implemented_properties = (
         'energy',
         'forces',
         'energy_bias',
         'forces_bias',
-    ]
+    )
 
     def compute_energy_and_forces(
         self, pos, istep
