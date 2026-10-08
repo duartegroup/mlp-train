@@ -456,6 +456,21 @@ def test_configurations_load_xyz():
         assert config.mult == 2
 
 
+@work_in_tmp_dir()
+def test_configurations_load_xyz_without_forces():
+    with open('tmp.xyz', 'w') as xyz_file:
+        print(
+            '1', 'title line', 'H   0.0   0.0   0.0', sep='\n', file=xyz_file
+        )
+
+    configs = ConfigurationSet()
+
+    with pytest.raises(
+        ValueError, match='Could not read forces from columns 5-7'
+    ):
+        configs.load_xyz('tmp.xyz', charge=0, mult=1, load_forces=True)
+
+
 def test_configurations_load_numpy_compatibility():
     """Test compatibility of mlp-train and npz files created with old version of numpy/autodE.
 
