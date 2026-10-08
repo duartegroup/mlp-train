@@ -879,6 +879,7 @@ class ConfigurationSet(list):
     @staticmethod
     def _comparison_name(*args):
         """Name of a comparison between different methods"""
+        from mlptrain.potentials import MLPotential
 
         name = ''
         for arg in args:
