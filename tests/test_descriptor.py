@@ -65,3 +65,80 @@ def test_kernel_vector_different_molecules(h2o_configuration, methane):
     assert np.allclose(kernel_vector, expected_value, atol=1e-3), (
         f'Expected vector {expected_value}, but got {kernel_vector}'
     )
+
+
+@pytest.fixture
+def water():
+    atoms = [
+        Atom('O', 0, 0, 0),
+        Atom('H', 0.96, 0, 0),
+        Atom('H', -0.24, 0.93, 0),
+    ]
+    return Configuration(atoms=atoms)
+
+
+@pytest.fixture
+def distorted_water():
+    atoms = [
+        Atom('O', 0, 0, 0),
+        Atom('H', 0.9, 0.1, 0),
+        Atom('H', -0.3, 0.9, 0),
+    ]
+    return Configuration(atoms=atoms)
+
+
+def test_compute_representation_no_average_single_config(water):
+    descriptor = SoapDescriptor(
+        elements=['H', 'O'], r_cut=5.0, n_max=6, l_max=6, average='off'
+    )
+    representation = descriptor.compute_representation(water)
+    assert representation.shape == (1, 3, 546)
+
+
+def test_kernel_vector_no_average_single_config(water, distorted_water):
+    descriptor = SoapDescriptor(
+        elements=['H', 'O'], r_cut=5.0, n_max=6, l_max=6, average='off'
+    )
+    kernel_vector = descriptor.kernel_vector(
+        water, ConfigurationSet(water), zeta=4
+    )
+    assert np.allclose(kernel_vector, [1.0], atol=1e-5)
+
+    kernel_vector = descriptor.kernel_vector(
+        water, ConfigurationSet(distorted_water), zeta=4
+    )
+    assert kernel_vector.shape == (1,)
+    assert 0.0 < kernel_vector[0] < 1.0
+
+
+def test_kernel_vector_no_average_multiple_configs(water, distorted_water):
+    descriptor = SoapDescriptor(
+        elements=['H', 'O'], r_cut=5.0, n_max=6, l_max=6, average='off'
+    )
+    configurations = ConfigurationSet(water, distorted_water)
+    kernel_vector = descriptor.kernel_vector(water, configurations, zeta=4)
+    assert kernel_vector.shape == (2,)
+    assert np.isclose(kernel_vector[0], 1.0, atol=1e-5)
+    assert kernel_vector[1] < 1.0
+
+
+def test_kernel_vector_no_average_different_atoms(water, methane):
+    descriptor = SoapDescriptor(
+        elements=['H', 'C', 'O'], r_cut=5.0, n_max=6, l_max=6, average='off'
+    )
+    with pytest.raises(ValueError):
+        descriptor.kernel_vector(water, ConfigurationSet(water, methane))
+
+    with pytest.raises(ValueError):
+        descriptor.kernel_vector(water, ConfigurationSet(methane))
+
+
+def test_kernel_vector_no_average_different_atom_order(water):
+    descriptor = SoapDescriptor(
+        elements=['H', 'O'], r_cut=5.0, n_max=6, l_max=6, average='off'
+    )
+    reordered = Configuration(
+        atoms=[water.atoms[1], water.atoms[0], water.atoms[2]]
+    )
+    with pytest.raises(ValueError):
+        descriptor.kernel_vector(water, ConfigurationSet(reordered))
