@@ -493,7 +493,7 @@ class ConfigurationSet(list):
                     atoms.append(Atom(atom, x, y, z))
 
                     if load_forces:
-                        # Edd forces to forces dict in configuration
+                        # Add forces to forces dict in configuration
                         # WARNING: We're simply assuming here that columns 5-7 are forces,
                         # and not e.g. velocities or something else.
                         if len(line_split) == 7:
