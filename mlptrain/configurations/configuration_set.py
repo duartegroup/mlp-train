@@ -257,6 +257,7 @@ class ConfigurationSet(list):
             *args (mlptrain.potentials.MLPotential): Strings defining the method or MLPs
         """
         from mlptrain.configurations.plotting import parity_plot
+        from mlptrain.potentials import MLPotential
 
         if _num_strings_in(args) > 1:
             raise NotImplementedError(
@@ -882,6 +883,7 @@ class ConfigurationSet(list):
     @staticmethod
     def _comparison_name(*args):
         """Name of a comparison between different methods"""
+        from mlptrain.potentials import MLPotential
 
         name = ''
         for arg in args:
