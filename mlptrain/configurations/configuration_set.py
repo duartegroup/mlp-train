@@ -21,7 +21,7 @@ from mlptrain.log import logger
 
 if TYPE_CHECKING:
     # This import must be guarded by TYPE_CHECKING to avoid circular import
-    from mlptrain.potentials import MLPotential  # noqa: TC004
+    from mlptrain.potentials import MLPotential
 
 
 class ConfigurationSet(list):
