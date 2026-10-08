@@ -491,19 +491,16 @@ class ConfigurationSet(list):
                     atom, x, y, z = line_split[:4]
                     atoms.append(Atom(atom, x, y, z))
 
-                    # add forces to forces dict in configuration
-                    # WARNING: We're simply assuming here that columns 5-7 are forces!
-                    # This assumption is not validated.
                     if load_forces:
-                        if len(line_split) > 4:
-                            force = tuple([float(x) for x in line_split[4:]])
-                            assert len(force) == 3, (
-                                f'Force is not a 3D vector: {force}'
-                            )
+                        # Add forces to forces dict in configuration
+                        # WARNING: We're simply assuming here that columns 5-7 are forces,
+                        # and not e.g. velocities or something else.
+                        if len(line_split) == 7:
+                            force = tuple(float(x) for x in line_split[4:])
                             forces.append(force)
                         else:
                             raise ValueError(
-                                'XYZ file does not appear to have forces'
+                                f'Could not read forces from columns 5-7, got: {line}'
                             )
 
                 # create configuration, add forces, energy and append it to config set
