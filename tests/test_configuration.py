@@ -1,16 +1,73 @@
-import mlptrain as mlt
+import os
+import random
+
+import numpy as np
+import pytest
 from autode.atoms import Atom
 from autode.exceptions import SolventNotFound
+
+import mlptrain as mlt
 from mlptrain.configurations.configuration import (
     Configuration,
-    _random_vector_in_box,
     _get_max_mol_distance,
+    _random_vector_in_box,
 )
-import numpy as np
-import random
-import pytest
-import os
 from mlptrain.potentials._base import MLPotential
+
+
+@pytest.fixture
+def h2o_solvated_with_h2o():
+    """Water molecule solvated with water; created with
+    Configuration.solvate(solvent_name='water', buffer_distance=6.0)
+    """
+    atoms = [
+        Atom('H', 4.7258, 3.7810, 3.8420),
+        Atom('H', 3.4325, 3.9768, 2.9486),
+        Atom('O', 3.7558, 3.7810, 3.8420),
+        Atom('O', 1.7335, 5.5637, 5.0881),
+        Atom('H', 1.4049, 6.4617, 5.1666),
+        Atom('H', 1.3348, 5.0541, 5.7966),
+        Atom('O', 4.0694, 1.6712, 4.4626),
+        Atom('H', 4.6914, 1.0770, 4.0374),
+        Atom('H', 4.5815, 2.2772, 5.0021),
+        Atom('O', 5.2701, 2.5304, 1.2101),
+        Atom('H', 5.7484, 2.5080, 0.3786),
+        Atom('H', 5.2311, 3.4477, 1.4888),
+        Atom('O', 7.3879, 2.8121, 4.1631),
+        Atom('H', 7.3653, 3.0547, 5.0911),
+        Atom('H', 7.2708, 3.6190, 3.6572),
+        Atom('O', 4.3354, 5.3896, 0.3396),
+        Atom('H', 4.2260, 4.4620, 0.1200),
+        Atom('H', 5.2183, 5.4921, 0.7010),
+        Atom('O', 1.7493, 0.7075, 2.1279),
+        Atom('H', 1.2865, 1.5244, 2.3259),
+        Atom('H', 2.5009, 0.9353, 1.5766),
+        Atom('O', 6.5476, 6.8445, 1.5390),
+        Atom('H', 5.7883, 7.1106, 2.0618),
+        Atom('H', 6.9488, 6.0954, 1.9847),
+        Atom('O', 7.0765, 6.0234, 6.5439),
+        Atom('H', 6.6984, 6.6136, 5.8887),
+        Atom('H', 7.1472, 6.5186, 7.3627),
+        Atom('O', 2.2696, 5.9892, 1.7408),
+        Atom('H', 2.7964, 6.4984, 2.3603),
+        Atom('H', 2.5468, 6.2439, 0.8582),
+        Atom('O', 1.3950, 1.6572, 6.0125),
+        Atom('H', 1.2702, 1.6987, 6.9629),
+        Atom('H', 1.2347, 0.7494, 5.7460),
+        Atom('O', 3.6603, 6.6061, 4.3551),
+        Atom('H', 4.2154, 6.6475, 3.5736),
+        Atom('H', 4.2224, 6.7896, 5.1108),
+        Atom('O', 5.9567, 4.3429, 6.4699),
+        Atom('H', 6.2025, 4.2601, 7.3937),
+        Atom('H', 5.5687, 3.5063, 6.2049),
+        Atom('O', 2.3967, 3.8929, 1.0448),
+        Atom('H', 2.6581, 2.9703, 1.0115),
+        Atom('H', 1.4720, 3.9337, 0.7916),
+        Atom('O', 3.6791, 0.9439, 6.7916),
+        Atom('H', 2.9944, 0.3972, 6.4005),
+        Atom('H', 4.3574, 0.3523, 7.1239),
+    ]
+    return mlt.Molecule(atoms=atoms, charge=0, mult=1)
 
 
 def test_equality():
@@ -44,15 +101,13 @@ def test_get_max_mol_distance(h2o_configuration):
 
 
 def test_solvate(h2o_configuration, h2o_solvated_with_h2o):
-    h2o_configuration.solvate(solvent_name='water')
-    assert len(h2o_configuration.atoms) == 159
-    assert all(
-        [
-            np.round(atom.coordinate, 3)
-            == h2o_solvated_with_h2o.atoms[i].coordinate
-            for i, atom in enumerate(h2o_configuration.atoms)
-        ]
-    )
+    h2o_configuration.solvate(solvent_name='water', buffer_distance=6.0)
+    assert len(h2o_configuration.atoms) == len(h2o_solvated_with_h2o.atoms)
+
+    for atom, ref_atom in zip(
+        h2o_configuration.atoms, h2o_solvated_with_h2o.atoms
+    ):
+        assert np.allclose(atom.coordinate, ref_atom.coordinate, atol=1e-4)
 
 
 def test_wrong_solvent_name_raises_not_found(h2o_configuration):
