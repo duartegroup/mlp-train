@@ -1,7 +1,7 @@
 import os
 import shutil
-from zipfile import ZipFile
 from functools import wraps
+from zipfile import ZipFile
 
 
 def unzip_dir(zip_path):

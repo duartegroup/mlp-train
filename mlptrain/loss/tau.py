@@ -1,10 +1,10 @@
-import mlptrain
 import numpy as np
-from typing import Optional
-from mlptrain.sampling.md import run_mlp_md
-from mlptrain.log import logger
+
+import mlptrain
 from mlptrain.config import Config
+from mlptrain.log import logger
 from mlptrain.loss._base import LossFunction, LossValue
+from mlptrain.sampling.md import run_mlp_md
 
 
 class Tau(LossValue):
@@ -16,7 +16,7 @@ class TauCalculator(LossFunction):
     def __init__(
         self,
         e_lower: float = 0.1,
-        e_thresh: Optional[float] = None,
+        e_thresh: float | None = None,
         max_time: float = 1000.0,
         time_interval: float = 50.0,
         temp: float = 300.0,

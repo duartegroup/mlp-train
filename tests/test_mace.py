@@ -27,9 +27,9 @@ def mock_mace_run_train(monkeypatch, tmp_path):
         # by calling mace.tools.setup_logger
         from mace.tools import setup_logger
 
-        logging.info('mock_mace_run_train: Before setup_logger')
+        logging.info('mock_mace_run_train: Before setup_logger')  # noqa: LOG015
         setup_logger(directory=tmp_path)
-        logging.info('mock_mace_run_train: After setup_logger')
+        logging.info('mock_mace_run_train: After setup_logger')  # noqa: LOG015
 
     # from mace.cli.run_train import run as train_mace
     monkeypatch.setattr(
@@ -83,6 +83,6 @@ def test_train_logging(
     # Make sure logging is not doubled
     mlp_caplog.clear()
     mlp_logger.info('test info from mlp logger')
-    logging.info('test info from root logger')
+    logging.info('test info from root logger')  # noqa: LOG015
 
     assert len(mlp_caplog.records) == 2

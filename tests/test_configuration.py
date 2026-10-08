@@ -72,7 +72,7 @@ def h2o_solvated_with_h2o():
 
 def test_equality():
     config1 = Configuration()
-    assert config1 == config1
+    assert config1 == config1  # noqa: PLR0124
     assert config1 == Configuration()
 
     config2 = Configuration(atoms=[Atom('H')])
@@ -315,7 +315,7 @@ def test_mol_dict_k_d_tree_insertion(h2o_configuration, h2o):
             solvent_key = h2o.formula  # Should be "H2O"
             assert solvent_key in h2o_configuration.mol_dict
 
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         # If solvation fails due to missing dependencies, that's okay for this test
         # We mainly want to test the mol_dict structure
         pass
@@ -428,7 +428,7 @@ class MockMLPotential(MLPotential):
                 all_configurations.append(arg)
 
             else:
-                raise ValueError(
+                raise TypeError(
                     f'Cannot predict the energy and forces on {type(arg)}'
                 )
 

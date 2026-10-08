@@ -1,20 +1,20 @@
-import mlptrain
+from collections.abc import Sequence
+
 import autode
 import numpy as np
-from typing import Union, Sequence, List
 from scipy.spatial.distance import cdist
+
+import mlptrain
+from mlptrain.box import Box
 from mlptrain.configurations import Configuration, ConfigurationSet
 from mlptrain.log import logger
-from mlptrain.box import Box
 from mlptrain.molecule import Molecule
 
 
 class System:
     """System with molecules but without any coordinates"""
 
-    def __init__(
-        self, *args: Molecule, box: Union[Box, Sequence[float], None]
-    ):
+    def __init__(self, *args: Molecule, box: Box | Sequence[float] | None):
         """
         System containing a set of molecules.
 
@@ -144,7 +144,6 @@ class System:
         """
 
         self.molecules.append(molecule)
-        return None
 
     def add_molecules(
         self, molecule: 'mlptrain.Molecule', num: int = 1
@@ -163,8 +162,6 @@ class System:
         for _ in range(num):
             self.add_molecule(molecule.copy())
 
-        return None
-
     @property
     def charge(self) -> int:
         """Get the total charge on the system"""
@@ -177,7 +174,7 @@ class System:
         return int(2 * n_unpaired + 1)
 
     @property
-    def atoms(self) -> List['autode.atoms.Atom']:
+    def atoms(self) -> list['autode.atoms.Atom']:
         """Constituent atoms of this system
 
         -----------------------------------------------------------------------
@@ -190,7 +187,7 @@ class System:
         return sum((mol.atoms for mol in self.molecules), None)  # ty: ignore[no-matching-overload]
 
     @property
-    def unique_atomic_symbols(self) -> List[str]:
+    def unique_atomic_symbols(self) -> list[str]:
         """
         Unique atomic symbols in this system
 
@@ -198,13 +195,12 @@ class System:
         Returns:
             (list(str)):
         """
-        return list(sorted(set([a.label for a in self.atoms])))
+        return sorted({a.label for a in self.atoms})
 
     def _shift_to_midpoint(self, molecule) -> None:
         """Shift a molecule to the midpoint in the box, if defined"""
         midpoint = np.zeros(3) if self.box is None else self.box.midpoint
         molecule.translate(midpoint - molecule.centroid)
-        return None
 
     @staticmethod
     def _rotate_randomly(molecule) -> None:
@@ -218,8 +214,6 @@ class System:
         #                Shift to origin     Random rotation matrix
         coords = np.dot(coords - centroid, special_ortho_group.rvs(3).T)
         molecule.coordinates = coords + centroid
-
-        return None
 
     def _shift_randomly(
         self, molecule, coords, min_dist, max_iters=500
@@ -271,4 +265,3 @@ class System:
                 )
 
         molecule.coordinates = m_coords
-        return

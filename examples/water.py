@@ -1,6 +1,6 @@
 import mlptrain as mlt
-from mlptrain.training.selection import AtomicEnvSimilarity
 from mlptrain.descriptor import SoapDescriptor
+from mlptrain.training.selection import AtomicEnvSimilarity
 
 mlt.Config.n_cores = 10
 

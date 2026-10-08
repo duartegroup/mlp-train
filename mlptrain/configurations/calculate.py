@@ -1,8 +1,10 @@
-import mlptrain
-import autode
 from typing import TYPE_CHECKING
-from mlptrain.log import logger
+
+import autode
+
+import mlptrain
 from mlptrain.config import Config
+from mlptrain.log import logger
 
 if TYPE_CHECKING:
     import autode.wrappers.keywords
@@ -26,9 +28,9 @@ def run_autode(
         n_cores: Number of cores to use for the calculation
 
     """
-    from autode.species import Species
     from autode.calculations import Calculation
     from autode.exceptions import CouldNotGetProperty
+    from autode.species import Species
 
     method, kwds = _method_and_keywords(method_name=method_name.lower())
     logger.info(f'Running a {method_name} calculation at: {kwds}')
@@ -61,13 +63,13 @@ def run_autode(
         if calc.output.exists:
             print(''.join(calc.output.file_lines[-50:]))
 
-        return None
+        return
 
     configuration.energy.true = energy.to('eV')
     configuration.partial_charges = (  # ty: ignore[unresolved-attribute]
         calc.molecule.partial_charges
     )
-    return None
+    return
 
 
 def _method_and_keywords(
@@ -76,7 +78,7 @@ def _method_and_keywords(
     'autode.wrappers.methods.Method', 'autode.wrappers.keywords.Keywords'
 ]:
     """Get the method and associated keywords to use in a QM calculation"""
-    from autode.methods import ORCA, XTB, G16, G09
+    from autode.methods import G09, G16, ORCA, XTB
 
     if method_name == 'orca':
         method, kwds = ORCA(), _orca_keywords()

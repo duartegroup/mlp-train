@@ -1,20 +1,21 @@
 from __future__ import annotations
 
-import mlptrain as mlt
 import argparse
-import warnings
-from mlptrain.config import Config
-from mlptrain.potentials import MLPotential
-import os
 import gc
 import glob
-import time
-import numpy as np
 import logging
-from mlptrain.log import logger
-import autode as ade
-from typing import TYPE_CHECKING, Optional
+import os
+import time
+import warnings
+from typing import TYPE_CHECKING
 
+import autode as ade
+import numpy as np
+
+import mlptrain as mlt
+from mlptrain.config import Config
+from mlptrain.log import logger
+from mlptrain.potentials import MLPotential
 
 if TYPE_CHECKING:
     from ase.calculators.calculator import Calculator as ASECalculator
@@ -24,8 +25,8 @@ class MACE(MLPotential):
     def __init__(
         self,
         name: str,
-        system: 'mlt.System',
-        foundation: Optional[str] = None,
+        system: mlt.System,
+        foundation: str | None = None,
     ) -> None:
         """
         MACE machine learning potential
@@ -91,7 +92,7 @@ class MACE(MLPotential):
         """Fraction of the whole dataset to be used as validation set"""
         valid_fraction = Config.mace_params['valid_fraction']
         if not isinstance(valid_fraction, float):
-            raise ValueError(
+            raise TypeError(
                 f"Invalid parameter valid_fraction '{valid_fraction}'"
             )
 
@@ -113,7 +114,7 @@ class MACE(MLPotential):
         """Batch size of the training set"""
         batch_size = Config.mace_params['batch_size']
         if not isinstance(batch_size, int):
-            raise ValueError(f"Invalid parameter batch_size '{batch_size}'")
+            raise TypeError(f"Invalid parameter batch_size '{batch_size}'")
 
         if self.n_train * (1 - self.valid_fraction) < batch_size:
             return int(np.floor(self.n_train * (1 - self.valid_fraction)))
@@ -121,7 +122,7 @@ class MACE(MLPotential):
             return batch_size
 
     @property
-    def args(self) -> 'argparse.Namespace':
+    def args(self) -> argparse.Namespace:
         """Namespace containing mostly default MACE parameters"""
         import mace.tools
 
@@ -236,7 +237,7 @@ class MACE(MLPotential):
             args_list.append(f'--valid_file={valid_file}')
             logger.info(f'Using structures in {valid_file} as validation set')
         else:
-            args_list.append(f'--valid_fraction={str(self.valid_fraction)}')
+            args_list.append(f'--valid_fraction={self.valid_fraction!s}')
 
         args = mace.tools.build_default_arg_parser().parse_args(args_list)
 
@@ -254,7 +255,7 @@ class MACE(MLPotential):
         )
         return calculator
 
-    def _train(self, n_cores: Optional[int] = None) -> None:
+    def _train(self, n_cores: int | None = None) -> None:
         """
         Train a MACE potential using the data as .xyz file and save the
         final potential as .model file
@@ -316,5 +317,3 @@ class MACE(MLPotential):
 
         for file in glob.glob('./checkpoints/*.pt'):
             os.remove(file)
-
-        return None

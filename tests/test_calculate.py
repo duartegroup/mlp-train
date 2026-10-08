@@ -1,15 +1,16 @@
-import pytest
 import numpy as np
-from mlptrain.configurations import Configuration
+import pytest
+
 from mlptrain.config import Config  # Import Config from mlptrain.config
-from mlptrain.energy import Energy
-from mlptrain.forces import Forces
+from mlptrain.configurations import Configuration
 from mlptrain.configurations.calculate import (
-    run_autode,
+    _gaussian_keywords,
     _method_and_keywords,
     _orca_keywords,
-    _gaussian_keywords,
+    run_autode,
 )
+from mlptrain.energy import Energy
+from mlptrain.forces import Forces
 
 
 class MockSpecies:
@@ -31,23 +32,21 @@ class MockCalculation:
         self.method = method
         self.keywords = keywords
         self.n_cores = n_cores
-        self._energy_success = (
-            True  # Flag for controlling energy calculation success
-        )
-        self._gradient_success = (
-            True  # Flag for controlling gradient calculation success
-        )
+        # Flag for controlling energy calculation success
+        self._energy_success = True
+        # Flag for controlling gradient calculation success
+        self._gradient_success = True
 
     def run(self):
         """Simulate the run behavior."""
-        pass  # Assume the calculation runs successfully
+        # Assume the calculation runs successfully
 
     def get_gradients(self):
         """Return mock gradients or raise an error if _gradient_success is False"""
         if self._gradient_success:
             return MockUnitConversion(np.array([-0.1, 0.2, -0.3]))
         else:
-            raise Exception('Could not get gradients')
+            raise RuntimeError('Could not get gradients')
 
     def get_energy(self):
         """Return mock energy or None if _energy_success is False"""
@@ -173,7 +172,7 @@ def test_method_and_keywords_success(set_config):
     """Test _method_and_keywords for valid methods"""
     methods = {'orca': 'orca', 'g09': 'g09', 'g16': 'g16', 'xtb': 'xtb'}
     for method_name, expected in methods.items():
-        method, keywords = _method_and_keywords(method_name)
+        method, _keywords = _method_and_keywords(method_name)
         assert (
             method.name == expected
         )  # Mocked ORCA, G09, etc., should have these names

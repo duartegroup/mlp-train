@@ -1,15 +1,13 @@
 import mlptrain
-from typing import Union
-
-from mlptrain.log import logger
 from mlptrain.configurations.configuration import Configuration
 from mlptrain.configurations.configuration_set import ConfigurationSet
+from mlptrain.log import logger
 
 
 class Trajectory(ConfigurationSet):
     """Trajectory"""
 
-    def __init__(self, *args: Union[Configuration, str]):
+    def __init__(self, *args: Configuration | str):
         super().__init__(*args, allow_duplicates=True)
 
     @property

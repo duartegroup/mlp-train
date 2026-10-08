@@ -1,26 +1,27 @@
 from __future__ import annotations
 
-import mlptrain
+import glob
+import multiprocessing as mp
 import os
 import re
 import time
 import typing as t
-import glob
-import multiprocessing as mp
-import numpy as np
-from scipy.optimize import curve_fit
-from scipy.integrate import simpson
-from typing import Optional, List, Tuple
 from copy import deepcopy
-from ase.io.trajectory import Trajectory as ASETrajectory
+
+import numpy as np
 from ase.io import write as ase_write
-from mlptrain.sampling.bias import Bias
-from mlptrain.sampling.reaction_coord import DummyCoordinate
-from mlptrain.configurations import ConfigurationSet
-from mlptrain.sampling.md import run_mlp_md
-from mlptrain.utils import move_files, convert_ase_energy, convert_exponents
+from ase.io.trajectory import Trajectory as ASETrajectory
+from scipy.integrate import simpson
+from scipy.optimize import curve_fit
+
+import mlptrain
 from mlptrain.config import Config
+from mlptrain.configurations import ConfigurationSet
 from mlptrain.log import logger
+from mlptrain.sampling.bias import Bias
+from mlptrain.sampling.md import run_mlp_md
+from mlptrain.sampling.reaction_coord import DummyCoordinate
+from mlptrain.utils import convert_ase_energy, convert_exponents, move_files
 
 if t.TYPE_CHECKING:
     from mlptrain.potentials import MLPotential
@@ -30,7 +31,7 @@ if t.TYPE_CHECKING:
 class _Window:
     """Contains the attributes belonging to an US window used for WHAM or UI"""
 
-    def __init__(self, obs_zetas: np.ndarray, bias: 'mlptrain.Bias'):
+    def __init__(self, obs_zetas: np.ndarray, bias: mlptrain.Bias):
         """
         Umbrella Window
 
@@ -46,12 +47,12 @@ class _Window:
         self._bias = bias
         self._obs_zetas = obs_zetas
 
-        self._gaussian_pdf: Optional[_FittedGaussian] = None
-        self._gaussian_plotted: Optional[_FittedGaussian] = None
+        self._gaussian_pdf: _FittedGaussian | None = None
+        self._gaussian_plotted: _FittedGaussian | None = None
 
-        self.bin_edges: Optional[np.ndarray] = None
-        self.bias_energies: Optional[np.ndarray] = None
-        self.hist: Optional[np.ndarray] = None
+        self.bin_edges: np.ndarray | None = None
+        self.bias_energies: np.ndarray | None = None
+        self.hist: np.ndarray | None = None
 
         self.free_energy = 0.0
 
@@ -67,7 +68,6 @@ class _Window:
         self.bias_energies = (self._bias.kappa / 2) * (
             self.bin_centres - self._bias.ref
         ) ** 2
-        return None
 
     @property
     def bin_centres(self) -> np.ndarray:
@@ -83,7 +83,7 @@ class _Window:
         return (_edges[1:] + _edges[:-1]) / 2
 
     @property
-    def gaussian_pdf(self) -> '_FittedGaussian':
+    def gaussian_pdf(self) -> _FittedGaussian:
         """Fitted gaussian as a probability density function"""
 
         if self._gaussian_pdf is None:
@@ -93,7 +93,7 @@ class _Window:
         return self._gaussian_pdf
 
     @property
-    def gaussian_plotted(self) -> '_FittedGaussian':
+    def gaussian_plotted(self) -> _FittedGaussian:
         """Gaussian which was plotted during umbrella sampling simulation"""
 
         if self._gaussian_plotted is None:
@@ -148,7 +148,7 @@ class _Window:
         return self._bias.ref
 
     @classmethod
-    def from_file(cls, filename: str) -> '_Window':
+    def from_file(cls, filename: str) -> _Window:
         """
         Load a window from a saved file
 
@@ -159,7 +159,9 @@ class _Window:
         Returns:
             (mlptrain.sampling.umbrella._Window):
         """
-        file_lines = open(filename, 'r', errors='ignore').readlines()
+        with open(filename, 'r', errors='ignore') as f:
+            file_lines = f.readlines()
+
         header_line = file_lines.pop(0)  # Pop the first line
 
         ref_zeta = float(header_line.split()[0])  # Å
@@ -193,8 +195,6 @@ class _Window:
 
             for zeta in self._obs_zetas:
                 print(zeta, file=out_file)
-
-        return None
 
     def _fit_gaussian(self, normalised) -> None:
         """Fit a gaussian to a histogram of data"""
@@ -233,7 +233,6 @@ class _Window:
             )
 
         self._gaussian_pdf = gaussian
-        return None
 
     def _plot_gaussian(self, hist, bin_centres) -> None:
         """Fit a Gaussian to a histogram of data and plot the result"""
@@ -258,7 +257,7 @@ class _Window:
 
         except RuntimeError:
             logger.error('Failed to fit a gaussian to this data')
-            return None
+            return
 
         # Plot the fitted line in the same color as the histogram
         color = plt.gca().lines[-1].get_color()
@@ -267,7 +266,7 @@ class _Window:
         plt.plot(zetas, gaussian(zetas), c=color)
 
         self._gaussian_plotted = gaussian
-        return None
+        return
 
     def plot(
         self, min_zeta: float, max_zeta: float, plot_gaussian: bool = True
@@ -306,8 +305,6 @@ class _Window:
         plt.tight_layout()
         plt.savefig('fitted_data.pdf')
 
-        return None
-
 
 class UmbrellaSampling:
     """
@@ -319,7 +316,7 @@ class UmbrellaSampling:
         self,
         zeta_func: ReactionCoordinate,
         kappa: float,
-        temp: Optional[float] = None,
+        temp: float | None = None,
     ):
         """
         Umbrella sampling to predict free energy using an mlp under a harmonic
@@ -343,7 +340,7 @@ class UmbrellaSampling:
         self.zeta_func = zeta_func  # ζ(r)
         self.temp = temp  # K
 
-        self.windows: List[_Window] = []
+        self.windows: list[_Window] = []
 
     @staticmethod
     def _best_init_frame(bias, traj):
@@ -390,13 +387,13 @@ class UmbrellaSampling:
 
     def run_umbrella_sampling(
         self,
-        traj: 'mlptrain.ConfigurationSet',
-        mlp: 'MLPotential',
+        traj: mlptrain.ConfigurationSet,
+        mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
-        init_ref: Optional[float] = None,
-        final_ref: Optional[float] = None,
+        init_ref: float | None = None,
+        final_ref: float | None = None,
         n_windows: int = 10,
         save_sep: bool = True,
         all_to_xyz: bool = False,
@@ -524,16 +521,14 @@ class UmbrellaSampling:
             window_trajs=window_trajs, save_sep=save_sep, all_to_xyz=all_to_xyz
         )
 
-        return None
-
     def _run_individual_window(
         self,
-        frame: 'mlptrain.Configuration',
-        mlp: 'MLPotential',
+        frame: mlptrain.Configuration,
+        mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
-        bias: 'mlptrain.Bias',
+        bias: mlptrain.Bias,
         **kwargs,
     ) -> mlptrain.Trajectory | None:
         """Run an individual umbrella sampling window"""
@@ -559,7 +554,7 @@ class UmbrellaSampling:
 
     @staticmethod
     def _move_and_save_files(
-        window_trajs: List['mlptrain.Trajectory'],
+        window_trajs: list[mlptrain.Trajectory],
         save_sep: bool,
         all_to_xyz: bool,
     ) -> None:
@@ -600,8 +595,6 @@ class UmbrellaSampling:
                     ase_write(f'window_{idx}_{sim_time}.xyz', ase_traj)
 
         os.chdir('..')
-
-        return None
 
     def free_energies(self, prob_dist) -> np.ndarray:
         """
@@ -666,7 +659,7 @@ class UmbrellaSampling:
         tol: float = 1e-3,
         max_iterations: int = 100000,
         n_bins: int = 100,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Construct an unbiased distribution (on a grid) from a set of windows
 
@@ -733,7 +726,7 @@ class UmbrellaSampling:
 
     def umbrella_integration(
         self, n_bins: int = 100
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Perform umbrella integration on the umbrella windows to un-bias the
         probability distribution. Such that the PMF becomes
@@ -794,7 +787,7 @@ class UmbrellaSampling:
 
         if len(self.windows) is None:
             logger.error(f'Cannot save US to {folder_name} - had no windows')
-            return None
+            return
 
         os.mkdir(folder_name)
         for idx, window in enumerate(self.windows):
@@ -802,7 +795,7 @@ class UmbrellaSampling:
                 filename=os.path.join(folder_name, f'window_{idx + 1}.txt')
             )
 
-        return None
+        return
 
     def load(self, folder_name: str) -> None:
         """Load data from a set of saved windows"""
@@ -817,10 +810,8 @@ class UmbrellaSampling:
             window = _Window.from_file(filename)
             self.windows.append(window)
 
-        return None
-
     @classmethod
-    def from_folder(cls, folder_name: str, temp: float) -> 'UmbrellaSampling':
+    def from_folder(cls, folder_name: str, temp: float) -> UmbrellaSampling:
         """
         Create an umbrella sampling instance from a folder containing the
         window data
@@ -841,7 +832,7 @@ class UmbrellaSampling:
         return us
 
     @classmethod
-    def from_folders(cls, *args: str, temp: float) -> 'UmbrellaSampling':
+    def from_folders(cls, *args: str, temp: float) -> UmbrellaSampling:
         """
         Load a set of individual umbrella sampling simulations in to a single
         one
@@ -866,7 +857,6 @@ class UmbrellaSampling:
     def _order_windows_by_zeta_ref(self) -> None:
         """Sort the windows in this umbrella by ζ_ref"""
         self.windows = sorted(self.windows, key=lambda window: window.zeta_ref)
-        return None
 
 
 class _FittedGaussian:
@@ -927,4 +917,3 @@ def _plot_and_save_free_energy(
     fig.tight_layout()
     fig.savefig('umbrella_free_energy.pdf')
     plt.close(fig)
-    return None

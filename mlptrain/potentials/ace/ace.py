@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import os
 import shutil
-from subprocess import Popen, PIPE
-from time import time
+import sys
 import typing as t
+from subprocess import PIPE, Popen
+from time import time
 
 import numpy as np
 from scipy.spatial import distance_matrix
+
 from mlptrain.box import Box
-from mlptrain.log import logger
 from mlptrain.config import Config
+from mlptrain.log import logger
 from mlptrain.potentials import MLPotential
 
 if t.TYPE_CHECKING:
@@ -78,8 +80,6 @@ class ACE(MLPotential):
         for filename in (f'{self.name}_data.xyz', f'{self.name}.jl'):
             os.remove(filename)
 
-        return None
-
     @property
     def requires_atomic_energies(self) -> bool:
         return True
@@ -138,7 +138,7 @@ class ACE(MLPotential):
 
             **kwargs:
         """
-        inp_file = open(filename, 'w')
+        inp_file = open(filename, 'w')  # noqa: SIM115
 
         print(
             'using IPFitting, ACE, JuLIP, LinearAlgebra\n'
@@ -184,7 +184,6 @@ class ACE(MLPotential):
         print(
             'Dn = Dict( "default" => 1.0 )\n'
             'Dl = Dict( "default" => 1.5 )',  # l_weights
-            sep='\n',
             file=inp_file,
         )
 
@@ -271,14 +270,12 @@ class ACE(MLPotential):
 
         inp_file.close()
 
-        return None
-
 
 def _check_julia_install_exists() -> None:
     """Ensure that a julia install is present"""
 
     if shutil.which('julia') is None:
-        exit(
+        sys.exit(
             "Failed to find a Julia installation. Make sure it's present "
             'in your $PATH'
         )

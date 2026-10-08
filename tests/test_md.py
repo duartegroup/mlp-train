@@ -5,9 +5,10 @@ import time
 
 import numpy as np
 import pytest
-import mlptrain as mlt
-from ase.io.trajectory import Trajectory as ASETrajectory
 from ase.constraints import Hookean
+from ase.io.trajectory import Trajectory as ASETrajectory
+
+import mlptrain as mlt
 
 from .data.utils import work_in_zipped_dir
 

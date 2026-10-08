@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import queue
 import multiprocessing as mp
 import os
+import queue
 import shutil
 import time
 from copy import deepcopy
@@ -63,7 +63,7 @@ def _gen_active_config_worker(
 def train(
     mlp: MLPotential,
     method_name: str,
-    selection_method: SelectionMethod = AbsDiffE(),
+    selection_method: SelectionMethod | None = None,
     max_active_time: float = 1000,
     n_configs_iter: int = 10,
     temp: float = 300.0,
@@ -194,6 +194,11 @@ def train(
 
         keep_output_files: (bool) If True, output files of QM computations are saved to new folder.
     """
+    # TODO: We should probably remove this default, the user should
+    # be explicit about which selection method to use!
+    if selection_method is None:
+        selection_method = AbsDiffE()
+
     if md_program.lower() == 'openmm':
         if not isinstance(mlp, mlptrain.potentials.MACE):
             raise ValueError(
@@ -457,7 +462,7 @@ def _add_active_configs(
                     try:
                         w.kill()
                         w.join(timeout=5)
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001
                         logger.error(f'Failed to kill idx={i}: {e}')
             pending.clear()
             break

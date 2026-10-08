@@ -1,7 +1,9 @@
-import mlptrain
-import numpy as np
 from abc import ABC, abstractmethod
-from mlptrain.loss._base import LossValue, LossFunction
+
+import numpy as np
+
+import mlptrain
+from mlptrain.loss._base import LossFunction, LossValue
 
 
 class _DeltaLossFunction(LossFunction, ABC):

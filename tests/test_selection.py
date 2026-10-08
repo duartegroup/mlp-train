@@ -1,11 +1,12 @@
 import os
+
+from autode.atoms import Atom
+
 import mlptrain as mlt
 import mlptrain.descriptor
 import mlptrain.training.selection
-from autode.atoms import Atom
 from mlptrain.descriptor import SoapDescriptor
 from mlptrain.training.selection import AtomicEnvSimilarity
-
 
 here = os.path.abspath(os.path.dirname(__file__))
 

@@ -1,4 +1,6 @@
 import os
+from typing import ClassVar
+
 from autode.wrappers.keywords import GradientKeywords
 
 _NUM_CPUS = os.cpu_count()
@@ -37,14 +39,14 @@ class _ConfigClass:
     ```
     """
 
-    n_cores = 4 if _NUM_CPUS >= 4 else _NUM_CPUS
+    n_cores = min(4, _NUM_CPUS)
     process_timeout = 60 * 60 * 100001  # 100001 hours
     dynamics_timeout = 60 * 60 * 100000  # 100000 hours
     _orca_keywords = None
     _gaussian_keywords = None
 
     # ACE params
-    ace_params = {
+    ace_params: ClassVar = {
         'N': 4,  # maximum correlation order
         'r_cut': 4.0,  # outer cutoff of ACE
         'deg_pair': 5,  # Specify the pair potential
@@ -52,11 +54,11 @@ class _ConfigClass:
     }
 
     # NeQUIP params
-    nequip_params = {'cutoff': 4.0, 'train_fraction': 0.9}
+    nequip_params: ClassVar = {'cutoff': 4.0, 'train_fraction': 0.9}
 
     # MACE params
 
-    mace_params = {
+    mace_params: ClassVar = {
         'valid_fraction': 0.1,
         'valid_file': None,
         'max_num_epochs': 1200,
@@ -83,7 +85,7 @@ class _ConfigClass:
         'amsgrad': True,
         'restart_latest': False,
         'save_cpu': True,
-        'num_workers': 8 if _NUM_CPUS >= 8 else _NUM_CPUS,
+        'num_workers': min(8, _NUM_CPUS),
         'max_L': 1,
         'dtype': 'float32',
         'pt_train': None,

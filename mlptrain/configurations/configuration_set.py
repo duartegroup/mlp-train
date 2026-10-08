@@ -1,23 +1,26 @@
 from __future__ import annotations
 
-import mlptrain
 import os
 import re
-import numpy as np
 from collections.abc import Iterable
-from time import time
-from multiprocessing import Pool
-from typing import TYPE_CHECKING, Optional, List, Literal, Union
-from autode.atoms import elements, Atom
-from mlptrain.config import Config
-from mlptrain.log import logger
-from mlptrain.forces import Forces
-from mlptrain.energy import Energy
-from mlptrain.configurations.configuration import Configuration
-from mlptrain.box import Box
 from copy import deepcopy
+from multiprocessing import Pool
+from time import time
+from typing import TYPE_CHECKING, Literal, Self
+
+import numpy as np
+from autode.atoms import Atom, elements
+
+import mlptrain
+from mlptrain.box import Box
+from mlptrain.config import Config
+from mlptrain.configurations.configuration import Configuration
+from mlptrain.energy import Energy
+from mlptrain.forces import Forces
+from mlptrain.log import logger
 
 if TYPE_CHECKING:
+    # This import must be guarded by TYPE_CHECKING to avoid circular import
     from mlptrain.potentials import MLPotential
 
 
@@ -25,7 +28,7 @@ class ConfigurationSet(list):
     """A set of configurations"""
 
     def __init__(
-        self, *args: Union[Configuration, str], allow_duplicates: bool = False
+        self, *args: Configuration | str, allow_duplicates: bool = False
     ):
         """
         Construct a configuration set from Configurations, or a saved file.
@@ -52,12 +55,12 @@ class ConfigurationSet(list):
                 raise ValueError(f'Cannot create configurations from {arg}')
 
     @property
-    def true_energies(self) -> List[Optional[float]]:
+    def true_energies(self) -> list[float | None]:
         """True calculated energies"""
         return [c.energy.true for c in self]
 
     @property
-    def true_forces(self) -> Optional[np.ndarray]:
+    def true_forces(self) -> np.ndarray | None:
         """
         List of true config forces. List of np.ndarray with shape: (n_atoms, 3)
 
@@ -67,12 +70,12 @@ class ConfigurationSet(list):
         return self._forces('true')
 
     @property
-    def predicted_energies(self) -> List[Optional[float]]:
+    def predicted_energies(self) -> list[float | None]:
         """Predicted energies using a MLP"""
         return [c.energy.predicted for c in self]
 
     @property
-    def predicted_forces(self) -> Optional[np.ndarray]:
+    def predicted_forces(self) -> np.ndarray | None:
         """
         Predicted force tensor. shape = (N, n_atoms, 3)
 
@@ -82,12 +85,12 @@ class ConfigurationSet(list):
         return self._forces('predicted')
 
     @property
-    def bias_energies(self) -> List[Optional[float]]:
+    def bias_energies(self) -> list[float | None]:
         """Bias energies from ASE and PLUMED biases"""
         return [c.energy.bias for c in self]
 
     @property
-    def inherited_bias_energies(self) -> List[Optional[float]]:
+    def inherited_bias_energies(self) -> list[float | None]:
         """If active learning is performed using inheritable metadynamics bias,
         at any given active learning iteration this property is equal to the
         value of metadynamics bias inherited from the previous active learning
@@ -95,7 +98,7 @@ class ConfigurationSet(list):
         return [c.energy.inherited_bias for c in self]
 
     @property
-    def lowest_energy(self) -> 'mlptrain.Configuration':
+    def lowest_energy(self) -> mlptrain.Configuration:
         """
         Determine the lowest energy configuration in this set based on the
         true energies. If not evaluated then returns the first configuration
@@ -110,7 +113,7 @@ class ConfigurationSet(list):
         return self[np.argmin(energies)]
 
     @property
-    def lowest_biased_energy(self) -> 'mlptrain.Configuration':
+    def lowest_biased_energy(self) -> mlptrain.Configuration:
         """
         Determine the configuration with the lowest biased energy (true energy
         + bias energy) in this set. If not evaluated then returns the first
@@ -136,7 +139,7 @@ class ConfigurationSet(list):
         return self[np.argmin(biased_energy)]
 
     @property
-    def lowest_inherited_biased_energy(self) -> 'mlptrain.Configuration':
+    def lowest_inherited_biased_energy(self) -> mlptrain.Configuration:
         """
         Determine the configuration with the lowest inherited biased energy
         (true energy + inherited bias energy) in this set. If not evaluated
@@ -182,8 +185,6 @@ class ConfigurationSet(list):
             if self[idx].energy.true is None:
                 del self[idx]
 
-        return None
-
     def remove_above_e(self, energy: float) -> None:
         """
         Remove all configuration above a particular *relative* energy
@@ -196,8 +197,6 @@ class ConfigurationSet(list):
         for idx in reversed(range(len(self))):
             if (self[idx].energy.true - min_energy) > energy:
                 del self[idx]
-
-        return None
 
     def t_min(self, from_idx: int) -> float:
         """
@@ -324,7 +323,7 @@ class ConfigurationSet(list):
 
         if len(self) == 0:
             logger.error(f'Failed to save {filename}. Had no configurations')
-            return None
+            return
 
         if self[0].energy.true is not None and not (predicted or true):
             logger.warning(
@@ -339,7 +338,7 @@ class ConfigurationSet(list):
             configuration.save_xyz(
                 filename, true=true, predicted=predicted, append=True
             )
-        return None
+        return
 
     # TODO: Add parameter whether to skip unfinished output files
     @classmethod
@@ -349,7 +348,7 @@ class ConfigurationSet(list):
         *,
         load_energies: bool = True,
         load_forces: bool = True,
-    ) -> 'ConfigurationSet':
+    ) -> ConfigurationSet:
         """
         Create ConfigurationSet from existing ORCA calculation output files.
 
@@ -391,11 +390,11 @@ class ConfigurationSet(list):
         *,
         charge: int,
         mult: int,
-        box: Optional[Box] = None,
+        box: Box | None = None,
         load_energies: bool = False,
         load_forces: bool = False,
         allow_duplicates: bool = False,
-    ) -> 'ConfigurationSet':
+    ) -> ConfigurationSet:
         """Create a new ConfigurationSet instance from a XYZ file.
 
         The parameters are the same as for the `load_xyz` method.
@@ -411,7 +410,7 @@ class ConfigurationSet(list):
         filename: str,
         charge: int,
         mult: int,
-        box: Optional[Box] = None,
+        box: Box | None = None,
         load_energies: bool = False,
         load_forces: bool = False,
     ) -> None:
@@ -514,8 +513,6 @@ class ConfigurationSet(list):
                 line_id += 1
                 line = xyz_file.readline()
 
-        return None
-
     def save(self, filename: str) -> None:
         """
         Save all the parameters for this configuration. Overrides any current
@@ -539,7 +536,7 @@ class ConfigurationSet(list):
             logger.warning('Filename had no valid extension - adding .npz')
             self._save_npz(f'{filename}.npz')
 
-        return None
+        return
 
     def load(self, filename: str) -> None:
         """
@@ -562,7 +559,7 @@ class ConfigurationSet(list):
     def single_point(
         self,
         method: str,
-        output_name: Optional[str] = None,
+        output_name: str | None = None,
         n_cores_pp: int = 0,
         keep_output_files: bool = True,
     ) -> None:
@@ -607,7 +604,7 @@ class ConfigurationSet(list):
         )
 
     @property
-    def plumed_coordinates(self) -> Optional[np.ndarray]:
+    def plumed_coordinates(self) -> np.ndarray | None:
         """
         PLUMED collective variable values in this set
 
@@ -682,9 +679,7 @@ class ConfigurationSet(list):
         """Total spin multiplicities of all configurations in this set"""
         return np.array([c.mult for c in self])
 
-    def _forces(
-        self, kind: Literal['true', 'predicted']
-    ) -> Optional[np.ndarray]:
+    def _forces(self, kind: Literal['true', 'predicted']) -> np.ndarray | None:
         """True or predicted forces. Returns a 3D np.ndarray."""
 
         all_forces = [getattr(config.forces, kind) for config in self]
@@ -718,8 +713,6 @@ class ConfigurationSet(list):
             M=self._multiplicities,
             allow_pickle=True,
         )
-
-        return None
 
     def _load_npz(self, filename: str) -> None:
         """Load a compressed numpy array of all the data in this set
@@ -786,8 +779,6 @@ class ConfigurationSet(list):
 
             self.append(config)
 
-        return None
-
     def __add__(
         self,
         other: object,
@@ -801,7 +792,7 @@ class ConfigurationSet(list):
         result += other
         return result
 
-    def __iadd__(self, other: object) -> ConfigurationSet:
+    def __iadd__(self, other: object) -> Self:
         if isinstance(other, Configuration):
             self.append(other)
         elif isinstance(other, ConfigurationSet):
@@ -864,7 +855,6 @@ class ConfigurationSet(list):
             pool.join()
 
         logger.info(f'Calculations done in {(time() - start_time) / 60:.1f} m')
-        return None
 
     def __str__(self):
         return (
@@ -909,7 +899,7 @@ def _single_point_eval(config, method_name, output_name, **kwargs):
 
 def _atoms_from_z_r(
     atomic_numbers: np.ndarray, coordinates: np.ndarray
-) -> List[Atom]:
+) -> list[Atom]:
     """From a set of atomic numbers and coordinates create a set of atoms"""
 
     atoms = []

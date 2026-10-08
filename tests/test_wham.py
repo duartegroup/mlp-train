@@ -1,7 +1,10 @@
 import os
+
 import numpy as np
+
 from mlptrain.sampling.bias import Bias
-from mlptrain.sampling.umbrella import _Window, UmbrellaSampling
+from mlptrain.sampling.umbrella import UmbrellaSampling, _Window
+
 from .data.utils import work_in_zipped_dir
 
 here = os.path.dirname(os.path.abspath(__file__))
@@ -19,7 +22,8 @@ def _initialised_us() -> UmbrellaSampling:
     zeta_refs = np.linspace(1.8245, 3.1100, num=20)  # 20 windows
 
     for window_idx in range(20):
-        data_lines = open(f'window_{window_idx + 1}.txt', 'r').readlines()
+        with open(f'window_{window_idx + 1}.txt') as f:
+            data_lines = f.readlines()
 
         # Ensure the data has the correct reference value for the hard
         # coded array
@@ -47,17 +51,15 @@ def test_wham_is_close_to_ref():
     zetas, free_energies = us.wham(n_bins=499)
     free_energies -= min(free_energies)
 
-    ref_zetas = np.array(
-        [
-            float(line.split()[0])
-            for line in open('ref_wham.txt', 'r').readlines()[1:-1]
-        ]
-    )
+    with open('ref_wham.txt') as f:
+        ref_zetas = np.array(
+            [float(line.split()[0]) for line in f.readlines()[1:-1]]
+        )
 
-    ref_free_energies = [
-        float(line.split()[1]) * kj_to_ev
-        for line in open('ref_wham.txt', 'r').readlines()[1:-1]
-    ]
+        f.seek(0)
+        ref_free_energies = [
+            float(line.split()[1]) * kj_to_ev for line in f.readlines()[1:-1]
+        ]
 
     # Ensure every free energy value, at a particular zeta, is close to the
     # reference, to within ~0.5 kcal mol-1

@@ -1,12 +1,13 @@
-import mlptrain
 import math
-import numpy as np
-import seaborn as sns
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from mlptrain.log import logger
+import numpy as np
+import seaborn as sns
 from scipy.stats import linregress
 
+import mlptrain
+from mlptrain.log import logger
 
 mpl.rcParams['figure.dpi'] = 400
 mpl.rcParams['axes.labelsize'] = 15
@@ -34,7 +35,7 @@ def parity_plot(
 
         file_name: Name of the file to save the plot
     """
-    fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(8, 7.5))
+    _fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(8, 7.5))
 
     if _all_energies_are_defined(config_set):
         _add_energy_time_plot(config_set, axis=ax[0, 0])
@@ -46,7 +47,6 @@ def parity_plot(
 
     plt.tight_layout()
     plt.savefig(f'{file_name}.pdf')
-    return None
 
 
 def error_histogram(
@@ -67,7 +67,7 @@ def error_histogram(
 
     """
 
-    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(8, 3.75))
+    _fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(8, 3.75))
 
     if _all_energies_are_defined(config_set):
         _add_energy_error_histogram(
@@ -81,8 +81,6 @@ def error_histogram(
 
     plt.tight_layout()
     plt.savefig(f'{file_name}.pdf')
-
-    return None
 
 
 def error_histogram_index(
@@ -106,7 +104,7 @@ def error_histogram_index(
 
     """
 
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 3.75))
+    _fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 3.75))
 
     if _all_forces_are_defined(config_set):
         _add_force_error_histogram(
@@ -118,8 +116,6 @@ def error_histogram_index(
 
     plt.tight_layout()
     plt.savefig(f'{file_name}.pdf')
-
-    return None
 
 
 def _all_energies_are_defined(cfgs) -> bool:
@@ -170,8 +166,6 @@ def _add_energy_time_plot(config_set, axis) -> None:
     axis.set_xlabel(xlabel)
     axis.set_ylabel('$E - E_{min, true}$ (eV)')
 
-    return None
-
 
 def _add_energy_parity_plot(config_set, axis) -> None:
     """Plot true vs predicted energies"""
@@ -195,8 +189,6 @@ def _add_energy_parity_plot(config_set, axis) -> None:
 
     axis.set_xlabel('$E_{rel, true}$ (eV)')
     axis.set_ylabel('$E_{rel, predicted}$ (eV)')
-
-    return None
 
 
 def _add_force_component_plot(config_set, axis) -> None:
@@ -254,8 +246,6 @@ def _add_force_component_plot(config_set, axis) -> None:
     axis.set_xlabel('$F_{true}$ (eV Å$^{-1})$')
     axis.set_ylabel('$F_{predicted}$ (eV Å$^{-1})$')
 
-    return None
-
 
 def _add_force_magnitude_plot(config_set, axis) -> None:
     """Add a parity plot of the force magnitudes"""
@@ -284,8 +274,6 @@ def _add_force_magnitude_plot(config_set, axis) -> None:
 
     axis.set_xlabel('$|{\\bf{F}}|_{true}$ (eV Å$^{-1}$)')
     axis.set_ylabel('$|{\\bf{F}}|_{predicted}$ (eV Å$^{-1}$)')
-
-    return None
 
 
 def _add_energy_error_histogram(
@@ -432,7 +420,7 @@ def error_force_histogram_per_elements(
 
     nrows, ncols = _choose_grid(N_elements, max_cols=3)
 
-    fig, axes = plt.subplots(
+    _fig, axes = plt.subplots(
         nrows, ncols, squeeze=False, figsize=(4 * ncols, 3 * nrows)
     )
 
@@ -506,8 +494,6 @@ def error_force_histogram_per_elements(
     plt.tight_layout()
     plt.savefig(f'{file_name}.pdf')
 
-    return None
-
 
 def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
     """
@@ -524,7 +510,7 @@ def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
     else:
         factor = 1
     if xs is not None and ys is not None:
-        slope, intercept, r, p, se = linregress(xs, ys)
+        _slope, _intercept, r, _p, _se = linregress(xs, ys)
         axis.annotate(
             f'$R^2$ = {r**2:.3f}\n'
             f' MAD$_{{relative}}$ = {np.mean(np.abs(xs - ys)) * factor:.1f} {unit}\n'
@@ -538,7 +524,7 @@ def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
             va='bottom',
         )
     else:
-        slope, intercept, r, p, se = linregress(x, y)
+        _slope, _intercept, r, _p, _se = linregress(x, y)
         axis.annotate(
             f'$R^2$ = {r**2:.3f}\n'
             f'MAD = {np.mean(np.abs(x - y)) * factor:.1f} {unit}',
@@ -550,8 +536,6 @@ def _add_r_sq_and_mad(axis, x, y, unit, xs=None, ys=None):
             ha='right',
             va='bottom',
         )
-
-    return None
 
 
 def _add_max_and_mad(axis, x, y, unit):
@@ -599,8 +583,6 @@ def _choose_grid(n: int, max_cols: int = 3) -> tuple[int, int]:
         squareness = abs(nrows - ncols)
         candidates.append((squareness, unused, nrows, ncols))
 
-    _, _, nrows, ncols = sorted(candidates, key=lambda t: (t[0], t[1], t[2]))[
-        0
-    ]
+    _, _, nrows, ncols = min(candidates, key=lambda t: (t[0], t[1], t[2]))
 
     return nrows, ncols
