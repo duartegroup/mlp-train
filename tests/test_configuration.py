@@ -17,8 +17,9 @@ from mlptrain.potentials._base import MLPotential
 
 @pytest.fixture
 def h2o_solvated_with_h2o():
-    """Water molecule solvated with water with default
-    solvation settings, water solvent specified by name"""
+    """Water molecule solvated with water; created with
+    Configuration.solvate(solvent_name='water', buffer_distance=6.0)
+    """
     atoms = [
         Atom('H', 4.7258, 3.7810, 3.8420),
         Atom('H', 3.4325, 3.9768, 2.9486),
