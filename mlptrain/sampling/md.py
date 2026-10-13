@@ -38,14 +38,14 @@ if TYPE_CHECKING:
     from mlptrain.potentials import MLPotential
 
 
-def run_with_timeout(fn, *args, fn_timeout=None, **kwargs) -> tuple[Any, bool]:
+def run_with_timeout(fn, *args, fn_timeout=0, **kwargs) -> tuple[Any, bool]:
     """
     Run a callable with a best-effort signal-based timeout.
 
-    Uses Unix SIGALRM to interrupt *fn* after *fn_timeout* seconds,
-    defaulting to ``Config.dynamics_timeout``. This is lightweight (no
-    child processes) and works in any context (daemon workers, Pool
-    workers, standalone processes).
+    Uses Unix SIGALRM to interrupt *fn* after *fn_timeout* seconds. A
+    *fn_timeout* of 0 (the default) runs *fn* with no timeout at all.
+    This is lightweight (no child processes) and works in any context
+    (daemon workers, Pool workers, standalone processes).
 
     Note: SIGALRM can be masked or consumed by C-extension code
     (e.g. PLUMED, PyTorch).  If that happens the signal will not
@@ -58,8 +58,8 @@ def run_with_timeout(fn, *args, fn_timeout=None, **kwargs) -> tuple[Any, bool]:
     """
     import signal
 
-    if fn_timeout is None:
-        fn_timeout = Config.dynamics_timeout
+    if not fn_timeout:
+        return fn(*args, **kwargs), True
 
     class _TimeoutException(Exception):
         pass
@@ -185,6 +185,11 @@ def run_mlp_md(
 
         write_plumed_setup: (bool) If True saves the PLUMED input file as
                             plumed_setup.dat
+
+        dynamics_timeout: (float) Wall time in s after which the dynamics
+                          are cancelled and None is returned. Default 0,
+                          no timeout. Active learning passes
+                          Config.dynamics_timeout
 
     Returns:
 
@@ -469,6 +474,7 @@ def _run_dynamics(
     biased_energies: list,
     pressure: float | None = None,
     compress: float | None = None,
+    dynamics_timeout: float = 0,
     **kwargs,
 ) -> bool:
     """Initialise dynamics object and run dynamics"""
@@ -511,11 +517,11 @@ def _run_dynamics(
         dyn.attach(save_trajectory, interval=_traj_saving_interval(dt, kwargs))
 
     logger.info(f'Running {n_steps:.0f} steps with a timestep of {dt} fs')
-    # Run the dynamics but cease after a specified time limit
+    # Run the dynamics but cease after a specified time limit, if one is set
     # NOTE: this is not a perfect solution, some kind of periodic divergence
     # check would be better
     _, finished_in_time = run_with_timeout(
-        dyn.run, steps=n_steps, fn_timeout=Config.dynamics_timeout
+        dyn.run, steps=n_steps, fn_timeout=dynamics_timeout
     )
 
     if isinstance(ase_atoms.calc, PlumedCalculator):

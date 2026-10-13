@@ -717,6 +717,7 @@ def _gen_active_config(
             interval=int(max(1, 2 * md_time // selector.n_backtrack)),
             fs=md_time,
             n_cores=1,
+            dynamics_timeout=Config.dynamics_timeout,
             **kwargs,
         )
 

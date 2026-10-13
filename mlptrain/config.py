@@ -40,8 +40,10 @@ class _ConfigClass:
     """
 
     n_cores = min(4, _NUM_CPUS)
-    process_timeout = 60 * 60 * 100001  # 100001 hours
-    dynamics_timeout = 60 * 60 * 100000  # 100000 hours
+    # Active learning only. process_timeout bounds each worker (s)
+    process_timeout = 60 * 60 * 8  # 8 hours
+    # dynamics_timeout bounds each MD trajectory (s), 0 disables it
+    dynamics_timeout = 0
     _orca_keywords = None
     _gaussian_keywords = None
 
