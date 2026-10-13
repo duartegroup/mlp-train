@@ -4,9 +4,10 @@ import os
 import numpy as np
 import pytest
 from autode.atoms import Atom
-from mlptrain.configurations import ConfigurationSet, Configuration
-from mlptrain.utils import work_in_tmp_dir
+
 from mlptrain.box import Box
+from mlptrain.configurations import Configuration, ConfigurationSet
+from mlptrain.utils import work_in_tmp_dir
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -67,6 +68,194 @@ def config_set_xyz_with_energies_forces():
     }
 
     return configs, expected_values
+
+
+def test_addition_unsupported(mlp_caplog):
+    mlp_caplog.set_level(logging.INFO, logger='mlptrain')
+    configs = ConfigurationSet()
+
+    with pytest.raises(TypeError, match='unsupported operand type'):
+        configs + 1
+    with pytest.raises(TypeError, match='unsupported operand type'):
+        1 + configs  # ty: ignore[unsupported-operator]
+    with pytest.raises(TypeError, match='unsupported operand type'):
+        configs + None
+
+    # Same for in-place addition (__iadd__ method)
+    with pytest.raises(TypeError, match='unsupported operand type'):
+        configs += 1
+    with pytest.raises(TypeError, match='unsupported operand type'):
+        configs += None
+
+
+def test_append_nonconfig_fails():
+    configs = ConfigurationSet()
+
+    # Trying to append anything else beyond Configuration must raise
+    with pytest.raises(TypeError, match='Cannot append value.*'):
+        configs.append(None)  # ty: ignore[invalid-argument-type]
+
+    with pytest.raises(TypeError, match='Cannot append value.*'):
+        configs.append(1)  # ty: ignore[invalid-argument-type]
+
+    assert len(configs) == 0
+
+
+def test_config_addition(mlp_caplog):
+    mlp_caplog.set_level(logging.INFO, logger='mlptrain')
+    configs = ConfigurationSet()
+    config = Configuration()
+
+    assert len(configs) == 0
+
+    configs = configs + config
+    assert len(configs) == 1
+
+    # By default, identical configs are not added
+    configs = configs + config
+    assert len(configs) == 1
+
+    assert len(mlp_caplog.records) == 1
+    assert (
+        mlp_caplog.records[0].message
+        == 'Not appending configuration to set - already present'
+    )
+
+    configs.append(config)
+    assert len(configs) == 1
+
+    assert len(mlp_caplog.records) == 2
+    for record in mlp_caplog.records:
+        assert (
+            record.message
+            == 'Not appending configuration to set - already present'
+        )
+
+
+def test_config_addition_with_duplicates(mlp_caplog):
+    mlp_caplog.set_level(logging.INFO, logger='mlptrain')
+
+    config = Configuration()
+    configs_with_duplicates = ConfigurationSet(allow_duplicates=True)
+
+    configs_with_duplicates = configs_with_duplicates + config + config
+    configs_with_duplicates.append(config)
+
+    assert len(configs_with_duplicates) == 3
+    assert len(mlp_caplog.records) == 0
+
+
+def test_two_config_sets_addition():
+    config = Configuration()
+    configs1 = ConfigurationSet(config)
+    configs2 = ConfigurationSet(config, allow_duplicates=True)
+
+    # Duplicates should be filtered out for configs1
+    assert len(configs1 + configs2) == 1
+    assert len(configs1) == 1
+    assert len(configs2) == 1
+
+    # Duplicates should be allowed for configs2
+    configs2 + configs1
+    assert len(configs2) == 1
+    assert len(configs1) == 1
+
+    configs2 = configs2 + configs1
+    assert len(configs2) == 2
+    assert len(configs1) == 1
+
+
+def test_in_place_addition():
+    config = Configuration()
+    configs1 = ConfigurationSet(config)
+    configs2 = ConfigurationSet(config, allow_duplicates=True)
+
+    # Duplicates should be filtered out for configs1
+    configs1 += configs2
+    assert len(configs1) == 1
+    assert len(configs2) == 1
+
+    # Duplicates should be allowed for configs2
+    configs2 += configs1
+    assert len(configs2) == 2
+    assert len(configs1) == 1
+
+    # Addition of single configuration is also supported
+    configs1 += config
+    configs2 += config
+    assert len(configs1) == 1
+    assert len(configs2) == 3
+
+
+def test_extend():
+    config = Configuration()
+    configs1 = ConfigurationSet(config)
+    configs2 = ConfigurationSet(config, allow_duplicates=True)
+
+    # Duplicates should be filtered out for configs1
+    configs1.extend(configs2)
+    assert len(configs1) == 1
+    assert len(configs2) == 1
+
+    # Duplicates should be allowed for configs2
+    configs2.extend(configs1)
+    assert len(configs2) == 2
+    assert len(configs1) == 1
+
+
+def test_extend_accepts_iterables():
+    config = Configuration()
+    configs = ConfigurationSet(allow_duplicates=True)
+
+    configs.extend([config, config])
+    assert len(configs) == 2
+
+    configs.extend((config, config))
+    assert len(configs) == 4
+
+    # If the list contains a member that is not Configuration,
+    # we should raise.
+    with pytest.raises(TypeError, match='Cannot append value 1 of type'):
+        configs.extend([config, 1])  # ty: ignore[invalid-argument-type]
+
+    with pytest.raises(TypeError, match='Cannot append value None of type'):
+        configs.extend((config, None))  # ty: ignore[invalid-argument-type]
+
+
+def test_addition_expression():
+    """Make sure addition expression does not modify operands
+
+    Here is the actual behaviour for list type:
+
+    >>> a = [1]
+    >>> a + [2]
+    [1, 2]
+    >>> a
+    [1]
+
+    Notice that the original list `a` is not modified.
+    """
+    config = Configuration()
+    config_set = ConfigurationSet(allow_duplicates=True)
+
+    config_set + config
+    assert len(config_set) == 0
+
+    config_set + config_set
+    assert len(config_set) == 0
+
+
+def test_extend_with_itself():
+    """This is a regression test to ensure that
+    when adding (extending) ConfigurationSet to itself
+    does not enter infinite loop"""
+    config = Configuration()
+    config_set = ConfigurationSet(config, allow_duplicates=True)
+
+    config_set + config_set
+    config_set.extend(config_set)
+
+    config_set.extend(iter(config_set))
 
 
 @work_in_tmp_dir()
@@ -266,6 +455,21 @@ def test_configurations_load_xyz():
     for config in configs:
         assert config.charge == 0
         assert config.mult == 2
+
+
+@work_in_tmp_dir()
+def test_configurations_load_xyz_without_forces():
+    with open('tmp.xyz', 'w') as xyz_file:
+        print(
+            '1', 'title line', 'H   0.0   0.0   0.0', sep='\n', file=xyz_file
+        )
+
+    configs = ConfigurationSet()
+
+    with pytest.raises(
+        ValueError, match='Could not read forces from columns 5-7'
+    ):
+        configs.load_xyz('tmp.xyz', charge=0, mult=1, load_forces=True)
 
 
 def test_configurations_load_numpy_compatibility():

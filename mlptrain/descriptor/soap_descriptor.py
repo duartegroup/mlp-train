@@ -1,7 +1,9 @@
+from collections.abc import Sequence
+
 import numpy as np
-import mlptrain
-from typing import Union, Optional, Sequence
 from dscribe.descriptors import SOAP
+
+import mlptrain
 from mlptrain.descriptor._base import Descriptor
 
 
@@ -10,11 +12,12 @@ class SoapDescriptor(Descriptor):
 
     def __init__(
         self,
-        elements: Optional[Sequence[str]] = None,
+        elements: Sequence[str] | None = None,
         r_cut: float = 5.0,
         n_max: int = 6,
         l_max: int = 6,
-        average: Optional[str] = 'inner',
+        average: str | None = 'inner',
+        centers: Sequence[int] | None = None,
     ):
         """
         SOAP Descriptor Representation.
@@ -30,7 +33,10 @@ class SoapDescriptor(Descriptor):
             average (Optional[str]): Averaging mode for the SOAP descriptor:
                 - `"inner"` (default): Averages SOAP vectors before computing the power spectrum.
                 - `"outer"`: Computes the power spectrum for each atom, then averages.
-                - `None`: No averaging, returns per-atom descriptors."""
+                - `None`: No averaging, returns per-atom descriptors.
+            centers (Optional[Sequence[int]]): Indices of the atoms where to calculate SOAP. The same indices
+                are used for every configuration. If `None` (default), every atom is a centre.
+        """
 
         super().__init__(name='SoapDescriptor')
         self.elements = elements
@@ -38,6 +44,7 @@ class SoapDescriptor(Descriptor):
         self.n_max = n_max
         self.l_max = l_max
         self.average = average
+        self.centers = None if centers is None else list(centers)
 
         # Initialize SOAP descriptor if elements are provided
         if self.elements:
@@ -53,9 +60,7 @@ class SoapDescriptor(Descriptor):
 
     def compute_representation(
         self,
-        configurations: Union[
-            mlptrain.Configuration, mlptrain.ConfigurationSet
-        ],
+        configurations: mlptrain.Configuration | mlptrain.ConfigurationSet,
     ) -> np.ndarray:
         """Create a SOAP vector using dscribe (https://github.com/SINGROUP/dscribe)
         for a set of configurations
@@ -81,7 +86,7 @@ class SoapDescriptor(Descriptor):
         if isinstance(configurations, mlptrain.Configuration):
             configurations = mlptrain.ConfigurationSet(configurations)
         elif not isinstance(configurations, mlptrain.ConfigurationSet):
-            raise ValueError(
+            raise TypeError(
                 f'Unsupported configuration type: {type(configurations)}'
             )
 
@@ -89,7 +94,7 @@ class SoapDescriptor(Descriptor):
         if self.soap is None:
             if not self.elements:
                 self.elements = list(
-                    set(atom.label for c in configurations for atom in c.atoms)
+                    {atom.label for c in configurations for atom in c.atoms}
                 )
 
             self.soap = SOAP(
@@ -100,8 +105,13 @@ class SoapDescriptor(Descriptor):
                 average=self.average,
             )
 
+        if self.centers is None:
+            centers = None
+        else:
+            centers = [self.centers] * len(configurations)
+
         soap_vec = self.soap.create(
-            [conf.ase_atoms for conf in configurations]
+            [conf.ase_atoms for conf in configurations], centers=centers
         )
         return soap_vec if soap_vec.ndim > 1 else soap_vec.reshape(1, -1)
 

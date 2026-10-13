@@ -1,22 +1,26 @@
 from __future__ import annotations
 
-import mlptrain
 import os
 import re
-import numpy as np
-from time import time
-from multiprocessing import Pool
-from typing import TYPE_CHECKING, Optional, List, Literal, Union
-from autode.atoms import elements, Atom
-from mlptrain.config import Config
-from mlptrain.log import logger
-from mlptrain.forces import Forces
-from mlptrain.energy import Energy
-from mlptrain.configurations.configuration import Configuration
-from mlptrain.box import Box
+from collections.abc import Iterable
 from copy import deepcopy
+from multiprocessing import Pool
+from time import time
+from typing import TYPE_CHECKING, Literal, Self
+
+import numpy as np
+from autode.atoms import Atom, elements
+
+import mlptrain
+from mlptrain.box import Box
+from mlptrain.config import Config
+from mlptrain.configurations.configuration import Configuration
+from mlptrain.energy import Energy
+from mlptrain.forces import Forces
+from mlptrain.log import logger
 
 if TYPE_CHECKING:
+    # This import must be guarded by TYPE_CHECKING to avoid circular import
     from mlptrain.potentials import MLPotential
 
 
@@ -24,7 +28,7 @@ class ConfigurationSet(list):
     """A set of configurations"""
 
     def __init__(
-        self, *args: Union[Configuration, str], allow_duplicates: bool = False
+        self, *args: Configuration | str, allow_duplicates: bool = False
     ):
         """
         Construct a configuration set from Configurations, or a saved file.
@@ -51,12 +55,12 @@ class ConfigurationSet(list):
                 raise ValueError(f'Cannot create configurations from {arg}')
 
     @property
-    def true_energies(self) -> List[Optional[float]]:
+    def true_energies(self) -> list[float | None]:
         """True calculated energies"""
         return [c.energy.true for c in self]
 
     @property
-    def true_forces(self) -> Optional[np.ndarray]:
+    def true_forces(self) -> np.ndarray | None:
         """
         List of true config forces. List of np.ndarray with shape: (n_atoms, 3)
 
@@ -66,12 +70,12 @@ class ConfigurationSet(list):
         return self._forces('true')
 
     @property
-    def predicted_energies(self) -> List[Optional[float]]:
+    def predicted_energies(self) -> list[float | None]:
         """Predicted energies using a MLP"""
         return [c.energy.predicted for c in self]
 
     @property
-    def predicted_forces(self) -> Optional[np.ndarray]:
+    def predicted_forces(self) -> np.ndarray | None:
         """
         Predicted force tensor. shape = (N, n_atoms, 3)
 
@@ -81,12 +85,12 @@ class ConfigurationSet(list):
         return self._forces('predicted')
 
     @property
-    def bias_energies(self) -> List[Optional[float]]:
+    def bias_energies(self) -> list[float | None]:
         """Bias energies from ASE and PLUMED biases"""
         return [c.energy.bias for c in self]
 
     @property
-    def inherited_bias_energies(self) -> List[Optional[float]]:
+    def inherited_bias_energies(self) -> list[float | None]:
         """If active learning is performed using inheritable metadynamics bias,
         at any given active learning iteration this property is equal to the
         value of metadynamics bias inherited from the previous active learning
@@ -94,7 +98,7 @@ class ConfigurationSet(list):
         return [c.energy.inherited_bias for c in self]
 
     @property
-    def lowest_energy(self) -> 'mlptrain.Configuration':
+    def lowest_energy(self) -> mlptrain.Configuration:
         """
         Determine the lowest energy configuration in this set based on the
         true energies. If not evaluated then returns the first configuration
@@ -109,7 +113,7 @@ class ConfigurationSet(list):
         return self[np.argmin(energies)]
 
     @property
-    def lowest_biased_energy(self) -> 'mlptrain.Configuration':
+    def lowest_biased_energy(self) -> mlptrain.Configuration:
         """
         Determine the configuration with the lowest biased energy (true energy
         + bias energy) in this set. If not evaluated then returns the first
@@ -135,7 +139,7 @@ class ConfigurationSet(list):
         return self[np.argmin(biased_energy)]
 
     @property
-    def lowest_inherited_biased_energy(self) -> 'mlptrain.Configuration':
+    def lowest_inherited_biased_energy(self) -> mlptrain.Configuration:
         """
         Determine the configuration with the lowest inherited biased energy
         (true energy + inherited bias energy) in this set. If not evaluated
@@ -181,8 +185,6 @@ class ConfigurationSet(list):
             if self[idx].energy.true is None:
                 del self[idx]
 
-        return None
-
     def remove_above_e(self, energy: float) -> None:
         """
         Remove all configuration above a particular *relative* energy
@@ -195,8 +197,6 @@ class ConfigurationSet(list):
         for idx in reversed(range(len(self))):
             if (self[idx].energy.true - min_energy) > energy:
                 del self[idx]
-
-        return None
 
     def t_min(self, from_idx: int) -> float:
         """
@@ -221,22 +221,22 @@ class ConfigurationSet(list):
             c.time if c.time is not None else 0.0 for c in self[from_idx:]
         )
 
-    def append(self, value: Optional['mlptrain.Configuration']) -> None:
+    def append(self, value: Configuration) -> None:
         """
-        Append an item onto these set of configurations. None will not be
-        appended
+        Append an item onto these set of configurations.
 
         Arguments:
             value (Configuration): Structure in a form of Configuration
+        raises: TypeError if added item is not Configuration
         """
 
-        if value is None:
-            return
-
-        if not self.allow_duplicates and value in self:
-            logger.warning(
-                'Not appending configuration to set - already present'
+        if not isinstance(value, Configuration):
+            raise TypeError(
+                f'Cannot append value {value} of type {type(value)} to ConfigurationSet'
             )
+
+        if not getattr(self, 'allow_duplicates', True) and value in self:
+            logger.info('Not appending configuration to set - already present')
             return
 
         return super().append(value)
@@ -256,6 +256,7 @@ class ConfigurationSet(list):
             *args (mlptrain.potentials.MLPotential): Strings defining the method or MLPs
         """
         from mlptrain.configurations.plotting import parity_plot
+        from mlptrain.potentials import MLPotential
 
         if _num_strings_in(args) > 1:
             raise NotImplementedError(
@@ -266,46 +267,45 @@ class ConfigurationSet(list):
         name = self._comparison_name(*args)
 
         if os.path.exists(f'{name}.npz'):
-            logger.info(f'Loading energies and forces from {name}.npz')
-            self.load(f'{name}.npz')
+            raise RuntimeError(
+                f'File {name}.npz already exists. Remove or rename it before proceeding'
+            )
 
-        else:
-            for arg in args:
-                # if is an mlp model with a 'predict' function
-                if hasattr(arg, 'predict'):
-                    arg.predict(self)  # ty:ignore[call-non-callable]
+        for arg in args:
+            # if is an mlp model with a 'predict' function
+            if isinstance(arg, MLPotential):
+                arg.predict(self)
 
-                # if is a string reference to a QM calculation method
-                elif isinstance(arg, str):
-                    # if true energies and forces do not already exist for this config set
+            # if is a string reference to a QM calculation method
+            elif isinstance(arg, str):
+                # if true energies and forces do not already exist for this config set
 
-                    if all(c.energy.true is None for c in self):
-                        logger.info(
-                            f'Running single point calcs with method {arg}'
-                        )
-                        self.single_point(
-                            method=arg,
-                            output_name='comparison',
-                            keep_output_files=keep_output_files,
-                        )
+                if all(c.energy.true is None for c in self):
+                    logger.info(
+                        f'Running single point calcs with method {arg}'
+                    )
+                    self.single_point(
+                        method=arg,
+                        output_name='comparison',
+                        keep_output_files=keep_output_files,
+                    )
 
-                    elif self.has_a_none_energy:
-                        raise ValueError(
-                            'Data set contains mix of labelled and non-labelled data!'
-                        )
-                    else:
-                        logger.info(
-                            f'Not using method {arg}, true energies and forces '
-                            f'are already defined'
-                        )
-
+                elif self.has_a_none_energy:
+                    raise ValueError(
+                        'Data set contains mix of labelled and non-labelled data!'
+                    )
                 else:
-                    raise ValueError(f'Cannot compare using {arg}')
+                    logger.info(
+                        f'Not using method {arg}, true energies and forces '
+                        f'are already defined'
+                    )
 
-            self.save(filename=f'{name}.npz')
+            else:
+                raise TypeError(f'Invalid argument type {type(arg)}')
+
+        self.save(filename=f'{name}.npz')
 
         parity_plot(self, file_name=name)
-        return None
 
     def save_xyz(
         self, filename: str, true: bool = False, predicted: bool = False
@@ -323,7 +323,7 @@ class ConfigurationSet(list):
 
         if len(self) == 0:
             logger.error(f'Failed to save {filename}. Had no configurations')
-            return None
+            return
 
         if self[0].energy.true is not None and not (predicted or true):
             logger.warning(
@@ -338,7 +338,7 @@ class ConfigurationSet(list):
             configuration.save_xyz(
                 filename, true=true, predicted=predicted, append=True
             )
-        return None
+        return
 
     # TODO: Add parameter whether to skip unfinished output files
     @classmethod
@@ -348,7 +348,7 @@ class ConfigurationSet(list):
         *,
         load_energies: bool = True,
         load_forces: bool = True,
-    ) -> 'ConfigurationSet':
+    ) -> ConfigurationSet:
         """
         Create ConfigurationSet from existing ORCA calculation output files.
 
@@ -390,11 +390,16 @@ class ConfigurationSet(list):
         *,
         charge: int,
         mult: int,
-        box: Optional[Box] = None,
+        box: Box | None = None,
         load_energies: bool = False,
         load_forces: bool = False,
-    ) -> 'ConfigurationSet':
-        config_set = cls()
+        allow_duplicates: bool = False,
+    ) -> ConfigurationSet:
+        """Create a new ConfigurationSet instance from a XYZ file.
+
+        The parameters are the same as for the `load_xyz` method.
+        """
+        config_set = cls(allow_duplicates=allow_duplicates)
         config_set.load_xyz(
             filename, charge, mult, box, load_energies, load_forces
         )
@@ -405,12 +410,12 @@ class ConfigurationSet(list):
         filename: str,
         charge: int,
         mult: int,
-        box: Optional[Box] = None,
+        box: Box | None = None,
         load_energies: bool = False,
         load_forces: bool = False,
     ) -> None:
         """
-        Load configurations from a .xyz file with optional box, energies and forces if specified.
+        Append configurations from a .xyz file with optional box, energies and forces if specified.
         Note: this currently assumes that all configurations have the same charge and multiplicity.
 
         Arguments:
@@ -470,30 +475,33 @@ class ConfigurationSet(list):
                         )
 
                     if load_energies:
-                        assert (
-                            config_info_dict.get('energy') is not None
-                        ), "Property 'energy' not specified on properties line..."
+                        assert config_info_dict.get('energy') is not None, (
+                            "Property 'energy' not specified on properties line..."
+                        )
                         energy = float(config_info_dict['energy'])
 
                 # get atom lines
                 for _ in range(num_atoms):
                     line_id += 1
                     line = xyz_file.readline()
-                    assert is_xyz_line(
-                        line
-                    ), f'There was an error in parsing your xyz file on line: {line_id}'
+                    assert is_xyz_line(line), (
+                        f'There was an error in parsing your xyz file on line: {line_id}'
+                    )
                     line_split = line.split()
                     atom, x, y, z = line_split[:4]
                     atoms.append(Atom(atom, x, y, z))
 
                     if load_forces:
-                        # add forces to forces dict in configuration
-                        if len(line_split) > 4:
-                            force = tuple([float(x) for x in line_split[4:]])
-                            assert (
-                                len(force) == 3
-                            ), f'Force is not a 3D vector: {force}'
+                        # Add forces to forces dict in configuration
+                        # WARNING: We're simply assuming here that columns 5-7 are forces,
+                        # and not e.g. velocities or something else.
+                        if len(line_split) == 7:
+                            force = tuple(float(x) for x in line_split[4:])
                             forces.append(force)
+                        else:
+                            raise ValueError(
+                                f'Could not read forces from columns 5-7, got: {line}'
+                            )
 
                 # create configuration, add forces, energy and append it to config set
                 configuration = Configuration(atoms, charge, mult, config_box)
@@ -504,8 +512,6 @@ class ConfigurationSet(list):
                 # get num atoms line for next config
                 line_id += 1
                 line = xyz_file.readline()
-
-        return None
 
     def save(self, filename: str) -> None:
         """
@@ -530,7 +536,7 @@ class ConfigurationSet(list):
             logger.warning('Filename had no valid extension - adding .npz')
             self._save_npz(f'{filename}.npz')
 
-        return None
+        return
 
     def load(self, filename: str) -> None:
         """
@@ -542,27 +548,18 @@ class ConfigurationSet(list):
         Raises:
             (ValueError): If an unsupported file extension is present
         """
-
-        if filename.endswith('.npz'):
-            self._load_npz(filename)
-
-        elif filename.endswith('.xyz'):
+        if filename.endswith('.xyz'):
             raise ValueError(
-                'Loading .xyz files is not supported. Call '
-                'load_xyz() with defined charge & multiplicity'
+                'Loading .xyz files is not supported. '
+                'Call load_xyz method with charge & multiplicity as arguments.'
             )
 
-        else:
-            raise ValueError(
-                f'Cannot load {filename}. Must be either a .xyz or .npz file'
-            )
-
-        return None
+        self._load_npz(filename)
 
     def single_point(
         self,
         method: str,
-        output_name: Optional[str] = None,
+        output_name: str | None = None,
         n_cores_pp: int = 0,
         keep_output_files: bool = True,
     ) -> None:
@@ -607,7 +604,7 @@ class ConfigurationSet(list):
         )
 
     @property
-    def plumed_coordinates(self) -> Optional[np.ndarray]:
+    def plumed_coordinates(self) -> np.ndarray | None:
         """
         PLUMED collective variable values in this set
 
@@ -682,9 +679,7 @@ class ConfigurationSet(list):
         """Total spin multiplicities of all configurations in this set"""
         return np.array([c.mult for c in self])
 
-    def _forces(
-        self, kind: Literal['true', 'predicted']
-    ) -> Optional[np.ndarray]:
+    def _forces(self, kind: Literal['true', 'predicted']) -> np.ndarray | None:
         """True or predicted forces. Returns a 3D np.ndarray."""
 
         all_forces = [getattr(config.forces, kind) for config in self]
@@ -719,10 +714,14 @@ class ConfigurationSet(list):
             allow_pickle=True,
         )
 
-        return None
-
     def _load_npz(self, filename: str) -> None:
-        """Load a compressed numpy array of all the data in this set"""
+        """Load a compressed numpy array of all the data in this set
+
+        The data are appended to existing ConfigurationSet.
+        """
+
+        if not filename.endswith('.npz'):
+            raise ValueError(f"File {filename} doesn't have .npz extension")
 
         data = np.load(filename, allow_pickle=True)
 
@@ -780,28 +779,34 @@ class ConfigurationSet(list):
 
             self.append(config)
 
-        return None
-
     def __add__(
         self,
-        other: 'Configuration | ConfigurationSet',
-    ) -> 'ConfigurationSet':  # ty:ignore[invalid-method-override]
+        other: object,
+    ) -> ConfigurationSet:
         """Add another configuration or set of configurations onto this one"""
+        if not isinstance(other, (Configuration, ConfigurationSet)):
+            return NotImplemented
+        result = ConfigurationSet(
+            *self, allow_duplicates=self.allow_duplicates
+        )
+        result += other
+        return result
 
+    def __iadd__(self, other: object) -> Self:
         if isinstance(other, Configuration):
             self.append(other)
-
         elif isinstance(other, ConfigurationSet):
             self.extend(other)
-
         else:
-            raise TypeError(
-                'Can only add a Configuration or'
-                f' ConfigurationSet, not {type(other)}'
-            )
-
-        logger.info(f'Current number of configurations is {len(self)}')
+            return NotImplemented
         return self
+
+    def extend(self, other: Iterable[Configuration]) -> None:
+        # NOTE: It is very important to make a copy of "other"
+        # before iterating over it, otherwise we'll get infinite loop
+        # if we try to extend / add instance of ConfigurationSet to itself.
+        for conf in list(other):
+            self.append(conf)
 
     def _run_parallel_method(
         self, function, n_cores_pp, keep_output_files, **kwargs
@@ -850,7 +855,6 @@ class ConfigurationSet(list):
             pool.join()
 
         logger.info(f'Calculations done in {(time() - start_time) / 60:.1f} m')
-        return None
 
     def __str__(self):
         return (
@@ -872,10 +876,11 @@ class ConfigurationSet(list):
     @staticmethod
     def _comparison_name(*args):
         """Name of a comparison between different methods"""
+        from mlptrain.potentials import MLPotential
 
         name = ''
         for arg in args:
-            if hasattr(arg, 'predict'):
+            if isinstance(arg, MLPotential):
                 name += arg.name
 
             if isinstance(arg, str):
@@ -894,7 +899,7 @@ def _single_point_eval(config, method_name, output_name, **kwargs):
 
 def _atoms_from_z_r(
     atomic_numbers: np.ndarray, coordinates: np.ndarray
-) -> List[Atom]:
+) -> list[Atom]:
     """From a set of atomic numbers and coordinates create a set of atoms"""
 
     atoms = []

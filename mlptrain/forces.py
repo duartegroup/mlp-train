@@ -1,5 +1,4 @@
 import numpy as np
-from typing import Optional
 
 
 class Forces:
@@ -7,8 +6,8 @@ class Forces:
 
     def __init__(
         self,
-        predicted: Optional[np.ndarray] = None,
-        true: Optional[np.ndarray] = None,
+        predicted: np.ndarray | None = None,
+        true: np.ndarray | None = None,
     ):
         """
         Forces

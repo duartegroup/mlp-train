@@ -1,54 +1,122 @@
 from __future__ import annotations
 
 import os
+import shutil
+import time
+from collections.abc import Sequence
+from copy import deepcopy
+from typing import TYPE_CHECKING, Any
+
 import ase
 import ase.io
-import mlptrain
-import shutil
-import numpy as np
 import autode as ade
-from copy import deepcopy
-from typing import TYPE_CHECKING, Optional, Sequence, List, Union
-from numpy.random import RandomState
-from mlptrain.configurations import Configuration, Trajectory
-from mlptrain.config import Config
-from mlptrain.sampling import PlumedBias
-from mlptrain.sampling.plumed import (
-    PlumedCalculator,
-    plumed_setup,
-    get_colvar_filename,
-)
-from mlptrain.log import logger
-from mlptrain.box import Box
-from mlptrain.utils import work_in_tmp_dir
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-from ase.io.trajectory import Trajectory as ASETrajectory
-from ase.md.nptberendsen import NPTBerendsen
-from ase.md import Langevin, VelocityVerlet
+import numpy as np
 from ase import units as ase_units
-import time
+from ase.io.trajectory import Trajectory as ASETrajectory
+from ase.md.langevin import Langevin
+from ase.md.nptberendsen import NPTBerendsen
+from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+from ase.md.verlet import VelocityVerlet
+from numpy.random import RandomState
+
+import mlptrain
+from mlptrain.box import Box
+from mlptrain.config import Config
+from mlptrain.configurations import Configuration, Trajectory
+from mlptrain.log import logger
+from mlptrain.sampling.plumed import (
+    PlumedBias,
+    PlumedCalculator,
+    get_colvar_filename,
+    plumed_setup,
+)
+from mlptrain.utils import work_in_tmp_dir
 
 if TYPE_CHECKING:
+    from ase.io.trajectory import TrajectoryWriter
+
     from mlptrain.potentials import MLPotential
 
 
+def run_with_timeout(fn, *args, fn_timeout=None, **kwargs) -> tuple[Any, bool]:
+    """
+    Run a callable with a best-effort signal-based timeout.
+
+    Uses Unix SIGALRM to interrupt *fn* after *fn_timeout* seconds,
+    defaulting to ``Config.dynamics_timeout``. This is lightweight (no
+    child processes) and works in any context (daemon workers, Pool
+    workers, standalone processes).
+
+    Note: SIGALRM can be masked or consumed by C-extension code
+    (e.g. PLUMED, PyTorch).  If that happens the signal will not
+    fire and the function will run to completion.  The caller (or
+    parent process) should maintain a hard-kill safety net via
+    ``Config.process_timeout`` for robustness.
+
+    Returns:
+        (result, finished_in_time: bool)
+    """
+    import signal
+
+    if fn_timeout is None:
+        fn_timeout = Config.dynamics_timeout
+
+    class _TimeoutException(Exception):
+        pass
+
+    def _handle_timeout(signum, frame):
+        raise _TimeoutException()
+
+    old_handler = None
+    try:
+        old_handler = signal.signal(signal.SIGALRM, _handle_timeout)
+        signal.setitimer(signal.ITIMER_REAL, fn_timeout)
+    except Exception as e:  # noqa: BLE001
+        # signal module unavailable or handler setup failed;
+        # run without an inner timeout — the parent process
+        # enforces the hard-kill via Config.process_timeout
+        logger.warning(
+            f'Failed to set signal-based timeout ({e})\n'
+            'running without dynamics_timeout.'
+        )
+        if old_handler is not None:
+            signal.signal(signal.SIGALRM, old_handler)
+
+        return fn(*args, **kwargs), True
+
+    try:
+        return fn(*args, **kwargs), True
+    except _TimeoutException:
+        logger.warning(
+            f'Trajectory cancelled due to running over '
+            f'maximum timeout, {fn_timeout} s'
+        )
+        return None, False
+    finally:
+        # Always cancel the timer and restore the previous handler
+        try:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+        finally:
+            signal.signal(signal.SIGALRM, old_handler)
+
+
 def run_mlp_md(
-    configuration: 'mlptrain.Configuration',
+    configuration: mlptrain.Configuration,
     mlp: MLPotential,
     temp: float,
     dt: float,
     interval: int,
-    pressure: Optional[float] = None,
-    compress: Optional[float] = None,
-    init_temp: Optional[float] = None,
-    fbond_energy: Optional[dict] = None,
-    bbond_energy: Optional[dict] = None,
-    bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']] = None,
-    restart_files: Optional[List[str]] = None,
-    copied_substrings: Optional[Sequence[str]] = None,
-    kept_substrings: Optional[Sequence[str]] = None,
+    pressure: float | None = None,
+    compress: float | None = None,
+    init_temp: float | None = None,
+    fbond_energy: dict | None = None,
+    bbond_energy: dict | None = None,
+    bias: mlptrain.Bias | mlptrain.PlumedBias | None = None,
+    restart_files: list[str] | None = None,
+    copied_substrings: Sequence[str] | None = None,
+    kept_substrings: Sequence[str] | None = None,
     **kwargs,
-) -> 'mlptrain.Trajectory':
+) -> mlptrain.Trajectory | None:
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics. The function is executed in a temporary
@@ -120,7 +188,7 @@ def run_mlp_md(
 
     Returns:
 
-        (mlptrain.Trajectory):
+        (mlptrain.Trajectory | None):
     """
 
     restart = restart_files is not None
@@ -189,34 +257,48 @@ def run_mlp_md(
     )
 
     delta_time = time.perf_counter() - start_time
-    if delta_time < 60:
-        logger.info(f'MLP MD simulation completed in {delta_time:02.2f} s.')
-    else:
-        hours, remainder = divmod(delta_time, 3600)
-        minutes, seconds = divmod(remainder, 60)
-
-        logger.info(
-            f'MLP MD simulation completed in {hours:02d} h {minutes:02d} min {seconds:02d} s.'
-        )
+    _log_sim_time(delta_time)
 
     return traj
 
 
+def _log_sim_time(delta_time: float) -> None:
+    """Log total simulation time in a nice format"""
+    if delta_time < 60:
+        logger.info(f'MLP MD simulation completed in {delta_time:02.2f} s.')
+        return
+
+    days, remainder = divmod(delta_time, 3600 * 24)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    if int(days) == 1:
+        days_str = '1 day '
+    elif days > 1:
+        days_str = f'{int(days)} days '
+    else:
+        days_str = ''
+
+    logger.info(
+        f'MLP MD simulation completed in {days_str}{int(hours):02d} h {int(minutes):02d} min {seconds:.2f} s.'
+    )
+
+
 def _run_mlp_md(
-    configuration: 'mlptrain.Configuration',
+    configuration: mlptrain.Configuration,
     mlp: MLPotential,
     temp: float,
     dt: float,
     interval: int,
-    pressure: Optional[float] = None,
-    compress: Optional[float] = None,
-    init_temp: Optional[float] = None,
-    fbond_energy: Optional[dict] = None,
-    bbond_energy: Optional[dict] = None,
-    bias: Optional[mlptrain.Bias | mlptrain.PlumedBias] = None,
-    restart_files: Optional[List[str]] = None,
+    pressure: float | None = None,
+    compress: float | None = None,
+    init_temp: float | None = None,
+    fbond_energy: dict | None = None,
+    bbond_energy: dict | None = None,
+    bias: mlptrain.Bias | mlptrain.PlumedBias | None = None,
+    restart_files: list[str] | None = None,
     **kwargs,
-) -> 'mlptrain.Trajectory':
+) -> mlptrain.Trajectory | None:
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics
@@ -283,7 +365,7 @@ def _run_mlp_md(
         **kwargs,
     )
 
-    _run_dynamics(
+    finished_in_time = _run_dynamics(
         ase_atoms=ase_atoms,
         ase_traj=ase_traj,
         traj_name=traj_name,
@@ -298,6 +380,9 @@ def _run_mlp_md(
         biased_energies=biased_energies,
         **kwargs,
     )
+    if not finished_in_time:
+        logger.warning('Skipping trajectory due to dynamics timeout.')
+        return None
 
     # Duplicate frames removed only if PLUMED bias is initialised not from file
     if restart and isinstance(bias, PlumedBias) and not bias.from_file:
@@ -322,9 +407,9 @@ def _run_mlp_md(
 
 
 def _attach_calculator_and_constraints(
-    ase_atoms: 'ase.atoms.Atoms',
+    ase_atoms: ase.atoms.Atoms,
     mlp: MLPotential,
-    bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
+    bias: mlptrain.Bias | mlptrain.PlumedBias | None,
     temp: float,
     interval: int,
     dt_ase: float,
@@ -370,24 +455,22 @@ def _attach_calculator_and_constraints(
 
     ase_atoms.set_constraint(constraints)
 
-    return None
-
 
 def _run_dynamics(
-    ase_atoms: 'ase.atoms.Atoms',
-    ase_traj: ase.io.trajectory.TrajectoryWriter,
+    ase_atoms: ase.atoms.Atoms,
+    ase_traj: TrajectoryWriter,
     traj_name: str,
     interval: int,
     temp: float,
     dt: float,
     dt_ase: float,
     n_steps: int,
-    energies: List,
-    biased_energies: List,
-    pressure: Optional[float] = None,
-    compress: Optional[float] = None,
+    energies: list,
+    biased_energies: list,
+    pressure: float | None = None,
+    compress: float | None = None,
     **kwargs,
-) -> None:
+) -> bool:
     """Initialise dynamics object and run dynamics"""
 
     if pressure is not None and compress is not None and temp > 0:
@@ -428,17 +511,22 @@ def _run_dynamics(
         dyn.attach(save_trajectory, interval=_traj_saving_interval(dt, kwargs))
 
     logger.info(f'Running {n_steps:.0f} steps with a timestep of {dt} fs')
-    dyn.run(steps=n_steps)
+    # Run the dynamics but cease after a specified time limit
+    # NOTE: this is not a perfect solution, some kind of periodic divergence
+    # check would be better
+    _, finished_in_time = run_with_timeout(
+        dyn.run, steps=n_steps, fn_timeout=Config.dynamics_timeout
+    )
 
     if isinstance(ase_atoms.calc, PlumedCalculator):
         # The calling process waits until PLUMED process has finished
         ase_atoms.calc.plumed.finalize()
 
-    return None
+    return finished_in_time
 
 
 def _save_trajectory(
-    ase_traj: ase.io.trajectory.TrajectoryWriter, traj_name: str, **kwargs
+    ase_traj: TrajectoryWriter, traj_name: str, **kwargs
 ) -> None:
     """
     Save the trajectory with a unique name based on the current simulation
@@ -447,7 +535,7 @@ def _save_trajectory(
 
     # Prevents initial trajectory save at time == 0
     if len(ase_traj) == 1:
-        return None
+        return
 
     specified_key = None
     for key in ['save_ns', 'save_fs', 'save_ps']:
@@ -472,10 +560,10 @@ def _save_trajectory(
         src=traj_name, dst=f'{traj_basename}_{time}{time_units}.traj'
     )
 
-    return None
+    return
 
 
-def _get_traj_name(restart_files: Optional[List[str]] = None, **kwargs) -> str:
+def _get_traj_name(restart_files: list[str] | None = None, **kwargs) -> str:
     """
     Return the name of the trajectory which is going to be created
     (or on to which the new frames will be appended in the case of restart)
@@ -499,9 +587,9 @@ def _get_traj_name(restart_files: Optional[List[str]] = None, **kwargs) -> str:
 
 def _convert_ase_traj(
     traj_name: str,
-    bias: Optional[Union['mlptrain.Bias', 'mlptrain.PlumedBias']],
+    bias: mlptrain.Bias | mlptrain.PlumedBias | None,
     **kwargs,
-) -> 'mlptrain.Trajectory':
+) -> mlptrain.Trajectory:
     """Convert an ASE trajectory into an mlptrain Trajectory"""
 
     ase_traj = ASETrajectory(traj_name, 'r')
@@ -528,7 +616,7 @@ def _convert_ase_traj(
 
 
 def _attach_plumed_coordinates(
-    mlt_traj: 'mlptrain.Trajectory', bias: 'mlptrain.PlumedBias', **kwargs
+    mlt_traj: mlptrain.Trajectory, bias: mlptrain.PlumedBias, **kwargs
 ) -> None:
     """
     Attach PLUMED collective variable values to configurations in the
@@ -548,11 +636,9 @@ def _attach_plumed_coordinates(
             for j, config in enumerate(mlt_traj):
                 config.plumed_coordinates[i] = cv_values[j]
 
-    return None
-
 
 def _set_momenta_and_geometry(
-    ase_atoms: 'ase.atoms.Atoms',
+    ase_atoms: ase.atoms.Atoms,
     temp: float,
     bbond_energy: dict | None,
     fbond_energy: dict | None,
@@ -577,7 +663,6 @@ def _set_momenta_and_geometry(
             ase_atoms.arrays['momenta'][idx] = (
                 np.sqrt(masses[idx] * energy) * vector
             )
-            return None
 
         coords = ase_atoms.positions
         if bbond_energy is not None:
@@ -619,22 +704,20 @@ def _set_momenta_and_geometry(
         last_configuration = ase.io.read(traj_name)
 
         # Make sure we've only read a single structure, not multiple of them!
-        assert isinstance(
-            last_configuration, ase.Atoms
-        ), 'more than one configuration in file {traj_name}!'
+        assert isinstance(last_configuration, ase.Atoms), (
+            'more than one configuration in file {traj_name}!'
+        )
 
         ase_atoms.set_positions(last_configuration.get_positions())
         ase_atoms.set_momenta(last_configuration.get_momenta())
 
-    return None
-
 
 def _initialise_traj(
-    ase_atoms: 'ase.atoms.Atoms',
+    ase_atoms: ase.atoms.Atoms,
     restart: bool,
     traj_name: str,
     remove_last: bool = True,
-) -> ase.io.trajectory.TrajectoryWriter:
+) -> TrajectoryWriter:
     """Initialise ASE trajectory object"""
 
     if not restart:
@@ -711,7 +794,7 @@ def _traj_saving_interval(dt: float, kwargs: dict) -> int:
 
 
 def _remove_colvar_duplicate_frames(
-    bias: 'mlptrain.PlumedBias', **kwargs
+    bias: mlptrain.PlumedBias, **kwargs
 ) -> None:
     """
     Remove duplicate frames from generated colvar files when using PLUMED
@@ -739,5 +822,3 @@ def _remove_colvar_duplicate_frames(
         with open(filename, 'w') as f:
             for line in lines:
                 f.write(line)
-
-    return None

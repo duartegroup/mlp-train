@@ -1,56 +1,55 @@
 from __future__ import annotations
 
-import mlptrain
-import ase
+import glob
+import multiprocessing as mp
 import os
 import re
-import time
-import glob
 import shutil
+import time
 import warnings
-import numpy as np
-import multiprocessing as mp
-import autode as ade
+from collections.abc import Sequence
+from concurrent.futures import ProcessPoolExecutor
+from copy import deepcopy
+from multiprocessing import Pool
+from subprocess import Popen
 from typing import (
     TYPE_CHECKING,
     Any,
-    Optional,
-    Sequence,
-    Union,
-    Tuple,
     TypedDict,
-    List,
 )
-from multiprocessing import Pool
-from subprocess import Popen
-from copy import deepcopy
+
+import ase
+import ase.io
+import autode as ade
+import numpy as np
 from ase import units as ase_units
 from ase.io import read as ase_read
 from ase.io import write as ase_write
 from ase.io.trajectory import Trajectory as ASETrajectory
+
+import mlptrain
+from mlptrain.config import Config
 from mlptrain.configurations import Configuration, ConfigurationSet
+from mlptrain.log import logger
 from mlptrain.sampling.md import run_mlp_md
 from mlptrain.sampling.plumed import (
     PlumedBias,
-    plumed_setup,
-    plot_cv_versus_time,
     plot_cv1_and_cv2,
+    plot_cv_versus_time,
+    plumed_setup,
 )
-from mlptrain.config import Config
-from mlptrain.log import logger
 from mlptrain.utils import (
-    work_in_tmp_dir,
-    unique_name,
-    move_files,
-    convert_ase_time,
     convert_ase_energy,
+    convert_ase_time,
     convert_exponents,
+    move_files,
+    unique_name,
+    work_in_tmp_dir,
 )
 
 if TYPE_CHECKING:
-    import ase.io
-    from mlptrain.sampling.plumed import _PlumedCV
     from mlptrain.potentials import MLPotential
+    from mlptrain.sampling.plumed import _PlumedCV
 
 
 class MetaParams(TypedDict):
@@ -68,8 +67,8 @@ class Metadynamics:
 
     def __init__(
         self,
-        cvs: Union[Sequence['_PlumedCV'], '_PlumedCV'],
-        bias: Optional['mlptrain.PlumedBias'] = None,
+        cvs: Sequence[_PlumedCV] | _PlumedCV,
+        bias: mlptrain.PlumedBias | None = None,
     ):
         """
         Molecular dynamics using metadynamics bias. Used for calculating free
@@ -112,16 +111,14 @@ class Metadynamics:
 
     def estimate_width(
         self,
-        configurations: Union[
-            'mlptrain.Configuration', 'mlptrain.ConfigurationSet'
-        ],
+        configurations: mlptrain.Configuration | mlptrain.ConfigurationSet,
         mlp: MLPotential,
         temp: float = 300,
         interval: int = 10,
         dt: float = 1,
         plot: bool = True,
         **kwargs,
-    ) -> List:
+    ) -> list:
         """
         Estimate optimal widths (σ) to be used in metadynamics.
 
@@ -194,12 +191,10 @@ class Metadynamics:
 
             pool.close()
             for width_process in width_processes:
-                # TODO: This looks like a bug?
-                # all_widths is converted to ndarray which doesn't have an .append method
-                all_widths.append(  # ty: ignore[unresolved-attribute]
-                    width_process.get()
-                )
-                all_widths = np.array(all_widths)
+                widths = width_process.get()
+                if widths:
+                    all_widths.append(widths)
+            all_widths = np.array(all_widths)
             pool.join()
 
         finish = time.perf_counter()
@@ -214,6 +209,11 @@ class Metadynamics:
         move_files(
             [r'\w+_config\d+\.pdf'], dst_folder='width_estimation', regex=True
         )
+
+        if all_widths.size == 0:
+            raise RuntimeError(
+                'Width estimation failed: all runs were skipped due to timeout.'
+            )
 
         opt_widths = list(np.min(all_widths, axis=0))
         opt_widths_strs = []
@@ -231,22 +231,22 @@ class Metadynamics:
 
     def _get_width_for_single(
         self,
-        configuration: 'mlptrain.Configuration',
+        configuration: mlptrain.Configuration,
         mlp: MLPotential,
         temp: float,
         dt: float,
         interval: int,
-        bias: 'mlptrain.PlumedBias',
+        bias: mlptrain.PlumedBias,
         plot: bool,
         **kwargs,
-    ) -> List:
+    ) -> list:
         """Estimate optimal widths (σ) for a single configuration"""
 
         logger.info(f'Running MD simulation number {kwargs["idx"]}')
 
         kwargs['n_cores'] = 1
 
-        run_mlp_md(
+        traj = run_mlp_md(
             configuration=configuration,
             mlp=mlp,
             temp=temp,
@@ -256,6 +256,11 @@ class Metadynamics:
             kept_substrings=['.dat'],
             **kwargs,
         )
+        if traj is None:
+            logger.warning(
+                'Width estimation MD cancelled due to timeout; skipping.'
+            )
+            return []
 
         widths = []
 
@@ -280,16 +285,16 @@ class Metadynamics:
 
     def run_metadynamics(
         self,
-        configuration: 'mlptrain.Configuration',
+        configuration: mlptrain.Configuration,
         mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
         pace: int = 100,
-        height: Optional[float] = None,
-        width: Optional[Union[list[float], float]] = None,
-        biasfactor: Optional[float] = None,
-        al_iter: Optional[int] = None,
+        height: float | None = None,
+        width: list[float] | float | None = None,
+        biasfactor: float | None = None,
+        al_iter: int | None = None,
         n_runs: int = 1,
         save_sep: bool = True,
         all_to_xyz: bool = False,
@@ -421,38 +426,46 @@ class Metadynamics:
 
         start_metad = time.perf_counter()
 
-        with mp.get_context('spawn').Pool(processes=n_processes) as pool:
+        with ProcessPoolExecutor(
+            max_workers=n_processes, mp_context=mp.get_context('spawn')
+        ) as executor:
             for idx in range(n_runs):
                 # Without copy kwargs is overwritten at every iteration
                 kwargs_single = deepcopy(kwargs)
                 kwargs_single['idx'] = idx + 1
 
-                metad_process = pool.apply_async(
-                    func=self._run_single_metad,
-                    args=(
-                        configuration,
-                        mlp,
-                        temp,
-                        interval,
-                        dt,
-                        self.bias,
-                        al_iter,
-                        restart,
-                    ),
-                    kwds=kwargs_single,
+                metad_process = executor.submit(
+                    self._run_single_metad,
+                    configuration,
+                    mlp,
+                    temp,
+                    interval,
+                    dt,
+                    self.bias,
+                    al_iter,
+                    restart,
+                    **kwargs_single,
                 )
                 metad_processes.append(metad_process)
 
-            pool.close()
             for metad_process in metad_processes:
-                metad_trajs.append(metad_process.get())
-            pool.join()
+                metad_trajs.append(metad_process.result())
 
         finish_metad = time.perf_counter()
         logger.info(
-            'Metadynamics done in '
-            f'{(finish_metad - start_metad) / 60:.1f} m'
+            f'Metadynamics done in {(finish_metad - start_metad) / 60:.1f} m'
         )
+
+        metad_trajs = [traj for traj in metad_trajs if traj is not None]
+        if len(metad_trajs) == 0:
+            logger.warning(
+                'All metadynamics trajectories were skipped due to MD timeout.'
+            )
+            return
+        if len(metad_trajs) != n_runs:
+            logger.warning(
+                'Some metadynamics trajectories were skipped due to MD timeout.'
+            )
 
         # Move .traj files into 'trajectories' folder and compute .xyz files
         self._move_and_save_files(
@@ -472,7 +485,7 @@ class Metadynamics:
             interval=interval,
             **kwargs,
         )
-        return None
+        return
 
     @staticmethod
     def _initialise_inherited_bias(al_iter: int, n_runs: int) -> None:
@@ -484,15 +497,13 @@ class Metadynamics:
         bias_path = f'accumulated_bias/bias_after_iter_{al_iter}.dat'
         if os.path.exists(bias_path):
             for idx in range(n_runs):
-                shutil.copyfile(src=bias_path, dst=f'HILLS_{idx+1}.dat')
+                shutil.copyfile(src=bias_path, dst=f'HILLS_{idx + 1}.dat')
 
         else:
             raise FileNotFoundError(
                 'Inherited bias generated after AL '
                 f'iteration {al_iter} not found'
             )
-
-        return None
 
     def _initialise_restart(self, n_runs: int) -> None:
         """
@@ -538,25 +549,21 @@ class Metadynamics:
             unique=False,
         )
 
-        return None
-
     def _run_single_metad(
         self,
-        configuration: 'mlptrain.Configuration',
+        configuration: mlptrain.Configuration,
         mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
-        bias: 'mlptrain.PlumedBias',
-        al_iter: Optional[int] = None,
-        restart: Optional[bool] = False,
+        bias: mlptrain.PlumedBias,
+        al_iter: int | None = None,
+        restart: bool | None = False,
         **kwargs,
-    ) -> 'mlptrain.Trajectory':
+    ) -> mlptrain.Trajectory | None:
         """Initiate a single metadynamics run"""
 
-        logger.info(
-            'Running Metadynamics simulation ' f'number {kwargs["idx"]}'
-        )
+        logger.info(f'Running Metadynamics simulation number {kwargs["idx"]}')
 
         if al_iter is not None:
             kwargs['copied_substrings'] = [f'HILLS_{kwargs["idx"]}.dat']
@@ -590,7 +597,7 @@ class Metadynamics:
 
     @staticmethod
     def _move_and_save_files(
-        metad_trajs: List['mlptrain.Trajectory'],
+        metad_trajs: list[mlptrain.Trajectory],
         save_sep: bool,
         all_to_xyz: bool,
         restart: bool,
@@ -603,14 +610,14 @@ class Metadynamics:
         move_files(
             ['.dat'],
             dst_folder='plumed_files/metadynamics',
-            unique=True if not restart else False,
+            unique=bool(not restart),
         )
 
         move_files(
             [r'trajectory_\d+\.traj', r'trajectory_\d+_\w+\.traj'],
             dst_folder='trajectories',
             regex=True,
-            unique=True if not restart else False,
+            unique=bool(not restart),
         )
 
         os.chdir('trajectories')
@@ -640,11 +647,9 @@ class Metadynamics:
 
         os.chdir('..')
 
-        return None
-
     def _set_previous_parameters(
         self,
-        configuration: 'mlptrain.Configuration',
+        configuration: mlptrain.Configuration,
         mlp: MLPotential,
         temp: float,
         dt: float,
@@ -714,8 +719,6 @@ class Metadynamics:
             regex=True,
         )
 
-        return None
-
     @staticmethod
     def _plot_gaussian_heights_single(
         idx: int, energy_units: str = 'kcal mol-1', time_units: str = 'ps'
@@ -757,20 +760,18 @@ class Metadynamics:
         fig.savefig(f'gaussian_heights_{idx}.pdf')
         plt.close(fig)
 
-        return None
-
     def try_multiple_biasfactors(
         self,
-        configuration: 'mlptrain.Configuration',
+        configuration: mlptrain.Configuration,
         mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
         biasfactors: Sequence[float],
         pace: int = 500,
-        height: Optional[float] = None,
-        width: Optional[Union[list[float], float]] = None,
-        plotted_cvs: Optional[Sequence[_PlumedCV]] = None,
+        height: float | None = None,
+        width: list[float] | float | None = None,
+        plotted_cvs: Sequence[_PlumedCV] | None = None,
         **kwargs,
     ) -> None:
         """
@@ -856,7 +857,7 @@ class Metadynamics:
 
         if cvs_holder.n_cvs > 2:
             raise NotImplementedError(
-                'Plotting using more than two CVs is ' 'not implemented'
+                'Plotting using more than two CVs is not implemented'
             )
 
         assert cvs_holder.metad_cvs is not None
@@ -925,16 +926,14 @@ class Metadynamics:
             regex=True,
         )
 
-        return None
-
     def _try_single_biasfactor(
         self,
-        configuration: 'mlptrain.Configuration',
+        configuration: mlptrain.Configuration,
         mlp: MLPotential,
         temp: float,
         interval: int,
         dt: float,
-        bias: 'mlptrain.PlumedBias',
+        bias: mlptrain.PlumedBias,
         plotted_cvs: Sequence[_PlumedCV],
         **kwargs,
     ):
@@ -943,7 +942,7 @@ class Metadynamics:
         resulting trajectory
         """
 
-        self._run_single_metad(
+        traj = self._run_single_metad(
             configuration=configuration,
             mlp=mlp,
             temp=temp,
@@ -953,6 +952,11 @@ class Metadynamics:
             kept_substrings=['.dat'],
             **kwargs,
         )
+        if traj is None:
+            logger.warning(
+                'Biasfactor trial MD cancelled due to timeout; skipping.'
+            )
+            return
 
         filenames = [
             f'colvar_{cv.name}_{kwargs["idx"]}.dat' for cv in plotted_cvs
@@ -968,13 +972,11 @@ class Metadynamics:
         if len(plotted_cvs) == 2:
             plot_cv1_and_cv2(
                 filenames=filenames,
-                cvs_units=[
-                    cv.units for cv in plotted_cvs
-                ],  # ty: ignore[invalid-argument-type]
+                cvs_units=[cv.units for cv in plotted_cvs],  # ty: ignore[invalid-argument-type]
                 label=f'biasf{bias.biasfactor}',
             )
 
-        return None
+        return
 
     def block_analysis(
         self,
@@ -986,10 +988,10 @@ class Metadynamics:
         min_blocksize: int = 10,
         blocksize_interval: int = 10,
         bandwidth: float = 0.02,
-        cvs_bounds: Optional[Sequence] = None,
-        temp: Optional[float] = None,
-        dt: Optional[float] = None,
-        interval: Optional[int] = None,
+        cvs_bounds: Sequence | None = None,
+        temp: float | None = None,
+        dt: float | None = None,
+        interval: int | None = None,
     ) -> None:
         """
         Perform block averaging analysis on the sliced trajectory of the most
@@ -1068,7 +1070,7 @@ class Metadynamics:
         )
 
         min_max_params = self._get_min_max_params(
-            cvs_bounds=cvs_bounds, path='plumed_files/' 'metadynamics'
+            cvs_bounds=cvs_bounds, path='plumed_files/metadynamics'
         )
 
         # The number of frames PLUMED driver takes into account
@@ -1078,7 +1080,7 @@ class Metadynamics:
 
         if max_blocksize < min_blocksize:
             raise ValueError(
-                'The simulation is too short to perform ' 'block analysis'
+                'The simulation is too short to perform block analysis'
             )
 
         logger.info(
@@ -1128,8 +1130,6 @@ class Metadynamics:
         finish = time.perf_counter()
         logger.info(f'Block analysis done in {(finish - start) / 60:.1f} m')
 
-        return None
-
     def _reweighting_params(
         self, temp: float | None, dt: float | None, interval: int | None
     ) -> tuple[PlumedBias, float, float, int]:
@@ -1172,15 +1172,11 @@ class Metadynamics:
             config.atoms = [ade.Atom(label) for label in atoms.symbols]
 
             for i, position in enumerate(atoms.get_positions()):
-                config.atoms[
-                    i
-                ].coord = position  # ty: ignore[not-subscriptable]
+                config.atoms[i].coord = position  # ty: ignore[not-subscriptable]
 
             _mlt_configuration_set.append(config)
 
         _mlt_configuration_set.save('traj.xyz')
-
-        return None
 
     @work_in_tmp_dir(
         copied_substrings=['traj.xyz', 'plumed_setup.dat', 'HILLS']
@@ -1189,11 +1185,11 @@ class Metadynamics:
         self,
         blocksize: int,
         temp: float,
-        min_max_params: Tuple,
+        min_max_params: tuple,
         n_bins: int,
         bandwidth: float,
         energy_units: str,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Compute CV and FES error grids over blocks for a given block size and
         return both grids"""
 
@@ -1243,7 +1239,7 @@ class Metadynamics:
 
     def _read_histogram(
         self, filename: str, n_bins: int, compute_cvs: bool = False
-    ) -> Tuple:
+    ) -> tuple:
         """
         Read the histogram file and return the normalisation together with
         the CVs and the histogram as numpy grids
@@ -1272,9 +1268,9 @@ class Metadynamics:
 
     def _generate_hist_files_by_reweighting(
         self,
-        blocksize: Optional[int],
+        blocksize: int | None,
         temp: float,
-        min_max_params: Tuple,
+        min_max_params: tuple,
         n_bins: int,
         bandwidth: float,
     ) -> None:
@@ -1293,23 +1289,24 @@ class Metadynamics:
         stride_setup = f'STRIDE={blocksize} ' if blocksize is not None else ''
 
         reweight_setup = [
-            'as: REWEIGHT_BIAS ' f'TEMP={temp} ' 'ARG=metad.bias',
-            'hist: HISTOGRAM '
-            f'ARG={self.bias.metad_cv_sequence} '
-            f'STRIDE=1 '
-            f'{clear_setup}'
-            f'GRID_MIN={min_param_seq} '
-            f'GRID_MAX={max_param_seq} '
-            f'GRID_BIN={bin_param_seq} '
-            f'BANDWIDTH={bandwidth_seq} '
-            'LOGWEIGHTS=as',
-            'DUMPGRID ' 'GRID=hist ' f'{stride_setup}' 'FILE=hist.dat',
+            f'as: REWEIGHT_BIAS TEMP={temp} ARG=metad.bias',
+            (
+                'hist: HISTOGRAM '
+                f'ARG={self.bias.metad_cv_sequence} '
+                f'STRIDE=1 '
+                f'{clear_setup}'
+                f'GRID_MIN={min_param_seq} '
+                f'GRID_MAX={max_param_seq} '
+                f'GRID_BIN={bin_param_seq} '
+                f'BANDWIDTH={bandwidth_seq} '
+                'LOGWEIGHTS=as'
+            ),
+            f'DUMPGRID GRID=hist {stride_setup}FILE=hist.dat',
         ]
 
         os.rename('plumed_setup.dat', 'reweight.dat')
         with open('reweight.dat', 'a') as f:
-            for line in reweight_setup:
-                f.write(f'{line}\n')
+            f.writelines(f'{line}\n' for line in reweight_setup)
 
         self.bias.write_cv_files()
 
@@ -1327,11 +1324,9 @@ class Metadynamics:
         )
         driver_process.wait()
 
-        return None
-
     @staticmethod
     def _plot_block_analysis(
-        blocksizes: List, data_dict: dict, energy_units: str
+        blocksizes: list, data_dict: dict, energy_units: str
     ) -> None:
         """Plot the standard deviation versus block size"""
         import matplotlib.pyplot as plt
@@ -1359,16 +1354,14 @@ class Metadynamics:
         fig.savefig(figname)
         plt.close(fig)
 
-        return None
-
     def plot_fes(
         self,
         energy_units: str = 'kcal mol-1',
         confidence_level: float = 0.95,
         n_bins: int = 300,
-        cvs_bounds: Optional[Sequence] = None,
-        fes_npy: Optional[str] = None,
-        blocksize: Optional[int] = None,
+        cvs_bounds: Sequence | None = None,
+        fes_npy: str | None = None,
+        blocksize: int | None = None,
     ) -> None:
         """
         Plot the free energy surface with a confidence interval. If the .npy
@@ -1412,8 +1405,7 @@ class Metadynamics:
 
             else:
                 logger.info(
-                    'Using fes_raw.npy in the current directory for '
-                    'plotting'
+                    'Using fes_raw.npy in the current directory for plotting'
                 )
 
                 fes = np.load('fes_raw.npy')
@@ -1443,19 +1435,17 @@ class Metadynamics:
                 'and two collective variables'
             )
 
-        return None
-
     def compute_fes(
         self,
         energy_units: str = 'kcal mol-1',
         n_bins: int = 300,
-        cvs_bounds: Optional[Sequence] = None,
+        cvs_bounds: Sequence | None = None,
         via_reweighting: bool = False,
         start_time: float = 0.00,
         bandwidth: float = 0.02,
-        temp: Optional[float] = None,
-        dt: Optional[float] = None,
-        interval: Optional[int] = None,
+        temp: float | None = None,
+        dt: float | None = None,
+        interval: int | None = None,
     ) -> np.ndarray:
         """
         Compute a grid containing collective variable grids and free energy
@@ -1540,7 +1530,7 @@ class Metadynamics:
         start_frame_index = int((start_time * 1e3) / (dt * interval))
 
         min_max_params = self._get_min_max_params(
-            cvs_bounds=cvs_bounds, path='plumed_files/' 'metadynamics'
+            cvs_bounds=cvs_bounds, path='plumed_files/metadynamics'
         )
         n_runs = len(glob.glob('trajectories/trajectory_*.traj'))
         n_processes = min(Config.n_cores, n_runs)
@@ -1589,14 +1579,14 @@ class Metadynamics:
         traj_path: str,
         hills_path: str,
         start_frame_index: int,
-        bias: 'mlptrain.PlumedBias',
+        bias: mlptrain.PlumedBias,
         temp: float,
         interval: int,
-        min_max_params: Tuple,
+        min_max_params: tuple,
         n_bins: int,
         bandwidth: float,
         energy_units: str,
-    ) -> Tuple:
+    ) -> tuple:
         """Compute CVs and FES grids for a single run by reweighting"""
 
         sliced_traj = ase_read(traj_path, index=f'{start_frame_index}:')
@@ -1639,7 +1629,7 @@ class Metadynamics:
         self,
         energy_units: str = 'kcal mol-1',
         n_bins: int = 300,
-        cvs_bounds: Optional[Sequence] = None,
+        cvs_bounds: Sequence | None = None,
     ) -> np.ndarray:
         """Compute the free energy surface grid using the deposited bias"""
 
@@ -1674,7 +1664,7 @@ class Metadynamics:
         fes: np.ndarray,
         energy_units: str = 'kcal mol-1',
         confidence_level: float = 0.95,
-        blocksize: Optional[int] = None,
+        blocksize: int | None = None,
     ) -> None:
         """Plot 1D mean free energy surface with a confidence interval"""
         import matplotlib.pyplot as plt
@@ -1733,19 +1723,17 @@ class Metadynamics:
         fig.savefig(figname)
         plt.close(fig)
 
-        return None
-
     def _plot_2d_fes(
         self,
         fes: np.ndarray,
         energy_units: str = 'kcal mol-1',
         confidence_level: float = 0.95,
-        blocksize: Optional[int] = None,
+        blocksize: int | None = None,
     ) -> None:
         """Plot 2D mean free energy surface with a confidence interval"""
-        from matplotlib.colors import ListedColormap
         import matplotlib.pyplot as plt
         import scipy.stats
+        from matplotlib.colors import ListedColormap
 
         logger.info('Plotting 2D FES')
 
@@ -1798,7 +1786,7 @@ class Metadynamics:
 
         std_error_cbar = fig.colorbar(std_error_contourf, ax=ax_std_error)
         std_error_cbar.set_label(
-            label='Confidence interval / ' f'{convert_exponents(energy_units)}'
+            label=f'Confidence interval / {convert_exponents(energy_units)}'
         )
 
         assert self.bias.metad_cvs is not None
@@ -1830,11 +1818,9 @@ class Metadynamics:
         fig.savefig(figname)
         plt.close(fig)
 
-        return None
-
     @staticmethod
     def _compute_fes_error(
-        fes_grids: np.ndarray, blocksize: Optional[int] = None
+        fes_grids: np.ndarray, blocksize: int | None = None
     ) -> np.ndarray:
         """Compute standard error of the free energy to use in plotting"""
 
@@ -1871,7 +1857,7 @@ class Metadynamics:
         time_units: str = 'ps',
         energy_units: str = 'kcal mol-1',
         n_bins: int = 300,
-        cvs_bounds: Optional[Sequence] = None,
+        cvs_bounds: Sequence | None = None,
         idx: int = 1,
     ) -> None:
         """
@@ -1942,7 +1928,7 @@ class Metadynamics:
         # Remove the final FES if it has already been computed with the stride
         # (file enumeration using stride starts from zero)
         if remove_duplicate:
-            os.remove(f'fes_{idx}_{len(fes_time)-1}.dat')
+            os.remove(f'fes_{idx}_{len(fes_time) - 1}.dat')
             fes_time = fes_time[:-1]
 
         cv_grids, fes_grids = self._fes_files_to_grids(
@@ -1974,8 +1960,6 @@ class Metadynamics:
             src_folder='plumed_files/fes_convergence',
         )
 
-        return None
-
     @staticmethod
     def _plot_surface_difference(
         fes_grids: np.ndarray,
@@ -2006,8 +1990,6 @@ class Metadynamics:
 
         fig.savefig('fes_convergence_diff.pdf')
         plt.close(fig)
-
-        return None
 
     def _plot_multiple_1d_fes_surfaces(
         self,
@@ -2057,9 +2039,9 @@ class Metadynamics:
     def _generate_fes_files(
         self,
         n_bins: int,
-        cvs_bounds: Optional[Sequence] = None,
-        stride: Optional[int] = None,
-        idx: Optional[int] = None,
+        cvs_bounds: Sequence | None = None,
+        stride: int | None = None,
+        idx: int | None = None,
     ) -> None:
         """
         Generate fes.dat files from a HILLS.dat file.
@@ -2125,11 +2107,9 @@ class Metadynamics:
             )
             compute_fes.wait()
 
-        return None
-
     def _fes_files_to_grids(
         self, energy_units: str, n_bins: int, relative: bool = True
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Use fes.dat files in a current directory to compute a grid containing
         collective variables and a grid containing free energy surfaces.
@@ -2200,8 +2180,8 @@ class Metadynamics:
         return total_cv_grid, total_fes_grid
 
     def _get_min_max_params(
-        self, cvs_bounds: Optional[Sequence] = None, path: Optional[str] = None
-    ) -> Tuple:
+        self, cvs_bounds: Sequence | None = None, path: str | None = None
+    ) -> tuple:
         """
         Compute min and max parameters for generating fes.dat files from
         HILLS.dat files.
@@ -2283,21 +2263,20 @@ class Metadynamics:
             (Sequence): CVs bounds in a universal format
         """
 
-        if isinstance(cvs_bounds, list) or isinstance(cvs_bounds, tuple):
+        if isinstance(cvs_bounds, (list, tuple)):
             if len(cvs_bounds) == 0:
                 raise TypeError(
-                    'CVs bounds cannot be an empty list or ' 'an empty tuple'
+                    'CVs bounds cannot be an empty list or an empty tuple'
                 )
 
             elif all(
-                isinstance(cv_bounds, list) or isinstance(cv_bounds, tuple)
+                isinstance(cv_bounds, (list, tuple))
                 for cv_bounds in cvs_bounds
             ):
                 _cvs_bounds = cvs_bounds
 
             elif all(
-                isinstance(cv_bound, float) or isinstance(cv_bound, int)
-                for cv_bound in cvs_bounds
+                isinstance(cv_bound, (float, int)) for cv_bound in cvs_bounds
             ):
                 _cvs_bounds = [cvs_bounds]
 

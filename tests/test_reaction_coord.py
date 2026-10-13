@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
+from ase.atoms import Atoms as ASEAtoms
 
 import mlptrain as mlt
-from ase.atoms import Atoms as ASEAtoms
 
 
 def test_differencedistance(h2o_configuration):

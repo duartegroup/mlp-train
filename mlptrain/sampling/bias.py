@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import typing as t
-from mlptrain.sampling._base import Function, ASEConstraint
+
+from mlptrain.sampling._base import ASEConstraint, Function
 
 if t.TYPE_CHECKING:
     from mlptrain.sampling.reaction_coord import ReactionCoordinate
@@ -64,8 +65,6 @@ class Bias(ASEConstraint, Function):
         """
         forces -= self.grad(atoms)
 
-        return None
-
     def adjust_positions(self, atoms, newpositions):
         """Method required for ASE but not used in mlp-train"""
-        return None
+        return

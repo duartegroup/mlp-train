@@ -1,10 +1,10 @@
-import mlptrain
 import numpy as np
-from typing import Optional
-from mlptrain.sampling.md import run_mlp_md
-from mlptrain.log import logger
+
+import mlptrain
 from mlptrain.config import Config
+from mlptrain.log import logger
 from mlptrain.loss._base import LossFunction, LossValue
+from mlptrain.sampling.md import run_mlp_md
 
 
 class Tau(LossValue):
@@ -16,7 +16,7 @@ class TauCalculator(LossFunction):
     def __init__(
         self,
         e_lower: float = 0.1,
-        e_thresh: Optional[float] = None,
+        e_thresh: float | None = None,
         max_time: float = 1000.0,
         time_interval: float = 50.0,
         temp: float = 300.0,
@@ -50,8 +50,7 @@ class TauCalculator(LossFunction):
 
         if time_interval < dt:
             raise ValueError(
-                'The calculated interval must be more than a '
-                'single timestep'
+                'The calculated interval must be more than a single timestep'
             )
 
         self.dt = float(dt)
@@ -107,8 +106,7 @@ class TauCalculator(LossFunction):
         # Calculate τ_acc as the average ± the standard error in the mean
         return Tau(
             np.average(taus),
-            error=np.std(taus)
-            / np.sqrt(len(taus) - 1),  # ty:ignore[unknown-argument]
+            error=np.std(taus) / np.sqrt(len(taus) - 1),  # ty:ignore[unknown-argument]
         )
 
     def _calculate_single(self, config, mlp, method_name):
@@ -127,6 +125,9 @@ class TauCalculator(LossFunction):
                 fs=block_time,
                 n_cores=min(Config.n_cores, 4),
             )
+            if traj is None:
+                logger.warning('Skipping τ_acc block due to MD timeout.')
+                return curr_time
 
             try:
                 traj.single_point(method_name)

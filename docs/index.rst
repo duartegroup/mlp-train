@@ -36,6 +36,13 @@ mlp-train documentation
 .. toctree::
    :maxdepth: 2
    :hidden:
+   :caption: Advanced
+
+   dev/parallelism
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
    :caption: Citation
 
 

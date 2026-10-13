@@ -1,6 +1,6 @@
 import mlptrain as mlt
-from mlptrain.training.selection import AtomicEnvSimilarity
 from mlptrain.descriptor import SoapDescriptor
+from mlptrain.training.selection import AtomicEnvSimilarity
 
 mlt.Config.n_cores = 10
 
@@ -23,4 +23,5 @@ if __name__ == '__main__':
         interval=10,
     )
 
-    trajectory.save(filename='water_trajectory.xyz')
+    if trajectory is not None:
+        trajectory.save(filename='water_trajectory.xyz')

@@ -10,14 +10,15 @@ platforms = [
 
 # --- MACE feature: conda dependencies (from environment_mace.yml) ---
 [feature.mace.dependencies]
-python = "3.10.*"
+python = "3.12.*"
 pip = "*"
 libgfortran = "14.*"
-ase = "3.23.*"
+# NOTE: ase 3.29 and plumed 2.10 break our Plumed integration
+ase = "3.28.*"
 autode = "1.4.5.*"
 coloredlogs = "*"
 cython = "*"
-dscribe = "2.0.*"
+dscribe = "2.1.*"
 matplotlib-base = ">=3.9.0"
 numpy = "*"
 plumed = "<2.10"
@@ -33,11 +34,6 @@ git = "*"
 seaborn = "*"
 
 # --- MACE feature: PyPI dependencies (from the pip: block) ---
-# NOTE: the original environment_mace.yml pip-installed an ASE fork
-# (gitlab.com/ase/ase@f2615a6e9a, v3.23.0b1) "for PLUMED", force-overwriting
-# conda's ase. pixi/uv require a coherent solve, and that beta fork is not on
-# conda-forge, so we use conda's ase instead (the fork's PLUMED fixes are
-# upstream by ase 3.28). PLUMED support is verified by the test suite.
 [feature.mace.pypi-dependencies]
 mace-torch = "==0.3.10"
 # Install the project itself, editable (replaces `pip install -e .`).
@@ -60,7 +56,7 @@ pytest-cov = "~=5.0"
 [feature.dev.pypi-dependencies]
 # Keep in sync with the `ty` pin in pyproject.toml's dev dependency-group, so
 # the pixi and conda install paths type-check with the same version.
-ty = "==0.0.69"
+ty = "==0.0.84"
 
 # --- docs (was [project.optional-dependencies].docs in pyproject.toml) ---
 [feature.docs.pypi-dependencies]

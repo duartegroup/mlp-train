@@ -1,18 +1,19 @@
 import os
 import re
 import shutil
+from collections.abc import Sequence
+from functools import wraps
+from tempfile import mkdtemp
+from typing import overload
 
 import numpy as np
-from tempfile import mkdtemp
-from functools import wraps
-from typing import Optional, List, Sequence, Union, overload
 from ase import units as ase_units
 
 
 def work_in_tmp_dir(
-    kept_substrings: Optional[Sequence[str]] = None,
-    copied_substrings: Optional[Sequence[str]] = None,
-    output_name: Optional[str] = None,
+    kept_substrings: Sequence[str] | None = None,
+    copied_substrings: Sequence[str] | None = None,
+    output_name: str | None = None,
 ):
     """
     Execute a function in a temporary directory
@@ -129,7 +130,7 @@ def work_in_dir(dirname: str):
     return func_decorator
 
 
-def unique_name(name: str, path: Optional[str] = None) -> str:
+def unique_name(name: str, path: str | None = None) -> str:
     """
     Returns a unique name for a file or directory in the specified directory
     by adding bck0, bck1, ... to the front of the name until a unique name
@@ -165,9 +166,9 @@ def unique_name(name: str, path: Optional[str] = None) -> str:
 
 
 def move_files(
-    moved_substrings: List[str],
+    moved_substrings: list[str],
     dst_folder: str,
-    src_folder: Optional[str] = None,
+    src_folder: str | None = None,
     unique: bool = True,
     regex: bool = False,
 ) -> None:
@@ -215,8 +216,6 @@ def move_files(
             destination = os.path.join(dst_folder, filename)
             shutil.move(src=source, dst=destination)
 
-    return None
-
 
 def convert_exponents(string: str) -> str:
     """
@@ -242,8 +241,8 @@ def convert_exponents(string: str) -> str:
 
 
 def convert_ase_time(
-    time_array: Union[np.ndarray, float], units: str
-) -> Union[np.ndarray, float]:
+    time_array: np.ndarray | float, units: str
+) -> np.ndarray | float:
     """
     Converts ASE time units to different time units.
 
@@ -286,8 +285,8 @@ def convert_ase_energy(energy_array: float, units: str) -> float: ...
 
 
 def convert_ase_energy(
-    energy_array: Union[np.ndarray, float], units: str
-) -> Union[np.ndarray, float]:
+    energy_array: np.ndarray | float, units: str
+) -> np.ndarray | float:
     """
     Converts ASE energy units to different energy units.
 

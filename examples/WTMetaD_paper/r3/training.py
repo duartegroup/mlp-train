@@ -1,7 +1,8 @@
-import mlptrain as mlt
+import numpy as np
 from ase.constraints import FixAtoms
 from autode.atoms import Atom
-import numpy as np
+
+import mlptrain as mlt
 
 mlt.Config.n_cores = 30
 mlt.Config.orca_keywords = [
@@ -55,7 +56,6 @@ def solvation(solute_config, solvent_config, apm, radius, enforce=True):
                 d = D[:, i]
                 L = cell[i]
                 d[:] = (d + L / 2) % L - L / 2
-        return None
 
     def molwrap(atoms, n, idx=0):
         """Wrap to cell without breaking molecule
@@ -71,12 +71,12 @@ def solvation(solute_config, solvent_config, apm, radius, enforce=True):
         atoms.set_positions(positions.reshape((-1, 3)))
         return atoms
 
-    assert not (
-        solvent.cell.diagonal() == 0
-    ).any(), 'solvent atoms have no cell'
-    assert (
-        solvent.cell == np.diag(solvent.cell.diagonal())
-    ).all(), 'sol cell not orthorhombic'
+    assert not (solvent.cell.diagonal() == 0).any(), (
+        'solvent atoms have no cell'
+    )
+    assert (solvent.cell == np.diag(solvent.cell.diagonal())).all(), (
+        'sol cell not orthorhombic'
+    )
     if enforce:
         solvent.pbc = True
     sol = molwrap(solvent, apm)
@@ -120,9 +120,9 @@ def solvation(solute_config, solvent_config, apm, radius, enforce=True):
     return solvation
 
 
-def generate_init_configs(
-    n, solute_xyz, solvent_xyz, box_size=[18.5, 18.5, 18.5]
-):
+def generate_init_configs(n, solute_xyz, solvent_xyz, box_size=None):
+    if box_size is None:
+        box_size = [18.5, 18.5, 18.5]
     solute = mlt.ConfigurationSet()
     solute.load_xyz(
         filename=solute_xyz, charge=1, mult=1, box=mlt.box.Box(box_size)

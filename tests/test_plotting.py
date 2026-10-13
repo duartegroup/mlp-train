@@ -1,6 +1,7 @@
 import numpy as np
 from autode.atoms import Atom
-from mlptrain.configurations import ConfigurationSet, Configuration
+
+from mlptrain.configurations import Configuration, ConfigurationSet
 from mlptrain.configurations.plotting import parity_plot
 from mlptrain.utils import work_in_tmp_dir
 

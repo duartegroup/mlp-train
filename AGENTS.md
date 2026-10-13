@@ -48,6 +48,7 @@ pixi run -e docs
 ```python
 def ase_calculator(self):
     from mace.calculators import MACECalculator  # correct — lazy
+
     ...
 ```
 

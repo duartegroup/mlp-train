@@ -1,4 +1,5 @@
 import os
+
 import numpy as np
 
 import mlptrain as mlt
@@ -54,6 +55,8 @@ def test_bias(h2, test_potential):
         interval=10,
         bias=bias,
     )
+
+    assert trajectory is not None
 
     data = [
         _get_avg_dists(config.ase_atoms, [[0, 1]]) for config in trajectory

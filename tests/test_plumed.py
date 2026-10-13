@@ -1,6 +1,9 @@
 import os
+
 import pytest
+
 import mlptrain as mlt
+
 from .data.utils import work_in_zipped_dir
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -15,11 +18,13 @@ def test_plumed_cv_from_atom_groups():
     assert cv1.setup == [
         'cv1_dist1: DISTANCE ATOMS=1,2',
         'cv1_dist2: DISTANCE ATOMS=3,4',
-        'cv1: CUSTOM '
-        'ARG=cv1_dist1,cv1_dist2 '
-        'VAR=cv1_dist1,cv1_dist2 '
-        'FUNC=cv1_dist1-cv1_dist2 '
-        'PERIODIC=NO',
+        (
+            'cv1: CUSTOM '
+            'ARG=cv1_dist1,cv1_dist2 '
+            'VAR=cv1_dist1,cv1_dist2 '
+            'FUNC=cv1_dist1-cv1_dist2 '
+            'PERIODIC=NO'
+        ),
     ]
 
     cv2 = mlt.PlumedAverageCV('cv2', (0, 1, 2))
@@ -29,11 +34,13 @@ def test_plumed_cv_from_atom_groups():
     assert cv2.dof_names == ['cv2_ang1']
     assert cv2.setup == [
         'cv2_ang1: ANGLE ATOMS=1,2,3',
-        'cv2: CUSTOM '
-        'ARG=cv2_ang1 '
-        'VAR=cv2_ang1 '
-        'FUNC=1.0*(cv2_ang1) '
-        'PERIODIC=NO',
+        (
+            'cv2: CUSTOM '
+            'ARG=cv2_ang1 '
+            'VAR=cv2_ang1 '
+            'FUNC=1.0*(cv2_ang1) '
+            'PERIODIC=NO'
+        ),
     ]
 
     with pytest.raises(TypeError):
@@ -64,7 +71,7 @@ def test_plumed_cv_from_file():
     assert cv1.name == 'p1.spath'
     assert cv1.units == 'Å'
     assert cv1.setup == [
-        'p1: PATH ' 'REFERENCE=path.pdb ' 'TYPE=OPTIMAL ' 'LAMBDA=500.0'
+        'p1: PATH REFERENCE=path.pdb TYPE=OPTIMAL LAMBDA=500.0'
     ]
 
     with open('path.pdb', 'r') as f:
@@ -90,11 +97,13 @@ def test_plumed_cv_walls():
     assert cv1.setup == [
         'cv1_dist1: DISTANCE ATOMS=1,2',
         'cv1_dist2: DISTANCE ATOMS=3,4',
-        'cv1: CUSTOM '
-        'ARG=cv1_dist1,cv1_dist2 '
-        'VAR=cv1_dist1,cv1_dist2 '
-        'FUNC=cv1_dist1-cv1_dist2 '
-        'PERIODIC=NO',
+        (
+            'cv1: CUSTOM '
+            'ARG=cv1_dist1,cv1_dist2 '
+            'VAR=cv1_dist1,cv1_dist2 '
+            'FUNC=cv1_dist1-cv1_dist2 '
+            'PERIODIC=NO'
+        ),
         'LOWER_WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
         'UPPER_WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3',
     ]
@@ -131,15 +140,15 @@ def test_plumed_bias_from_cvs():
     assert bias.width == (0.2, 0.3)
     assert bias.height == 0.5
     assert bias.biasfactor == 2
-    assert bias.metad_grid_min == (
+    assert bias.metad_grid_min == (  # ty: ignore[unresolved-attribute]
         0.5,
         1.5,
     )
-    assert bias.metad_grid_max == (
+    assert bias.metad_grid_max == (  # ty: ignore[unresolved-attribute]
         0.6,
         1.6,
     )
-    assert bias.metad_grid_bin is None
+    assert bias.metad_grid_bin is None  # ty: ignore[unresolved-attribute]
 
     assert bias.metad_grid_setup == 'GRID_MIN=0.5,1.5 GRID_MAX=0.6,1.6 '
 
@@ -160,13 +169,14 @@ def test_plumed_bias_from_file():
     assert bias.setup == [
         'dof1: DISTANCE ATOMS=1,2',
         'dof2: DISTANCE ATOMS=2,3',
-        'cv1: CUSTOM ARG=dof1,dof2 VAR=dof1,dof2 '
-        'FUNC=dof2-dof1 PERIODIC=NO',
+        'cv1: CUSTOM ARG=dof1,dof2 VAR=dof1,dof2 FUNC=dof2-dof1 PERIODIC=NO',
         'lwall: LOWER_WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
-        'p1: PATH REFERENCE=path.pdb TYPE=OPTIMAL ' 'LAMBDA=500.0',
+        'p1: PATH REFERENCE=path.pdb TYPE=OPTIMAL LAMBDA=500.0',
         'UPPER_WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3',
-        'METAD ARG=cv1,p1.spath PACE=100 HEIGHT=0.1 '
-        'SIGMA=0.5 BIASFACTOR=4 FILE=HILLS.dat',
+        (
+            'METAD ARG=cv1,p1.spath PACE=100 HEIGHT=0.1 '
+            'SIGMA=0.5 BIASFACTOR=4 FILE=HILLS.dat'
+        ),
         'PRINT ARG=cv1,p1.spath FILE=colvar.dat STRIDE=10',
     ]
 
@@ -188,10 +198,9 @@ def test_plumed_bias_from_file():
     assert bias.setup == [
         'dof1: DISTANCE ATOMS=1,2',
         'dof2: DISTANCE ATOMS=2,3',
-        'cv1: CUSTOM ARG=dof1,dof2 VAR=dof1,dof2 '
-        'FUNC=dof2-dof1 PERIODIC=NO',
+        'cv1: CUSTOM ARG=dof1,dof2 VAR=dof1,dof2 FUNC=dof2-dof1 PERIODIC=NO',
         'lwall: LOWER_WALLS ARG=cv1 AT=1 KAPPA=150.0 EXP=3',
-        'p1: PATH REFERENCE=path.pdb TYPE=OPTIMAL ' 'LAMBDA=500.0',
+        'p1: PATH REFERENCE=path.pdb TYPE=OPTIMAL LAMBDA=500.0',
         'UPPER_WALLS ARG=cv1 AT=3 KAPPA=150.0 EXP=3',
     ]
 

@@ -1,19 +1,21 @@
 import os
-import mlptrain as mlt
-from mlptrain.box import Box
+from copy import deepcopy
+
 import autode as ade
+import numpy as np
+from ase.constraints import Hookean
+from ase.geometry import find_mic
 from autode.utils import work_in_tmp_dir
 from autode.wrappers.base import (  # ty:ignore[unresolved-import]
     ElectronicStructureMethod,
 )
 from autode.wrappers.keywords import KeywordsSet
-from ase.constraints import Hookean
-from ase.geometry import find_mic
-from mlptrain.log import logger
+
+import mlptrain as mlt
+from mlptrain.box import Box
 from mlptrain.config import Config
+from mlptrain.log import logger
 from mlptrain.sampling.md import _convert_ase_traj
-import numpy as np
-from copy import deepcopy
 
 mlt.Config.n_cores = 8
 ade.Config.n_cores = 8
@@ -116,7 +118,6 @@ class MLPEST(ElectronicStructureMethod):
 
         molecule.print_xyz_file(filename=calc.input.filename)
         calc.input.additional_filenames = [self.path]
-        return None
 
     def get_output_filename(self, calc):
         return f'{calc.name}.xyz'
@@ -165,7 +166,6 @@ class MLPEST(ElectronicStructureMethod):
                 configuration.save_xyz(filename=name, predicted=True)
 
         execute_mlp()
-        return None
 
     def calculation_terminated_normally(self, calc):
         name = self.get_output_filename(calc)
@@ -274,8 +274,8 @@ def optimise_with_fix_solute(
 ):
     """optimised molecular geometries by MLP with or without constraint"""
     from ase.constraints import FixAtoms
-    from ase.optimize import BFGS
     from ase.io.trajectory import Trajectory as ASETrajectory
+    from ase.optimize import BFGS
 
     assert configuration.box is not None, 'configuration must have box'
     logger.info(
