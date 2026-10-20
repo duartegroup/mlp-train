@@ -290,7 +290,9 @@ class MACE(MLPotential):
             if self.requires_non_zero_box_size and config.box is None:
                 config.box = mlt.box.Box([100, 100, 100])
 
-        self.training_data.save_xyz(filename=f'{self.name}_data.xyz')
+        self.training_data.save_xyz(
+            filename=f'{self.name}_data.xyz', true=True
+        )
 
         start_time = time.perf_counter()
 
@@ -308,7 +310,7 @@ class MACE(MLPotential):
 
         delta_time = time.perf_counter() - start_time
 
-        logger.info(f'MACE training ran in {delta_time / 60:.1f} m.')
+        logger.info(f'MACE training ran in {delta_time / 60:.1f} min.')
 
         os.remove(f'{self.name}_data.xyz')
 
