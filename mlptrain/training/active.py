@@ -854,7 +854,9 @@ def _gen_active_config(
             pass
 
     if curr_time + md_time > max_time:
-        logger.info(f'Reached the maximum time {max_time} fs, returning None')
+        logger.info(
+            f'Reached the maximum time {max_time} fs, no new configuration selected'
+        )
         return None
 
     # Increment t_0 to the new time

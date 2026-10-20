@@ -623,11 +623,10 @@ class ConfigurationSet(list):
                 n_cvs_set.add(len(config.plumed_coordinates))
 
         if len(n_cvs_set) == 0:
-            logger.info('PLUMED coordinates not defined - returning None')
             return None
 
         elif len(n_cvs_set) != 1:
-            logger.info(
+            logger.warning(
                 'Number of CVs differ between configurations - returning None'
             )
             return None

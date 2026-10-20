@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import TYPE_CHECKING
@@ -121,12 +122,15 @@ class MLPotential(ABC):
             f'configurations'
         )
 
-        calculator = self.ase_calculator
-        logger.info('Loaded calculator successfully')
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            calculator = self.ase_calculator
+
+        logger.debug('Loaded calculator successfully')
 
         for configuration in all_configurations:
             atoms = configuration.ase_atoms
-            atoms.set_calculator(calculator)
+            atoms.calc = calculator
 
             # Evaluate predicted energies and forces
             configuration.energy.predicted = atoms.get_potential_energy()
