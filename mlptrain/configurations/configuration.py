@@ -959,9 +959,9 @@ class Configuration(AtomCollection):
 
 def _random_rotation(r1: float, r2: float, r3: float) -> np.ndarray:
     """Generate a random rotation matrix"""
-    theta = r1 * 360
-    kappa = r2 * 360
-    gamma = r3 * 360
+    theta = r1 * 2 * np.pi
+    kappa = r2 * 2 * np.pi
+    gamma = r3 * 2 * np.pi
 
     rot_matrix = np.eye(3)
     rot_matrix = np.dot(
