@@ -248,11 +248,18 @@ class MACE(MLPotential):
         """ASE calculator for MACE potential"""
         from mace.calculators import MACECalculator
 
-        calculator = MACECalculator(
-            model_paths=self.filename,
-            device=str(Config.mace_params['calc_device']),
-            enable_cueq=Config.mace_params['cueq'],
-        )
+        # Filter out FutureWarning: You are using `torch.load` with `weights_only=False`...
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                'ignore',
+                message=r'You are using `torch\.load`',
+                category=FutureWarning,
+            )
+            calculator = MACECalculator(
+                model_paths=self.filename,
+                device=str(Config.mace_params['calc_device']),
+                enable_cueq=Config.mace_params['cueq'],
+            )
         return calculator
 
     def _train(self, n_cores: int | None = None) -> None:

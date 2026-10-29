@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import TYPE_CHECKING
@@ -122,9 +121,7 @@ class MLPotential(ABC):
             f'configurations'
         )
 
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            calculator = self.ase_calculator
+        calculator = self.ase_calculator
 
         logger.debug('Loaded calculator successfully')
 
