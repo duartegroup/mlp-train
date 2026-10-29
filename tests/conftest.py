@@ -168,11 +168,15 @@ class TestPotential(mlt.potentials.MLPotential):
     def _train(self) -> None:
         """ABC for MLPotential required but unused in TestPotential"""
 
-    def requires_atomic_energies(self) -> None:
+    @property
+    def requires_atomic_energies(self) -> bool:
         """ABC for MLPotential required but unused in TestPotential"""
+        return False
 
-    def requires_non_zero_box_size(self) -> None:
+    @property
+    def requires_non_zero_box_size(self) -> bool:
         """ABC for MLPotential required but unused in TestPotential"""
+        return False
 
 
 @pytest.fixture
