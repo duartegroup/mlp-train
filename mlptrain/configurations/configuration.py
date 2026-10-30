@@ -958,44 +958,31 @@ class Configuration(AtomCollection):
 
 
 def _random_rotation(r1: float, r2: float, r3: float) -> np.ndarray:
-    """Generate a random rotation matrix"""
+    """Generate a uniformly distributed random rotation matrix, using the
+    algorithm of J. Arvo, "Fast Random Rotation Matrices", in Graphics
+    Gems III, 1992, pp. 117-120.
+    """
     theta = r1 * 2 * np.pi
-    kappa = r2 * 2 * np.pi
-    gamma = r3 * 2 * np.pi
+    phi = r2 * 2 * np.pi
+    z = r3
 
-    rot_matrix = np.eye(3)
-    rot_matrix = np.dot(
-        rot_matrix,
-        np.array(
-            [
-                [1, 0, 0],
-                [0, np.cos(theta), -np.sin(theta)],
-                [0, np.sin(theta), np.cos(theta)],
-            ]
-        ),
-    )
-    rot_matrix = np.dot(
-        rot_matrix,
-        np.array(
-            [
-                [np.cos(kappa), 0, np.sin(kappa)],
-                [0, 1, 0],
-                [-np.sin(kappa), 0, np.cos(kappa)],
-            ]
-        ),
-    )
-    rot_matrix = np.dot(
-        rot_matrix,
-        np.array(
-            [
-                [np.cos(gamma), -np.sin(gamma), 0],
-                [np.sin(gamma), np.cos(gamma), 0],
-                [0, 0, 1],
-            ]
-        ),
+    v = np.array(
+        [
+            np.cos(phi) * np.sqrt(z),
+            np.sin(phi) * np.sqrt(z),
+            np.sqrt(1 - z),
+        ]
     )
 
-    return rot_matrix
+    z_rotation = np.array(
+        [
+            [np.cos(theta), np.sin(theta), 0],
+            [-np.sin(theta), np.cos(theta), 0],
+            [0, 0, 1],
+        ]
+    )
+
+    return (2 * np.outer(v, v) - np.eye(3)) @ z_rotation
 
 
 def _random_vector_in_box(
