@@ -966,11 +966,13 @@ def _random_rotation(r1: float, r2: float, r3: float) -> np.ndarray:
     phi = r2 * 2 * np.pi
     z = r3
 
-    v = np.array([
-        np.cos(phi) * np.sqrt(z),
-        np.sin(phi) * np.sqrt(z),
-        np.sqrt(1 - z),
-    ])
+    v = np.array(
+        [
+            np.cos(phi) * np.sqrt(z),
+            np.sin(phi) * np.sqrt(z),
+            np.sqrt(1 - z),
+        ]
+    )
 
     z_rotation = np.array(
         [
