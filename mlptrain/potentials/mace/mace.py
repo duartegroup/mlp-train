@@ -329,7 +329,7 @@ class MACE(MLPotential):
                     message=r'The TorchScript type system',
                     category=UserWarning,
                 )
-            train_mace(self.args)
+                train_mace(self.args)
         finally:
             # Remove MACE root logging handlers and restore pre-existing ones.
             remove_root_logging_handlers()
