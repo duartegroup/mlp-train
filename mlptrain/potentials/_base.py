@@ -122,11 +122,12 @@ class MLPotential(ABC):
         )
 
         calculator = self.ase_calculator
-        logger.info('Loaded calculator successfully')
+
+        logger.debug('Loaded calculator successfully')
 
         for configuration in all_configurations:
             atoms = configuration.ase_atoms
-            atoms.set_calculator(calculator)
+            atoms.calc = calculator
 
             # Evaluate predicted energies and forces
             configuration.energy.predicted = atoms.get_potential_energy()

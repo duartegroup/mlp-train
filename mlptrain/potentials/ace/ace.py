@@ -33,7 +33,9 @@ class ACE(MLPotential):
             if self.requires_non_zero_box_size and config.box is None:
                 config.box = Box([100, 100, 100])
 
-        self.training_data.save_xyz(filename=f'{self.name}_data.xyz')
+        self.training_data.save_xyz(
+            filename=f'{self.name}_data.xyz', true=True
+        )
 
         _check_julia_install_exists()
 
@@ -62,7 +64,7 @@ class ACE(MLPotential):
                 f.write(f'ACE training error:\n{err}')
 
         delta_time = time() - start_time
-        logger.info(f'ACE training ran in {delta_time / 60:.1f} m')
+        logger.info(f'ACE training ran in {delta_time / 60:.1f} min.')
 
         if any(
             (

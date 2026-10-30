@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import time
+import warnings
 from collections.abc import Sequence
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
@@ -227,9 +228,6 @@ def run_mlp_md(
 
         copied_substrings_list.extend(restart_files)
         kept_substrings_list.extend(restart_files)
-
-    else:
-        logger.info('Running MLP MD')
 
     start_time = time.perf_counter()
 
@@ -488,8 +486,16 @@ def _run_dynamics(
             f'Initialising NPT Berendsen dynamics at {pressure} bar and {temp} K'
         )
     elif temp > 0:  # Default Langevin NVT
-        dyn = Langevin(ase_atoms, dt_ase, temperature_K=temp, friction=0.02)
         logger.info(f'Initialising NVT Langevin dynamics at {temp} K')
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                'ignore',
+                message=r'The implementation of `fixcm=True`',
+                category=FutureWarning,
+            )
+            dyn = Langevin(
+                ase_atoms, dt_ase, temperature_K=temp, friction=0.02
+            )
     else:  # Otherwise NVE
         dyn = VelocityVerlet(ase_atoms, dt_ase)
         logger.info('Initialising NVE dynamics')
