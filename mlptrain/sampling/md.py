@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import shutil
 import time
-import warnings
 from collections.abc import Sequence
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
@@ -116,6 +115,8 @@ def run_mlp_md(
     restart_files: list[str] | None = None,
     copied_substrings: Sequence[str] | None = None,
     kept_substrings: Sequence[str] | None = None,
+    friction: float = 0.02,
+    seed: int | None = None,
     **kwargs,
 ) -> mlptrain.Trajectory | None:
     """
@@ -174,6 +175,14 @@ def run_mlp_md(
         copied_substrings: List of substrings with which files are copied
                            to the temporary directory. Files required for MLPs
                            are added to the list automatically
+
+        friction: (float) Friction coefficient (in inverse ASE time units)
+                  used by the Langevin thermostat for NVT dynamics
+
+        seed: (int | None) Seed for the random number generator used to
+              initialise velocities (Maxwell-Boltzmann distribution) and
+              for the Langevin thermostat. If None, the dynamics are derived
+              from OS entropy and non-reproducible between runs
     ---------------
     Keyword Arguments:
 
@@ -251,6 +260,8 @@ def run_mlp_md(
         bbond_energy=bbond_energy,
         bias=bias,
         restart_files=restart_files,
+        friction=friction,
+        seed=seed,
         **kwargs,
     )
 
@@ -295,6 +306,8 @@ def _run_mlp_md(
     bbond_energy: dict | None = None,
     bias: mlptrain.Bias | mlptrain.PlumedBias | None = None,
     restart_files: list[str] | None = None,
+    friction: float = 0.02,
+    seed: int | None = None,
     **kwargs,
 ) -> mlptrain.Trajectory | None:
     """
@@ -303,6 +316,7 @@ def _run_mlp_md(
     """
 
     restart = restart_files is not None
+    rng = RandomState(seed)
 
     n_cores = (
         kwargs['n_cores'] if 'n_cores' in kwargs else min(Config.n_cores, 8)
@@ -336,6 +350,7 @@ def _run_mlp_md(
         fbond_energy=fbond_energy,
         restart=restart,
         traj_name=traj_name,
+        rng=rng,
     )
 
     ase_traj = _initialise_traj(
@@ -376,6 +391,8 @@ def _run_mlp_md(
         n_steps=n_steps,
         energies=energies,
         biased_energies=biased_energies,
+        friction=friction,
+        rng=rng,
         **kwargs,
     )
     if not finished_in_time:
@@ -467,9 +484,12 @@ def _run_dynamics(
     biased_energies: list,
     pressure: float | None = None,
     compress: float | None = None,
+    friction: float = 0.02,
+    rng: RandomState | None = None,
     **kwargs,
 ) -> bool:
     """Initialise dynamics object and run dynamics"""
+    from ase.constraints import FixCom
 
     if pressure is not None and compress is not None and temp > 0:
         # Run NPT dynamics if pressure and compressibility are specified
@@ -487,15 +507,15 @@ def _run_dynamics(
         )
     elif temp > 0:  # Default Langevin NVT
         logger.info(f'Initialising NVT Langevin dynamics at {temp} K')
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                'ignore',
-                message=r'The implementation of `fixcm=True`',
-                category=FutureWarning,
-            )
-            dyn = Langevin(
-                ase_atoms, dt_ase, temperature_K=temp, friction=0.02
-            )
+        ase_atoms.constraints.append(FixCom())
+        dyn = Langevin(
+            ase_atoms,
+            dt_ase,
+            temperature_K=temp,
+            friction=friction,
+            fixcm=False,
+            rng=rng,
+        )
     else:  # Otherwise NVE
         dyn = VelocityVerlet(ase_atoms, dt_ase)
         logger.info('Initialising NVE dynamics')
@@ -650,6 +670,7 @@ def _set_momenta_and_geometry(
     fbond_energy: dict | None,
     restart: bool,
     traj_name: str,
+    rng: RandomState,
 ) -> None:
     """Set the initial momenta and geometry of the starting configuration"""
 
@@ -658,7 +679,7 @@ def _set_momenta_and_geometry(
             logger.info(f'Initialising initial velocities for {temp} K')
 
             MaxwellBoltzmannDistribution(
-                ase_atoms, temperature_K=temp, rng=RandomState()
+                ase_atoms, temperature_K=temp, rng=rng
             )
         else:
             # Set the momenta to zero
