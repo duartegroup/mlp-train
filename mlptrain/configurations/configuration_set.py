@@ -327,8 +327,8 @@ class ConfigurationSet(list):
 
         if self[0].energy.true is not None and not (predicted or true):
             logger.warning(
-                'Save called without defining what energy and '
-                'forces to print. Had true energies to using those'
+                'save_xyz method called without defining what energy and '
+                'forces to print. Had true energies so using those'
             )
             true = True
 
@@ -623,11 +623,10 @@ class ConfigurationSet(list):
                 n_cvs_set.add(len(config.plumed_coordinates))
 
         if len(n_cvs_set) == 0:
-            logger.info('PLUMED coordinates not defined - returning None')
             return None
 
         elif len(n_cvs_set) != 1:
-            logger.info(
+            logger.warning(
                 'Number of CVs differ between configurations - returning None'
             )
             return None

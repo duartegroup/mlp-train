@@ -54,7 +54,11 @@ class MACE(MLPotential):
 
         # Filter out FutureWarning from e3nn: You are using `torch.load` with `weights_only=False`...
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
+            warnings.filterwarnings(
+                'ignore',
+                message=r'You are using `torch\.load`',
+                category=FutureWarning,
+            )
             import mace.tools
 
         self.foundation = foundation
@@ -124,7 +128,14 @@ class MACE(MLPotential):
     @property
     def args(self) -> argparse.Namespace:
         """Namespace containing mostly default MACE parameters"""
-        import mace.tools
+        # Filter out FutureWarning from e3nn: You are using `torch.load` with `weights_only=False`...
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                'ignore',
+                message=r'You are using `torch\.load`',
+                category=FutureWarning,
+            )
+            import mace.tools
 
         args_list = [
             '--name',
@@ -248,11 +259,18 @@ class MACE(MLPotential):
         """ASE calculator for MACE potential"""
         from mace.calculators import MACECalculator
 
-        calculator = MACECalculator(
-            model_paths=self.filename,
-            device=str(Config.mace_params['calc_device']),
-            enable_cueq=Config.mace_params['cueq'],
-        )
+        # Filter out FutureWarning: You are using `torch.load` with `weights_only=False`...
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                'ignore',
+                message=r'You are using `torch\.load`',
+                category=FutureWarning,
+            )
+            calculator = MACECalculator(
+                model_paths=self.filename,
+                device=str(Config.mace_params['calc_device']),
+                enable_cueq=Config.mace_params['cueq'],
+            )
         return calculator
 
     def _train(self, n_cores: int | None = None) -> None:
@@ -281,7 +299,7 @@ class MACE(MLPotential):
         n_cores = n_cores if n_cores is not None else Config.n_cores
         os.environ['OMP_NUM_THREADS'] = str(n_cores)
         logger.info(
-            'Training a MACE potential on '
+            'Training MACE potential on '
             f'*{len(self.training_data)}* training data, '
             f'using {n_cores} cores for training.'
         )
@@ -290,7 +308,9 @@ class MACE(MLPotential):
             if self.requires_non_zero_box_size and config.box is None:
                 config.box = mlt.box.Box([100, 100, 100])
 
-        self.training_data.save_xyz(filename=f'{self.name}_data.xyz')
+        self.training_data.save_xyz(
+            filename=f'{self.name}_data.xyz', true=True
+        )
 
         start_time = time.perf_counter()
 
@@ -298,7 +318,18 @@ class MACE(MLPotential):
         our_logging_handlers = remove_root_logging_handlers()
 
         try:
-            train_mace(self.args)
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    'ignore',
+                    message=r'You are using `torch\.load`',
+                    category=FutureWarning,
+                )
+                warnings.filterwarnings(
+                    'ignore',
+                    message=r'The TorchScript type system',
+                    category=UserWarning,
+                )
+                train_mace(self.args)
         finally:
             # Remove MACE root logging handlers and restore pre-existing ones.
             remove_root_logging_handlers()
@@ -308,7 +339,7 @@ class MACE(MLPotential):
 
         delta_time = time.perf_counter() - start_time
 
-        logger.info(f'MACE training ran in {delta_time / 60:.1f} m.')
+        logger.info(f'MACE training ran in {delta_time / 60:.1f} min.')
 
         os.remove(f'{self.name}_data.xyz')
 
