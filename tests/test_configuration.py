@@ -10,6 +10,7 @@ import mlptrain as mlt
 from mlptrain.configurations.configuration import (
     Configuration,
     _get_max_mol_distance,
+    _random_rotation,
     _random_vector_in_box,
 )
 from mlptrain.potentials._base import MLPotential
@@ -24,51 +25,51 @@ def h2o_solvated_with_h2o():
         Atom('H', 4.7258, 3.7810, 3.8420),
         Atom('H', 3.4325, 3.9768, 2.9486),
         Atom('O', 3.7558, 3.7810, 3.8420),
-        Atom('O', 1.6537, 5.5994, 5.1805),
-        Atom('H', 2.1231, 6.2270, 4.6268),
-        Atom('H', 1.8835, 4.7213, 4.8693),
-        Atom('O', 4.0761, 1.6429, 4.4656),
-        Atom('H', 4.7273, 1.7042, 3.7636),
-        Atom('H', 4.4392, 2.0981, 5.2282),
-        Atom('O', 5.2720, 2.5861, 1.2385),
-        Atom('H', 5.2101, 1.8111, 0.6762),
-        Atom('H', 5.7396, 3.2598, 0.7403),
-        Atom('O', 4.3799, 5.3922, 0.3064),
-        Atom('H', 4.7353, 5.3898, 1.1976),
-        Atom('H', 4.0024, 4.5239, 0.1506),
-        Atom('O', 1.8234, 0.7443, 2.1236),
-        Atom('H', 1.4708, 0.8475, 1.2372),
-        Atom('H', 1.1402, 1.0289, 2.7343),
-        Atom('O', 5.1668, 6.3337, 5.8825),
-        Atom('H', 4.9327, 7.0291, 6.5009),
-        Atom('H', 5.8539, 6.6833, 5.3113),
-        Atom('O', 2.0368, 3.7493, 1.3374),
-        Atom('H', 1.1601, 3.6509, 1.7149),
-        Atom('H', 2.2124, 4.6904, 1.2728),
-        Atom('O', 0.5084, 1.7830, 5.0212),
-        Atom('H', 0.3615, 1.4862, 5.9217),
-        Atom('H', 1.1740, 2.4732, 5.0564),
-        Atom('O', 7.0134, 6.4991, 1.2615),
-        Atom('H', 6.7323, 5.8621, 1.9216),
-        Atom('H', 7.5114, 6.0170, 0.5979),
-        Atom('O', 4.0425, 7.0798, 0.8347),
-        Atom('H', 4.8781, 7.5414, 0.7379),
-        Atom('H', 3.6392, 7.3932, 1.6471),
-        Atom('O', 7.3462, 4.8211, 6.3077),
-        Atom('H', 6.5461, 5.0221, 6.7978),
-        Atom('H', 7.0814, 4.6049, 5.4111),
-        Atom('O', 3.1137, 1.0218, 7.2245),
-        Atom('H', 3.1697, 1.9796, 7.2106),
-        Atom('H', 2.7513, 0.7479, 6.3793),
-        Atom('O', 6.5146, 1.2387, 2.5151),
-        Atom('H', 6.9495, 0.4143, 2.7425),
-        Atom('H', 6.9361, 1.5703, 1.7194),
-        Atom('O', 4.5047, 5.8149, 3.3874),
-        Atom('H', 3.7937, 5.5926, 3.9922),
-        Atom('H', 4.5166, 6.7708, 3.3048),
-        Atom('O', 0.6122, 3.1012, 6.9100),
-        Atom('H', 1.1074, 2.3914, 7.3244),
-        Atom('H', 1.1637, 3.8858, 6.9409),
+        Atom('O', 1.6410, 5.6215, 5.1410),
+        Atom('H', 1.8252, 5.0658, 4.3808),
+        Atom('H', 2.3831, 5.5320, 5.7426),
+        Atom('O', 0.2137, 1.6048, 3.8653),
+        Atom('H', 0.3730, 1.6713, 2.9214),
+        Atom('H', 0.2735, 2.4923, 4.2250),
+        Atom('O', 4.1556, 1.6866, 4.5267),
+        Atom('H', 4.6644, 1.3691, 3.7777),
+        Atom('H', 3.2401, 1.7396, 4.2442),
+        Atom('O', 5.2370, 2.5534, 1.1812),
+        Atom('H', 5.5345, 3.2148, 0.5529),
+        Atom('H', 5.9709, 2.3760, 1.7733),
+        Atom('O', 4.3931, 5.2890, 0.3177),
+        Atom('H', 3.7065, 5.4130, 0.9763),
+        Atom('H', 4.8206, 6.1388, 0.1920),
+        Atom('O', 1.5763, 2.0668, 7.1499),
+        Atom('H', 1.5584, 1.1107, 7.2282),
+        Atom('H', 1.8191, 2.2714, 6.2444),
+        Atom('O', 2.9836, 6.9620, 3.5356),
+        Atom('H', 3.8297, 6.5603, 3.3273),
+        Atom('H', 2.4389, 6.8973, 2.7484),
+        Atom('O', 4.3427, 3.6430, 5.9737),
+        Atom('H', 4.9626, 3.0750, 5.5112),
+        Atom('H', 3.5091, 3.1703, 6.0227),
+        Atom('O', 6.4379, 6.4827, 6.4603),
+        Atom('H', 6.5730, 7.0408, 7.2290),
+        Atom('H', 6.6947, 5.5923, 6.7091),
+        Atom('O', 5.8334, 5.5081, 1.5821),
+        Atom('H', 6.1585, 4.6054, 1.5739),
+        Atom('H', 5.4799, 5.6730, 2.4588),
+        Atom('O', 1.1515, 7.0347, 0.4560),
+        Atom('H', 0.7611, 7.2270, 1.3112),
+        Atom('H', 1.6518, 6.2214, 0.5504),
+        Atom('O', 4.2025, 0.8327, 6.3825),
+        Atom('H', 4.8918, 0.5775, 6.9992),
+        Atom('H', 3.5701, 0.1117, 6.3516),
+        Atom('O', 7.3693, 4.8547, 3.7695),
+        Atom('H', 6.7648, 4.2321, 3.3602),
+        Atom('H', 7.2709, 5.6895, 3.3067),
+        Atom('O', 1.6644, 4.5189, 1.3072),
+        Atom('H', 2.4394, 4.0888, 0.9396),
+        Atom('H', 1.4005, 4.0137, 2.0791),
+        Atom('O', 5.1430, 5.4211, 4.9351),
+        Atom('H', 4.8956, 5.6049, 5.8438),
+        Atom('H', 5.7455, 6.1155, 4.6604),
     ]
     return mlt.Molecule(atoms=atoms, charge=0, mult=1)
 
@@ -95,6 +96,46 @@ def test_random_vector_in_box():
     )
     assert all(v <= 10 for v in vector)
     assert all(v >= 0 for v in vector)
+
+
+def test_random_rotation_is_a_valid_rotation_matrix():
+    for _ in range(1000):
+        rot_matrix = _random_rotation(
+            seeded_random.random(),
+            seeded_random.random(),
+            seeded_random.random(),
+        )
+
+        # Orthogonal: R^T R = I
+        assert np.allclose(rot_matrix.T @ rot_matrix, np.eye(3), atol=1e-10)
+
+        # Proper rotation (no reflection): det(R) = +1
+        assert np.isclose(np.linalg.det(rot_matrix), 1.0, atol=1e-10)
+
+
+def test_random_rotation_is_uniformly_distributed():
+    """Test that rotating a fixed unit vector by many random rotations
+    gives components that are uniformly distributed on [-1, 1]"""
+    from scipy.stats import kstest
+
+    n_samples = 10_000
+    v = np.array([1.0, 0.0, 0.0])
+
+    rotated_components = np.empty((n_samples, 3))
+    for i in range(n_samples):
+        rot_matrix = _random_rotation(
+            seeded_random.random(),
+            seeded_random.random(),
+            seeded_random.random(),
+        )
+        rotated_components[i] = rot_matrix @ v
+
+    for axis in range(3):
+        # Kolmogorov-Smirnov test against Uniform(-1, 1)
+        _, p_value = kstest(
+            rotated_components[:, axis], 'uniform', args=(-1, 2)
+        )
+        assert p_value > 1e-3
 
 
 def test_get_max_mol_distance(h2o_configuration):
