@@ -2,7 +2,13 @@
 
 ## Environment setup
 
-Primary environment is managed by **pixi** (Linux-only — `platforms = ["linux-64"]`). On a machine without a GPU, set `CONDA_OVERRIDE_CUDA=12.0` during install or the CUDA-locked conda packages will fail to resolve:
+Primary environment is managed by **pixi**, supporting `linux-64` and `osx-arm64`. Default to the **`mace-cpu`** environment — it works on both Linux and macOS:
+
+```bash
+pixi install -e mace-cpu
+```
+
+The `mace` environment adds cuequivariance (CUDA) and is Linux-only. Use it only on a Linux machine with a GPU, or when the task specifically needs the GPU build. To install it on a machine without a GPU, set `CONDA_OVERRIDE_CUDA=12.0` or the CUDA-locked packages will fail to resolve:
 
 ```bash
 CONDA_OVERRIDE_CUDA=12.0 pixi install -e mace
@@ -10,7 +16,7 @@ CONDA_OVERRIDE_CUDA=12.0 pixi install -e mace
 
 MACE also still has a conda install path (`./install_mace.sh` / `environment_mace.yml`), kept working alongside pixi during the transition. Both are tested in CI.
 
-The ACE backend uses a separate conda environment (`environment_ace.yml`) and requires Julia ≥ 1.6 pre-installed in `$PATH` before running `./install_ace.sh`.
+The ACE backend uses a separate conda environment (`environment_ace.yml`) and requires Julia ≥ 1.6 pre-installed in `$PATH` before running `./install_ace.sh`. Do not set up or test ACE locally unless the user is working on ACE (`mlptrain/potentials/ace/`); it is covered in CI.
 
 Enable pre-commit once after cloning:
 ```bash
@@ -19,26 +25,28 @@ pre-commit install
 
 ## Developer commands
 
+Examples use `-e mace-cpu`; substitute `-e mace` on a GPU machine.
+
 ```bash
-# Run all tests (MACE env)
-pixi run -e mace test
+# Run all tests
+pixi run -e mace-cpu test
 # Equivalent: pytest --cov=mlptrain --cov-report term --cov-report xml
 
 # Run a specific file or test
-pixi run -e mace pytest tests/test_mace.py
-pixi run -e mace pytest tests/test_mace.py::test_train_logging
-pixi run -e mace pytest -k "test_name"
+pixi run -e mace-cpu pytest tests/test_mace.py
+pixi run -e mace-cpu pytest tests/test_mace.py::test_train_logging
+pixi run -e mace-cpu pytest -k "test_name"
 
 # Lint + format + typecheck (all at once)
-pixi run -e mace pre-commit run --all-files
+pixi run -e mace-cpu pre-commit run --all-files
 
-# Individual tools (within mace env)
+# Individual tools (within the pixi env)
 ruff check --fix mlptrain/ tests/ examples/
 ruff format mlptrain/ tests/ examples/
 ty check mlptrain/ tests/ examples/
 
 # Build docs
-pixi run -e docs
+pixi run -e docs docs
 ```
 
 ## Critical code conventions
@@ -79,7 +87,7 @@ Three timeouts bound that tree: `Config.dynamics_timeout` (SIGALRM inside `run_w
 
 ## Testing quirks
 
-- `test_mace.py` silently skips all tests if `mace` is not importable — always run in the mace pixi env to get real coverage.
+- `test_mace.py` silently skips all tests if `mace` is not importable — always run in a pixi env (`mace-cpu` or `mace`) to get real coverage.
 - OpenMM tests are named with `test_openmm` in the test name; ACE CI excludes them with `-k "not test_openmm"`.
 - One umbrella test is permanently skipped on GHA (`@pytest.mark.skip(reason='Test fails on GHA with MACE')`).
 - Many tests use `@work_in_tmp_dir()` or `@work_in_zipped_dir(path)` decorators (from `tests/data/utils.py`) that change CWD to a temp directory and clean up after. Tests that write files assume CWD is writable and temporary.
@@ -90,7 +98,7 @@ Three timeouts bound that tree: `Config.dynamics_timeout` (SIGALRM inside `run_w
 
 | Variable | Purpose |
 |---|---|
-| `CONDA_OVERRIDE_CUDA=12.0` | Required during `pixi install` on non-GPU machines |
+| `CONDA_OVERRIDE_CUDA=12.0` | Required to `pixi install -e mace` (CUDA build) on non-GPU machines |
 | `MLT_LOG_LEVEL` | Runtime log verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`); default `INFO` |
 
 Tests marked `@pytest.mark.integration` spawn real subprocesses; deselect them with `-m "not integration"`.
