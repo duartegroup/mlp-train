@@ -911,3 +911,30 @@ def test_add_active_configs_spawn_integration(tmp_path):
         'dataset_path': 'datasets/dataset_after_iter_0.npz',
     }
     assert (tmp_path / payload['dataset_path']).exists()
+
+
+def test_gen_active_config_returns_none_on_dynamics_timeout(
+    monkeypatch, test_potential
+):
+    """The AL boundary turns DynamicsTimeout into a skipped config."""
+
+    def _timeout(*args, **kwargs):
+        raise active.DynamicsTimeout('MD exceeded dynamics_timeout')
+
+    monkeypatch.setattr(active, 'run_mlp_md', _timeout)
+
+    result = active._gen_active_config(
+        _config(0.0),
+        mlp=test_potential('1D'),
+        selector=AbsDiffE(),
+        n_cores=1,
+        max_time=100,
+        method_name='orca',
+        keep_output_files=False,
+        inherit_metad_bias=False,
+        iteration=0,
+        bias_start_iter=0,
+        md_program='ase',
+    )
+
+    assert result is None

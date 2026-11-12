@@ -54,8 +54,8 @@ The three timeouts
    * - Inner
      - ``SIGALRM`` via ``run_with_timeout``
      - ``Config.dynamics_timeout``
-     - 2 h
-     - A single ``dyn.run()`` that will not converge
+     - 0 (disabled)
+     - A single active learning ``dyn.run()`` that will not converge
    * - Per-worker
      - Parent poll loop: ``terminate()`` then ``kill()``
      - ``Config.process_timeout``
@@ -68,21 +68,25 @@ The three timeouts
      - The poll loop itself failing to make progress
 
 The inner timeout triggers a ``SIGALRM`` signal which is delivered to the main
-thread, ``run_with_timeout`` raises, and ``run_mlp_md`` unwinds through its
-``finally`` block. The C-extension code, such as PLUMED and PyTorch,
+thread, ``run_with_timeout`` interrupts ``dyn.run()``, and ``run_mlp_md``
+raises ``DynamicsTimeout``, unwinding through its ``finally`` block. The C-extension code, such as PLUMED and PyTorch,
 can hold a signal until it returns to the interpreter, so a
 trajectory deep inside such a call may run past ``dynamics_timeout``.
 When it does, the per-worker timeout will eventually trigger; the
 parent will terminate the worker and the iteration moves on.
 
+The inner timeout is off by default: ``Config.dynamics_timeout = 0`` means
+no timeout, and no ``SIGALRM`` handler is installed at all. The per-worker
+timeout is always on.
+
 What each layer covers
 ----------------------
 
-The two layers bound different things, and the inner one covers considerably
-more of the codebase.
-
-**The parent poll loop is specific to active learning.** ``run_mlp_md`` is
-called from five places, and the poll loop supervises one of them:
+**Both layers are specific to active learning.** ``run_mlp_md`` takes the
+inner timeout as a ``dynamics_timeout`` keyword argument that defaults to 0,
+and ``_gen_active_config`` is the only caller that passes
+``Config.dynamics_timeout`` into it. ``run_mlp_md`` is called from five
+places:
 
 .. list-table::
    :header-rows: 1
@@ -91,22 +95,24 @@ called from five places, and the poll loop supervises one of them:
    * - Call site
      - Bounded by
    * - ``_gen_active_config`` (``training/active.py``)
-     - Inner timeout **and** the parent poll loop
+     - Inner timeout (if set) **and** the parent poll loop
    * - ``Metadynamics._run_single_metad``
-     - Inner timeout only — ``future.result()`` takes no timeout
+     - Nothing
    * - ``Metadynamics._get_width_for_single``
-     - Inner timeout only — ``AsyncResult.get()`` takes no timeout
+     - Nothing
    * - ``UmbrellaSampling._run_individual_window``
-     - Inner timeout only — ``AsyncResult.get()`` takes no timeout
+     - Nothing
    * - ``TauCalculator._calculate_single``
-     - Inner timeout only — no worker process at all
+     - Nothing
 
-Metadynamics, umbrella sampling, width estimation and τ_acc are therefore
-bounded by ``Config.dynamics_timeout`` alone: they run with no supervising
-parent, so the inner timeout is what keeps them finite.
+Metadynamics, umbrella sampling, width estimation, τ_acc and direct calls to
+``run_mlp_md`` therefore run for as long as they need, whatever
+``Config.dynamics_timeout`` is set to. Active learning with
+``md_program='openmm'`` goes through ``run_mlp_md_openmm``, which has no
+inner timeout, so it is bounded by the parent poll loop only.
 
-**A timeout returns, a kill does not.** When the inner timeout fires,
-``run_mlp_md`` unwinds normally: ``work_in_tmp_dir``'s ``finally`` block still
+**A timeout unwinds, a kill does not.** When the inner timeout fires,
+``run_mlp_md`` raises ``DynamicsTimeout`` and unwinds normally: ``work_in_tmp_dir``'s ``finally`` block still
 copies ``kept_substrings`` (``.traj``, ``.dat``) back out of the temporary
 directory, and ``PlumedCalculator.finalize()`` still runs, so the partial
 trajectory and the ``HILLS`` file written so far survive. A ``SIGKILL`` from
@@ -118,7 +124,7 @@ file arrives for bias inheritance.
 
    The poll loop always terminates. Setting ``Config.process_timeout = None``
    turns off the per-worker check, and the loop's own cap —
-   ``process_timeout + 120 s``, or ``7200 + 120`` seconds when no per-worker
+   ``process_timeout + 120 s``, or ``1000000 + 120`` seconds when no per-worker
    timeout is configured — still bounds the iteration and kills whatever is
    left running.
 
@@ -233,18 +239,16 @@ trajectory hits ``dynamics_timeout``, that was terminated at
 ``process_timeout``, or that raised and reported through the
 ``(idx, 'error', …)`` tuple, does not contribute to the pool of results. 
 Nevertheless, the iteration continues with the configurations from other workers
-and logs how many trajectories were lost. For this reason, functions
-``run_mlp_md``, ``_run_mlp_md``, ``Metadynamics._run_single_metad``
-and ``_gen_active_config`` may return ``None``.
+and logs how many trajectories were lost. ``run_mlp_md`` always returns a
+``Trajectory`` or raises ``DynamicsTimeout``; ``_gen_active_config`` is the
+only place that catches it, and it returns ``None`` instead. Nothing outside
+active learning ever sees a ``None`` trajectory.
 
 .. note::
-  As of now the above is only true for active learning. Metadynamics, umbrella 
-  sampling, and τ_acc are not supervised by a parent, so a worker that fails or 
-  is killed will terminate the iteration. Therefore, if you are running 
-  metadynamics, umbrella sampling, or any other use of metadynamics without 
-  active learning, the default ``Config.dynamics_timeout`` is set to 100000 
-  hours, which is effectively infinite for most use cases and therefore should 
-  not interrupt your calculations.
+  The above is only true for active learning. Metadynamics, umbrella
+  sampling, and τ_acc are not supervised by a parent, so a worker that fails
+  or is killed will terminate the run. They are never subject to
+  ``Config.dynamics_timeout``.
 
 **Bias inheritance tolerates incomplete PLUMED output.** A trajectory that
 diverges before being killed can leave a ``HILLS`` file that is empty,
@@ -273,11 +277,11 @@ A value that is larger but not a multiple raises::
 Setting ``Config.n_cores == n_configs_iter`` gives one core per worker and is
 the simplest choice.
 
-The default ``dynamics_timeout`` of 100,000 hours is effectively infinite for 
-active learning, this is done temporarily to not affect cases when molecular dynamics runs outside of active learning (e.g., sampling, metadynamics etc.). A suitable 
-dynamics_timeout can be set based on the expected runtime of each step, as each 
-step takes ``2 + n_calls**3 + extra_time`` fs, which is typically tens to 
-hundreds of femtoseconds. A reasonable suggestion for active learning would be 
+The default ``dynamics_timeout`` of 0 leaves active learning trajectories
+unbounded, with the 8 hour ``process_timeout`` as the only limit. A suitable
+``dynamics_timeout`` can be set based on the expected runtime of each step, as
+each step takes ``2 + n_calls**3 + extra_time`` fs, which is typically tens to
+hundreds of femtoseconds. A reasonable suggestion for active learning would be
 to set ``dynamics_timeout`` to around 2 hours.
 
 If your trajectories normally finish in seconds, it is also safe to set 

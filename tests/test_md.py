@@ -77,6 +77,43 @@ def test_run_with_timeout_falls_back_when_alarm_unavailable(monkeypatch):
     assert signal.getsignal(signal.SIGALRM) is original_handler
 
 
+def test_run_with_timeout_zero_sets_no_alarm(monkeypatch):
+    """A timeout of 0 means no timeout: SIGALRM is never touched."""
+
+    def _fail(*args, **kwargs):
+        raise AssertionError('signal handler should not be installed')
+
+    monkeypatch.setattr(signal, 'signal', _fail)
+
+    assert mlt.md.run_with_timeout(lambda: 'ok') == ('ok', True)
+    assert mlt.md.run_with_timeout(lambda: 'ok', fn_timeout=0) == ('ok', True)
+
+
+@work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
+def test_md_dynamics_timeout_is_opt_in(
+    h2_configuration, test_potential, monkeypatch
+):
+    """Only an explicit dynamics_timeout cancels MD; Config alone does not."""
+
+    monkeypatch.setattr(mlt.Config, 'dynamics_timeout', 0.001)
+    mlp = test_potential('1D')
+
+    def _run_md(**kwargs):
+        return mlt.md.run_mlp_md(
+            configuration=h2_configuration,
+            mlp=mlp,
+            temp=300,
+            dt=1,
+            interval=10,
+            ps=1,
+            **kwargs,
+        )
+
+    assert _run_md() is not None
+    with pytest.raises(mlt.md.DynamicsTimeout):
+        _run_md(dynamics_timeout=0.001)
+
+
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
 def test_md_full_plumed_input(h2o_configuration, test_potential):
     bias = mlt.PlumedBias(filename='plumed_bias_nopath.dat')

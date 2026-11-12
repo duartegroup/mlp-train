@@ -38,14 +38,18 @@ if TYPE_CHECKING:
     from mlptrain.potentials import MLPotential
 
 
-def run_with_timeout(fn, *args, fn_timeout=None, **kwargs) -> tuple[Any, bool]:
+class DynamicsTimeout(Exception):
+    """MD cancelled by dynamics_timeout. Only active learning sets one"""
+
+
+def run_with_timeout(fn, *args, fn_timeout=0, **kwargs) -> tuple[Any, bool]:
     """
     Run a callable with a best-effort signal-based timeout.
 
-    Uses Unix SIGALRM to interrupt *fn* after *fn_timeout* seconds,
-    defaulting to ``Config.dynamics_timeout``. This is lightweight (no
-    child processes) and works in any context (daemon workers, Pool
-    workers, standalone processes).
+    Uses Unix SIGALRM to interrupt *fn* after *fn_timeout* seconds. A
+    *fn_timeout* of 0 (the default) runs *fn* with no timeout at all.
+    This is lightweight (no child processes) and works in any context
+    (daemon workers, Pool workers, standalone processes).
 
     Note: SIGALRM can be masked or consumed by C-extension code
     (e.g. PLUMED, PyTorch).  If that happens the signal will not
@@ -58,8 +62,8 @@ def run_with_timeout(fn, *args, fn_timeout=None, **kwargs) -> tuple[Any, bool]:
     """
     import signal
 
-    if fn_timeout is None:
-        fn_timeout = Config.dynamics_timeout
+    if not fn_timeout:
+        return fn(*args, **kwargs), True
 
     class _TimeoutException(Exception):
         pass
@@ -118,7 +122,7 @@ def run_mlp_md(
     friction: float = 0.02,
     seed: int | None = None,
     **kwargs,
-) -> mlptrain.Trajectory | None:
+) -> mlptrain.Trajectory:
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics. The function is executed in a temporary
@@ -196,9 +200,19 @@ def run_mlp_md(
         write_plumed_setup: (bool) If True saves the PLUMED input file as
                             plumed_setup.dat
 
+        dynamics_timeout: (float) Wall time in s after which the dynamics
+                          are cancelled and DynamicsTimeout is raised.
+                          Default 0,
+                          no timeout. Active learning passes
+                          Config.dynamics_timeout
+
     Returns:
 
-        (mlptrain.Trajectory | None):
+        (mlptrain.Trajectory):
+
+    Raises:
+
+        (DynamicsTimeout): if dynamics_timeout is set and exceeded
     """
 
     restart = restart_files is not None
@@ -309,7 +323,7 @@ def _run_mlp_md(
     friction: float = 0.02,
     seed: int | None = None,
     **kwargs,
-) -> mlptrain.Trajectory | None:
+) -> mlptrain.Trajectory:
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics
@@ -396,8 +410,7 @@ def _run_mlp_md(
         **kwargs,
     )
     if not finished_in_time:
-        logger.warning('Skipping trajectory due to dynamics timeout.')
-        return None
+        raise DynamicsTimeout('MD exceeded dynamics_timeout')
 
     # Duplicate frames removed only if PLUMED bias is initialised not from file
     if restart and isinstance(bias, PlumedBias) and not bias.from_file:
@@ -486,6 +499,7 @@ def _run_dynamics(
     compress: float | None = None,
     friction: float = 0.02,
     rng: RandomState | None = None,
+    dynamics_timeout: float = 0,
     **kwargs,
 ) -> bool:
     """Initialise dynamics object and run dynamics"""
@@ -537,11 +551,11 @@ def _run_dynamics(
         dyn.attach(save_trajectory, interval=_traj_saving_interval(dt, kwargs))
 
     logger.info(f'Running {n_steps:.0f} steps with a timestep of {dt} fs')
-    # Run the dynamics but cease after a specified time limit
+    # Run the dynamics but cease after a specified time limit, if one is set
     # NOTE: this is not a perfect solution, some kind of periodic divergence
     # check would be better
     _, finished_in_time = run_with_timeout(
-        dyn.run, steps=n_steps, fn_timeout=Config.dynamics_timeout
+        dyn.run, steps=n_steps, fn_timeout=dynamics_timeout
     )
 
     if isinstance(ase_atoms.calc, PlumedCalculator):
