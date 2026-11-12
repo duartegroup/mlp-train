@@ -28,7 +28,7 @@ class PlumedCalculator(Plumed):
         'forces',
         'energy_bias',
         'forces_bias',
-    )
+    )  # ty: ignore[invalid-assignment]
 
     def compute_energy_and_forces(
         self, pos, istep
