@@ -530,7 +530,7 @@ class UmbrellaSampling:
         dt: float,
         bias: mlptrain.Bias,
         **kwargs,
-    ) -> mlptrain.Trajectory | None:
+    ) -> mlptrain.Trajectory:
         """Run an individual umbrella sampling window"""
 
         logger.info(

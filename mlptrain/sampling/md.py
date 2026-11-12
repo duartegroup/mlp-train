@@ -38,6 +38,10 @@ if TYPE_CHECKING:
     from mlptrain.potentials import MLPotential
 
 
+class DynamicsTimeout(Exception):
+    """MD cancelled by dynamics_timeout. Only active learning sets one"""
+
+
 def run_with_timeout(fn, *args, fn_timeout=0, **kwargs) -> tuple[Any, bool]:
     """
     Run a callable with a best-effort signal-based timeout.
@@ -118,7 +122,7 @@ def run_mlp_md(
     friction: float = 0.02,
     seed: int | None = None,
     **kwargs,
-) -> mlptrain.Trajectory | None:
+) -> mlptrain.Trajectory:
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics. The function is executed in a temporary
@@ -197,13 +201,18 @@ def run_mlp_md(
                             plumed_setup.dat
 
         dynamics_timeout: (float) Wall time in s after which the dynamics
-                          are cancelled and None is returned. Default 0,
+                          are cancelled and DynamicsTimeout is raised.
+                          Default 0,
                           no timeout. Active learning passes
                           Config.dynamics_timeout
 
     Returns:
 
-        (mlptrain.Trajectory | None):
+        (mlptrain.Trajectory):
+
+    Raises:
+
+        (DynamicsTimeout): if dynamics_timeout is set and exceeded
     """
 
     restart = restart_files is not None
@@ -314,7 +323,7 @@ def _run_mlp_md(
     friction: float = 0.02,
     seed: int | None = None,
     **kwargs,
-) -> mlptrain.Trajectory | None:
+) -> mlptrain.Trajectory:
     """
     Run molecular dynamics on a system using a MLP to predict energies and
     forces and ASE to drive dynamics
@@ -401,8 +410,7 @@ def _run_mlp_md(
         **kwargs,
     )
     if not finished_in_time:
-        logger.warning('Skipping trajectory due to dynamics timeout.')
-        return None
+        raise DynamicsTimeout('MD exceeded dynamics_timeout')
 
     # Duplicate frames removed only if PLUMED bias is initialised not from file
     if restart and isinstance(bias, PlumedBias) and not bias.from_file:

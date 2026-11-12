@@ -191,9 +191,7 @@ class Metadynamics:
 
             pool.close()
             for width_process in width_processes:
-                widths = width_process.get()
-                if widths:
-                    all_widths.append(widths)
+                all_widths.append(width_process.get())
             all_widths = np.array(all_widths)
             pool.join()
 
@@ -209,11 +207,6 @@ class Metadynamics:
         move_files(
             [r'\w+_config\d+\.pdf'], dst_folder='width_estimation', regex=True
         )
-
-        if all_widths.size == 0:
-            raise RuntimeError(
-                'Width estimation failed: all runs were skipped due to timeout.'
-            )
 
         opt_widths = list(np.min(all_widths, axis=0))
         opt_widths_strs = []
@@ -246,7 +239,7 @@ class Metadynamics:
 
         kwargs['n_cores'] = 1
 
-        traj = run_mlp_md(
+        run_mlp_md(
             configuration=configuration,
             mlp=mlp,
             temp=temp,
@@ -256,11 +249,6 @@ class Metadynamics:
             kept_substrings=['.dat'],
             **kwargs,
         )
-        if traj is None:
-            logger.warning(
-                'Width estimation MD cancelled due to timeout; skipping.'
-            )
-            return []
 
         widths = []
 
@@ -456,17 +444,6 @@ class Metadynamics:
             f'Metadynamics done in {(finish_metad - start_metad) / 60:.1f} m'
         )
 
-        metad_trajs = [traj for traj in metad_trajs if traj is not None]
-        if len(metad_trajs) == 0:
-            logger.warning(
-                'All metadynamics trajectories were skipped due to MD timeout.'
-            )
-            return
-        if len(metad_trajs) != n_runs:
-            logger.warning(
-                'Some metadynamics trajectories were skipped due to MD timeout.'
-            )
-
         # Move .traj files into 'trajectories' folder and compute .xyz files
         self._move_and_save_files(
             metad_trajs=metad_trajs,
@@ -485,7 +462,6 @@ class Metadynamics:
             interval=interval,
             **kwargs,
         )
-        return
 
     @staticmethod
     def _initialise_inherited_bias(al_iter: int, n_runs: int) -> None:
@@ -560,7 +536,7 @@ class Metadynamics:
         al_iter: int | None = None,
         restart: bool | None = False,
         **kwargs,
-    ) -> mlptrain.Trajectory | None:
+    ) -> mlptrain.Trajectory:
         """Initiate a single metadynamics run"""
 
         logger.info(f'Running Metadynamics simulation number {kwargs["idx"]}')
@@ -942,7 +918,7 @@ class Metadynamics:
         resulting trajectory
         """
 
-        traj = self._run_single_metad(
+        self._run_single_metad(
             configuration=configuration,
             mlp=mlp,
             temp=temp,
@@ -952,11 +928,6 @@ class Metadynamics:
             kept_substrings=['.dat'],
             **kwargs,
         )
-        if traj is None:
-            logger.warning(
-                'Biasfactor trial MD cancelled due to timeout; skipping.'
-            )
-            return
 
         filenames = [
             f'colvar_{cv.name}_{kwargs["idx"]}.dat' for cv in plotted_cvs
@@ -975,8 +946,6 @@ class Metadynamics:
                 cvs_units=[cv.units for cv in plotted_cvs],  # ty: ignore[invalid-argument-type]
                 label=f'biasf{bias.biasfactor}',
             )
-
-        return
 
     def block_analysis(
         self,

@@ -20,7 +20,7 @@ from mlptrain.config import Config
 from mlptrain.configurations import ConfigurationSet
 from mlptrain.log import logger
 from mlptrain.sampling import PlumedBias
-from mlptrain.sampling.md import run_mlp_md
+from mlptrain.sampling.md import DynamicsTimeout, run_mlp_md
 from mlptrain.sampling.md_openmm import run_mlp_md_openmm
 from mlptrain.training.selection import AbsDiffE, SelectionMethod
 
@@ -709,21 +709,21 @@ def _gen_active_config(
             **kwargs,
         )
     else:
-        traj = run_mlp_md(
-            config,
-            mlp=mlp,
-            temp=temp if curr_time > 0 else i_temp,
-            dt=0.5,
-            interval=int(max(1, 2 * md_time // selector.n_backtrack)),
-            fs=md_time,
-            n_cores=1,
-            dynamics_timeout=Config.dynamics_timeout,
-            **kwargs,
-        )
-
-    if traj is None:
-        logger.warning('Skipping active learning step due to MD timeout.')
-        return None
+        try:
+            traj = run_mlp_md(
+                config,
+                mlp=mlp,
+                temp=temp if curr_time > 0 else i_temp,
+                dt=0.5,
+                interval=int(max(1, 2 * md_time // selector.n_backtrack)),
+                fs=md_time,
+                n_cores=1,
+                dynamics_timeout=Config.dynamics_timeout,
+                **kwargs,
+            )
+        except DynamicsTimeout:
+            logger.warning('Skipping active learning step due to MD timeout.')
+            return None
 
     traj.t0 = curr_time  # Increment the initial time (t0)
 

@@ -68,8 +68,8 @@ The three timeouts
      - The poll loop itself failing to make progress
 
 The inner timeout triggers a ``SIGALRM`` signal which is delivered to the main
-thread, ``run_with_timeout`` raises, and ``run_mlp_md`` unwinds through its
-``finally`` block. The C-extension code, such as PLUMED and PyTorch,
+thread, ``run_with_timeout`` interrupts ``dyn.run()``, and ``run_mlp_md``
+raises ``DynamicsTimeout``, unwinding through its ``finally`` block. The C-extension code, such as PLUMED and PyTorch,
 can hold a signal until it returns to the interpreter, so a
 trajectory deep inside such a call may run past ``dynamics_timeout``.
 When it does, the per-worker timeout will eventually trigger; the
@@ -111,8 +111,8 @@ Metadynamics, umbrella sampling, width estimation, τ_acc and direct calls to
 ``md_program='openmm'`` goes through ``run_mlp_md_openmm``, which has no
 inner timeout, so it is bounded by the parent poll loop only.
 
-**A timeout returns, a kill does not.** When the inner timeout fires,
-``run_mlp_md`` unwinds normally: ``work_in_tmp_dir``'s ``finally`` block still
+**A timeout unwinds, a kill does not.** When the inner timeout fires,
+``run_mlp_md`` raises ``DynamicsTimeout`` and unwinds normally: ``work_in_tmp_dir``'s ``finally`` block still
 copies ``kept_substrings`` (``.traj``, ``.dat``) back out of the temporary
 directory, and ``PlumedCalculator.finalize()`` still runs, so the partial
 trajectory and the ``HILLS`` file written so far survive. A ``SIGKILL`` from
@@ -239,9 +239,10 @@ trajectory hits ``dynamics_timeout``, that was terminated at
 ``process_timeout``, or that raised and reported through the
 ``(idx, 'error', …)`` tuple, does not contribute to the pool of results. 
 Nevertheless, the iteration continues with the configurations from other workers
-and logs how many trajectories were lost. For this reason, functions
-``run_mlp_md``, ``_run_mlp_md``, ``Metadynamics._run_single_metad``
-and ``_gen_active_config`` may return ``None``.
+and logs how many trajectories were lost. ``run_mlp_md`` always returns a
+``Trajectory`` or raises ``DynamicsTimeout``; ``_gen_active_config`` is the
+only place that catches it, and it returns ``None`` instead. Nothing outside
+active learning ever sees a ``None`` trajectory.
 
 .. note::
   The above is only true for active learning. Metadynamics, umbrella

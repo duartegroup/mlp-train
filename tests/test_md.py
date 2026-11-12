@@ -110,7 +110,8 @@ def test_md_dynamics_timeout_is_opt_in(
         )
 
     assert _run_md() is not None
-    assert _run_md(dynamics_timeout=0.001) is None
+    with pytest.raises(mlt.md.DynamicsTimeout):
+        _run_md(dynamics_timeout=0.001)
 
 
 @work_in_zipped_dir(os.path.join(here, 'data/data.zip'))
