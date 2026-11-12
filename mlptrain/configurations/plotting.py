@@ -323,7 +323,7 @@ def _add_energy_error_histogram(
                     f'Energy error higher than {N} * MAD found in structure {i}'
                 )
 
-        data.save_xyz(f'structure_{N}_mad_en_error.xyz')
+        data.save_xyz(f'structure_{N}_mad_en_error.xyz', true=True)
 
 
 def _add_force_error_histogram(
@@ -394,7 +394,7 @@ def _add_force_error_histogram(
                     f'Force error higher than {N} * MAD found in structure {i}, atom {np.argmax(force_errors[i])}'
                 )
 
-        data.save_xyz(f'structure_{N}_mad_f_error.xyz')
+        data.save_xyz(f'structure_{N}_mad_f_error.xyz', true=True)
 
 
 def error_force_histogram_per_elements(
